@@ -1,0 +1,16 @@
+{
+  "configurations": {
+    "CVE_data_version": "4.0",
+    "nodes": [
+      {
+        "operator": "OR",
+        "cpe_match": [
+          {
+            "vulnerable": true,
+            "cpe23Uri": "cpe:2.3:a:foo:bar:2020:-:*:*:*:*:*:*"
+          }
+        ]
+      }
+    ]
+  }
+}

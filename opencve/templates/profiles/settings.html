@@ -1,0 +1,26 @@
+{% extends "profiles/base_profile.html" %}
+
+{% block title %}Settings - {{ super() }}{% endblock %}
+
+{% block content_profile %}
+{% from "flask_user/_macros.html" import render_submit_field %}
+
+<div class="row">
+    <div class="col-lg-3 col-md-3 col-sm-3">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Actions</h3>
+            </div>
+            <div class="box-body">
+                <a href="{{ url_for('user.edit_user_profile') }}" type="button" class="btn btn-default btn-block btn-flat">Edit Profile</a>
+                <a href="{{ url_for('user.change_password') }}" type="button" class="btn btn-default btn-block btn-flat">Change Password</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-9 col-md-9 col-sm-9">
+        {% block content_settings %}{% endblock %}
+    </div>
+</div>
+
+{% endblock %}

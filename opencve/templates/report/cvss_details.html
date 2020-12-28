@@ -1,0 +1,13 @@
+<tr>
+    <td>CVSS</td>
+    <td>
+        v2 : <s>{{ event.details.old.v2 | default('unknown') }}</s>
+        <br/>
+        v3 : <s>{{ event.details.old.v3 | default('unknown') }}</s>
+    </td>
+    <td>
+        v2 : {{ event.details.new.v2 | default('unknown') }}
+        <br/>
+        v3 : {{ event.details.new.v3 | default('unknown')}}
+    </td>
+</tr>

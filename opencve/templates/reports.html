@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - {{ super() }}{% endblock %}
+
+{% block content %}
+
+<section class="content-header">
+    <h1>Reports</h1>
+    <ol class="breadcrumb">
+        <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
+        <li class="active">Reports</li>
+    </ol>
+</section>
+
+<section class="content">
+    <div class="row">
+        <div class='col-md-8'>
+            {% if reports.total > 0 %}
+            <div class="box box-primary">
+                <div class="box-body table-responsive no-padding">
+                    <table class="table">
+                        <thead>
+                        <th class="col-md-2">Date</th>
+                        <th class="col-md-1 text-center">Alerts</th>
+                        <th>Vendors & Products</th>
+                        </thead>
+                        {% for report in reports.items %}
+                        <tr>
+                            <td><a href="{{ url_for('main.report', link=report.public_link) }}">{{
+                                report.created_at.strftime("%b %d '%y at %H:%M") }}</a></td>
+                            <td class="text-center">{{ report.alerts|length }}</td>
+                            <td>{{ report.details|report_excerpt|safe }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+
+                    <div class="center">
+                        {{ pagination.links }}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p class="alert alert-info">No report yet. Did you subscribe to <a href="{{ url_for('main.vendors') }}">vendors
+                or products</a> ?</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+
+{% endblock %}

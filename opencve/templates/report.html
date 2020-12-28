@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Report details - {{ super() }}{% endblock %}
+
+{% block content %}
+
+<section class="content-header">
+    <h1>
+        <a class="btn btn-default" href="{{ url_for('main.reports') }}"><i class="fa fa-arrow-left"></i> All reports</a>
+        Report Details - {{ total_alerts }} alert{{ 's' if total_alerts > 1 else '' }} on {{
+        report.created_at.strftime("%D %H:%M") }}
+    </h1>
+    <ol class="breadcrumb">
+        <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
+        <li><a href="{{ url_for('main.reports') }}">Reports</a></li>
+        <li class="active">Report details</li>
+    </ol>
+</section>
+
+<section class="content">
+    <div class="row">
+        <div class='col-md-12'>
+            <div class="tabs-vertical-env tabs-report">
+                <ul class="nav tabs-vertical">
+                    {% for key, alerts in alerts_sorted.items() %}
+                    <li class="{% if loop.first %}active{% endif %}">
+                        <a aria-expanded="{% if loop.first %}true{% else %}false{% endif %}" data-toggle="tab"
+                           href="#{{ key }}">
+                            {{ alerts.name }}
+                            <span class="badge badge-primary">{{ alerts.alerts|length }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="tab-content" style="width: 100%;">
+                    {% for key, alerts in alerts_sorted.items() %}
+                    <div id="{{ key }}" class="tab-pane {% if loop.first %}active{% endif %}">
+                        <table class="table">
+                            <thead>
+                            <th>CVE</th>
+                            <th>Score</th>
+                            <th>Events</th>
+                            </thead>
+                            {% for alert in alerts.alerts|sort(reverse=True, attribute='cve.cvss_weight') %}
+                            <tr>
+                                <td class="col-md-1"><a href="{{ url_for('main.cve', cve_id=alert.cve.cve_id) }}">{{
+                                    alert.cve.cve_id }}</a></td>
+                                <td class="col-md-1">
+                                    {% if alert.cve.cvss3 %}
+                                    <span class="label {{ cvss_bg(alert.cve.cvss3)[2] }}">{{ alert.cve.cvss3 }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="col-md-10">
+                                    <table class="table table-bordered table-striped">
+                                        <thead>
+                                        <th>Type</th>
+                                        <th class="col-md-6">Values Removed</th>
+                                        <th class="col-md-6">Values Added</th>
+                                        </thead>
+                                        <tbody>
+                                        {% for event in alert.events %}
+                                        {% set template = 'report/' + event.type.code + '_details.html' %} {% include
+                                        template %}
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

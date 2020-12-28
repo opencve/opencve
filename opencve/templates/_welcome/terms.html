@@ -1,0 +1,16 @@
+{% extends 'base_welcome.html' %}
+{% block title %}{{ super() }}{% endblock %}
+
+{% block content %}
+
+<main role="main" class="container">
+
+    <div class="starter-template">
+        <img src="{{ url_for('static', filename='img/logo_full_48.png') }}" alt="Logo">
+        <h1>Terms of Service and Privacy Policy</h1>
+        <p class="lead">Write in this page your terms of service.</p>
+    </div>
+
+</main>
+
+{% endblock %}

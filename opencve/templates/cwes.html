@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Categories (CWE) - {{ super() }}{% endblock %}
+
+{% block content %}
+
+<section class="content-header">
+    <h1>Categories (CWE)</h1>
+    <ol class="breadcrumb">
+        <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
+        <li class="active">Categories (CWE)</li>
+    </ol>
+</section>
+
+<section class="content">
+    <div class="row">
+
+        <div class="col-xs-8">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title">Categories (CWE)</h3>
+                </div>
+                <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover table-striped">
+                        {% if cwes.total %}
+                        {% for cwe in cwes.items %}
+                        <tr>
+                            <td>{{ cwe.cwe_id }}</td>
+                            <td>{{ cwe.name|default('No name', true) }}</td>
+                            <td class="col-md-1 text-center"><a class="pointer" tabindex="0" data-original-title=""
+                                                                data-content="{{ cwe.description|default('No description', true) }}"
+                                                                data-placement="top" data-toggle="popover"
+                                                                data-trigger="focus" title="" data-container="body"><i
+                                    class="ion-help-circled"></i></a></td>
+                            <td class="col-md-3 text-center">
+                                <div class="btn-group">
+                                    <a href="http://cwe.mitre.org/data/definitions/{{ cwe.cwe_id }}.html"
+                                       target="_blank" class="btn btn-xs btn-default"><i
+                                            class="fa fa-external-link"></i> Mitre</a>
+                                    <a href="{{ url_for('main.cves', cwe=cwe.cwe_id) }}"
+                                       class="btn btn-xs btn-default"><i class="fa fa-shield"></i> View CVE</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4">No CWE found.</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                    <div class="center">
+                        {{ pagination.links }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xs-4">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title">Search</h3>
+                </div>
+                <div class="box-body">
+                    <form role="form" class="form-horizontal">
+                        <div class="form-group">
+                            <div class="col-md-12">
+                                <div class="input-group">
+                          <span class="input-group-btn">
+                          <button class="btn btn-primary" type="button"><i class="fa fa-search"></i></button>
+                          </span>
+                                    <form method="GET">
+                                        <input type="text" placeholder="Search" class="form-control" name="search"
+                                               value="{% if request.args.get('id') %}{{ request.args.get('search') }}{% endif %}">
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+
+<div class="container">
+    <div class="page-header">
+        <h1>Tasks</h1>
+    </div>
+
+    <ul>
+        {% for task in tasks %}
+        <li>
+            {{ task[0].strftime('%a, %d %b %Y %H:%M:%S') }}
+            {% if loop.last %}
+            [initial import]
+            {% else %}
+            [<strong><a href="/admin/tasks/{{ task[1] }}">{{ task[2] }} changes</a></strong>]
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+
+</div>
+{% endblock %}

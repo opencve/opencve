@@ -1,0 +1,51 @@
+{% extends 'base_blank.html' %}
+
+{% block title %}Join OpenCVE - {{ super() }}{% endblock %}
+
+{% block content %}
+{% from "_macros.html" import render_field %}
+
+
+<div class="register-box">
+
+    <div class="register-box-body">
+        <div class="register-logo">
+            <img src="{{ url_for('static', filename='img/logo_full_48.png') }}" alt="Logo">
+            <a href="{{ url_for('main.home') }}">OpenCVE.io</a>
+        </div>
+        {% include 'flash_messages.html' %}
+        <p class="login-box-msg"><strong>Register a new membership</strong></p>
+
+        <form action="" method="post">
+            {{ form.hidden_tag() }}
+            {{ render_field(form.username, tabindex=10, placeholder="Username") }}
+            {{ render_field(form.email, tabindex=20, placeholder="Email") }}
+            {{ render_field(form.password, tabindex=30, placeholder="Password") }}
+            {{ render_field(form.retype_password, tabindex=40, placeholder="Confirm Password") }}
+            {% if config.DISPLAY_RECAPTCHA %}
+            {{ render_field(form.recaptcha) }}
+            {% endif %}
+            <p>&nbsp;</p>
+            <div class="row">
+                <div class="col-xs-12">
+                    <button type="submit" class="btn btn-primary btn-block btn-flat">Register</button>
+                </div>
+            </div>
+        </form>
+
+        <p>&nbsp;</p>
+        <div class="center">
+            <span>Already have an account?</span>
+            <a href="{{ url_for('user.login') }}">Sign in</a>
+        </div>
+        {% if config.DISPLAY_TERMS %}
+        <p>&nbsp;</p>
+        <div class="center terms">
+            <span>By clicking on "Register", you are agreeing to the <a href="{{ url_for('welcome.terms') }}">Terms of Service</a>.</span>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "profiles/base_profile.html" %}
+
+{% block title %}Subscriptions - {{ super() }}{% endblock %}
+
+{% block content_profile %}
+<div class="row">
+    <div class="col-lg-6 col-md-6 col-sm-6">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">My vendors ({{ current_user.vendors|length }})</h3>
+            </div>
+            <div class="box-body">
+                <div class="table-responsive">
+                    {% if current_user.vendors %}
+                    <table class="table table-hover table-striped">
+                        <tbody>
+                        {% for vendor in current_user.vendors %}
+                        <tr {% if loop.first %}style="border-top: 0px;" {% endif %}>
+                            <td style="border-top: 0px;">{{ vendor.name | humanize }}</td>
+                            <td class="pull-right" style="border-top: 0px;">
+                                {% if vendor in current_user.vendors %}
+                                <button class="btn btn-danger btn-xs pull-right subscribe"
+                                        id="unsubscribe_vendor_{{ vendor.id }}" type="button">Unsubscribe
+                                </button>
+                                {% else %}
+                                <button class="btn btn-default btn-xs pull-right subscribe"
+                                        id="subscribe_vendor_{{ vendor.id }}" type="button">Subscribe
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>You have no subscription yet, click <a href="{{ url_for('main.vendors') }}">here</a> to view the
+                        entire list of vendors and products.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 col-md-6 col-sm-6">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">My products ({{ current_user.products|length }})</h3>
+            </div>
+            <div class="box-body">
+                <div class="table-responsive">
+                    {% if current_user.products %}
+                    <table class="table table-hover table-striped">
+                        <tbody>
+                        {% for product in current_user.products %}
+                        <tr {% if loop.first %}style="border-top: 0px;" {% endif %}>
+                            <td style="border-top: 0px;">{{ product.name | humanize }}</td>
+                            <td class="pull-right" style="border-top: 0px;">
+                                {% if product in current_user.products %}
+                                <button class="btn btn-danger btn-xs pull-right subscribe"
+                                        id="unsubscribe_product_{{ product.id }}" type="button">Unsubscribe
+                                </button>
+                                {% else %}
+                                <button class="btn btn-defaul tbtn-xs pull-right subscribe"
+                                        id="subscribe_product_{{ product.id }}" type="button">Subscribe
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>You have no subscription yet, click <a href="{{ url_for('main.vendors') }}">here</a> to view the
+                        entire list of vendors and products.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

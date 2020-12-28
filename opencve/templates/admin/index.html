@@ -1,0 +1,134 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+
+
+<div class="container">
+
+    <div class="row jumbotron">
+        <div class="col-md-6 col-md-offset-3">
+            <table class="table table-bordered">
+                <tr>
+                    <td>Users created</td>
+                    <td class="text-center"><strong>{{ users_count }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Reports sent</td>
+                    <td class="text-center"><strong>{{ reports_count }}</strong></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <hr/>
+
+    <div class="row">
+        <canvas id="week" width="800" height="300"></canvas>
+    </div>
+
+    <hr/>
+
+    <div class="row">
+        <canvas id="perDay" width="800" height="300"></canvas>
+    </div>
+
+    <hr/>
+
+    <div class="row">
+        <canvas id="perMonth" width="800" height="300"></canvas>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/chart.min.js') }}" type="text/javascript"></script>
+<script>
+var week = new Chart(document.getElementById("week").getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: ["{{ week['day']|join('","')|safe }}"],
+        datasets: [{
+            label: 'Nb of users',
+            data: [{{ week['count']|join(',') }}],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        title:{
+            display: true,
+            text: 'Nb of user for the last week'
+        },
+        legend: {
+            display: false
+        },
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero:true
+                }
+            }]
+        }
+    }
+});
+
+var perDay= new Chart(document.getElementById("perDay").getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: ["{{ days['day']|join('","')|safe }}"],
+        datasets: [{
+            label: 'Nb of users',
+            data: [{{ days['count']|join(',') }}],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        title:{
+            display: true,
+            text: 'Nb of user per day'
+        },
+        legend: {
+            display: false
+        },
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero:true
+                }
+            }]
+        }
+    }
+});
+
+var perMonth= new Chart(document.getElementById("perMonth").getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: ["{{ months['month']|join('","')|safe }}"],
+        datasets: [{
+            label: 'Nb of users',
+            data: [{{ months['count']|join(',') }}],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        title:{
+            display: true,
+            text: 'Nb of user per month'
+        },
+        legend: {
+            display: false
+        },
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero:true
+                }
+            }]
+        }
+    }
+});
+
+</script>
+
+{% endblock %}

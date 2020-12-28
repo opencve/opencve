@@ -1,0 +1,6 @@
+include requirements.txt
+include LICENCE
+include README.md
+graft opencve
+graft migrations
+global-exclude *.pyc

@@ -1,0 +1,17 @@
+Hello {{ user.username }},
+
+We detected {{ subject }}.
+
+View the full report : {{ url_for('main.report', link=report_public_link, _external=True) }}
+
+{% for key, alerts in alerts_sorted.items() %}== {{ alerts.name }} ==
+
+{% for alert in alerts.alerts|sort(reverse=True, attribute='cve.cvss_weight') %}[{{ alert.cve.cve_id }} - {% if alert.cve.cvss3 %}{{ alert.cve.cvss3 }}{% else %}No CVSS v3{% endif %}] {{ url_for('main.cve', cve_id=alert.cve.cve_id, _external=True) }}
+{{ alert.cve.summary|truncate(230) }}
+{% if alert.events|length > 0 %}Change{% if alert.events|length > 1 %}s{% endif %} : {% for event in alert.events %}{{ event.type.value }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+
+{% endfor %}{% endfor %}
+
+If you do not want to receive emails, you can unsubscribe here : {{ url_for('main.notifications', _external=True, _scheme='https') }}
+
+OpenCVE - https://opencve.io

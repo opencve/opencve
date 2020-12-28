@@ -1,0 +1,50 @@
+{% extends 'admin/master.html' %}
+
+{% block head_css %}
+{{ super() }}
+<style type="text/css">
+        table.diff {font-family:Courier; border:medium;}
+        .diff_header {background-color:#e0e0e0}
+        td.diff_header {text-align:right}
+        .diff_next {background-color:#c0c0c0}
+        .diff_add {background-color:#aaffaa}
+        .diff_chg {background-color:#ffff77}
+        .diff_sub {background-color:#ffaaaa}
+
+</style>
+{% endblock %}
+
+{% block body %}
+
+<div class="container">
+    <div class="page-header">
+        <h1>
+            Change {{ change.id }}
+        </h1>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <p><strong>Task : </strong>{{ change.task.id }}</p>
+            <p><strong>Events ({{ change.events|length }}) :</strong></p>
+            <ul>
+                {% for event in change.events %}
+                <li>{{ event }} => {{ event.details }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <br/>
+    <h3>Visual Diff</h3>
+    <br/>
+
+    <div class="row">
+        <div class="col-md-12">
+            {{ diff|safe }}
+        </div>
+    </div>
+
+
+</div>
+{% endblock %}

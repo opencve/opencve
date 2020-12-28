@@ -1,0 +1,24 @@
+{
+  "configurations": {
+    "CVE_data_version": "4.0",
+    "nodes" : [ {
+      "operator" : "AND",
+      "children" : [ {
+        "operator" : "OR",
+        "cpe_match" : [ {
+          "vulnerable" : false,
+          "cpe23Uri" : "cpe:2.3:a:foo:baz:2000:-:*:*:*:*:*:*"
+        }, {
+          "vulnerable" : false,
+          "cpe23Uri" : "cpe:2.3:a:bar:baz:2000:sp1:*:*:*:*:*:*"
+        } ]
+      }, {
+        "operator" : "OR",
+        "cpe_match" : [ {
+          "vulnerable" : true,
+          "cpe23Uri" : "cpe:2.3:a:foo:bar:2.5:*:*:*:*:*:*:*"
+        } ]
+      } ]
+    } ]
+  }
+}
