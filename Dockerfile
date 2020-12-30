@@ -24,8 +24,11 @@ COPY requirements.txt .
 RUN python3 -m pip install --upgrade pip
 RUN pip3 install -r requirements.txt
 
+# Copy package sources and install it
+COPY . .
+RUN pip3 install .
+
 FROM python:3.6-alpine
-MAINTAINER Luc Michalski <michalski.luc@gmail.com>
 
 ARG VERSION
 ARG BUILD
@@ -48,8 +51,7 @@ WORKDIR /opt/opencve
 # Copy the virtual environment from the previous image
 COPY --from=builder /opt/venv /opt/venv
 
-# Copy sources
-COPY . .
+COPY ./docker-entrypoint.sh .
 
 # Activate the virtual environment
 ENV PATH="/opt/venv/bin:$PATH" \
@@ -72,6 +74,7 @@ LABEL name="opencve" \
       distribution-scope="public"
 
 # Container configuration
+USER opencve
 EXPOSE 5000
 VOLUME ["/opt/opencve/data"]
 ENTRYPOINT ["tini", "-g", "--", "./docker-entrypoint.sh"]

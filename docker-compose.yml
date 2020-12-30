@@ -10,9 +10,10 @@ services:
       args:
         TINI_VERSION: ${TINI_VERSION}
     environment:
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
-      DATABASE_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
+      OPENCVE_HOME: /opt
+      OPENCVE_CONFIG: /opt/opencve/opencve.cfg
+    volumes:
+    - ./shared/config/docker-opencve.cfg:/opt/opencve/opencve.cfg
     networks:
     - internal
     - web
@@ -30,7 +31,8 @@ services:
     networks:
     - internal
     - web
-    restart: unless-stopped
+    command: -b 0.0.0.0:8000
+    # restart: unless-stopped
 
   celery-worker:
     <<: *opencve_base
@@ -38,7 +40,7 @@ services:
     networks:
     - internal
     command: ["worker"]
-    restart: unless-stopped
+    # restart: unless-stopped
 
   celery-beat:
     <<: *opencve_base
@@ -46,7 +48,7 @@ services:
     networks:
     - internal
     command: ["beat"]
-    restart: unless-stopped  
+    # restart: unless-stopped  
 
   postgres:
     image: postgres:${POSTGRES_VERSION}-alpine
@@ -71,8 +73,6 @@ services:
     hostname: redis
     networks:
     - internal    
-    volumes:
-    - redis-logs:${REDIS_LOG_PREFIX_PATH}
     command:
     - "redis-server"
     - "--maxmemory ${REDIS_MEMORY_MAX}"

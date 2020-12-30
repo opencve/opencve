@@ -1,8 +1,3 @@
-# Documents related
-*.md
-*.doc*
-docs
-
 # Docker related files
 Dockerfile*
 docker-compose*
