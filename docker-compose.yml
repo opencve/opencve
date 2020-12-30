@@ -10,13 +10,9 @@ services:
       args:
         TINI_VERSION: ${TINI_VERSION}
     environment:
-      DATABASE_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      DATABASE_USER: ${POSTGRES_USER}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-    - opencve-data:/opt/opencve/data
-    - opencve-logs:/opt/opencve/logs
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      DATABASE_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:${POSTGRES_PORT}/${POSTGRES_DB}
     networks:
     - internal
     - web
@@ -26,12 +22,11 @@ services:
     container_name: ${NAMESPACE}-server
     ports:
     - 8000:8000
-    # expose:
-    # - 8000
     depends_on:
     - celery-worker
     - celery-beat
     - postgres
+    - redis
     networks:
     - internal
     - web
@@ -70,6 +65,20 @@ services:
     - postgres-data:/var/lib/postgresql/data/
     restart: unless-stopped
 
+  redis:
+    image: redis:${REDIS_VERSION}-alpine
+    container_name: ${NAMESPACE}-redis
+    hostname: redis
+    networks:
+    - internal    
+    volumes:
+    - redis-logs:${REDIS_LOG_PREFIX_PATH}
+    command:
+    - "redis-server"
+    - "--maxmemory ${REDIS_MEMORY_MAX}"
+    - "--maxmemory-policy allkeys-lru"
+    restart: unless-stopped
+
 networks:
   internal:
     driver: bridge
@@ -77,12 +86,5 @@ networks:
     external: true
 
 volumes:
-  # server data
-  opencve-data:
-  opencve-logs:
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD}/shared/logs/opencve
   # PostreSQL
   postgres-data:
