@@ -10,10 +10,8 @@ services:
       args:
         TINI_VERSION: ${TINI_VERSION}
     environment:
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
       DATABASE_PORT: ${POSTGRES_PORT}
-      DATABASE_NAME: ${POSTGRES_DATABASE}
+      POSTGRES_DB: ${POSTGRES_DB}
       DATABASE_USER: ${POSTGRES_USER}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
@@ -22,6 +20,38 @@ services:
     networks:
     - internal
     - web
+
+  server:
+    <<: *opencve_base
+    container_name: ${NAMESPACE}-server
+    ports:
+    - 8000:8000
+    # expose:
+    # - 8000
+    depends_on:
+    - celery-worker
+    - celery-beat
+    - postgres
+    networks:
+    - internal
+    - web
+    restart: unless-stopped
+
+  celery-worker:
+    <<: *opencve_base
+    container_name: ${NAMESPACE}-worker
+    networks:
+    - internal
+    command: ["worker"]
+    restart: unless-stopped
+
+  celery-beat:
+    <<: *opencve_base
+    container_name: ${NAMESPACE}-beat
+    networks:
+    - internal
+    command: ["beat"]
+    restart: unless-stopped  
 
   postgres:
     image: postgres:${POSTGRES_VERSION}-alpine
