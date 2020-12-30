@@ -28,3 +28,10 @@ CVSS_SCORES = [
 ]
 
 PRODUCT_SEPARATOR = "$PRODUCT$"
+
+# This is the message sent by Flask-User in the `flash` function
+EMAIL_CONFIRMATION_MESSAGE = (
+    "Your email address has not yet been confirmed. Check your email Inbox "
+    'and Spam folders for the confirmation email or <a href="/account/resend-'
+    'email-confirmation">Re-send confirmation email</a>.'
+)

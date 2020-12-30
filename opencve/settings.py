@@ -91,6 +91,7 @@ class Config(object):
     USER_AFTER_FORGOT_PASSWORD_ENDPOINT = "user.login"
     USER_AFTER_RESET_PASSWORD_ENDPOINT = "user.login"
     USER_AFTER_LOGOUT_ENDPOINT = "user.login"
+    USER_AFTER_RESEND_EMAIL_CONFIRMATION_ENDPOINT = "user.login"
     USER_AFTER_EDIT_USER_PROFILE_ENDPOINT = "user.edit_user_profile"
 
     # Flask-User urls
@@ -100,6 +101,7 @@ class Config(object):
     USER_CHANGE_PASSWORD_URL = "/account/password"
     USER_EDIT_USER_PROFILE_URL = "/account/profile"
     USER_FORGOT_PASSWORD_URL = "/account/forgot-password"
+    USER_RESEND_EMAIL_CONFIRMATION_URL = "/account/resend-email-confirmation"
 
     # Mail
     EMAIL_ADAPTER = config.get("mail", "email_adapter", fallback="smtp")
