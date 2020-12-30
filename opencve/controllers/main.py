@@ -1,8 +1,10 @@
 import os
 
 from flask import Blueprint
+from jinja2.filters import do_mark_safe
 
 from opencve.configuration import OPENCVE_WELCOME_FILES
+from opencve.constants import EMAIL_CONFIRMATION_MESSAGE
 from opencve.context import (
     _cvss_bg,
     _cvss_percent,
@@ -72,3 +74,10 @@ def products_excerpt(s):
 @main.app_template_filter("report_excerpt")
 def report_excerpt(s):
     return _report_excerpt(s)
+
+
+@main.app_template_filter("custom_safe")
+def custom_safe(s):
+    if s == EMAIL_CONFIRMATION_MESSAGE:
+        return do_mark_safe(s)
+    return s
