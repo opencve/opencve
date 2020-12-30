@@ -1,0 +1,58 @@
+---
+version: "3.8"
+services:
+
+  opencve: &opencve_base
+    image: opencve/opencve:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TINI_VERSION: ${TINI_VERSION}
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+      DATABASE_PORT: ${POSTGRES_PORT}
+      DATABASE_NAME: ${POSTGRES_DATABASE}
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+    - opencve-data:/opt/opencve/data
+    - opencve-logs:/opt/opencve/logs
+    networks:
+    - internal
+    - web
+
+  postgres:
+    image: postgres:${POSTGRES_VERSION}-alpine
+    container_name: ${NAMESPACE}-postgres
+    ports:
+    - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    expose:
+    - ${POSTGRES_PORT}
+    networks:
+    - internal
+    environment:
+    - POSTGRES_USER=${POSTGRES_USER}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+    - postgres-data:/var/lib/postgresql/data/
+    restart: unless-stopped
+
+networks:
+  internal:
+    driver: bridge
+  web:
+    external: true
+
+volumes:
+  # server data
+  opencve-data:
+  opencve-logs:
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/shared/logs/opencve
+  # PostreSQL
+  postgres-data:

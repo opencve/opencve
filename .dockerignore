@@ -1,0 +1,30 @@
+# Documents related
+*.md
+*.doc*
+docs
+
+# Docker related files
+Dockerfile*
+docker-compose*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+build/
+dist/
+opencve.egg-info/
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Celery
+celerybeat-schedule.db
+
+# Editors
+.vscode/
+.idea/
