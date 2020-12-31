@@ -21,7 +21,9 @@ class CustomUserManager(UserManager):
     def customize(self, app):
         # Add the email field
         class CustomUserProfileForm(EditUserProfileForm):
-            email = StringField("Email", validators=[validators.DataRequired()])
+            email = StringField(
+                "Email", validators=[validators.DataRequired(), validators.Email()]
+            )
 
         self.EditUserProfileFormClass = CustomUserProfileForm
 
