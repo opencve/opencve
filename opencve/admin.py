@@ -152,7 +152,7 @@ class UserModelView(AuthModelView):
     edit_modal = False
     can_view_details = True
     column_filters = column_searchable_list = ["username", "email"]
-    column_list = ("username", "email", "created_at")
+    column_list = ("username", "email", "created_at", "is_confirmed")
 
 
 class CveModelView(AuthModelView):

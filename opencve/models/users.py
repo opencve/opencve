@@ -47,5 +47,9 @@ class User(BaseModel, UserMixin):
     alerts = db.relationship("Alert", back_populates="user")
     reports = db.relationship("Report", back_populates="user")
 
+    @property
+    def is_confirmed(self):
+        return bool(self.email_confirmed_at)
+
     def __repr__(self):
         return "<User {}>".format(self.username)
