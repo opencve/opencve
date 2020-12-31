@@ -58,6 +58,9 @@
                             <li class="user-footer">
                                 <div class="pull-left">
                                     <a href="{{ url_for('main.subscriptions') }}" class="btn btn-default btn-flat">Account</a>
+                                    {% if current_user.admin %}
+                                    <a href="{{ url_for('admin.index') }}" class="btn btn-default btn-flat">Admin</a>
+                                    {% endif %}
                                 </div>
                                 <div class="pull-right">
                                     <a href="{{ url_for('user.logout') }}" class="btn btn-default btn-flat">Sign out</a>
