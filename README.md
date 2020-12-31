@@ -17,9 +17,11 @@ For now the only method of notification is the mail, but we plan to add other in
 
 OpenCVE works with **Python >=3.6**.
 
-It uses the JSONB feature for performance, so you will need a **PostgreSQL** instance to store the data (CVE, Users, Vendors, Products, Subscriptions, ...). Other engines are not supported.
+It uses the JSONB feature for performance, so you will need to a **PostgreSQL** instance to store the data (CVE, Users, Vendors, Products, Subscriptions, ...). Other engines are not supported.
+If you don't have a PostgreSQL instance, just install it, create a username for opencve, create a database for opencve and add these info into the opencve.cfg file.
 
 Celery is used to periodically fetch the NVD database and update the list of CVEs. For that you will need a broker : we recommend you **Redis** for the ease of installation. Futhermore it is possible that future versions of OpenCVE will use a cache feature, in that case the Redis requirement will already be filled for you.
+Just install Redis on your machine, there is no need for configuration
 
 During the import of initial data OpenCVE will download and parse huge files, like the CPE dictionnary. For that we recommend you **3.5G RAM** at least.
 
