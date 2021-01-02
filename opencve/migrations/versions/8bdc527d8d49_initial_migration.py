@@ -35,7 +35,11 @@ def upgrade():
     op.create_index(op.f("ix_cves_cve_id"), "cves", ["cve_id"], unique=False)
     op.create_index(op.f("ix_cves_updated_at"), "cves", ["updated_at"], unique=False)
     op.create_index(
-        "ix_cves_vendors", "cves", ["vendors"], unique=False, postgresql_using="gin",
+        "ix_cves_vendors",
+        "cves",
+        ["vendors"],
+        unique=False,
+        postgresql_using="gin",
     )
     op.create_index(
         "ix_cves_cwes", "cves", ["cwes"], unique=False, postgresql_using="gin"
@@ -133,8 +137,14 @@ def upgrade():
         sa.Column("json", JSONType(), nullable=True),
         sa.Column("cve_id", UUIDType(binary=False), nullable=True),
         sa.Column("task_id", UUIDType(binary=False), nullable=True),
-        sa.ForeignKeyConstraint(["cve_id"], ["cves.id"],),
-        sa.ForeignKeyConstraint(["task_id"], ["tasks.id"],),
+        sa.ForeignKeyConstraint(
+            ["cve_id"],
+            ["cves.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["task_id"],
+            ["tasks.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -147,7 +157,10 @@ def upgrade():
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("vendor_id", UUIDType(binary=False), nullable=True),
-        sa.ForeignKeyConstraint(["vendor_id"], ["vendors.id"],),
+        sa.ForeignKeyConstraint(
+            ["vendor_id"],
+            ["vendors.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -163,7 +176,10 @@ def upgrade():
         sa.Column("seen", sa.Boolean(), nullable=True),
         sa.Column("details", JSONType(), nullable=True),
         sa.Column("user_id", UUIDType(binary=False), nullable=True),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"],),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -173,8 +189,14 @@ def upgrade():
         "users_vendors",
         sa.Column("user_id", UUIDType(binary=False), nullable=False),
         sa.Column("vendor_id", UUIDType(binary=False), nullable=False),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"],),
-        sa.ForeignKeyConstraint(["vendor_id"], ["vendors.id"],),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["vendor_id"],
+            ["vendors.id"],
+        ),
         sa.PrimaryKeyConstraint("user_id", "vendor_id"),
     )
     op.create_table(
@@ -187,9 +209,18 @@ def upgrade():
         sa.Column("user_id", UUIDType(binary=False), nullable=True),
         sa.Column("cve_id", UUIDType(binary=False), nullable=True),
         sa.Column("report_id", UUIDType(binary=False), nullable=True),
-        sa.ForeignKeyConstraint(["cve_id"], ["cves.id"],),
-        sa.ForeignKeyConstraint(["report_id"], ["reports.id"],),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"],),
+        sa.ForeignKeyConstraint(
+            ["cve_id"],
+            ["cves.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["report_id"],
+            ["reports.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -217,8 +248,14 @@ def upgrade():
         sa.Column("review", sa.Boolean(), nullable=True),
         sa.Column("cve_id", UUIDType(binary=False), nullable=True),
         sa.Column("change_id", UUIDType(binary=False), nullable=True),
-        sa.ForeignKeyConstraint(["change_id"], ["changes.id"],),
-        sa.ForeignKeyConstraint(["cve_id"], ["cves.id"],),
+        sa.ForeignKeyConstraint(
+            ["change_id"],
+            ["changes.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["cve_id"],
+            ["cves.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -228,16 +265,28 @@ def upgrade():
         "users_products",
         sa.Column("user_id", UUIDType(binary=False), nullable=False),
         sa.Column("product_id", UUIDType(binary=False), nullable=False),
-        sa.ForeignKeyConstraint(["product_id"], ["products.id"],),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"],),
+        sa.ForeignKeyConstraint(
+            ["product_id"],
+            ["products.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+        ),
         sa.PrimaryKeyConstraint("user_id", "product_id"),
     )
     op.create_table(
         "alerts_events",
         sa.Column("alert_id", UUIDType(binary=False), nullable=False),
         sa.Column("event_id", UUIDType(binary=False), nullable=False),
-        sa.ForeignKeyConstraint(["alert_id"], ["alerts.id"],),
-        sa.ForeignKeyConstraint(["event_id"], ["events.id"],),
+        sa.ForeignKeyConstraint(
+            ["alert_id"],
+            ["alerts.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["event_id"],
+            ["events.id"],
+        ),
         sa.PrimaryKeyConstraint("alert_id", "event_id"),
     )
 

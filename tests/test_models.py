@@ -47,7 +47,10 @@ def test_new_cwe():
 
 
 def test_new_meta():
-    meta = Meta(name="foo", value="bar",)
+    meta = Meta(
+        name="foo",
+        value="bar",
+    )
     assert meta.name == "foo"
     assert meta.value == "bar"
 

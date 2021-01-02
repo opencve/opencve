@@ -46,7 +46,10 @@ class CustomEmailManager(EmailManager):
     def send_user_report(self, user, **kwargs):
         """Send the 'user report' email."""
         self._render_and_send_email(
-            user.email, user, "emails/report", **kwargs,
+            user.email,
+            user,
+            "emails/report",
+            **kwargs,
         )
 
 
