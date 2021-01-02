@@ -22,15 +22,15 @@
                 <div class="box-body">
                     <div class="row">
                         <div class="col-sm-6 col-md-6 col-lg-6">
-                            <div class="input-group pull-left">
-                    <span class="input-group-btn">
-                    <button class="btn btn-primary" type="button"><i class="fa fa-search"></i></button>
-                    </span>
-                                <form method="GET">
-                                    <input type="text" placeholder="Search" class="form-control" name="search"
-                                           value="{% if request.args.get('search') %}{{ request.args.get('search') }}{% endif %}">
-                                </form>
-                            </div>
+                            <form method="GET">
+                                <div class="input-group pull-left">
+                                    <span class="input-group-btn">
+                                    <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
+                                    </span>
+                                        <input type="text" placeholder="Search" class="form-control" name="search"
+                                            value="{% if request.args.get('search') %}{{ request.args.get('search') }}{% endif %}">
+                                </div>
+                            </form>
                         </div>
                         <div class="col-sm-6 col-md-6 col-lg-6">
                             <div class="btn-group pull-right">
