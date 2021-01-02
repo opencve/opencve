@@ -12,7 +12,7 @@ with open("requirements.txt", encoding="utf-8") as req:
     requirements = [r.rstrip() for r in req.readlines()]
 
 
-dev_requirements = ["pytest==5.4.1"]
+dev_requirements = ["pytest==5.4.1", "black==20.8b1"]
 sendmail_requirements = ["Flask-Sendmail-ng==0.3"]
 
 

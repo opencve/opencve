@@ -31,7 +31,11 @@ def test_empty_login(app, client):
 
 
 @pytest.mark.parametrize(
-    "user,password", [("user", "password"), ("user@opencve.io", "password"),],
+    "user,password",
+    [
+        ("user", "password"),
+        ("user@opencve.io", "password"),
+    ],
 )
 def test_login_success(app, client, user, password):
     _create_user(app)
@@ -46,7 +50,11 @@ def test_login_success(app, client, user, password):
 
 @pytest.mark.parametrize(
     "user,password",
-    [("user", "bad_password"), ("bad_user", "password"), ("bad_user", "bad_password"),],
+    [
+        ("user", "bad_password"),
+        ("bad_user", "password"),
+        ("bad_user", "bad_password"),
+    ],
 )
 def test_login_errors(app, client, user, password):
     with client:
