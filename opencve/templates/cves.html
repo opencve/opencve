@@ -140,15 +140,15 @@ Vulnerabilities (CVE)
                     <h3 class="box-title">Search</h3>
                 </div>
                 <div class="box-body">
-                    <div class="input-group">
-                    <span class="input-group-btn">
-                    <button class="btn btn-primary" type="button"><i class="fa fa-search"></i></button>
-                    </span>
-                        <form method="GET">
+                    <form method="GET">
+                        <div class="input-group">
+                            <span class="input-group-btn">
+                            <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
+                            </span>
                             <input type="text" placeholder="Search" class="form-control" name="search"
                                    value="{% if request.args.get('search') %}{{ request.args.get('search') }}{% endif %}">
-                        </form>
-                    </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
