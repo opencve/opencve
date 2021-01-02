@@ -84,36 +84,42 @@ def _humanize_filter(s):
 
 
 def _excerpt(objects, _type):
+    """
+    This function takes a flat list of vendors and products and returns
+    the HTML code used in the CVEs list page.
+    """
     output = ""
 
     if not objects:
         return output
 
-    if len(objects) > app.config["COUNT_EXCERPT"]:
-        objects = objects[: app.config["COUNT_EXCERPT"]]
-
-    # Returns products or vendors
+    # Keep the objects of the requested type
     if _type == "products":
         objects = [o for o in objects if PRODUCT_SEPARATOR in o]
     else:
         objects = [o for o in objects if not PRODUCT_SEPARATOR in o]
 
+    objects = sorted(objects)
     output += '<span class="badge badge-primary">{}</span> '.format(len(objects))
-    ordered = sorted(objects)
 
+    # Keep the remains size and reduce the list
+    remains = len(objects[app.config["COUNT_EXCERPT"] :])
+
+    if len(objects) > app.config["COUNT_EXCERPT"]:
+        objects = objects[: app.config["COUNT_EXCERPT"]]
+
+    # Construct the HTML
     for idx, obj in enumerate(objects):
-        try:
-            # Products are formed like vendorPRODUCT_SEPARATORproduct
+        if _type == "products":
             vendor, product = obj.split(PRODUCT_SEPARATOR)
             url = url_for("main.cves", vendor=vendor, product=product)
             output += f"<a href='{url}'>{_humanize_filter(product)}</a>"
-        except ValueError:
+        else:
             url = url_for("main.cves", vendor=obj)
             output += f"<a href='{url}'>{_humanize_filter(obj)}</a>"
 
         output += ", " if idx + 1 != len(objects) else " "
 
-    remains = len(ordered[app.config["COUNT_EXCERPT"] :])
     if remains:
         output += "<i>and {} more</i>".format(remains)
 
