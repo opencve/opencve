@@ -13,7 +13,7 @@ from opencve.models.users import User
 @click.command()
 @click.argument("username")
 @click.argument("email")
-@click.argument("password")
+@click.password_option()
 @click.option("--admin", is_flag=True, help="Grant user as admin.")
 @ensure_config
 @with_appcontext
