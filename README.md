@@ -76,7 +76,9 @@ $ opencve celery beat -l INFO
 ### Create an admin
 
 ```
-$ opencve create-user john john.doe@example.com P4ssw0rd --admin
+$ opencve create-user john john.doe@example.com --admin
+Password:
+Repeat for confirmation:
 [*] User john created.
 ```
 
