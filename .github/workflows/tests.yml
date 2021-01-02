@@ -1,0 +1,49 @@
+name: Tests
+on: [push, pull_request]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+          python-version: [3.6, 3.7, 3.8]
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: opencve
+          POSTGRES_PASSWORD: opencve
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Install requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev]"
+      - name: Display packages version
+        run: |
+          python -c "import sys; print(sys.version)"
+          pip freeze
+          opencve --version
+      - name: Configure database URI
+        run: |
+          pwd
+          ls $GITHUB_WORKSPACE/tests/opencve.cfg
+          sed -i 's$postgresql://user:secret@localhost:5432/dbname$postgresql://opencve:opencve@localhost:5432/opencve$g' $GITHUB_WORKSPACE/tests/opencve.cfg
+      - name: Execute tests
+        run: pytest tests/ -v
