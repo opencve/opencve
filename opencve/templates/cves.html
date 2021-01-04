@@ -60,10 +60,12 @@ Vulnerabilities (CVE)
                         </button>
                         {% endif %}
                         {% else %}
-                        <button class="btn btn-default btn-sm" href="{{ url_for('user.login', next=request.url) }}"
-                                data-toggle="tooltip" data-container="body" title="You must be signed in to subscribe">
-                            Subscribe
-                        </button>
+                        <a class="btn btn-default btn-sm"
+                           href="{{ url_for('user.login', next=request.url) }}"
+                           data-toggle="tooltip"
+                           data-container="body"
+                           title="You must be signed in to subscribe">Subscribe
+                        </a>
                         {% endif %}
                     </div>
                     <div class="box-tools pull-right">
@@ -92,10 +94,12 @@ Vulnerabilities (CVE)
                         </button>
                         {% endif %}
                         {% else %}
-                        <button class="btn btn-default btn-sm subscribe"
-                                href="{{ url_for('user.login', next=request.url) }}" data-toggle="tooltip"
-                                data-container="body" title="You must be signed in to subscribe">Subscribe
-                        </button>
+                        <a class="btn btn-default btn-sm subscribe"
+                           href="{{ url_for('user.login', next=request.url) }}"
+                           data-toggle="tooltip"
+                           data-container="body"
+                           title="You must be signed in to subscribe">Subscribe
+                        </a>
                         {% endif %}
                     </div>
                     <div class="box-tools pull-right">
