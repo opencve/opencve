@@ -34,9 +34,11 @@
                                     class="ion-help-circled"></i></a></td>
                             <td class="col-md-3 text-center">
                                 <div class="btn-group">
-                                    <a href="http://cwe.mitre.org/data/definitions/{{ cwe.cwe_id }}.html"
+                                    {% if cwe.cwe_id not in ["NVD-CWE-noinfo", "NVD-CWE-Other"] %}
+                                    <a href="http://cwe.mitre.org/data/definitions/{{ cwe.short_id }}.html"
                                        target="_blank" class="btn btn-xs btn-default"><i
                                             class="fa fa-external-link"></i> Mitre</a>
+                                    {% endif %}
                                     <a href="{{ url_for('main.cves', cwe=cwe.cwe_id) }}"
                                        class="btn btn-xs btn-default"><i class="fa fa-shield"></i> View CVE</a>
                                 </div>
