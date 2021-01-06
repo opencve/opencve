@@ -14,6 +14,102 @@ from opencve.models.users import User
 logger = get_task_logger(__name__)
 
 
+def get_users_with_alerts():
+    """
+    If we are between 11:00 AM and 11:15 AM, we get all the users. Otherwise
+    we only select the 'always' frequency ones (todo: find a cleaner solution).
+    """
+    now = datetime.now()
+    query = User.query.filter(User.alerts.any(Alert.notify == False))
+
+    if time(11, 0) <= now.time() <= time(11, 15):
+        logger.info("We are between 11:00 AM and 11:15 AM, get all the users...")
+        users = query.all()
+    else:
+        logger.info("Get the users who want to always receive email...")
+        users = query.filter(User.frequency_notifications == "always").all()
+
+    return users
+
+
+def get_top_alerts(user, count=10):
+    """
+    Return the top X alerts for a given user.
+    """
+    top_alerts = (
+        db.session.query(Alert.id)
+        .filter_by(user=user, notify=False)
+        .join(Alert.cve)
+        .order_by(Cve.cvss3.desc())
+        .limit(count)
+        .all()
+    )
+
+    # Convert this list of ID in a list of objects
+    top_alerts = [alert[0] for alert in top_alerts]
+    top_alerts = db.session.query(Alert).filter(Alert.id.in_(top_alerts)).all()
+
+    return top_alerts
+
+
+def get_sorted_alerts(alerts):
+    """
+    Sort the alerts by vendors and products then extract their max score.
+    """
+    alerts_sorted = {}
+
+    for alert in alerts:
+        for vendor in alert.details["vendors"]:
+            if vendor not in alerts_sorted:
+                alerts_sorted[vendor] = {
+                    "name": _humanize_filter(vendor),
+                    "alerts": [],
+                    "max": 0,
+                }
+            alerts_sorted[vendor]["alerts"].append(alert)
+        for product in alert.details["products"]:
+            if product not in alerts_sorted:
+                alerts_sorted[product] = {
+                    "name": _humanize_filter(product),
+                    "alerts": [],
+                    "max": 0,
+                }
+            alerts_sorted[product]["alerts"].append(alert)
+
+    # For each vendor, we take the max score
+    for k, als in alerts_sorted.items():
+
+        # Get the max score
+        cvss = [al.cve.cvss3 for al in als["alerts"] if al.cve.cvss3]
+        if cvss:
+            alerts_sorted[k]["max"] = max(cvss)
+
+    alerts_sorted = OrderedDict(
+        sorted(alerts_sorted.items(), key=lambda i: i[1]["max"], reverse=True)
+    )
+
+    return alerts_sorted
+
+
+def get_vendors_products(alerts):
+    """
+    Returns a sorted list of vendors given some alerts.
+    """
+    vendors_products = []
+    for alert in alerts:
+        vendors_products.extend(
+            sorted(
+                list(set(alert.details["vendors"]))
+                + list(set(alert.details["products"]))
+            )
+        )
+
+    # Remove duplicates
+    vendors_products = sorted(list(set(vendors_products)))
+
+    return vendors_products
+
+
 @cel.task(name="HANDLE_REPORTS")
 def handle_reports():
     cel.app.app_context().push()
@@ -25,20 +121,8 @@ def handle_reports():
             "Please configure it to allow OpenCVE to create reports and send the mails."
         )
 
-    query = User.query.filter(User.alerts.any(Alert.notify == False))
-
-    # If we are between 11:00 AM and 11:15 AM, we get all the users (including `once`
-    # and `always`). Otherwise we just take the `always` ones.
-    # /!\ TODO : change this ! It can happen that a previous job takes too much time,
-    # so this period can be sometimes no reached.
-    now = datetime.now()
-    if time(11, 0) <= now.time() <= time(11, 15):
-        logger.info("We are between 11:00 AM and 11:15 AM, get all the users...")
-        users = query.all()
-    else:
-        logger.info("Get the users who want to always receive email...")
-        users = query.filter(User.frequency_notifications == "always").all()
-
+    # Get users to nofity
+    users = get_users_with_alerts()
     if not users:
         logger.info("No alert to send.")
         return
@@ -49,72 +133,11 @@ def handle_reports():
 
     for user in users:
         alerts = Alert.query.filter_by(user=user, notify=False).all()
-        count_alerts = len(alerts)
-        logger.info("{} alerts to notify for {}".format(count_alerts, user.username))
+        logger.info("{} alerts to notify for {}".format(len(alerts), user.username))
 
-        # Order the Top 10 alerts
-        top_alerts = (
-            db.session.query(Alert.id)
-            .filter_by(user=user, notify=False)
-            .join(Alert.cve)
-            .order_by(Cve.cvss3.desc())
-            .limit(10)
-            .all()
-        )
-
-        # Then we convert this list of ID in a list of objects
-        top_alerts = [alert[0] for alert in top_alerts]
-        top_alerts = db.session.query(Alert).filter(Alert.id.in_(top_alerts)).all()
-
-        # List of vendors/products per alert
-        alerts_sorted = {}
-        for alert in top_alerts:
-            for vendor in alert.details["vendors"]:
-                if vendor not in alerts_sorted:
-                    alerts_sorted[vendor] = {
-                        "name": _humanize_filter(vendor),
-                        "alerts": [],
-                        "max": 0,
-                    }
-                alerts_sorted[vendor]["alerts"].append(alert)
-            for product in alert.details["products"]:
-                if product not in alerts_sorted:
-                    alerts_sorted[product] = {
-                        "name": _humanize_filter(product),
-                        "alerts": [],
-                        "max": 0,
-                    }
-                alerts_sorted[product]["alerts"].append(alert)
-
-        # For each vendor, we take the max score
-        for k, als in alerts_sorted.items():
-
-            # Get the max score
-            cvss = [al.cve.cvss3 for al in als["alerts"] if al.cve.cvss3]
-            if cvss:
-                alerts_sorted[k]["max"] = max(cvss)
-
-        alerts_sorted = OrderedDict(
-            sorted(alerts_sorted.items(), key=lambda i: i[1]["max"], reverse=True)
-        )
-
-        # Get the vendors and products of all alerts
-        all_vendors_products = []
-        for alert in alerts:
-            all_vendors_products.extend(
-                sorted(
-                    list(set(alert.details["vendors"]))
-                    + list(set(alert.details["products"]))
-                )
-            )
-
-        # Remove duplicates
-        all_vendors_products = sorted(list(set(all_vendors_products)))
-
-        # Humanize it for the mail title
-        all_vendors_products_humanized = list(
-            map(_humanize_filter, all_vendors_products)
-        )
+        top_alerts = get_top_alerts(user)
+        sorted_alerts = get_sorted_alerts(top_alerts)
+        all_vendors_products = get_vendors_products(alerts)
 
         # Create the report
         report = Report(user=user, alerts=alerts, details=all_vendors_products)
@@ -132,16 +155,16 @@ def handle_reports():
         else:
             alert_str = "alerts" if len(alerts) > 1 else "alert"
             subject = "{count} {alerts} on {vendors}".format(
-                count=count_alerts,
+                count=len(alerts),
                 alerts=alert_str,
-                vendors=", ".join(all_vendors_products_humanized),
+                vendors=", ".join(list(map(_humanize_filter, all_vendors_products))),
             )
             user_manager.email_manager.send_user_report(
                 user,
                 **{
                     "subject": subject,
-                    "total_alerts": count_alerts,
-                    "alerts_sorted": alerts_sorted,
+                    "total_alerts": len(alerts),
+                    "alerts_sorted": sorted_alerts,
                     "report_public_link": report.public_link,
                 }
             )
