@@ -42,8 +42,15 @@ def test_new_cwe():
     )
     assert str(cwe) == "<Cwe CWE-79>"
     assert cwe.cwe_id == "CWE-79"
+    assert cwe.short_id == "79"
     assert cwe.name == "Improper Neutralization..."
     assert cwe.description == "The software does not..."
+
+    # Try an unusual CWE ID
+    cwe.cwe_id = "NVD-CWE-noinfo"
+    assert str(cwe) == "<Cwe NVD-CWE-noinfo>"
+    assert cwe.cwe_id == "NVD-CWE-noinfo"
+    assert not cwe.short_id
 
 
 def test_new_meta():
