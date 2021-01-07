@@ -115,30 +115,36 @@ Vulnerabilities (CVE)
     {% endif %}
 
     <div class="row">
-        <div class="col-md-5">
+        <div class="col-md-7">
             <div class="box box-primary">
                 <div class="box-header">
                     <h3 class="box-title">CVSS v3 Filter</h3>
                 </div>
                 <div class="box-body">
-                    <div class="btn-group">
-                        <a class="btn btn-default {% if not request.args.get('cvss') %}btn-primary{% endif %}"
+                    <a class="btn btn-default {% if not request.args.get('cvss') %}btn-primary{% endif %}"
                            href="{{ url_for('main.cves', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}">ALL</a>
+                    <div class="btn-group">
+                        <a class="btn btn-default {% if request.args.get('cvss') == 'none' %}btn-primary{% endif %}"
+                           href="{{ url_for('main.cves', cvss='none', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
+                           type="button">NONE (0.0)</a>
                         <a class="btn btn-default {% if request.args.get('cvss') == 'low' %}btn-primary{% endif %}"
                            href="{{ url_for('main.cves', cvss='low', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
-                           type="button">LOW (0 - 3.9)</a>
+                           type="button">LOW (0.1 - 3.9)</a>
                         <a class="btn btn-default {% if request.args.get('cvss') == 'medium' %}btn-primary{% endif %}"
                            href="{{ url_for('main.cves', cvss='medium', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
-                           type="button">MEDIUM (4.0 - 7.4)</a>
+                           type="button">MEDIUM (4.0 - 6.9)</a>
                         <a class="btn btn-default {% if request.args.get('cvss') == 'high' %}btn-primary{% endif %}"
                            href="{{ url_for('main.cves', cvss='high', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
-                           type="button">HIGH (7.5 - 10)</a>
+                           type="button">HIGH (7.0 - 8.9)</a>
+                        <a class="btn btn-default {% if request.args.get('cvss') == 'critical' %}btn-primary{% endif %}"
+                           href="{{ url_for('main.cves', cvss='critical', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
+                           type="button">CRITICAL (9.0 - 10.0)</a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-5">
+        <div class="col-md-3">
             <div class="box box-primary">
                 <div class="box-header">
                     <h3 class="box-title">Search</h3>
@@ -149,7 +155,7 @@ Vulnerabilities (CVE)
                             <span class="input-group-btn">
                             <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
                             </span>
-                            <input type="text" placeholder="Search" class="form-control" name="search"
+                            <input type="text" placeholder="Search in CVE description" class="form-control" name="search"
                                    value="{% if request.args.get('search') %}{{ request.args.get('search') }}{% endif %}">
                         </div>
                     </form>
@@ -174,7 +180,7 @@ Vulnerabilities (CVE)
             {% if cves.items %}
             <div class="box box-primary">
                 <div class="box-body table-responsive no-padding">
-                    <table class="table">
+                    <table class="table" id="cves">
                         <thead>
                         <th>CVE</th>
                         <th>Vendors</th>
@@ -184,7 +190,7 @@ Vulnerabilities (CVE)
                         <th class="text-center">CVSS v3</th>
                         </thead>
                         {% for cve in cves.items %}
-                        <tr>
+                        <tr class="cve-header">
                             <td class="col-md-2"><a href="{{ url_for('.cve', cve_id=cve.cve_id) }}"><strong>{{
                                 cve.cve_id }}</strong></a></td>
                             <td class="col-md-3">{{ cve.vendors|vendors_excerpt|safe }}</td>
@@ -192,20 +198,20 @@ Vulnerabilities (CVE)
                             <td class="col-md-2 text-center">{{ cve.updated_at.strftime('%Y-%m-%d') }}</td>
                             {% if cve.json.impact.baseMetricV2 %}
                             <td class="col-md-1 text-center"><span
-                                    class="label {{ cvss_bg(cve.json.impact.baseMetricV2.cvssV2.baseScore)[2] }}">{{ cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ cve.json.impact.baseMetricV2.severity }}</span>
+                                    class="label {{ cvss_bg(cve.json.impact.baseMetricV2.cvssV2.baseScore)[1] }}">{{ cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ cve.json.impact.baseMetricV2.severity }}</span>
                             </td>
                             {% else %}
                             <td class="col-md-1 text-center"><span class="label label-default">N/A</span></td>
                             {% endif %}
                             {% if cve.json.impact.baseMetricV3 %}
                             <td class="col-md-1 text-center"><span
-                                    class="label {{ cvss_bg(cve.json.impact.baseMetricV3.cvssV3.baseScore)[2] }}">{{ cve.json.impact.baseMetricV3.cvssV3.baseScore }} {{ cve.json.impact.baseMetricV3.cvssV3.baseSeverity }}</span>
+                                    class="label {{ cvss_bg(cve.json.impact.baseMetricV3.cvssV3.baseScore)[1] }}">{{ cve.json.impact.baseMetricV3.cvssV3.baseScore }} {{ cve.json.impact.baseMetricV3.cvssV3.baseSeverity }}</span>
                             </td>
                             {% else %}
                             <td class="col-md-1 text-center"><span class="label label-default">N/A</span></td>
                             {% endif %}
                         </tr>
-                        <tr>
+                        <tr class="cve-summary">
                             <td class="col-md-12 no-bordered" colspan="5">{{ cve.summary }}</td>
                         </tr>
                         {% endfor %}

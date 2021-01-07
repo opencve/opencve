@@ -230,3 +230,11 @@ pre.plainJSON{
 .formattedJSON a{ color: #999; text-decoration: none; }
 .formattedJSON a:hover{ color: #444; }
 
+.label-critical {
+  background-color: #972b1e;
+}
+
+.bg-critical {
+  background-color: #972b1e;
+  color: #fff;
+}

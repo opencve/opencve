@@ -13,11 +13,13 @@ def _cvss_bg(score):
     score = float(score)
 
     if 0 <= score <= 3.9:
-        return ("bg-blue", "progress-bar-info", "label-info")
-    elif 4.0 <= score <= 7.4:
-        return ("bg-yellow", "progress-bar-warning", "label-warning")
+        return ("bg-blue", "label-info")
+    elif 4.0 <= score <= 6.9:
+        return ("bg-yellow", "label-warning")
+    elif 7.0 <= score <= 8.9:
+        return ("bg-red", "label-danger")
     else:
-        return ("bg-red", "progress-bar-danger", "label-danger")
+        return ("bg-critical", "label-critical")
 
 
 def _metric_bg(version, type, value):
