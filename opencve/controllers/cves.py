@@ -25,25 +25,30 @@ def cves():
 
     # Filter by CWE
     if request.args.get("cwe"):
-        try:
-            q = q.filter(Cve.cwes.contains([request.args.get("cwe")]))
-        except ValueError:
-            return redirect(url_for("main.cves"))
+        q = q.filter(Cve.cwes.contains([request.args.get("cwe")]))
 
     # Filter by CVSS score
     if request.args.get("cvss") and request.args.get("cvss").lower() in [
+        "none",
         "low",
         "medium",
         "high",
+        "critical",
     ]:
+        if request.args.get("cvss").lower() == "none":
+            q = q.filter(Cve.cvss3 == None)
+
         if request.args.get("cvss").lower() == "low":
-            q = q.filter(and_(Cve.cvss3 >= 0, Cve.cvss3 <= 3.9))
+            q = q.filter(and_(Cve.cvss3 >= 0.1, Cve.cvss3 <= 3.9))
 
         if request.args.get("cvss").lower() == "medium":
-            q = q.filter(and_(Cve.cvss3 >= 4.0, Cve.cvss3 <= 7.4))
+            q = q.filter(and_(Cve.cvss3 >= 4.0, Cve.cvss3 <= 6.9))
 
         if request.args.get("cvss").lower() == "high":
-            q = q.filter(and_(Cve.cvss3 >= 7.5, Cve.cvss3 <= 10))
+            q = q.filter(and_(Cve.cvss3 >= 7.0, Cve.cvss3 <= 8.9))
+
+        if request.args.get("cvss").lower() == "critical":
+            q = q.filter(and_(Cve.cvss3 >= 9.0, Cve.cvss3 <= 10.0))
 
     # Filter by vendor and product
     if request.args.get("vendor") and request.args.get("product"):

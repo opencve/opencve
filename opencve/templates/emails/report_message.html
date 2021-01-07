@@ -329,7 +329,7 @@ Respmail v1.1 (http://charlesmudy.com/respmail/)
                                                                                 <a href="{{ url_for('main.cve', cve_id=alert.cve.cve_id, _external=True) }}">{{
                                                                                     alert.cve.cve_id }}</a> - {% if
                                                                                 alert.cve.cvss3 %}<span
-                                                                                    style="color:{% if alert.cve.cvss3 >= 7.5 %}#ef5350{% elif alert.cve.cvss3 >= 4%}#f49841{% else %}#2b9ac9{% endif %}">{{ alert.cve.cvss3 }}</span>{%
+                                                                                    style="color:{% if alert.cve.cvss3 >= 9.0 %}#972b1e{% elif alert.cve.cvss3 >= 7%}#ef5350{% elif alert.cve.cvss3 >= 4%}#f49841{% else %}#2b9ac9{% endif %}">{{ alert.cve.cvss3 }}</span>{%
                                                                                 else %}<span style="color: gray;">No CVSS v3</span>{%
                                                                                 endif %}</h3>
                                                                             <p>{{ alert.cve.summary|truncate(230) }}</p>

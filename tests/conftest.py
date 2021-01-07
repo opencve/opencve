@@ -11,6 +11,7 @@ os.environ["OPENCVE_WELCOME_FILES"] = str(
 )
 
 import pytest
+from bs4 import BeautifulSoup
 
 from opencve import create_app
 from opencve.commands.utils import CveUtil
@@ -131,3 +132,22 @@ def create_vendor():
         return vendor
 
     return _create_vendor
+
+
+@pytest.fixture
+def make_soup():
+    def _make_soup(data):
+        return BeautifulSoup(data, "html.parser")
+
+    return _make_soup
+
+
+@pytest.fixture
+def get_cve_names():
+    def _get_cve_names(soup):
+        return [
+            cve.text
+            for cve in soup.select("table#cves tr.cve-header td:first-child strong")
+        ]
+
+    return _get_cve_names

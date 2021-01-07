@@ -27,14 +27,14 @@
                 <ul class="nav nav-tabs">
                     {% if cve.json.impact.baseMetricV3 %}
                     <li class="active"><a href="#cvss3" data-toggle="tab">CVSS v3.0 <span
-                            class="label {{ cvss_bg(cve.json.impact.baseMetricV3.cvssV3.baseScore)[2] }} label-cvss">{{ cve.json.impact.baseMetricV3.cvssV3.baseScore }} {{ cve.json.impact.baseMetricV3.cvssV3.baseSeverity }}</span></a>
+                            class="label {{ cvss_bg(cve.json.impact.baseMetricV3.cvssV3.baseScore)[1] }} label-cvss">{{ cve.json.impact.baseMetricV3.cvssV3.baseScore }} {{ cve.json.impact.baseMetricV3.cvssV3.baseSeverity }}</span></a>
                     </li>
                     {% endif %}
                     {% if cve.json.impact.baseMetricV2 %}
                     <li {% if not cve.json.impact.baseMetricV3 %}class="active" {% endif %}><a href="#cvss2"
                                                                                                data-toggle="tab">CVSS
                         v2.0 <span
-                                class="label {{ cvss_bg(cve.json.impact.baseMetricV2.cvssV2.baseScore)[2] }} label-cvss">{{ cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ cve.json.impact.baseMetricV2.severity }}</span></a>
+                                class="label {{ cvss_bg(cve.json.impact.baseMetricV2.cvssV2.baseScore)[1] }} label-cvss">{{ cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ cve.json.impact.baseMetricV2.severity }}</span></a>
                     </li>
                     {% endif %}
                 </ul>
