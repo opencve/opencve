@@ -3,6 +3,7 @@ from datetime import datetime, time
 
 from celery.utils.log import get_task_logger
 from flask import render_template
+from flask_user import EmailError
 
 from opencve.context import _humanize_filter
 from opencve.extensions import cel, db, user_manager
@@ -159,16 +160,19 @@ def handle_reports():
                 alerts=alert_str,
                 vendors=", ".join(list(map(_humanize_filter, all_vendors_products))),
             )
-            user_manager.email_manager.send_user_report(
-                user,
-                **{
-                    "subject": subject,
-                    "total_alerts": len(alerts),
-                    "alerts_sorted": sorted_alerts,
-                    "report_public_link": report.public_link,
-                }
-            )
-            logger.info("Mail sent for {}".format(user.email))
+            try:
+                user_manager.email_manager.send_user_report(
+                    user,
+                    **{
+                        "subject": subject,
+                        "total_alerts": len(alerts),
+                        "alerts_sorted": sorted_alerts,
+                        "report_public_link": report.public_link,
+                    },
+                )
+                logger.info("Mail sent for {}".format(user.email))
+            except EmailError as e:
+                logger.error(f"EmailError : {e}")
 
         # The alerts have been notified
         for alert in alerts:

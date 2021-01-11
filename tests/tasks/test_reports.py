@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from flask_user import EmailError
 
 from opencve.extensions import db
 from opencve.models.alerts import Alert
@@ -177,6 +178,7 @@ def test_report_without_notification(mock_send, create_user, handle_events):
     assert reports[0].alerts == Alert.query.filter_by(user_id=user.id).all()
 
     assert not mock_send.called
+    assert Alert.query.filter_by(notify=False).count() == 0
 
 
 @patch("opencve.tasks.reports.user_manager.email_manager.send_user_report")
@@ -206,3 +208,26 @@ def test_report_with_notification(mock_send, create_user, handle_events):
             "report_public_link": Report.query.first().public_link,
         },
     )
+    assert Alert.query.filter_by(notify=False).count() == 0
+
+
+@patch("opencve.tasks.reports.user_manager.email_manager.send_user_report")
+def test_report_bad_smtp_config(mock_send, create_user, handle_events):
+    mock_send.side_effect = EmailError("error")
+
+    handle_events("modified_cves/CVE-2018-18074.json")
+
+    user = create_user()
+    user.vendors.append(Vendor.query.filter_by(name="canonical").first())
+    db.session.commit()
+
+    handle_alerts()
+    handle_reports()
+
+    reports = Report.query.all()
+    assert len(reports) == 1
+    assert reports[0].user.id == user.id
+    assert reports[0].details == ["canonical"]
+    assert reports[0].alerts == Alert.query.filter_by(user_id=user.id).all()
+    assert len(reports[0].alerts) == 1
+    assert Alert.query.filter_by(notify=False).count() == 0
