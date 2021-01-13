@@ -1,19 +1,34 @@
-OpenCVE
--------
+<p align="center">
+  <img alt="OpenCVE" src="https://raw.githubusercontent.com/opencve/opencve/master/logo.png">
+</p>
+<p align="center">
+  <a href="https://github.com/opencve/opencve/actions?query=workflow%3ATests"><img alt="Tests" src="https://github.com/opencve/opencve/workflows/Tests/badge.svg"></a>
+  <a href="https://www.python.org/"><img alt="Python versions" src="https://img.shields.io/badge/python-3.6%2B-blue.svg"></a>
+  <a href="https://github.com/python/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+</p>
 
-OpenCVE (formerly known as Saucs) is a platform that alerts you about new vulnerabilities related to the CVE list.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve1.png" width="300">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve2.png" width="300">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve3.png" width="300">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve4.png" width="300">
+</p>
+
+----------------
+
+**OpenCVE**, formerly known as *Saucs*, is a platform used to locally import the list of CVEs and perform searches on it (by vendors, products, CVSS, CWE...).
+
+Users subscribe to vendors or products, and OpenCVE alerts them when a new CVE is created or when an update is done in an existing CVE.
 
 ## How does it work
 
-OpenCVE uses the [JSON feed](https://nvd.nist.gov/vuln/data-feeds#JSON_FEED) provided by the [NVD](https://nvd.nist.gov/) to be synchronized.
+OpenCVE uses the [JSON feed](https://nvd.nist.gov/vuln/data-feeds#JSON_FEED) provided by the [NVD](https://nvd.nist.gov/) to update the local list of CVEs.
 
-After an initial import, a background task is regularly executed to check changes in the list. If a new CVE is added, or if a change is detected, the subscribers of the related vendors and products will be alerted.
+After an initial import, a background task is regularly executed to synchronize the local copy with the NVD feed. If a new CVE is added, or if a change is detected, the subscribers of the related vendors and products are alerted.
 
 For now the only method of notification is the mail, but we plan to add other integrations (webhooks, Slack, Jira, PagerDuty, OpsGenie...).
 
-## Installation
-
-### Requirements
+## Requirements
 
 OpenCVE works with **Python >=3.6**.
 
@@ -23,7 +38,7 @@ Celery is used to periodically fetch the NVD database and update the list of CVE
 
 During the import of initial data OpenCVE will download and parse huge files, like the CPE dictionnary. For that we recommend you **3.5G RAM** at least.
 
-### Installation
+## Installation
 
 OpenCVE can simply be installed using `pip` :
 
@@ -95,13 +110,3 @@ $ opencve webserver
 ```
 
 **Note:** the server name can be configured in the `opencve.cfg` file with the `server_name` variable.
-
-## Screenshots
-
-![OpenCVE 1](../master/opencve1.png?raw=true)
-
-![OpenCVE 2](../master/opencve2.png?raw=true)
-
-![OpenCVE 3](../master/opencve3.png?raw=true)
-
-![OpenCVE 4](../master/opencve4.png?raw=true)
