@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import arrow
@@ -8,6 +9,7 @@ from flask_admin.contrib.sqla import ModelView
 from flask_user import current_user
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
+from wtforms import PasswordField, validators
 
 
 class AuthModelView(ModelView):
@@ -153,6 +155,67 @@ class UserModelView(AuthModelView):
     can_view_details = True
     column_filters = column_searchable_list = ["username", "email"]
     column_list = ("username", "email", "created_at", "is_confirmed")
+    column_details_list = (
+        "username",
+        "email",
+        "created_at",
+        "updated_at",
+        "email_confirmed_at",
+        "enable_notifications",
+        "filters_notifications",
+        "frequency_notifications",
+        "first_name",
+        "last_name",
+        "active",
+        "admin",
+        "vendors",
+        "products",
+    )
+    column_formatters_detail = dict(
+        vendors=lambda v, c, m, p: ", ".join([v.name for v in m.vendors]),
+        products=lambda v, c, m, p: ", ".join([p.name for p in m.products]),
+    )
+
+    # The real `password` attribute is not displayed. Instead we use 2
+    # password inputs : one for the create user form (required) and the
+    # other for the edit form (optional).
+    form_args = dict(email=dict(validators=[validators.Email()]))
+    form_excluded_columns = "password"
+    form_extra_fields = {
+        "create_password": PasswordField("Password", [validators.DataRequired()]),
+        "edit_password": PasswordField("Password"),
+    }
+    form_widget_args = {
+        "edit_password": {
+            "placeholder": "Don't fill this input to keep the password unchanged",
+        }
+    }
+    form_create_rules = (
+        "username",
+        "email",
+        "create_password",
+        "first_name",
+        "last_name",
+        "active",
+        "admin",
+    )
+    form_edit_rules = (
+        "username",
+        "email",
+        "edit_password",
+        "first_name",
+        "last_name",
+        "active",
+        "admin",
+    )
+
+    def on_model_change(self, form, User, is_created):
+        if is_created:
+            User.set_password(form.create_password.data)
+            User.email_confirmed_at = datetime.datetime.utcnow()
+        else:
+            if form.edit_password.data.strip():
+                User.set_password(form.edit_password.data)
 
 
 class CveModelView(AuthModelView):
