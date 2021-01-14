@@ -1,3 +1,4 @@
+from flask import current_app as app
 from flask_user import UserMixin
 from sqlalchemy.sql import expression
 from sqlalchemy_utils import ChoiceType, JSONType
@@ -16,6 +17,7 @@ def get_default_filters():
 
 class User(BaseModel, UserMixin):
     __tablename__ = "users"
+    __hash__ = UserMixin.__hash__
 
     # User authentication information
     username = db.Column(db.String(50), nullable=False, unique=True)
@@ -53,3 +55,9 @@ class User(BaseModel, UserMixin):
 
     def __repr__(self):
         return "<User {}>".format(self.username)
+
+    def __eq__(self, user):
+        return self.id == user.id if user else False
+
+    def set_password(self, password):
+        self.password = app.user_manager.hash_password(password)

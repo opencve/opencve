@@ -1,6 +1,7 @@
 import os
 import tempfile
 from pathlib import Path
+import warnings
 
 from flask_admin.base import MenuLink
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -122,7 +123,9 @@ class Config(object):
     def init_app(app):
         # Flask-Admin
         admin.init_app(app)
-        admin.add_view(UserModelView(User, db.session))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", "Fields missing from ruleset")
+            admin.add_view(UserModelView(User, db.session))
         admin.add_view(CveModelView(Cve, db.session))
         admin.add_view(EventModelView(Event, db.session))
         admin.add_view(VendorModelView(Vendor, db.session))
