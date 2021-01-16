@@ -40,8 +40,8 @@ class Cve(BaseModel):
 
     # Index
     __table_args__ = (
-        db.Index("cves_vendors_gin_idx", vendors, postgresql_using="gin"),
-        db.Index("cves_cwes_gin_idx", cwes, postgresql_using="gin"),
+        db.Index("ix_cves_vendors", vendors, postgresql_using="gin"),
+        db.Index("ix_cves_cwes", cwes, postgresql_using="gin"),
     )
 
     def __repr__(self):
