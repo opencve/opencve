@@ -22,10 +22,8 @@ class Cvss(BaseCheck):
 
         # If at least one version has changed, update the CVE
         if old != new:
-            if "baseMetricV2" in self.cve_json["impact"]:
-                self.cve_obj.cvss2 = new["v2"]
-            if "baseMetricV3" in self.cve_json["impact"]:
-                self.cve_obj.cvss3 = new["v3"]
+            self.cve_obj.cvss2 = new.get("v2")
+            self.cve_obj.cvss3 = new.get("v3")
             db.session.commit()
 
             # Create the event with the CVSS changes
