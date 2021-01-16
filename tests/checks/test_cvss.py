@@ -45,3 +45,23 @@ def test_check_cvss(create_cve, handle_events, open_file):
     assert event.review == False
     assert event.cve.cve_id == "CVE-2018-18074"
     assert event.change.id == change.id
+
+
+def test_check_cvss_removed(create_cve, handle_events, open_file):
+    cve = create_cve("CVE-2020-35188")
+    assert cve.cvss2 == 10.0
+    assert cve.cvss3 == 9.8
+
+    # The CVE is rejected, the CVSS is set to null
+    handle_events("modified_cves/CVE-2020-35188_rejected.json")
+
+    event = Event.query.filter_by(type="cvss").first()
+    assert event.type == "cvss"
+    assert event.details == {
+        "new": {},
+        "old": {"v2": 10.0, "v3": 9.8},
+    }
+
+    cve = Cve.query.filter_by(cve_id="CVE-2020-35188").first()
+    assert cve.cvss2 == None
+    assert cve.cvss3 == None
