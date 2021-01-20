@@ -12,6 +12,7 @@ os.environ["OPENCVE_WELCOME_FILES"] = str(
 
 import pytest
 from bs4 import BeautifulSoup
+from flask import url_for
 
 from opencve import create_app
 from opencve.commands.utils import CveUtil
@@ -151,3 +152,17 @@ def get_cve_names():
         ]
 
     return _get_cve_names
+
+
+@pytest.fixture(scope="function")
+def login(create_user, client):
+    create_user()
+    client.post(
+        url_for("user.login"),
+        data={"username": "user", "password": "password"},
+        follow_redirects=True,
+    )
+
+    yield
+
+    client.post(url_for("user.logout"), follow_redirects=True)
