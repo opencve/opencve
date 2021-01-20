@@ -1,11 +1,12 @@
 from celery import Celery
 from flask_admin import Admin
 from flask_debugtoolbar import DebugToolbarExtension
+from flask_login import current_user
 from flask_gravatar import Gravatar
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_user import UserManager, EmailManager
-from flask_user.forms import EditUserProfileForm, RegisterForm
+from flask_user.forms import EditUserProfileForm, RegisterForm, unique_email_validator
 from flask_wtf import RecaptchaField
 from flask_wtf.csrf import CSRFProtect
 from wtforms import validators, StringField
@@ -19,10 +20,26 @@ class CustomUserManager(UserManager):
     """
 
     def customize(self, app):
-        # Add the email field
+        def _unique_email_validator(form, field):
+            """
+            Check if the new email is unique. Skip this step if the
+            email is the same as the current one.
+            """
+            if field.data.lower() == current_user.email.lower():
+                return
+            unique_email_validator(form, field)
+
+        # Add the email field and make first and last names as not required
         class CustomUserProfileForm(EditUserProfileForm):
+            first_name = StringField("First name")
+            last_name = StringField("Last name")
             email = StringField(
-                "Email", validators=[validators.DataRequired(), validators.Email()]
+                "Email",
+                validators=[
+                    validators.DataRequired(),
+                    validators.Email(),
+                    _unique_email_validator,
+                ],
             )
 
         self.EditUserProfileFormClass = CustomUserProfileForm
