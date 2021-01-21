@@ -1,5 +1,7 @@
 from opencve.constants import PRODUCT_SEPARATOR
-from opencve.utils import convert_cpes, flatten_vendors
+from opencve.extensions import db
+from opencve.utils import convert_cpes, flatten_vendors, get_cwes, get_cwes_details
+from opencve.models.cwe import Cwe
 
 
 def test_convert_empty_conf():
@@ -58,3 +60,49 @@ def test_flatten_multiple_vendors():
         "bar",
         f"bar{PRODUCT_SEPARATOR}baz",
     ]
+
+
+def test_get_cwes():
+    problems = [
+        {"lang": "en", "value": "CWE-732"},
+        {"lang": "en", "value": "CWE-311"},
+        {"lang": "en", "value": "CWE-532"},
+    ]
+    assert sorted(get_cwes(problems)) == ["CWE-311", "CWE-532", "CWE-732"]
+
+    problems = []
+    assert sorted(get_cwes(problems)) == []
+
+    problems = [
+        {"lang": "en", "value": "CWE-732"},
+        {"lang": "en", "value": "CWE-732"},
+        {"lang": "en", "value": "CWE-532"},
+    ]
+    assert sorted(get_cwes(problems)) == ["CWE-532", "CWE-732"]
+
+
+def test_get_cwes_details():
+    db.session.add(
+        Cwe(cwe_id="CWE-1", name="Name of CWE-1", description="Description of CWE-1")
+    )
+    db.session.add(
+        Cwe(cwe_id="CWE-2", name="Name of CWE-2", description="Description of CWE-2")
+    )
+    db.session.commit()
+
+    cwes = get_cwes_details(
+        [{"lang": "en", "value": "CWE-1"}, {"lang": "en", "value": "CWE-2"}]
+    )
+    assert cwes == {"CWE-1": "Name of CWE-1", "CWE-2": "Name of CWE-2"}
+
+    cwes = get_cwes_details(
+        [
+            {"lang": "en", "value": "CWE-1"},
+            {"lang": "en", "value": "CWE-1"},
+            {"lang": "en", "value": "CWE-2"},
+        ]
+    )
+    assert cwes == {"CWE-1": "Name of CWE-1", "CWE-2": "Name of CWE-2"}
+
+    cwes = get_cwes_details([{"lang": "en", "value": "CWE-3"}])
+    assert cwes == {"CWE-3": None}

@@ -196,13 +196,11 @@
                     <div class="box-title">CWE</div>
                 </div>
                 <div class="box-body">
-                    {% if cve.cwes %}
-                    <ul>
-                        {% for cwe in cve.cwes %}
-                        <li><a href="{{ url_for('main.cves', cwe=cwe) }}">{{ cwe|default('No name', true)
-                            }}</a></li>
+                    {% if cwes %}
+                        {% for cwe_id, name in cwes.items() %}
+                        <strong><a href="{{ url_for('main.cves', cwe=cwe_id) }}">{{ cwe_id }}</a></strong>
+                        {% if name %}<p class="cwe-name">{{ name }}</p>{% endif %}
                         {% endfor %}
-                    </ul>
                     {% else %}
                     <p class="alert alert-info">No CWE.</p>
                     {% endif %}

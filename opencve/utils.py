@@ -1,6 +1,7 @@
 from nested_lookup import nested_lookup
 
 from opencve.constants import PRODUCT_SEPARATOR
+from opencve.models.cwe import Cwe
 
 
 def convert_cpes(conf):
@@ -40,3 +41,17 @@ def get_cwes(problems):
     Takes a list of problems and return the CWEs ID.
     """
     return list(set([p["value"] for p in problems]))
+
+
+def get_cwes_details(problems):
+    """
+    Takes a list of problems and return the CWEs along
+    with the name of the vulnerability.
+    """
+    cwes = {}
+    for cwe_id in get_cwes(problems):
+        cwes[cwe_id] = None
+        cwe = Cwe.query.filter_by(cwe_id=cwe_id).first()
+        if cwe:
+            cwes[cwe_id] = cwe.name
+    return cwes
