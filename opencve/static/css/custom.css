@@ -238,3 +238,8 @@ pre.plainJSON{
   background-color: #972b1e;
   color: #fff;
 }
+
+.cwe-name:not(:last-child) {
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 10px;
+}

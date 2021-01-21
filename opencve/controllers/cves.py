@@ -10,7 +10,7 @@ from opencve.controllers.main import main
 from opencve.models.cve import Cve
 from opencve.models.products import Product
 from opencve.models.vendors import Vendor
-from opencve.utils import convert_cpes
+from opencve.utils import convert_cpes, get_cwes_details
 
 
 @main.route("/cve")
@@ -102,7 +102,10 @@ def cve(cve_id):
 
     # Nested dict of vendors and their products
     vendors = convert_cpes(cve.json["configurations"])
+    cwes = get_cwes_details(
+        cve.json["cve"]["problemtype"]["problemtype_data"][0]["description"]
+    )
 
     return render_template(
-        "cve.html", cve=cve, cve_dumped=json.dumps(cve.json), vendors=vendors
+        "cve.html", cve=cve, cve_dumped=json.dumps(cve.json), vendors=vendors, cwes=cwes
     )
