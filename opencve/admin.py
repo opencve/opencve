@@ -7,7 +7,7 @@ from flask import abort
 from flask_admin import AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
 from flask_user import current_user
-from sqlalchemy import func
+from sqlalchemy import desc, func
 from sqlalchemy.orm import joinedload
 from wtforms import PasswordField, validators
 
@@ -33,17 +33,80 @@ class HomeView(AdminIndexView):
             abort(404)
 
         # Import here to avoid circular dependencies
+        from opencve.extensions import db
+        from opencve.models import users_products, users_vendors
+        from opencve.models.cve import Cve
+        from opencve.models.products import Product
+        from opencve.models.reports import Report
+        from opencve.models.tasks import Task
         from opencve.models.users import User
+        from opencve.models.vendors import Vendor
 
-        users_count = User.query.count()
+        # Numbers of users
+        users = User.query.count()
 
-        from .models.reports import Report
+        # Numbers of confirmed users
+        confirmed_users = User.query.filter(User.email_confirmed_at.isnot(None)).count()
 
-        reports_count = Report.query.count()
+        # Numbers of CVEs
+        cves = Cve.query.count()
 
-        from .extensions import db
+        # Numbers of generated reports
+        reports = Report.query.count()
 
-        # Find number of users per day
+        # Numbers of vendors
+        vendors = Vendor.query.count()
+
+        # Numbers of products
+        products = Product.query.count()
+
+        # Last task date
+        task_date = "--"
+        task = Task.query.order_by(Task.created_at.desc()).first()
+        if task:
+            task_date = task.created_at.strftime("%a, %d %b %Y %H:%M:%S")
+
+        # Number of vendors per user
+        user_vendors = (
+            db.session.query(
+                User.id,
+                User.username,
+                func.count(users_vendors.c.user_id).label("total"),
+            )
+            .join(users_vendors)
+            .group_by(User.id, User.username)
+            .order_by(desc("total"))
+            .limit(10)
+            .all()
+        )
+
+        # Number of products per user
+        user_products = (
+            db.session.query(
+                User.id,
+                User.username,
+                func.count(users_products.c.user_id).label("total"),
+            )
+            .join(users_products)
+            .group_by(User.id, User.username)
+            .order_by(desc("total"))
+            .limit(10)
+            .all()
+        )
+
+        # Number of reports per user
+        user_reports = (
+            db.session.query(
+                User.id, User.username, func.count(Report.user_id).label("total")
+            )
+            .join(Report)
+            .group_by(User.id, User.username)
+            .order_by(desc("total"))
+            .limit(10)
+            .all()
+        )
+
+        # Number of users per day
         users_by_day = (
             db.session.query(
                 func.date_trunc("day", User.created_at), func.count(User.id)
@@ -52,13 +115,15 @@ class HomeView(AdminIndexView):
             .order_by(func.date_trunc("day", User.created_at))
             .all()
         )
-
         days = {
             "day": [arrow.get(user[0]).strftime("%d/%m/%y") for user in users_by_day],
             "count": [user[1] for user in users_by_day],
         }
 
-        # Find number of users per month
+        # Keep the last week
+        week = {"day": days["day"][-7::], "count": days["count"][-7::]}
+
+        # Number of users per month
         users_by_month = (
             db.session.query(
                 func.date_trunc("month", User.created_at), func.count(User.id)
@@ -67,7 +132,6 @@ class HomeView(AdminIndexView):
             .order_by(func.date_trunc("month", User.created_at))
             .all()
         )
-
         months = {
             "month": [
                 arrow.get(month[0]).strftime("%B %Y") for month in users_by_month
@@ -75,13 +139,22 @@ class HomeView(AdminIndexView):
             "count": [month[1] for month in users_by_month],
         }
 
-        # Last week
-        week = {"day": days["day"][-7::], "count": days["count"][-7::]}
-
         return self.render(
             "admin/index.html",
-            users_count=users_count,
-            reports_count=reports_count,
+            statistics={
+                "Total users": users,
+                "Confirmed users": confirmed_users,
+                "Total CVEs": cves,
+                "Total reports": reports,
+                "Total vendors": vendors,
+                "Total products": products,
+                "Last task": task_date,
+            },
+            users={
+                "vendors": user_vendors,
+                "products": user_products,
+                "reports": user_reports,
+            },
             week=week,
             days=days,
             months=months,
