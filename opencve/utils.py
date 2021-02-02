@@ -3,13 +3,21 @@ from nested_lookup import nested_lookup
 from opencve.constants import PRODUCT_SEPARATOR
 from opencve.models.cwe import Cwe
 
+def cpe_vulnerable_products(cpe_cfg_json):
+    cpe_uri_list = []
+    cpe_match_json = nested_lookup("cpe_match", cpe_cfg_json)
+    for cpe_match in cpe_match_json:
+        for element in cpe_match:
+            if element['vulnerable'] == True:
+                cpe_uri_list.append(element['cpe23Uri'])
+    return cpe_uri_list
 
 def convert_cpes(conf):
     """
     This function takes an object, extracts its CPE uris and transforms them into
     a dictionnary representing the vendors with their associated products.
     """
-    uris = nested_lookup("cpe23Uri", conf) if not isinstance(conf, list) else conf
+    uris = cpe_vulnerable_products(conf) if not isinstance(conf, list) else conf
 
     # Create a list of tuple (vendor, product)
     cpes_t = list(set([tuple(uri.split(":")[3:5]) for uri in uris]))
