@@ -40,7 +40,7 @@ During the import of initial data OpenCVE will download and parse huge files, li
 
 ## Installation
 
-OpenCVE can simply be installed using `pip` :
+You can install OpenCVE either using Docker with our [dedicated repository](https://github.com/opencve/opencve-docker) or using `pip` with the following procedure :
 
 ```
 $ pip install opencve
