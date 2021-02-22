@@ -69,6 +69,7 @@ class Config(object):
     PRODUCTS_PER_PAGE = config.getint("core", "products_per_page", fallback=20)
     CWES_PER_PAGE = config.getint("core", "cwes_per_page", fallback=20)
     REPORTS_PER_PAGE = config.getint("core", "reports_per_page", fallback=20)
+    ALERTS_PER_PAGE = config.getint("core", "alerts_per_page", fallback=20)
 
     # ReCaptcha
     DISPLAY_RECAPTCHA = config.getboolean("core", "display_recaptcha", fallback=False)
