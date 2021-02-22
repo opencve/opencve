@@ -9,6 +9,15 @@ def get_uuid():
     return str(uuid.uuid4())
 
 
+def is_valid_uuid(val):
+    """Check if a given value is a valid UUID"""
+    try:
+        uuid.UUID(str(val))
+    except ValueError:
+        return False
+    return True
+
+
 class BaseModel(db.Model):
     __abstract__ = True
 
@@ -24,6 +33,9 @@ class BaseModel(db.Model):
         onupdate=db.func.now(),
         nullable=False,
     )
+
+    def to_dict(self, attrs):
+        return {attr: str(getattr(self, attr)) for attr in attrs}
 
     def __repr__(self):
         return """<{} '{}'>""".format(self.__class__.__name__, self.id)

@@ -1,44 +1,37 @@
 import string
 
-from flask import current_app as app
-from flask import redirect, render_template, request, url_for
-from flask_paginate import Pagination
+from flask import abort
 
-from opencve.controllers.main import main
+from opencve.controllers.base import BaseController
 from opencve.models.vendors import Vendor
 
 
-@main.route("/vendors")
-def vendors():
-    letters = list(string.ascii_lowercase + "@" + string.digits)
-    letter = request.args.get("l")
+class VendorController(BaseController):
+    model = Vendor
+    order = Vendor.name.asc()
+    per_page_param = "VENDORS_PER_PAGE"
+    schema = {
+        "letter": {"type": str},
+        "search": {"type": str},
+    }
 
-    q = Vendor.query
+    @classmethod
+    def build_query(cls, args):
+        letters = list(string.ascii_lowercase + "@" + string.digits)
+        letter = args.get("letter")
 
-    # Search by term
-    if request.args.get("search"):
-        search = request.args.get("search").lower().replace("%", "").replace("_", "")
-        q = q.filter(Vendor.name.like("%{}%".format(search)))
+        query = cls.model.query
 
-    # Search by letter
-    if letter:
-        if letter not in letters:
-            return redirect(url_for("main.vendors"))
+        # Search by term
+        if args.get("search"):
+            search = args.get("search").lower().replace("%", "").replace("_", "")
+            query = query.filter(cls.model.name.like("%{}%".format(search)))
 
-        q = q.filter(Vendor.name.like("{}%".format(letter)))
+        # Search by letter
+        if letter:
+            if letter not in letters:
+                abort(404)
 
-    page = request.args.get("page", type=int, default=1)
-    objects = q.order_by(Vendor.name.asc()).paginate(
-        page, app.config["VENDORS_PER_PAGE"], True
-    )
-    pagination = Pagination(
-        page=page,
-        total=objects.total,
-        per_page=app.config["VENDORS_PER_PAGE"],
-        record_name="vendors",
-        css_framework="bootstrap3",
-    )
+            query = query.filter(cls.model.name.like("{}%".format(letter)))
 
-    return render_template(
-        "vendors.html", vendors=objects, letters=letters, pagination=pagination
-    )
+        return query, {"letters": letters}
