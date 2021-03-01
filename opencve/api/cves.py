@@ -2,15 +2,15 @@ from flask import abort, request
 from flask_restful import fields, marshal_with
 
 from opencve.api.base import BaseResource
-from opencve.api.fields import CveVendorsField
+from opencve.api.fields import CveVendorsField, DatetimeField
 from opencve.controllers.cves import CveController
 
 
 cves_fields = {
     "id": fields.String(attribute="cve_id"),
     "summary": fields.String(attribute="summary"),
-    "created_at": fields.DateTime(dt_format="iso8601"),
-    "updated_at": fields.DateTime(dt_format="iso8601"),
+    "created_at": DatetimeField(),
+    "updated_at": DatetimeField(),
 }
 
 cve_fields = dict(

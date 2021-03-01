@@ -4,6 +4,7 @@ from flask_restful import fields, marshal_with
 from opencve.api.alerts import alert_fields
 from opencve.api.base import BaseResource
 from opencve.api.cves import cves_fields
+from opencve.api.fields import DatetimeField
 from opencve.controllers.alerts import AlertController
 from opencve.controllers.reports import ReportController
 from opencve.models.users import User
@@ -11,7 +12,7 @@ from opencve.models.users import User
 
 report_list_fields = {
     "id": fields.String(attribute="public_link"),
-    "created_at": fields.DateTime(dt_format="iso8601"),
+    "created_at": DatetimeField(),
     "details": fields.Raw(attribute="details"),
 }
 
