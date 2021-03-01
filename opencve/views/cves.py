@@ -22,8 +22,6 @@ def cves():
 @main.route("/cve/<cve_id>")
 def cve(cve_id):
     cve = CveController.get({"cve_id": cve_id})
-    if not cve:
-        abort(404)
 
     vendors = convert_cpes(cve.json["configurations"])
     cwes = get_cwes_details(
