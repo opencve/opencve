@@ -1,3 +1,4 @@
+import arrow
 from flask_restful import fields
 
 from opencve.context import _humanize_filter
@@ -29,3 +30,11 @@ class CveVendorsField(fields.Raw):
 
     def format(self, json):
         return convert_cpes(json["configurations"])
+
+
+class DatetimeField(fields.Raw):
+    def format(self, value):
+        """
+        Returns UTC datetime.
+        """
+        return str(arrow.get(value).to("utc").strftime("%Y-%m-%dT%H:%M:%SZ"))
