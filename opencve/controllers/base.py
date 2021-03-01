@@ -11,7 +11,7 @@ class BaseController(object):
 
     @classmethod
     def build_query(cls, args):
-        raise NotImplementedError
+        return cls.model.query, {}
 
     @classmethod
     def parse_args(cls, args):
@@ -55,6 +55,6 @@ class BaseController(object):
         return objects, metas, pagination
 
     @classmethod
-    def list_items(cls, args):
+    def list_items(cls, args={}):
         objects, _, _ = cls.list(args)
         return objects.items
