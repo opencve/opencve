@@ -113,7 +113,13 @@ class Config(object):
     MAIL_PORT = config.getint("mail", "smtp_port", fallback=465)
     MAIL_USE_TLS = config.getboolean("mail", "smtp_use_tls", fallback=True)
     MAIL_USERNAME = config.get("mail", "smtp_username")
-    MAIL_PASSWORD = config.get("mail", "stmp_password")
+
+    # ensure compatibility before deprecating "stmp_password"
+    # see https://github.com/opencve/opencve/issues/76
+    try:
+        MAIL_PASSWORD = config.get("mail", "smtp_password")
+    except:
+        MAIL_PASSWORD = config.get("mail", "stmp_password")
 
     DEFAULT_MAIL_SENDER = config.get(
         "mail", "email_from", fallback="no-reply@opencve.io"
