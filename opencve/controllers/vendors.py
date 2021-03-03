@@ -1,9 +1,8 @@
-import string
-
 from flask import abort
 
 from opencve.controllers.base import BaseController
 from opencve.models.vendors import Vendor
+from opencve.utils import get_vendors_letters
 
 
 class VendorController(BaseController):
@@ -17,7 +16,6 @@ class VendorController(BaseController):
 
     @classmethod
     def build_query(cls, args):
-        letters = list(string.ascii_lowercase + "@" + string.digits)
         letter = args.get("letter")
 
         query = cls.model.query
@@ -29,9 +27,9 @@ class VendorController(BaseController):
 
         # Search by letter
         if letter:
-            if letter not in letters:
+            if letter not in get_vendors_letters():
                 abort(404)
 
             query = query.filter(cls.model.name.like("{}%".format(letter)))
 
-        return query, {"letters": letters}
+        return query, {}
