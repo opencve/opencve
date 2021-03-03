@@ -1,6 +1,12 @@
 from opencve.constants import PRODUCT_SEPARATOR
 from opencve.extensions import db
-from opencve.utils import convert_cpes, flatten_vendors, get_cwes, get_cwes_details
+from opencve.utils import (
+    convert_cpes,
+    flatten_vendors,
+    get_cwes,
+    get_cwes_details,
+    get_vendors_letters,
+)
 from opencve.models.cwe import Cwe
 
 
@@ -106,3 +112,7 @@ def test_get_cwes_details():
 
     cwes = get_cwes_details([{"lang": "en", "value": "CWE-3"}])
     assert cwes == {"CWE-3": None}
+
+
+def test_get_vendors_letters():
+    assert "".join(get_vendors_letters()) == "abcdefghijklmnopqrstuvwxyz@0123456789"
