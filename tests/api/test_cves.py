@@ -1,7 +1,3 @@
-import pytest
-from flask import request
-
-
 def test_list_cves_authentication(client, create_user):
     create_user("opencve")
     response = client.get("/api/cve")
