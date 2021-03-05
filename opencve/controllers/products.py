@@ -25,7 +25,7 @@ class ProductController(BaseController):
             search = args.get("search").lower().replace("%", "").replace("_", "")
             query = query.filter(Product.name.like("%{}%".format(search)))
 
-        return query, {"vendor": vendor}
+        return query, {}
 
     @classmethod
     def get(cls, filters):

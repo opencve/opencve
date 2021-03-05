@@ -157,7 +157,9 @@ def create_user(app):
 @pytest.fixture
 def create_vendor():
     def _create_vendor(vendor_name, product_name=None):
-        vendor = Vendor(name=vendor_name)
+        vendor = Vendor.query.filter_by(name=vendor_name).first()
+        if not vendor:
+            vendor = Vendor(name=vendor_name)
         if product_name:
             vendor.products.append(Product(name=product_name))
         db.session.add(vendor)
@@ -169,13 +171,21 @@ def create_vendor():
 
 @pytest.fixture(scope="function")
 def create_cwe(app):
-    def _create_cwe(cwe_id, name, description):
+    def _create_cwe(cwe_id, name=None, description=None):
         cwe = Cwe(cwe_id=cwe_id, name=name, description=description)
         db.session.add(cwe)
         db.session.commit()
         return cwe
 
     return _create_cwe
+
+
+@pytest.fixture(scope="function")
+def create_cwes(create_cwe):
+    def _create_cwes(cwes):
+        return [create_cwe(cwe) for cwe in cwes]
+
+    return _create_cwes
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ vendor.name | humanize  }} products - {{ super() }}{% endblock %}
+{% block title %}{{ vendor | humanize  }} products - {{ super() }}{% endblock %}
 
 {% block content %}
 
@@ -18,7 +18,7 @@
         <div class='col-lg-7'>
             <div class="box box-primary">
                 <div class="box-header with-border">
-                    <h3 class="box-title">{{ vendor.name }} products ({{ products.total }})</h3>
+                    <h3 class="box-title">{{ vendor }} products ({{ products.total }})</h3>
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover table-striped">

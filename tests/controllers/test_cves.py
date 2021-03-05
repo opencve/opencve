@@ -25,7 +25,7 @@ def test_metas(app, create_cves):
         assert metas["product"].name == "ceph_storage"
 
 
-def test_list_all_cves(app, create_cves):
+def test_list_cves(app, create_cves):
     create_cves(["CVE-2018-18074", "CVE-2020-9392", "CVE-2020-26116", "CVE-2020-27781"])
 
     with app.test_request_context():

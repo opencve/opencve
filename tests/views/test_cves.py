@@ -1,6 +1,3 @@
-import pytest
-
-
 def test_list_no_cves(client):
     response = client.get("/cve")
     assert response.status_code == 200
