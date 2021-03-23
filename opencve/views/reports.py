@@ -21,7 +21,7 @@ def reports():
 
 @main.route("/reports/<link>")
 def report(link):
-    report = ReportController.get({"user_id": current_user.id, "public_link": link})
+    report = ReportController.get({"public_link": link})
     alerts = AlertController.list_items({"report_id": report.id})
 
     # List of vendors/products per alert
