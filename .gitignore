@@ -19,3 +19,7 @@ celerybeat-schedule.db
 # Editors
 .vscode/
 .idea/
+
+# Tests and coverage
+.coverage
+htmlcov/
