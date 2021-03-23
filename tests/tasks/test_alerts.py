@@ -8,7 +8,6 @@ from opencve.models.users import User
 from opencve.models.events import Event
 from opencve.models.vendors import Vendor
 from opencve.models.products import Product
-from opencve.models.reports import Report
 from opencve.tasks.alerts import filter_events, handle_alerts
 
 

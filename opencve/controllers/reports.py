@@ -12,7 +12,6 @@ class ReportController(BaseController):
     per_page_param = "REPORTS_PER_PAGE"
     schema = {
         "user_id": {"type": str},
-        "public_link": {"type": str},
     }
 
     @classmethod
