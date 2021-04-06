@@ -22,9 +22,13 @@ def not_found(e):
     return render_template("errors/404.html"), 404
 
 
-def create_app(environment="production"):
+def create_app(environment="production", custom_config={}):
     app = Flask(__name__)
     app.config.from_object(env_config[environment])
+
+    # Customize configuration
+    for conf, value in custom_config.items():
+        app.config[conf] = value
 
     # Load extensions
     env_config[environment].init_app(app)
