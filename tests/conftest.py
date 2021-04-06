@@ -47,7 +47,7 @@ class CustomClient(FlaskClient):
         return super().open(*args, **kwargs)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def app():
     _app = create_app("test")
     ctx = _app.app_context()

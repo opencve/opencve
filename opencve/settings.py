@@ -22,6 +22,7 @@ from opencve.extensions import (
     db,
     debug_toolbar,
     gravatar,
+    limiter,
     migrate,
     user_manager,
 )
@@ -105,6 +106,14 @@ class Config(object):
     USER_FORGOT_PASSWORD_URL = "/account/forgot-password"
     USER_RESEND_EMAIL_CONFIRMATION_URL = "/account/resend-email-confirmation"
 
+    # API rate limit
+    RATELIMIT_ENABLED = config.getboolean("api", "ratelimit_enabled", fallback=False)
+    RATELIMIT_VALUE = config.get("api", "ratelimit_value", fallback="3600/hour")
+    RATELIMIT_STORAGE_URL = config.get(
+        "api", "ratelimit_storage_url", fallback="redis://127.0.0.1:6379/2"
+    )
+    RATELIMIT_HEADERS_ENABLED = True
+
     # Mail
     EMAIL_ADAPTER = config.get("mail", "email_adapter", fallback="smtp")
     USER_EMAIL_SENDER_EMAIL = config.get(
@@ -169,6 +178,9 @@ class Config(object):
         if app.config["USE_REVERSE_PROXY"]:
             app.config["PREFERRED_URL_SCHEME"] = "https"
             app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+        # API Ratelimit
+        limiter.init_app(app)
 
 
 class ProdConfig(Config):

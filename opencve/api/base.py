@@ -4,7 +4,7 @@ from flask import request
 from flask import current_app as app
 from flask_restful import Resource, HTTPException
 
-# from saucs.extensions import limiter
+from opencve.extensions import limiter
 from opencve.models.users import User
 
 
@@ -42,5 +42,10 @@ def auth_required(func):
 
 class BaseResource(Resource):
     decorators = [
+        limiter.shared_limit(
+            scope="api",
+            limit_value=lambda: app.config["RATELIMIT_VALUE"],
+            key_func=lambda: request.authorization.username,
+        ),
         auth_required,
     ]
