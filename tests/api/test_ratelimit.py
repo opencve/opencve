@@ -8,11 +8,14 @@ from opencve.extensions import db
 
 @pytest.fixture
 def app():
-    _app = create_app("test", {
-        "RATELIMIT_ENABLED": True,
-        "RATELIMIT_VALUE": "2/minute",
-        "RATELIMIT_STORAGE_URL": "memory://"
-    })
+    _app = create_app(
+        "test",
+        {
+            "RATELIMIT_ENABLED": True,
+            "RATELIMIT_VALUE": "2/minute",
+            "RATELIMIT_STORAGE_URL": "memory://",
+        },
+    )
     ctx = _app.app_context()
     ctx.push()
     db.create_all()
