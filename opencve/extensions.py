@@ -12,8 +12,6 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from wtforms import validators, StringField
 
-from opencve.admin import HomeView
-
 
 class CustomUserManager(UserManager):
     """
@@ -85,10 +83,6 @@ class FlaskCelery(Celery):
     def init_app(self, app):
         self.app = app
         self.conf.update(app.config.get("CELERY_CONF", {}))
-
-
-# Flask admin
-admin = Admin(name="OpenCVE Admin", template_mode="bootstrap3", index_view=HomeView())
 
 # Debug toolbar
 debug_toolbar = DebugToolbarExtension()
