@@ -84,6 +84,7 @@ class FlaskCelery(Celery):
         self.app = app
         self.conf.update(app.config.get("CELERY_CONF", {}))
 
+
 # Debug toolbar
 debug_toolbar = DebugToolbarExtension()
 

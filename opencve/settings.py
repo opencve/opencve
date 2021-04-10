@@ -173,7 +173,9 @@ class Config(object):
         limiter.init_app(app)
 
         # Flask-Admin
-        admin = Admin(name="OpenCVE Admin", template_mode="bootstrap3", index_view=HomeView())
+        admin = Admin(
+            name="OpenCVE Admin", template_mode="bootstrap3", index_view=HomeView()
+        )
         admin.init_app(app)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", "Fields missing from ruleset")
