@@ -3,12 +3,14 @@ import tempfile
 from pathlib import Path
 import warnings
 
+from flask_admin import Admin
 from flask_admin.base import MenuLink
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from opencve.admin import (
     CveModelView,
     EventModelView,
+    HomeView,
     UserModelView,
     VendorModelView,
     ProductModelView,
@@ -16,7 +18,6 @@ from opencve.admin import (
 from opencve.configuration import config
 from opencve.extensions import CustomEmailManager
 from opencve.extensions import (
-    admin,
     cel,
     csrf,
     db,
@@ -137,17 +138,6 @@ class Config(object):
 
     @staticmethod
     def init_app(app):
-        # Flask-Admin
-        admin.init_app(app)
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", "Fields missing from ruleset")
-            admin.add_view(UserModelView(User, db.session))
-        admin.add_view(CveModelView(Cve, db.session))
-        admin.add_view(EventModelView(Event, db.session))
-        admin.add_view(VendorModelView(Vendor, db.session))
-        admin.add_view(ProductModelView(Product, db.session))
-        admin.add_link(MenuLink(name="Tasks", url="/admin/tasks"))
-
         # Flask-DebugToolbar
         debug_toolbar.init_app(app)
 
@@ -181,6 +171,18 @@ class Config(object):
 
         # API Ratelimit
         limiter.init_app(app)
+
+        # Flask-Admin
+        admin = Admin(name="OpenCVE Admin", template_mode="bootstrap3", index_view=HomeView())
+        admin.init_app(app)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", "Fields missing from ruleset")
+            admin.add_view(UserModelView(User, db.session))
+        admin.add_view(CveModelView(Cve, db.session))
+        admin.add_view(EventModelView(Event, db.session))
+        admin.add_view(VendorModelView(Vendor, db.session))
+        admin.add_view(ProductModelView(Product, db.session))
+        admin.add_link(MenuLink(name="Tasks", url="/admin/tasks"))
 
 
 class ProdConfig(Config):
