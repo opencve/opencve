@@ -33,7 +33,7 @@ OpenCVE uses the [JSON feed](https://nvd.nist.gov/vuln/data-feeds#JSON_FEED) pro
 After an initial import, a background task is regularly executed to synchronize the local copy with the NVD feed. If a new CVE is added, or if a change is detected, the subscribers of the related vendors and products are alerted.
 
 <p align="center">
-  <img src="how-it-works.png">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/how-it-works.png">
 </p>
 
 ## Requirements
