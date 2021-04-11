@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0 - 2021-04-11
+### Added
+- Display vulnerability type with the CWE ID
+- Add more statistics in admin dashboard
+- Add opencve-docker repository link
+- Release the API
+- Return API datetimes in ISO8601
+- Add API ratelimit
+
+### Fixed
+- Check if email is unique when editing a profile
+- Check search attribute instead of id in CWEs listing
+- Fix "stmp_password" in configuration, ensure compatibility before deprecating it
+
 ## 1.0.2 - 2021-01-18
 ### Added
 - Refactor the reports task to make it more testable
