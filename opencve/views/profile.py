@@ -2,8 +2,6 @@ from flask import current_app as app
 from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-# from flask_user import emails
-
 from opencve.controllers.main import main
 from opencve.extensions import db
 from opencve.forms import (
