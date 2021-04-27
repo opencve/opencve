@@ -41,7 +41,8 @@ Vulnerabilities (CVE)
             </div>
         </div>
     </div>
-    {% elif vendor or product %}
+    {% endif %}
+    {% if vendor or product %}
     <div class="row">
         {% if vendor %}
         <div class="col-sm-12 col-lg-6">
