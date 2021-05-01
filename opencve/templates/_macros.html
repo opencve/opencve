@@ -8,3 +8,8 @@
     {% endif %}
 </div>
 {%- endmacro %}
+
+{% macro render_tag(tag) -%}
+    {% if tag.dark %}{% set color='#000;' %}{% else %}{% set color='#fff;' %}{% endif %}
+    <span class="label label-tag" style="color: {{ color }}; background-color: {{ tag.color }};">{{ tag.name }}</span>
+{%- endmacro %}

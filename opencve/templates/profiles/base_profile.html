@@ -22,6 +22,9 @@
                 <li class="{% if is_active('main.subscriptions') %}active{% endif %}">
                     <a href="{{ url_for('main.subscriptions') }}">Subscriptions</a>
                 </li>
+                <li class="{% if is_active('main.tags,main.edit_tag,main.delete_tag') %}active{% endif %}">
+                    <a href="{{ url_for('main.tags') }}">Tags</a>
+                </li>
                 <li class="{% if is_active('main.notifications') %}active{% endif %}">
                     <a href="{{ url_for('main.notifications') }}">Notifications</a>
                 </li>

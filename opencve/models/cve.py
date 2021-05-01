@@ -1,7 +1,9 @@
 from sqlalchemy.dialects.postgresql import JSONB
+from flask_user import current_user
 
 from opencve.extensions import db
 from opencve.models import BaseModel
+from opencve.models.tags import CveTag, UserTag
 
 
 class Cve(BaseModel):
@@ -37,6 +39,7 @@ class Cve(BaseModel):
     events = db.relationship("Event", back_populates="cve")
     changes = db.relationship("Change", back_populates="cve")
     alerts = db.relationship("Alert", back_populates="cve")
+    _tags = db.relationship("CveTag", back_populates="cve")
 
     # Index
     __table_args__ = (
@@ -46,6 +49,28 @@ class Cve(BaseModel):
 
     def __repr__(self):
         return "<Cve {}>".format(self.cve_id)
+
+    @property
+    def raw_tags(self):
+        if not current_user.is_authenticated:
+            return []
+
+        cve_tag = CveTag.query.filter_by(
+            user_id=current_user.id, cve_id=self.id
+        ).first()
+        if not cve_tag:
+            return []
+
+        return cve_tag.tags
+
+    @property
+    def tags(self):
+        if not current_user.is_authenticated:
+            return []
+        return [
+            UserTag.query.filter_by(user_id=current_user.id, name=t).first()
+            for t in self.raw_tags
+        ]
 
     @property
     def cvss_weight(self):

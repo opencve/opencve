@@ -85,3 +85,25 @@ class FiltersNotificationForm(FlaskForm):
     cwes = BooleanField("CWE changed")
     cvss_score = SelectField("CVSS score", coerce=int, choices=CVSS_SCORES)
     submit = SubmitField("Save changes")
+
+
+class TagForm(FlaskForm):
+    name = StringField(
+        "Name",
+        validators=[validators.DataRequired("Name is required")],
+    )
+    description = StringField(
+        "Description",
+        validators=[validators.DataRequired("Description is required")],
+    )
+    dark = BooleanField("Dark font")
+    color = StringField(
+        "Color",
+        validators=[
+            validators.DataRequired("Color is required"),
+            validators.Regexp(
+                "^#[0-9a-fA-F]{6}$", message="Color must be in hexadecimal format"
+            ),
+        ],
+    )
+    submit = SubmitField("Save")
