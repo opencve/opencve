@@ -51,16 +51,20 @@ class CveController(BaseController):
             vendor = Vendor.query.filter_by(name=possible_vendor).first()
 
             if vendor:
-                product = Product.query.filter_by(name=possible_product, vendor_id=vendor.id).first()
+                product = Product.query.filter_by(
+                    name=possible_product, vendor_id=vendor.id
+                ).first()
             else:
                 product = Product.query.filter_by(name=possible_product).first()
 
-            query = query.filter(or_(
-                Cve.cve_id.contains(args.get('search')),
-                Cve.summary.ilike(f"%{args.get('search')}%"),
-                Cve.vendors.contains([vendor.name]) if vendor else None,
-                Cve.vendors.contains([product.name]) if product else None
-            ))
+            query = query.filter(
+                or_(
+                    Cve.cve_id.contains(args.get("search")),
+                    Cve.summary.ilike(f"%{args.get('search')}%"),
+                    Cve.vendors.contains([vendor.name]) if vendor else None,
+                    Cve.vendors.contains([product.name]) if product else None,
+                )
+            )
 
         # Filter by CWE
         if args.get("cwe"):
