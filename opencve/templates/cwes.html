@@ -22,7 +22,7 @@
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover table-striped">
-                        {% if cwes.total %}
+                        {% if cwes.items %}
                         {% for cwe in cwes.items %}
                         <tr>
                             <td>{{ cwe.cwe_id }}</td>
@@ -73,7 +73,7 @@
                           </span>
                                     <form method="GET">
                                         <input type="text" placeholder="Search" class="form-control" name="search"
-                                               value="{% if request.args.get('id') %}{{ request.args.get('search') }}{% endif %}">
+                                               value="{% if request.args.get('search') %}{{ request.args.get('search') }}{% endif %}">
                                     </form>
                                 </div>
                             </div>

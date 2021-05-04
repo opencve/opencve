@@ -3,12 +3,14 @@ import tempfile
 from pathlib import Path
 import warnings
 
+from flask_admin import Admin
 from flask_admin.base import MenuLink
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from opencve.admin import (
     CveModelView,
     EventModelView,
+    HomeView,
     UserModelView,
     VendorModelView,
     ProductModelView,
@@ -16,12 +18,12 @@ from opencve.admin import (
 from opencve.configuration import config
 from opencve.extensions import CustomEmailManager
 from opencve.extensions import (
-    admin,
     cel,
     csrf,
     db,
     debug_toolbar,
     gravatar,
+    limiter,
     migrate,
     user_manager,
 )
@@ -69,6 +71,7 @@ class Config(object):
     PRODUCTS_PER_PAGE = config.getint("core", "products_per_page", fallback=20)
     CWES_PER_PAGE = config.getint("core", "cwes_per_page", fallback=20)
     REPORTS_PER_PAGE = config.getint("core", "reports_per_page", fallback=20)
+    ALERTS_PER_PAGE = config.getint("core", "alerts_per_page", fallback=20)
 
     # ReCaptcha
     DISPLAY_RECAPTCHA = config.getboolean("core", "display_recaptcha", fallback=False)
@@ -104,6 +107,14 @@ class Config(object):
     USER_FORGOT_PASSWORD_URL = "/account/forgot-password"
     USER_RESEND_EMAIL_CONFIRMATION_URL = "/account/resend-email-confirmation"
 
+    # API rate limit
+    RATELIMIT_ENABLED = config.getboolean("api", "ratelimit_enabled", fallback=False)
+    RATELIMIT_VALUE = config.get("api", "ratelimit_value", fallback="3600/hour")
+    RATELIMIT_STORAGE_URL = config.get(
+        "api", "ratelimit_storage_url", fallback="redis://127.0.0.1:6379/2"
+    )
+    RATELIMIT_HEADERS_ENABLED = True
+
     # Mail
     EMAIL_ADAPTER = config.get("mail", "email_adapter", fallback="smtp")
     USER_EMAIL_SENDER_EMAIL = config.get(
@@ -113,7 +124,13 @@ class Config(object):
     MAIL_PORT = config.getint("mail", "smtp_port", fallback=465)
     MAIL_USE_TLS = config.getboolean("mail", "smtp_use_tls", fallback=True)
     MAIL_USERNAME = config.get("mail", "smtp_username")
-    MAIL_PASSWORD = config.get("mail", "stmp_password")
+
+    # ensure compatibility before deprecating "stmp_password"
+    # see https://github.com/opencve/opencve/issues/76
+    try:
+        MAIL_PASSWORD = config.get("mail", "smtp_password")
+    except:
+        MAIL_PASSWORD = config.get("mail", "stmp_password")
 
     DEFAULT_MAIL_SENDER = config.get(
         "mail", "email_from", fallback="no-reply@opencve.io"
@@ -121,17 +138,6 @@ class Config(object):
 
     @staticmethod
     def init_app(app):
-        # Flask-Admin
-        admin.init_app(app)
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", "Fields missing from ruleset")
-            admin.add_view(UserModelView(User, db.session))
-        admin.add_view(CveModelView(Cve, db.session))
-        admin.add_view(EventModelView(Event, db.session))
-        admin.add_view(VendorModelView(Vendor, db.session))
-        admin.add_view(ProductModelView(Product, db.session))
-        admin.add_link(MenuLink(name="Tasks", url="/admin/tasks"))
-
         # Flask-DebugToolbar
         debug_toolbar.init_app(app)
 
@@ -162,6 +168,23 @@ class Config(object):
         if app.config["USE_REVERSE_PROXY"]:
             app.config["PREFERRED_URL_SCHEME"] = "https"
             app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+        # API Ratelimit
+        limiter.init_app(app)
+
+        # Flask-Admin
+        admin = Admin(
+            name="OpenCVE Admin", template_mode="bootstrap3", index_view=HomeView()
+        )
+        admin.init_app(app)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", "Fields missing from ruleset")
+            admin.add_view(UserModelView(User, db.session))
+        admin.add_view(CveModelView(Cve, db.session))
+        admin.add_view(EventModelView(Event, db.session))
+        admin.add_view(VendorModelView(Vendor, db.session))
+        admin.add_view(ProductModelView(Product, db.session))
+        admin.add_link(MenuLink(name="Tasks", url="/admin/tasks"))
 
 
 class ProdConfig(Config):

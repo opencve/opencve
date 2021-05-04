@@ -1,37 +1,35 @@
-from flask import current_app as app
-from flask import redirect, render_template, request, url_for
-from flask_paginate import Pagination
+from flask import abort
 
-from opencve.controllers.main import main
+from opencve.controllers.base import BaseController
+from opencve.controllers.vendors import VendorController
 from opencve.models.products import Product
-from opencve.models.vendors import Vendor
 
 
-@main.route("/vendors/<vendor>/products")
-def products(vendor):
-    vendor = Vendor.query.filter_by(name=vendor).first()
-    if not vendor:
-        return redirect(url_for("main.vendors"))
+class ProductController(BaseController):
+    model = Product
+    order = Product.name.asc()
+    per_page_param = "PRODUCTS_PER_PAGE"
+    schema = {
+        "vendor": {"type": str},
+        "search": {"type": str},
+    }
 
-    q = Product.query.filter_by(vendor=vendor)
+    @classmethod
+    def build_query(cls, args):
+        vendor = VendorController.get({"name": args.get("vendor")})
 
-    # Search by term
-    if request.args.get("search"):
-        search = request.args.get("search").lower().replace("%", "").replace("_", "")
-        q = q.filter(Product.name.like("%{}%".format(search)))
+        query = Product.query.filter_by(vendor=vendor)
 
-    page = request.args.get("page", type=int, default=1)
-    objects = q.order_by(Product.name.asc()).paginate(
-        page, app.config["PRODUCTS_PER_PAGE"], True
-    )
-    pagination = Pagination(
-        page=page,
-        total=objects.total,
-        per_page=app.config["PRODUCTS_PER_PAGE"],
-        record_name="products",
-        css_framework="bootstrap3",
-    )
+        # Search by term
+        if args.get("search"):
+            search = args.get("search").lower().replace("%", "").replace("_", "")
+            query = query.filter(Product.name.like("%{}%".format(search)))
 
-    return render_template(
-        "products.html", products=objects, vendor=vendor, pagination=pagination
-    )
+        return query, {}
+
+    @classmethod
+    def get(cls, filters):
+        vendor = VendorController.get({"name": filters.get("vendor")})
+        return super(ProductController, cls).get(
+            {"vendor_id": vendor.id, "name": filters.get("product")}
+        )

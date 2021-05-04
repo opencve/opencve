@@ -2,9 +2,9 @@ import importlib
 import pkgutil
 from pathlib import Path
 
-from flask import Flask
-from flask import render_template, request
+from flask import Flask, jsonify, render_template, request
 
+from opencve.api import api_bp
 from opencve.context import _is_active
 from opencve.controllers.main import main, welcome
 from opencve.extensions import db
@@ -17,18 +17,25 @@ with open(Path(__file__).parent.resolve() / "VERSION", encoding="utf-8") as vers
 
 def not_found(e):
     """Handles 404 errors."""
+    if request.path.startswith("/api"):
+        return jsonify({"error": "Not found."}), 404
     return render_template("errors/404.html"), 404
 
 
-def create_app(environment="production"):
+def create_app(environment="production", custom_config={}):
     app = Flask(__name__)
     app.config.from_object(env_config[environment])
+
+    # Customize configuration
+    for conf, value in custom_config.items():
+        app.config[conf] = value
 
     # Load extensions
     env_config[environment].init_app(app)
     app.extensions["mail"].debug = 0
 
     # Register the blueprints
+    app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(main)
     app.register_blueprint(welcome)
 
@@ -63,4 +70,14 @@ def import_submodules(package, modules_to_import):
     return results
 
 
-import_submodules(__name__, ("models", "controllers", "checks", "tasks"))
+import_submodules(
+    __name__,
+    (
+        "api",
+        "checks",
+        "controllers",
+        "models",
+        "tasks",
+        "views",
+    ),
+)

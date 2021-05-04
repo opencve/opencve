@@ -9,9 +9,8 @@ from flask_user import UserManager, EmailManager
 from flask_user.forms import EditUserProfileForm, RegisterForm, unique_email_validator
 from flask_wtf import RecaptchaField
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
 from wtforms import validators, StringField
-
-from opencve.admin import HomeView
 
 
 class CustomUserManager(UserManager):
@@ -86,9 +85,6 @@ class FlaskCelery(Celery):
         self.conf.update(app.config.get("CELERY_CONF", {}))
 
 
-# Flask admin
-admin = Admin(name="OpenCVE Admin", template_mode="bootstrap3", index_view=HomeView())
-
 # Debug toolbar
 debug_toolbar = DebugToolbarExtension()
 
@@ -116,3 +112,6 @@ user_manager = CustomUserManager(None, None, None)
 
 # Celery
 cel = FlaskCelery("opencve", include=["opencve.tasks"])
+
+# Flask Limiter
+limiter = Limiter(key_func=lambda: "Remove the default warning")

@@ -14,7 +14,7 @@
 
 <section class="content">
     <div class="row">
-        {% if not vendors %}
+        {% if not vendors.items %}
         <div class='col-lg-12'>
             <div class="alert alert-warning">
                 No vendor found.
@@ -24,7 +24,7 @@
         <div class='col-lg-7'>
             <div class="box box-primary">
                 <div class="box-header with-border">
-                    <h3 class="box-title">Vendors</h3>
+                    <h3 class="box-title">Vendors ({{ vendors.total }})</h3>
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover table-striped">
@@ -98,8 +98,8 @@
                 <div class="box-body">
                     <div class="btn-group">
                         {% for letter in letters %}
-                        <a class="btn btn-very-sm {% if request.args.get('l') != letter %}btn-default{% else %}btn-primary{% endif %}"
-                           href="{{ url_for('.vendors', l=letter) }}" type="button">{{ letter|upper }}</a>
+                        <a class="btn btn-very-sm {% if request.args.get('letter') != letter %}btn-default{% else %}btn-primary{% endif %}"
+                           href="{{ url_for('.vendors', letter=letter) }}" type="button">{{ letter|upper }}</a>
                         {% endfor %}
                     </div>
                 </div>

@@ -16,7 +16,13 @@
 
 ----------------
 
-**OpenCVE**, formerly known as *Saucs*, is a platform used to locally import the list of CVEs and perform searches on it (by vendors, products, CVSS, CWE...).
+Check the [documentation](https://docs.opencve.io) to install and use OpenCVE.
+
+We also provide a running instance on [https://www.opencve.io](https://www.opencve.io) if you don't want to host it yourself.
+
+## What is OpenCVE
+
+**OpenCVE** is a platform used to locally import the list of CVEs and perform searches on it (by vendors, products, CVSS, CWE...).
 
 Users subscribe to vendors or products, and OpenCVE alerts them when a new CVE is created or when an update is done in an existing CVE.
 
@@ -26,7 +32,9 @@ OpenCVE uses the [JSON feed](https://nvd.nist.gov/vuln/data-feeds#JSON_FEED) pro
 
 After an initial import, a background task is regularly executed to synchronize the local copy with the NVD feed. If a new CVE is added, or if a change is detected, the subscribers of the related vendors and products are alerted.
 
-For now the only method of notification is the mail, but we plan to add other integrations (webhooks, Slack, Jira, PagerDuty, OpsGenie...).
+<p align="center">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/how-it-works.png">
+</p>
 
 ## Requirements
 
@@ -40,73 +48,11 @@ During the import of initial data OpenCVE will download and parse huge files, li
 
 ## Installation
 
-OpenCVE can simply be installed using `pip` :
+We provide 2 methods to install OpenCVE :
 
-```
-$ pip install opencve
-```
+- [manual installation](https://docs.opencve.io/installation/manual/)
+- [docker installation](https://docs.opencve.io/installation/docker/)
 
-### Configuration file
+The second method can be useful if you don't want to manage the dependencies (like PostgreSQL, Redis or Celery).
 
-The first step is to create the configuration file. You can do it with the `init` command :
-
-```
-$ opencve init
-[*] Configuration created in /Users/ncrocfer/opencve/opencve.cfg
-```
-
-**Note:** a custom path can be specified in the `OPENCVE_CONFIG` environment variable.
-
-### Initialize the database
-
-The database can be configured using the `database_uri` variable of the `opencve.cfg` file. Once done the `upgrade-db` command will create all the tables :
-
-```
-$ opencve upgrade-db
-```
-
-**Note:** because it uses the JSONB feature for performance, OpenCVE only supports PostgreSQL.
-
-### Import the data
-
-The database is now created, we need to populate it using the `import-data` command :
-
-```
-$ opencve import-data
-```
-
-This command can take several minutes, mainly for the list of vendors and products (around 10mn), so be patient :) But don't worry you will only do it once.
-
-### Start the workers
-
-The synchronization between the OpenCVE database and the CVE list is done using a periodic Celery task.
-
-A worker and the scheduler must be started for that (don't forget to configure the Celery configuration in the `opencve.cfg` file) :
-
-```
-$ opencve celery worker -l INFO
-$ opencve celery beat -l INFO
-```
-
-### Create an admin
-
-```
-$ opencve create-user john john.doe@example.com --admin
-Password:
-Repeat for confirmation:
-[*] User john created.
-```
-
-### Start the webserver
-
-You can finally launch the webserver and visit OpenCVE at `localhost:8000` :
-
-```
-$ opencve webserver
-[2020-07-14 20:38:06 +0200] [16032] [INFO] Starting gunicorn 20.0.4
-[2020-07-14 20:38:06 +0200] [16032] [INFO] Listening at: http://127.0.0.1:8000 (16032)
-[2020-07-14 20:38:06 +0200] [16032] [INFO] Using worker: sync
-[2020-07-14 20:38:06 +0200] [16040] [INFO] Booting worker with pid: 16040
-```
-
-**Note:** the server name can be configured in the `opencve.cfg` file with the `server_name` variable.
+Check these documentations for the details of each step (initial import, admin creation, etc).

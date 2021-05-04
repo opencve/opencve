@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+from base64 import b64encode
 from pathlib import Path
 from unittest.mock import patch, Mock
 
@@ -13,18 +14,40 @@ os.environ["OPENCVE_WELCOME_FILES"] = str(
 import pytest
 from bs4 import BeautifulSoup
 from flask import url_for
+from flask.testing import FlaskClient
+from werkzeug.datastructures import Headers
 
 from opencve import create_app
 from opencve.commands.utils import CveUtil
 from opencve.extensions import db
 from opencve.models.cve import Cve
+from opencve.models.cwe import Cwe
 from opencve.models.users import User
 from opencve.models.vendors import Vendor
 from opencve.models.products import Product
 from opencve.tasks.events import handle_events as handle_events_task
 
 
-@pytest.fixture(scope="session", autouse=True)
+class CustomClient(FlaskClient):
+    def __init__(self, *args, **kwargs):
+        self._auth = None
+        super(CustomClient, self).__init__(*args, **kwargs)
+
+    def login(self, username):
+        credentials = bytes(f"{username}:password", encoding="utf8")
+        self._auth = b64encode(credentials).decode("utf-8")
+        return self
+
+    def open(self, *args, **kwargs):
+        headers = kwargs.pop("headers", Headers())
+
+        if self._auth:
+            headers.extend({"Authorization": f"Basic {self._auth}"})
+            kwargs["headers"] = headers
+        return super().open(*args, **kwargs)
+
+
+@pytest.fixture(scope="module", autouse=True)
 def app():
     _app = create_app("test")
     ctx = _app.app_context()
@@ -51,6 +74,7 @@ def truncate_db_tables(app):
 
 @pytest.fixture(scope="function")
 def client(app):
+    app.test_client_class = CustomClient
     _client = app.test_client()
     yield _client
 
@@ -80,6 +104,14 @@ def create_cve(app, open_file):
         return Cve.query.filter_by(cve_id=cve_id).first()
 
     return _create_cve
+
+
+@pytest.fixture(scope="function")
+def create_cves(create_cve):
+    def _create_cves(cves):
+        return [create_cve(cve) for cve in cves]
+
+    return _create_cves
 
 
 @pytest.fixture
@@ -125,7 +157,9 @@ def create_user(app):
 @pytest.fixture
 def create_vendor():
     def _create_vendor(vendor_name, product_name=None):
-        vendor = Vendor(name=vendor_name)
+        vendor = Vendor.query.filter_by(name=vendor_name).first()
+        if not vendor:
+            vendor = Vendor(name=vendor_name)
         if product_name:
             vendor.products.append(Product(name=product_name))
         db.session.add(vendor)
@@ -133,6 +167,25 @@ def create_vendor():
         return vendor
 
     return _create_vendor
+
+
+@pytest.fixture(scope="function")
+def create_cwe(app):
+    def _create_cwe(cwe_id, name=None, description=None):
+        cwe = Cwe(cwe_id=cwe_id, name=name, description=description)
+        db.session.add(cwe)
+        db.session.commit()
+        return cwe
+
+    return _create_cwe
+
+
+@pytest.fixture(scope="function")
+def create_cwes(create_cwe):
+    def _create_cwes(cwes):
+        return [create_cwe(cwe) for cwe in cwes]
+
+    return _create_cwes
 
 
 @pytest.fixture
