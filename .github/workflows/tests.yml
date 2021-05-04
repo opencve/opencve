@@ -35,6 +35,7 @@ jobs:
         env:
           POSTGRES_USER: opencve
           POSTGRES_PASSWORD: opencve
+          POSTGRES_EXTENSIONS: pg_trgm
         ports:
           - 5432:5432
         options: >-
