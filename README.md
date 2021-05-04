@@ -42,6 +42,8 @@ OpenCVE works with **Python >=3.6**.
 
 It uses the JSONB feature for performance, so you will need a **PostgreSQL** instance to store the data (CVE, Users, Vendors, Products, Subscriptions, ...). Other engines are not supported.
 
+The **pg_trgm** module of PostgreSQL is required to let you search in the CVEs list. The [upgrade-db](https://docs.opencve.io/commands/#upgrade-db) command will enable it for you, but you can also do it yourself if you prefer (`CREATE EXTENSION pg_trgm`). From PostgreSQL 13 this module is considered as trusted, meaning it can be installed by non-superusers with the CREATE privilege.
+
 Celery is used to periodically fetch the NVD database and update the list of CVEs. For that you will need a broker : we recommend you **Redis** for the ease of installation. Futhermore it is possible that future versions of OpenCVE will use a cache feature, in that case the Redis requirement will already be filled for you.
 
 During the import of initial data OpenCVE will download and parse huge files, like the CPE dictionnary. For that we recommend you **3.5G RAM** at least.

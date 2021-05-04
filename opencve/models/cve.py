@@ -16,7 +16,7 @@ class Cve(BaseModel):
         index=True,
     )
 
-    cve_id = db.Column(db.String(), nullable=False, index=True)
+    cve_id = db.Column(db.String(), nullable=False)
     json = db.Column(JSONB)
 
     # We used initially secondary relationships to fetch the list of
@@ -42,6 +42,22 @@ class Cve(BaseModel):
     __table_args__ = (
         db.Index("ix_cves_vendors", vendors, postgresql_using="gin"),
         db.Index("ix_cves_cwes", cwes, postgresql_using="gin"),
+        db.Index(
+            "ix_cves_summary",
+            summary,
+            postgresql_using="gin",
+            postgresql_ops={
+                "summary": "gin_trgm_ops",
+            },
+        ),
+        db.Index(
+            "ix_cves_cve_id",
+            cve_id,
+            postgresql_using="gin",
+            postgresql_ops={
+                "cve_id": "gin_trgm_ops",
+            },
+        ),
     )
 
     def __repr__(self):
