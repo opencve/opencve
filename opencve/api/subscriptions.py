@@ -17,6 +17,7 @@ product_list_fields = {
     "parent_vendor": fields.String(attribute="vendor.name"),
 }
 
+
 class SubscriptionListRessourceVendor(BaseResource):
     @marshal_with(vendor_list_fields)
     def get(self):
