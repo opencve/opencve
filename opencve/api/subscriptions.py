@@ -1,10 +1,10 @@
 from flask import request
 from flask_restful import fields, marshal_with
-from flask_user import current_user, login_required
+
 from opencve.api.base import BaseResource
 from opencve.api.fields import HumanizedNameField
 from opencve.models.users import User
-import json
+
 
 vendor_list_fields = {
     "name": fields.String(attribute="name"),
