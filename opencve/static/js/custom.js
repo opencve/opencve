@@ -29,7 +29,7 @@ $.ajaxSetup({
                 if ( data.status == 'ok' ) {
                     $(button).toggleClass('btn-default btn-danger');
 
-                    if ( $(button).text() == 'Subscribe' ) {
+                    if ( $(button).text().trim() == 'Subscribe' ) {
                         $(button).text('Unsubscribe');
                         $(button).attr("id", $(button).attr('id').replace('subscribe', 'unsubscribe'));
                     } else {
