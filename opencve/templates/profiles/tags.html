@@ -1,0 +1,79 @@
+{% extends "profiles/base_profile.html" %}
+
+{% block title %}Tags - {{ super() }}{% endblock %}
+
+{% block content_profile %}
+{% from "flask_user/_macros.html" import render_field, render_submit_field %}
+{% from "_macros.html" import render_tag %}
+{% set selected_tag = request.view_args.get('tag') %}
+
+<div class="row">
+    <div class="col-lg-7 col-md-7 col-sm-7">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">My tags</h3>
+            </div>
+            <div class="box-body">
+                <div class="table-responsive">
+                    {% if tags.items %}
+                    <table class="table table-hover table-striped">
+                        <tbody>
+                        {% for tag in tags.items %}
+                        <tr {% if selected_tag and selected_tag == tag.name %}class="row-selected"{% endif %}{% if loop.first %}style="border-top: 0px;" {% endif %}>
+                            <td>{{ render_tag(tag) }}</td>
+                            <td>{{ tag.description }}</td>
+                            <td class="pull-right">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('main.cves', tag=tag.name) }}" class="btn btn-default btn-xs">View CVE</a>
+                                    <a href="{{ url_for('main.edit_tag', tag=tag.name, page=request.args.get('page')) }}" class="btn btn-default btn-xs">Edit</a>
+                                    <a href="{{ url_for('main.delete_tag', tag=tag.name) }}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>You have no tag yet.</p>
+                    {% endif %}
+                    <div class="center">
+                        {{ pagination.links }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5 col-md-5 col-sm-5">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">{{ mode|capitalize }} tag</h3>
+            </div>
+            <div class="box-body">
+                {% if mode == 'create' %}
+                <form action="{{ url_for('main.tags') }}" method="POST" class="form" role="form">
+                {% else %}
+                <form action="{{ url_for('main.edit_tag', tag=form.name.data, page=request.args.get('page')) }}" method="POST" class="form" role="form">
+                {% endif %}
+                    {{ form.hidden_tag() }}
+                    {{ render_field(form.name, disabled=True if mode == "update" else False, tabindex=10) }}
+                    {{ render_field(form.description, tabindex=20) }}
+                    <label>Color</label>
+                    <div class="form-inline form-group">
+                        {{ render_field(form.color, label_visible=false, tabindex=20, class="form-control colorpicker") }}
+                        <button class="btn btn-default btn-flat" id="genNew"><i class="fa fa-refresh"></i></button>
+                        <span class="label label-tag preview-tag" style="color: #fff; background-color: {{form.color.data}};">preview</span>
+                    </div>
+                    <div class="pull-right">
+                        {% if mode == 'update' %}
+                        <a href="{{ url_for('main.tags', page=request.args.get('page')) }}" class="btn btn-default">Cancel</a>
+                        {% endif %}
+                        {{ render_submit_field(form.submit, label=mode|capitalize, tabindex=100) }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -8,8 +8,10 @@ from sqlalchemy import and_, or_
 from opencve.constants import PRODUCT_SEPARATOR
 from opencve.controllers.base import BaseController
 from opencve.controllers.main import main
+from opencve.controllers.tags import UserTagController
 from opencve.models.cve import Cve
 from opencve.models.products import Product
+from opencve.models.tags import CveTag
 from opencve.models.vendors import Vendor
 
 from opencve.models.cwe import Cwe
@@ -25,12 +27,15 @@ class CveController(BaseController):
         "product": {"type": str},
         "cvss": {"type": str},
         "cwe": {"type": str},
+        "tag": {"type": str},
+        "user_id": {"type": str},
     }
 
     @classmethod
     def build_query(cls, args):
         vendor = None
         product = None
+        tag = None
         query = Cve.query
 
         vendor_query = args.get("vendor")
@@ -125,4 +130,17 @@ class CveController(BaseController):
                 abort(404, "Not found.")
             query = query.filter(Cve.vendors.contains([product.name]))
 
-        return query, {"vendor": vendor, "product": product}
+        # Filter by tag
+        if args.get("tag"):
+            tag = UserTagController.get(
+                {"user_id": args.get("user_id"), "name": args.get("tag")}
+            )
+            if not tag:
+                abort(404, "Not found.")
+            query = (
+                query.join(CveTag)
+                .filter(CveTag.user_id == args.get("user_id"))
+                .filter(CveTag.tags.contains([args.get("tag")]))
+            )
+
+        return query, {"vendor": vendor, "product": product, "tag": tag}

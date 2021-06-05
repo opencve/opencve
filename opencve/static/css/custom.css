@@ -243,3 +243,17 @@ pre.plainJSON{
   border-bottom: 1px solid #f0f0f0;
   padding-bottom: 10px;
 }
+
+.label-tag {
+  font-size: 80%;
+  color: #fff;
+}
+
+.row-selected {
+  background-color: #87cefa !important;
+  font-weight: bold;
+}
+
+.preview-tag {
+  margin-left: 20px;
+}

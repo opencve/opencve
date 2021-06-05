@@ -3,12 +3,16 @@ from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from opencve.controllers.main import main
+from opencve.controllers.tags import UserTagController
+from opencve.models.cve import Cve
+from opencve.models.tags import CveTag, UserTag
 from opencve.extensions import db
 from opencve.forms import (
     ChangeEmailForm,
     ChangePasswordForm,
     FiltersNotificationForm,
     MailNotificationsForm,
+    TagForm,
 )
 
 
@@ -85,3 +89,117 @@ def notifications():
         mail_notifications_form=mail_notifications_form,
         filters_notifications_form=filters_notifications_form,
     )
+
+
+@main.route("/account/tags", methods=["GET", "POST"])
+@login_required
+def tags():
+    tags, _, pagination = UserTagController.list(
+        {**request.args, "user_id": current_user.id}
+    )
+    tag_form = TagForm()
+
+    # Form has been submitted
+    if request.method == "POST" and tag_form.validate():
+
+        # Check if the tag doesn't already exist
+        if UserTag.query.filter_by(
+            user_id=current_user.id, name=tag_form.name.data
+        ).first():
+            flash("This tag already exists.", "error")
+
+        # Create the new tag
+        else:
+            tag = UserTag(
+                user=current_user,
+                name=tag_form.name.data,
+                description=tag_form.description.data,
+                color=tag_form.color.data,
+            )
+            db.session.add(tag)
+            db.session.commit()
+
+            flash(f"The tag {tag.name} has been successfully added.", "success")
+            return redirect(
+                url_for("main.edit_tag", tag=tag.name, page=request.args.get("page"))
+            )
+
+    return render_template(
+        "profiles/tags.html",
+        tags=tags,
+        form=tag_form,
+        pagination=pagination,
+        mode="create",
+    )
+
+
+@main.route("/account/tags/<string:tag>", methods=["GET", "POST"])
+@login_required
+def edit_tag(tag):
+    tag = UserTagController.get({"user_id": current_user.id, "name": tag})
+    if not tag:
+        return redirect(url_for("main.tags"))
+
+    tag_form = TagForm(obj=tag, color=tag.color)
+
+    if request.method == "POST" and tag_form.validate():
+
+        # Prohibit name change
+        if tag_form.name.data != tag.name:
+            return redirect(url_for("main.tags"))
+
+        # Update the tag
+        tag_form.populate_obj(tag)
+        tag.color = tag_form.color.data
+        db.session.commit()
+
+        flash(f"The tag {tag.name} has been successfully updated.", "success")
+        return redirect(
+            url_for("main.edit_tag", tag=tag.name, page=request.args.get("page"))
+        )
+
+    tags, _, pagination = UserTagController.list(
+        {**request.args, "user_id": current_user.id}
+    )
+
+    return render_template(
+        "profiles/tags.html",
+        tags=tags,
+        form=tag_form,
+        pagination=pagination,
+        mode="update",
+    )
+
+
+@main.route("/account/tags/<string:tag>/delete", methods=["GET", "POST"])
+@login_required
+def delete_tag(tag):
+    tag = UserTagController.get({"user_id": current_user.id, "name": tag})
+    if not tag:
+        return redirect(url_for("main.tags"))
+
+    count = (
+        db.session.query(Cve.id)
+        .join(CveTag)
+        .filter(CveTag.user_id == current_user.id)
+        .filter(CveTag.tags.contains([tag.name]))
+        .count()
+    )
+
+    if count > 0:
+        flash(
+            f"The tag {tag.name} is still associated to {count} CVE(s), detach them before removing the tag.",
+            "error",
+        )
+        return redirect(url_for("main.tags"))
+
+    # Confirmation page
+    if request.method == "GET":
+        return render_template("profiles/delete_tag.html", tag=tag, count=count)
+
+    # Delete the tag
+    else:
+        db.session.delete(tag)
+        db.session.commit()
+        flash(f"The tag {tag.name} has been deleted.", "success")
+        return redirect(url_for("main.tags"))

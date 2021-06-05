@@ -1,0 +1,24 @@
+{% extends "profiles/base_profile.html" %}
+
+{% block title %}Tags - Confirm deletion{% endblock %}
+
+{% block content_profile %}
+
+<div class="row">
+    <div class="col-lg-12 col-md-12 col-sm-12">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Confirm deletion</h3>
+            </div>
+            <div class="box-body">
+                <p>Do you really want to delete the <strong>{{ tag.name }}</strong> tag ?</p>
+                <form action="{{ url_for('main.delete_tag', tag=tag.name) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

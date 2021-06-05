@@ -16,6 +16,7 @@ Vulnerabilities (CVE)
 {% endblock %}
 
 {% block content %}
+{% from "_macros.html" import render_tag %}
 
 <section class="content-header">
     <h1>Vulnerabilities (CVE)</h1>
@@ -116,55 +117,67 @@ Vulnerabilities (CVE)
     {% endif %}
 
     <div class="row">
-        <div class="col-md-7">
-            <div class="box box-primary">
-                <div class="box-header">
-                    <h3 class="box-title">CVSS v3 Filter</h3>
-                </div>
-                <div class="box-body">
-                    <a class="btn btn-default {% if not request.args.get('cvss') %}btn-primary{% endif %}"
-                           href="{{ url_for('main.cves', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}">ALL</a>
-                    <div class="btn-group">
-                        <a class="btn btn-default {% if request.args.get('cvss') == 'none' %}btn-primary{% endif %}"
-                           href="{{ url_for('main.cves', cvss='none', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
-                           type="button">NONE (0.0)</a>
-                        <a class="btn btn-default {% if request.args.get('cvss') == 'low' %}btn-primary{% endif %}"
-                           href="{{ url_for('main.cves', cvss='low', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
-                           type="button">LOW (0.1 - 3.9)</a>
-                        <a class="btn btn-default {% if request.args.get('cvss') == 'medium' %}btn-primary{% endif %}"
-                           href="{{ url_for('main.cves', cvss='medium', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
-                           type="button">MEDIUM (4.0 - 6.9)</a>
-                        <a class="btn btn-default {% if request.args.get('cvss') == 'high' %}btn-primary{% endif %}"
-                           href="{{ url_for('main.cves', cvss='high', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
-                           type="button">HIGH (7.0 - 8.9)</a>
-                        <a class="btn btn-default {% if request.args.get('cvss') == 'critical' %}btn-primary{% endif %}"
-                           href="{{ url_for('main.cves', cvss='critical', vendor=request.args.get('vendor'), product=request.args.get('product'), search=request.args.get('search'), cwe=request.args.get('cwe')) }}"
-                           type="button">CRITICAL (9.0 - 10.0)</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="box box-primary">
-                <div class="box-header">
-                    <h3 class="box-title">Search</h3>
-                </div>
+        <div class="col-md-9">
+            <div class="box">
+                <div class="box-header"></div>
                 <div class="box-body">
                     <form method="GET">
-                        <div class="input-group">
-                            <span class="input-group-btn">
-                            <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
-                            </span>
-                            <input type="text" placeholder="Search in CVEs" class="form-control" name="search"
-                                   value="{% if request.args.get('search') %}{{ request.args.get('search') }}{% endif %}">
+                        {% if request.args.get('cwe') %}
+                        <input type="hidden" name="cwe" value="{{ request.args.get('cwe') }}" />
+                        {% endif %}
+                        {% if request.args.get('vendor') %}
+                        <input type="hidden" name="vendor" value="{{ vendor.name }}" />
+                        {% endif %}
+                        {% if request.args.get('product') %}
+                        <input type="hidden" name="product" value="{{product.name }}" />
+                        {% endif %}
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    {% if current_user.is_authenticated %}
+                                    <select class="form-control select2" name="tag" data-placeholder="Select a tag">
+                                        <option></option>
+                                        {% for t in user_tags %}
+                                        <option {% if (tag.name == t.name) %} selected="selected" {% endif %} value="{{ t.name }}">{{ t.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% else %}
+                                    <div
+                                        data-toggle="tooltip"
+                                        data-container="body"
+                                        title="You must be signed in to filter the list of CVE by tag"
+                                    >
+                                        <select class="form-control select2" data-placeholder="Select a tag" disabled></select>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <select class="form-control select2" name="cvss" data-placeholder="Filter by CVSS v3 score">
+                                        <option></option>
+                                        <option {% if request.args.get('cvss') == 'none' %} selected="selected" {% endif %} value="none">None (0.0)</option>
+                                        <option {% if request.args.get('cvss') == 'low' %} selected="selected" {% endif %} value="low">Low (0.1 - 3.9)</option>
+                                        <option {% if request.args.get('cvss') == 'medium' %} selected="selected" {% endif %} value="medium">Medium (4.0 - 6.9)</option>
+                                        <option {% if request.args.get('cvss') == 'high' %} selected="selected" {% endif %} value="high">High (7.0 - 8.9)</option>
+                                        <option {% if request.args.get('cvss') == 'critical' %} selected="selected" {% endif %} value="critical">Critical (9.0 - 10.0)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                    <input type="text" placeholder="Search in CVEs" class="form-control" name="search"
+                                           value="{% if request.args.get('search') %}{{ request.args.get('search') }}{% endif %}">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary">Search</button>
+                            </div>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-2">
+        <div class="col-md-3">
             <div class="info-box">
                 <span class="info-box-icon bg-primary"><i class="fa fa-shield"></i></span>
 

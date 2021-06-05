@@ -4,7 +4,7 @@ Flask-Admin==1.5.5
 Flask-Assets==0.12
 Flask-DebugToolbar==0.10.1
 Flask-SQLAlchemy==2.3.2
-Flask-Migrate==2.4.0
+Flask-Migrate==3.0.1
 Flask-Login==0.4.1
 Flask-WTF==0.14.3
 Flask-User==1.0.2.2
