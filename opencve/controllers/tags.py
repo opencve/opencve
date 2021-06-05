@@ -18,9 +18,3 @@ class UserTagController(BaseController):
     @classmethod
     def build_query(cls, args):
         return cls.model.query.filter_by(user_id=args.get("user_id")), {}
-
-    @classmethod
-    def get(cls, filters):
-        return cls.model.query.filter_by(
-            user_id=filters.get("user_id"), name=filters.get("name")
-        ).first()
