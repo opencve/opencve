@@ -11,7 +11,7 @@ def test_metas(app, create_cves):
     with app.test_request_context():
         cves, metas, _ = CveController.list()
         assert len(cves.items) == 4
-        assert metas == {"vendor": None, "product": None}
+        assert metas == {"vendor": None, "product": None, "tag": None}
 
         cves, metas, _ = CveController.list({"vendor": "python"})
         assert len(cves.items) == 1
