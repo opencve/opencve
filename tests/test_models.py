@@ -1,3 +1,6 @@
+from unittest.mock import patch
+
+from opencve.extensions import db
 from opencve.models.cve import Cve
 from opencve.models.cwe import Cwe
 from opencve.models.metas import Meta
@@ -6,6 +9,7 @@ from opencve.models.vendors import Vendor
 from opencve.models.users import User
 from opencve.models.products import Product
 from opencve.models.vendors import Vendor
+from opencve.models.tags import CveTag, UserTag
 from opencve.models.users import User
 
 
@@ -32,6 +36,25 @@ def test_new_cve():
     assert cve.events == []
     assert cve.changes == []
     assert cve.alerts == []
+
+
+@patch("flask_login.utils._get_user")
+def test_cve_tags(mock, create_cve, create_user):
+    user = create_user()
+    mock.return_value = user
+
+    cve = create_cve("CVE-2018-18074")
+    cve = Cve.query.first()
+    assert not cve.tags
+
+    user_tag = UserTag(name="tag1", description="foo", color="#fff")
+    user.tags.append(user_tag)
+    db.session.add(CveTag(user_id=user.id, cve_id=cve.id, tags=["tag1"]))
+    db.session.commit()
+
+    cve = Cve.query.first()
+    assert len(cve.tags) == 1
+    assert cve.tags[0].id == user_tag.id
 
 
 def test_new_cwe():

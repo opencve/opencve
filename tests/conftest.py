@@ -22,6 +22,7 @@ from opencve.commands.utils import CveUtil
 from opencve.extensions import db
 from opencve.models.cve import Cve
 from opencve.models.cwe import Cwe
+from opencve.models.tags import UserTag
 from opencve.models.users import User
 from opencve.models.vendors import Vendor
 from opencve.models.products import Product
@@ -186,6 +187,23 @@ def create_cwes(create_cwe):
         return [create_cwe(cwe) for cwe in cwes]
 
     return _create_cwes
+
+
+@pytest.fixture(scope="function")
+def create_tag():
+    def _create_tag(name, description, color, username="user"):
+        user = User.query.filter_by(username=username).first()
+        tag = UserTag(
+            name=name,
+            description=description,
+            color=color,
+            user=user,
+        )
+        db.session.add(tag)
+        db.session.commit()
+        return tag
+
+    return _create_tag
 
 
 @pytest.fixture

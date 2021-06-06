@@ -3,6 +3,8 @@ from flask import request
 from werkzeug.exceptions import NotFound
 
 from opencve.controllers.cves import CveController
+from opencve.extensions import db
+from opencve.models.tags import CveTag, UserTag
 
 
 def test_metas(app, create_cves):
@@ -164,3 +166,45 @@ def test_vendors_products_not_found(app):
             CveController.list_items({"vendor": "foo"})
         with pytest.raises(NotFound):
             CveController.list_items({"vendor": "foo", "product": "bar"})
+
+
+def test_filtered_by_tags(app, create_cve, create_user):
+    cve_2018_18074 = create_cve("CVE-2018-18074")
+    cve_2020_9392 = create_cve("CVE-2020-9392")
+    cve_2020_26116 = create_cve("CVE-2020-26116")
+    create_cve("CVE-2020-27781")
+
+    user = create_user()
+    user.tags = [
+        UserTag(name="tag1", description="foo", color="#fff"),
+        UserTag(name="tag2", description="foo", color="#fff"),
+    ]
+
+    db.session.add(CveTag(user_id=user.id, cve_id=cve_2018_18074.id, tags=["tag1"]))
+    db.session.add(
+        CveTag(user_id=user.id, cve_id=cve_2020_9392.id, tags=["tag1", "tag2"])
+    )
+    db.session.add(CveTag(user_id=user.id, cve_id=cve_2020_26116.id, tags=["tag2"]))
+    db.session.commit()
+
+    # Tag is not in user's list of tags
+    with pytest.raises(NotFound):
+        CveController.list_items({"user_id": user.id, "tag": "notfound"})
+    with app.test_request_context():
+        cves = CveController.list_items()
+        assert sorted([cve.cve_id for cve in cves]) == [
+            "CVE-2018-18074",
+            "CVE-2020-26116",
+            "CVE-2020-27781",
+            "CVE-2020-9392",
+        ]
+        cves = CveController.list_items({"user_id": user.id, "tag": "tag1"})
+        assert sorted([cve.cve_id for cve in cves]) == [
+            "CVE-2018-18074",
+            "CVE-2020-9392",
+        ]
+        cves = CveController.list_items({"user_id": user.id, "tag": "tag2"})
+        assert sorted([cve.cve_id for cve in cves]) == [
+            "CVE-2020-26116",
+            "CVE-2020-9392",
+        ]
