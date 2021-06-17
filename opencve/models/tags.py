@@ -20,7 +20,7 @@ class UserTag(BaseModel):
     user = db.relationship("User", back_populates="tags")
 
     __table_args__ = (
-        UniqueConstraint('name', 'user_id', name='ix_userstags_name_userid'),
+        UniqueConstraint("name", "user_id", name="ix_userstags_name_userid"),
     )
 
     def __repr__(self):
