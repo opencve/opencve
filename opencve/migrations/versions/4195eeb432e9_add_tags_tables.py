@@ -68,7 +68,7 @@ def upgrade():
 
 def downgrade():
     op.drop_index(op.f("ix_users_tags_created_at"), table_name="users_tags")
-    op.drop_constraint('ix_userstags_name_userid', 'users_tags')
+    op.drop_constraint("ix_userstags_name_userid", "users_tags")
     op.drop_table("users_tags")
     op.drop_index(op.f("ix_cves_tags_created_at"), table_name="cves_tags")
     op.drop_index("ix_cves_tags", table_name="cves_tags", postgresql_using="gin")

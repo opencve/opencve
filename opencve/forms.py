@@ -93,7 +93,8 @@ class TagForm(FlaskForm):
         validators=[
             validators.DataRequired("Name is required"),
             validators.Regexp(
-                "^[a-zA-Z0-9\-_]+$", message="Only alphanumeric, dash and underscore characters are accepted"
+                "^[a-zA-Z0-9\-_]+$",
+                message="Only alphanumeric, dash and underscore characters are accepted",
             ),
         ],
     )
