@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 - 2021-06-19
+### Added
+- Improved search functionality on /cve
+- Add GIN indexes on cves.summary and cves.cve_id
+- New API Endpoint (user subscriptions)
+- Add the tags feature
+
+### Fixed
+- trim() the text of the 'Subscribe' button
+- CVE can be filtered by CWE and vendor in the same query
+- Default tag color wasn't correctly handled
+
 ## 1.1.0 - 2021-04-11
 ### Added
 - Display vulnerability type with the CWE ID
