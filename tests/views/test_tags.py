@@ -72,7 +72,6 @@ def test_create_tag(client, login):
 def test_create_tag_invalid_form(client, login):
     response = client.post("/account/tags", data={})
     assert b"Name is required" in response.data
-    assert b"Color is required" in response.data
 
     response = client.post(
         "/account/tags",

@@ -107,5 +107,6 @@ class TagForm(FlaskForm):
                 "^#[0-9a-fA-F]{6}$", message="Color must be in hexadecimal format"
             ),
         ],
+        default="#000000",
     )
     submit = SubmitField("Save")
