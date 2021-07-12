@@ -8,9 +8,11 @@ def test_subscribe_to_vendor_invalid_action(login, client, create_vendor):
     with client:
         response = client.post(
             "/subscriptions",
-            data={"obj": "vendor",
-                  "id": test_vendor.id,
-                  "action": "non-existent action"},
+            data={
+                "obj": "vendor",
+                "id": test_vendor.id,
+                "action": "non-existent action",
+            },
             follow_redirects=True,
         )
 
@@ -26,9 +28,7 @@ def test_subscribe_to_vendor(login, client, create_vendor):
     with client:
         response = client.post(
             "/subscriptions",
-            data={"obj": "vendor",
-                  "id": test_vendor.id,
-                  "action": "subscribe"},
+            data={"obj": "vendor", "id": test_vendor.id, "action": "subscribe"},
             follow_redirects=True,
         )
 
@@ -44,9 +44,11 @@ def test_subscribe_to_product(login, client, create_vendor):
     with client:
         response = client.post(
             "/subscriptions",
-            data={"obj": "product",
-                  "id": test_vendor.products[0].id,
-                  "action": "subscribe"},
+            data={
+                "obj": "product",
+                "id": test_vendor.products[0].id,
+                "action": "subscribe",
+            },
             follow_redirects=True,
         )
 
@@ -63,9 +65,7 @@ def test_unsubscribe_to_vendor_subscribed_to(login, client, create_vendor):
         # Subscribe to the vendor
         response = client.post(
             "/subscriptions",
-            data={"obj": "vendor",
-                  "id": test_vendor.id,
-                  "action": "subscribe"},
+            data={"obj": "vendor", "id": test_vendor.id, "action": "subscribe"},
             follow_redirects=True,
         )
 
@@ -75,9 +75,7 @@ def test_unsubscribe_to_vendor_subscribed_to(login, client, create_vendor):
         # Unsubscribe to the vendor
         response = client.post(
             "/subscriptions",
-            data={"obj": "vendor",
-                  "id": test_vendor.id,
-                  "action": "unsubscribe"},
+            data={"obj": "vendor", "id": test_vendor.id, "action": "unsubscribe"},
             follow_redirects=True,
         )
 
@@ -93,9 +91,11 @@ def test_unsubscribe_to_product_subscribed_to(login, client, create_vendor):
     with client:
         response = client.post(
             "/subscriptions",
-            data={"obj": "product",
-                  "id": test_vendor.products[0].id,
-                  "action": "subscribe"},
+            data={
+                "obj": "product",
+                "id": test_vendor.products[0].id,
+                "action": "subscribe",
+            },
             follow_redirects=True,
         )
 
@@ -105,9 +105,11 @@ def test_unsubscribe_to_product_subscribed_to(login, client, create_vendor):
 
         response = client.post(
             "/subscriptions",
-            data={"obj": "product",
-                  "id": test_vendor.products[0].id,
-                  "action": "unsubscribe"},
+            data={
+                "obj": "product",
+                "id": test_vendor.products[0].id,
+                "action": "unsubscribe",
+            },
             follow_redirects=True,
         )
 
