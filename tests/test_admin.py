@@ -1,16 +1,6 @@
-import os
-from wtforms import PasswordField, validators
-from opencve.commands.create_user import create_user
-from opencve.models.vendors import Vendor
-import pytest
-import datetime
 from opencve.extensions import db
 from opencve.models.users import User
-from opencve.admin import AuthModelView
 from opencve.admin import UserModelView
-from opencve.extensions import CustomUserManager
-from flask_user import UserManager
-from flask_user.forms import EditUserProfileForm
 
 
 def test_on_model_change_create_form(app, create_user):
