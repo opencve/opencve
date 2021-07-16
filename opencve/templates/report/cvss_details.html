@@ -1,5 +1,7 @@
 <tr>
+    {% if not hide_type %}
     <td>CVSS</td>
+    {% endif %}
     <td>
         v2 : <s>{{ event.details.old.v2 | default('unknown') }}</s>
         <br/>

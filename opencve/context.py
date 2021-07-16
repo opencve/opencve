@@ -155,3 +155,14 @@ def _report_excerpt(items):
 
 def _is_active(route):
     return request.endpoint in route.split(",")
+
+
+def _event_excerpt(details):
+    output = []
+    if "changed" in details:
+        output.append(f"<strong>{len(details['changed'])}</strong> changed")
+    if "added" in details:
+        output.append(f"<strong>{len(details['added'])}</strong> added")
+    if "removed" in details:
+        output.append(f"<strong>{len(details['removed'])}</strong> removed")
+    return ", ".join(output)

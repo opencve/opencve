@@ -1,11 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - {{ super() }}{% endblock %}
-
 {% block content %}
+{% from "_macros.html" import render_tag %}
 
 <section class="content-header">
-    <h1>Dashboard</h1>
+    <h1>Last CVE updates</h1>
     <ol class="breadcrumb">
         <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
         <li class="active">Dashboard</li>
@@ -14,115 +13,135 @@
 
 <section class="content">
     <div class="row">
-        <div class="col-md-9">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Filter</h3>
-                </div>
-                <div class="box-body">
-                    <div class="row">
-                        <div class="col-sm-4 col-md-4 col-lg-4">
-                            <form method="GET">
-                                <div class="input-group pull-left">
-                                    <span class="input-group-btn">
-                                    <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
-                                    </span>
-                                        <input type="text" placeholder="Search" class="form-control" name="search"
-                                            value="{% if request.args.get('search') %}{{ request.args.get('search') }}{% endif %}">
-                                </div>
-                            </form>
-                        </div>
-                        <div class="col-sm-8 col-md-8 col-lg-8">
-                            <div class="pull-right">
-                                <a class="btn {% if request.args.get('cvss') %}btn-default{% else %}btn-primary{% endif %}"
-                                    href="{{ url_for('main.home', search=request.args.get('search')) }}">ALL</a>
-                                <div class="btn-group">
-                                    <a class="btn {% if request.args.get('cvss') == 'none' %}btn-primary{% else %}btn-default{% endif %}"
-                                    href="{{ url_for('main.home', cvss='none', search=request.args.get('search')) }}"
-                                    type="button">NONE (0.0)</a>
-                                    <a class="btn {% if request.args.get('cvss') == 'low' %}btn-primary{% else %}btn-default{% endif %}"
-                                    href="{{ url_for('main.home', cvss='low', search=request.args.get('search')) }}"
-                                    type="button">LOW (0.1 - 3.9)</a>
-                                    <a class="btn {% if request.args.get('cvss') == 'medium' %}btn-primary{% else %}btn-default{% endif %}"
-                                    href="{{ url_for('main.home', cvss='medium', search=request.args.get('search')) }}"
-                                    type="button">MEDIUM (4.0 - 6.9)</a>
-                                    <a class="btn {% if request.args.get('cvss') == 'high' %}btn-primary{% else %}btn-default{% endif %}"
-                                    href="{{ url_for('main.home', cvss='high', search=request.args.get('search')) }}"
-                                    type="button">HIGH (7.0 - 8.9)</a>
-                                    <a class="btn {% if request.args.get('cvss') == 'critical' %}btn-primary{% else %}btn-default{% endif %}"
-                                    href="{{ url_for('main.home', cvss='critical', search=request.args.get('search')) }}"
-                                    type="button">CRITICAL (9.0 - 10.0)</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="clearfix"></div>
-                    </div>
-                </div>
-            </div>
+        <div class="col-md-8">
+            {% if not changes.items %}
+            <p class="alert alert-info">
+                {% if not current_user.vendors and not current_user.products %}
+                You have to subscribe to <a href="{{ url_for('main.vendors') }}">products and vendors</a> to see their last changes.
+                {% else %}
+                Your subscriptions haven't changed yet.
+                {% endif %}
+            </p>
+            {% else %}
+                <ul class="timeline">
 
-            <div class="row">
-                <div class='col-md-12'>
-                    {% if cves.items %}
-                    <div class="box box-primary">
-                        <div class="box-body table-responsive no-padding">
-                            <table class="table">
-                                <thead>
-                                <th>CVE</th>
-                                <th>Vendors</th>
-                                <th>Products</th>
-                                <th class="text-center">Updated</th>
-                                <th class="text-center">CVSS v2</th>
-                                <th class="text-center">CVSS v3</th>
-                                </thead>
-                                {% for cve in cves.items %}
-                                <tr>
-                                    <td class="col-md-2"><a href="{{ url_for('.cve', cve_id=cve.cve_id) }}"><strong>{{
-                                        cve.cve_id }}</strong></a></td>
-                                    <td class="col-md-3">{{ cve.vendors|vendors_excerpt|safe }}</td>
-                                    <td class="col-md-3">{{ cve.vendors|products_excerpt|safe }}</td>
-                                    <td class="col-md-2 text-center">{{ cve.updated_at.strftime('%Y-%m-%d') }}</td>
-                                    {% if cve.json.impact.baseMetricV2 %}
-                                    <td class="col-md-1 text-center"><span
-                                            class="label {{ cvss_bg(cve.json.impact.baseMetricV2.cvssV2.baseScore)[1] }}">{{ cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ cve.json.impact.baseMetricV2.severity }}</span>
-                                    </td>
-                                    {% else %}
-                                    <td class="col-md-1 text-center"><span class="label label-default">N/A</span></td>
-                                    {% endif %}
-                                    {% if cve.json.impact.baseMetricV3 %}
-                                    <td class="col-md-1 text-center"><span
-                                            class="label {{ cvss_bg(cve.json.impact.baseMetricV3.cvssV3.baseScore)[1] }}">{{ cve.json.impact.baseMetricV3.cvssV3.baseScore }} {{ cve.json.impact.baseMetricV3.cvssV3.baseSeverity }}</span>
-                                    </td>
-                                    {% else %}
-                                    <td class="col-md-1 text-center"><span class="label label-default">N/A</span></td>
-                                    {% endif %}
-                                </tr>
-                                <tr>
-                                    <td class="col-md-12 no-bordered" colspan="5">{{ cve.summary }}</td>
-                                </tr>
-                                {% endfor %}
-                            </table>
+                    {% set ns = namespace(last_day=false) %}
+                    {% for change in changes.items %}
+                    {% set ns.current_day = change.created_at.strftime("%A, %B %d") %}
+                    <li class="time-label">
+                        {% if ns.last_day != ns.current_day %}
+                        <span class="bg-blue bg-opencve">
+                            {{ ns.current_day }}
+                        </span>
+                        {% endif %}
+                    </li>
 
-                            {% if pagination %}
-                            <div class="center">
-                                {{ pagination.links }}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
+                    {% if (change.events|length == 1) and (change.events[0].type.code == 'new_cve') %}
+                    {% set new = true %}
                     {% else %}
-                    <p class="alert alert-info">No CVE found, subscribe to <a href="{{ url_for('main.vendors') }}">vendors
-                        and products</a> to display their CVE in your dashboard.</p>
+                    {% set new = false %}
                     {% endif %}
+                    <li>
+                        {% if new %}
+                        <i class="fa fa-plus bg-red"></i>
+                        {% else %}
+                        <i class="fa fa-edit bg-blue"></i>
+                        {% endif %}
+                        <div class="timeline-item">
+                            <span class="time"><i class="fa fa-clock-o"></i> {{ change.created_at.strftime("%H:%M") }}</span>
+                            <h3 class="timeline-header"><a href="{{ url_for('main.cve', cve_id=change.cve.cve_id) }}">{{ change.cve.cve_id }}</a> {% if new %}is a new CVE{% else %}has changed{% endif %}</h3>
+
+                            <div class="timeline-body">
+                                <div class="row">
+                                    <div class="col-md-9">
+                                        <p>{{ change.cve.summary }}</p>
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <table class="table">
+                                            <tbody>
+                                                <tr>
+                                                    <td class="no-bordered">CVSS v3</td>
+                                                    {% if change.cve.json.impact.baseMetricV3 %}
+                                                    <td class="no-bordered"><span class="label {{ cvss_bg(change.cve.json.impact.baseMetricV3.cvssV3.baseScore)[1] }} label-cvss">{{ change.cve.json.impact.baseMetricV3.cvssV3.baseScore }} {{ change.cve.json.impact.baseMetricV3.cvssV3.baseSeverity }}</span></td>
+                                                    {% else %}
+                                                    <td>--</td>
+                                                    {% endif%}
+                                                </tr>
+                                                <tr>
+                                                    <td>CVSS v2</td>
+                                                    {% if change.cve.json.impact.baseMetricV2 %}
+                                                    <td><span class="label {{ cvss_bg(change.cve.json.impact.baseMetricV2.cvssV2.baseScore)[1] }} label-cvss">{{ change.cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ change.cve.json.impact.baseMetricV2.severity }}</span></td>
+                                                    {% else %}
+                                                    <td>--</td>
+                                                    {% endif%}
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                {% if not new %}
+                                <div class="box-group" id="{{ change.id }}">
+                                    {% for event in change.events %}
+                                    <div class="panel box box-changes">
+                                        <div class="box-header collapsed pointer change-collapsed" data-toggle="collapse" data-parent="#{{ change.id }}" href="#{{ event.id }}" aria-expanded="false">
+                                            <h4 class="box-title">{{ event.type.code|capitalize }} changed
+                                            <span class="box-meta">{{ event.details|event_excerpt|safe }}<i class="fa fa-arrow-circle-o-down"></i><i class="fa fa-arrow-circle-o-up"></i></span>
+                                            </h4>
+                                        </div>
+                                        <div id="{{ event.id }}" class="panel-collapse collapse" aria-expanded="false">
+                                            <div class="box-body">
+                                                <table class="table">
+                                                    <thead>
+                                                    <th>Values Removed</th>
+                                                    <th>Values Added</th>
+                                                    </thead>
+                                                    <tbody>
+                                                    {% set template = 'report/' + event.type.code + '_details.html' %}
+                                                    {% set hide_type = true %}
+                                                    {% include template %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+
+                                </div>
+                                {% endif %}
+
+                                <table class="table no-margin-bottom">
+                                    <thead>
+                                        <th>Vendors</th>
+                                        <th>Products</th>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>{{ change.cve.vendors|vendors_excerpt|safe }}</td>
+                                            <td>{{ change.cve.vendors|products_excerpt|safe }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </li>
+                    {% set ns.last_day = ns.current_day %}
+                    {% endfor %}
+                </ul>
+                <div class="center">
+                    {{ pagination.links }}
                 </div>
-            </div>
+            {% endif %}
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-4">
 
             {% if current_user.vendors or current_user.products %}
             <div class="box box-primary">
                 <div class="box-header">
                     <div class="box-title">Subscriptions</div>
+                    <div class="box-tools pull-right">
+                        <a class="btn btn-box-tool" href="{{ url_for('main.subscriptions') }}" data-toggle="tooltip" data-container="body" data-placement="left" title="Manage your subscriptions"><i class="fa fa-gears"></i></a>
+                    </div>
                 </div>
                 <div class="box-body box-subscriptions">
                     {% if current_user.vendors %}
@@ -147,6 +166,55 @@
                 </div>
             </div>
             {% endif %}
+
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Tags</h3>
+                    <div class="box-tools pull-right">
+                        <a class="btn btn-box-tool" href="{{ url_for('main.tags') }}" data-toggle="tooltip" data-container="body" data-placement="left" title="Manage your tags"><i class="fa fa-gears"></i></a>
+                    </div>
+                </div>
+                {% if current_user.tags %}
+                <div class="box-body">
+                    {% for tag in current_user.tags %}
+                    <a
+                        href="{{ url_for('main.cves', tag=tag.name) }}"
+                        data-toggle="tooltip"
+                        data-container="body"
+                        title="{{ tag.description }}"
+                    >{{ render_tag(tag) }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Last Reports</h3>
+                    <div class="box-tools pull-right">
+                        <a class="btn btn-box-tool" href="{{ url_for('main.reports') }}" data-toggle="tooltip" data-container="body" data-placement="left" title="See all your reports"><i class="fa fa-list-ul"></i></a>
+                    </div>
+                </div>
+                <div class="box-body">
+                    <table class="table">
+                        <thead>
+                        <tr><th class="col-md-2">Date</th>
+                        <th class="col-md-1 text-center">Alerts</th>
+                        <th>Vendors &amp; Products</th>
+                        </tr></thead>
+
+                        <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td><a href="{{ url_for('main.report', link=report.public_link) }}">04/01/21</a></td>
+                            <td class="text-center">{{ report.alerts|length }}</td>
+                            <td>{{ report.details|report_excerpt|safe }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </section>

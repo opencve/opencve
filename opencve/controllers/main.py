@@ -9,6 +9,7 @@ from opencve.context import (
     _cvss_bg,
     _cvss_percent,
     _excerpt,
+    _event_excerpt,
     _humanize_filter,
     _metric_bg,
     _report_excerpt,
@@ -74,6 +75,11 @@ def products_excerpt(s):
 @main.app_template_filter("report_excerpt")
 def report_excerpt(s):
     return _report_excerpt(s)
+
+
+@main.app_template_filter("event_excerpt")
+def event_excerpt(s):
+    return _event_excerpt(s)
 
 
 @main.app_template_filter("custom_safe")

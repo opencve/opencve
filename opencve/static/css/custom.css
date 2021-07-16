@@ -257,3 +257,46 @@ pre.plainJSON{
 .preview-tag {
   margin-left: 20px;
 }
+
+.bg-opencve {
+  background-color: #2b4049 !important;
+}
+
+.timeline,
+.timeline > li,
+.timeline-item {
+  margin-right: 0px !important;
+}
+
+.timeline > li > .timeline-item > .time {
+  font-size: 14px;
+}
+
+.box-group > .box-changes {
+  border: 1px solid #d2d2d2 !important;
+}
+
+.box-group > .box {
+  margin-bottom: 8px;
+}
+
+.box-title {
+  display: block !important;
+}
+
+.box-meta {
+  float: right;
+  color: #757575;
+  font-size: 16px;
+}
+
+.box-meta > i {
+  margin-left: 20px;
+}
+
+.change-collapsed[aria-expanded=true] .fa-arrow-circle-o-down {
+  display: none;
+}
+.change-collapsed[aria-expanded=false] .fa-arrow-circle-o-up {
+  display: none;
+}
