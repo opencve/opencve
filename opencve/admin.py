@@ -1,8 +1,8 @@
 import datetime
 import json
+from difflib import HtmlDiff
 
 import arrow
-from difflib import HtmlDiff
 from flask import abort
 from flask_admin import AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
@@ -10,6 +10,29 @@ from flask_user import current_user
 from sqlalchemy import desc, func
 from sqlalchemy.orm import joinedload
 from wtforms import PasswordField, validators
+
+
+class CustomHtmlHTML(HtmlDiff):
+    def __init__(self, *args, **kwargs):
+        self._table_template = """
+        <table class="table table-condensed">
+            <thead>
+                <tr>
+                    <th colspan="2">Old JSON</th>
+                    <th colspan="2">New JSON</th>
+                </tr>
+            </thead>
+            <tbody>%(data_rows)s</tbody>
+        </table>"""
+        super().__init__(*args, **kwargs)
+
+    def _format_line(self, side, flag, linenum, text):
+        text = text.replace("&", "&amp;").replace(">", "&gt;").replace("<", "&lt;")
+        text = text.replace(" ", "&nbsp;").rstrip()
+        return '<td class="diff_header">%s</td><td class="break">%s</td>' % (
+            linenum,
+            text,
+        )
 
 
 class AuthModelView(ModelView):
@@ -208,12 +231,11 @@ class HomeView(AdminIndexView):
         else:
             previous_json = {}
 
-        differ = HtmlDiff(wrapcolumn=100)
+        differ = CustomHtmlHTML()
         diff = differ.make_table(
-            json.dumps(previous_json, sort_keys=True, indent=2).split("\n"),
-            json.dumps(change.json, sort_keys=True, indent=2).split("\n"),
-            "Old",
-            "New",
+            fromlines=json.dumps(previous_json, sort_keys=True, indent=2).split("\n"),
+            tolines=json.dumps(change.json, sort_keys=True, indent=2).split("\n"),
+            context=True,
         )
 
         return self.render(

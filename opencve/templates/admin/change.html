@@ -4,12 +4,34 @@
 {{ super() }}
 <style type="text/css">
         table.diff {font-family:Courier; border:medium;}
-        .diff_header {background-color:#e0e0e0}
+        .diff_header {background-color:#e0e0e0; width: 10px;}
         td.diff_header {text-align:right}
-        .diff_next {background-color:#c0c0c0}
-        .diff_add {background-color:#aaffaa}
-        .diff_chg {background-color:#ffff77}
+        .diff_next {display: none;}
+        .diff_add {background-color:#ccffd8}
+        .diff_chg {background-color:#fff1b3}
         .diff_sub {background-color:#ffaaaa}
+        .table {width: 100%; border-collapse: collapse;}
+        .table > tbody > tr > td,
+        .table > tbody > tr > th,
+        .table > tfoot > tr > td,
+        .table > tfoot > tr > th,
+        .table > thead > tr > td,
+        .table > thead > tr > th {
+            border-top: 0px;
+        }
+        .table-condensed > tbody > tr > td,
+        .table-condensed > tbody > tr > th,
+        .table-condensed > tfoot > tr > td,
+        .table-condensed > tfoot > tr > th,
+        .table-condensed > thead > tr > td,
+        .table-condensed > thead > tr > th {
+            padding: 3px;
+        }
+        .table > tbody > tr {
+            line-height: 14px;
+            height: 14px;
+        }
+        td.break { word-wrap: break-word; max-width: 1px; }
 
 </style>
 {% endblock %}
