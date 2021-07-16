@@ -1,6 +1,8 @@
 {% if event.details["removed"] or event.details["added"] %}
 <tr>
+    {% if not hide_type %}
     <td>References</td>
+    {% endif %}
     <td>
         {% if event.details["removed"] %}
         <ul>{% for ref in event.details["removed"] %}
@@ -23,7 +25,9 @@
 
 {% for ref in event.details["changed"] %}
 <tr>
-    <td>Reference</td>
+    {% if not hide_type %}
+    <td>References</td>
+    {% endif %}
     <td><s>({{ ref.old.refsource }}) {{ ref.old.url }} - {{ ref.old.tags|join(', ') }}</s></td>
     <td>({{ ref.new.refsource }}) {{ ref.new.url }} - {{ ref.new.tags|join(', ') }}</td>
 </tr>
