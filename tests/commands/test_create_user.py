@@ -52,3 +52,28 @@ def test_create_admin(app):
     assert user.username == "john"
     assert user.email == "john@domain.com"
     assert user.admin
+
+
+def test_create_user_already_exists(app):
+    runner = app.test_cli_runner()
+
+    result = runner.invoke(
+        create_user, ["john", "john@domain.com"], input="password\npassword\n"
+    )
+    assert result.exit_code == 0
+    assert "[*] User john created." in result.output
+
+    result = runner.invoke(
+        create_user, ["john", "john@domain.com"], input="password\npassword\n"
+    )
+    assert result.exit_code == 2
+    assert "Error: Invalid value for username: john already exists." in result.output
+
+    result = runner.invoke(
+        create_user, ["john2", "john@domain.com"], input="password\npassword\n"
+    )
+    assert result.exit_code == 2
+    assert (
+        "Error: Invalid value for email: john@domain.com already exists."
+        in result.output
+    )

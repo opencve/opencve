@@ -19,6 +19,11 @@ from opencve.models.users import User
 @with_appcontext
 def create_user(username, email, password, admin):
     """Create a user or admin."""
+    if User.query.filter_by(username=username).first():
+        raise click.BadParameter(f"{username} already exists.", param_hint="username")
+    if User.query.filter_by(email=email).first():
+        raise click.BadParameter(f"{email} already exists.", param_hint="email")
+
     user = User(
         username=username,
         email=email,
