@@ -116,3 +116,39 @@ def test_unsubscribe_to_product_subscribed_to(login, client, create_vendor):
         assert response.status_code == 200
         assert b'"message": "product removed"' in response.data
         assert b'"status": "ok"' in response.data
+
+
+def test_subscribe_to_invalid_vendor_id(login, client):
+
+    with client:
+        response = client.post(
+            "/subscriptions",
+            data={
+                "obj": "vendor",
+                "id": "invalid_id",
+                "action": "subscribe",
+            },
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 400
+        assert b'"message":"vendor invalid_id does not exist"' in response.data
+        assert b'"status":"error"' in response.data
+
+
+def test_subscribe_to_invalid_product_id(login, client):
+
+    with client:
+        response = client.post(
+            "/subscriptions",
+            data={
+                "obj": "product",
+                "id": "invalid_id",
+                "action": "subscribe",
+            },
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 400
+        assert b'"message":"product invalid_id does not exist"' in response.data
+        assert b'"status":"error"' in response.data
