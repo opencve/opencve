@@ -118,7 +118,7 @@ def test_unsubscribe_to_product_subscribed_to(login, client, create_vendor):
         assert b'"status": "ok"' in response.data
 
 
-def test_subscribe_to_invalid_vendor_id(login, client):
+def test_subscribe_to_invalid_vendor_id_with_invalid_uuid(login, client):
 
     with client:
         response = client.post(
@@ -132,11 +132,11 @@ def test_subscribe_to_invalid_vendor_id(login, client):
         )
 
         assert response.status_code == 400
-        assert b'"message":"vendor invalid_id does not exist"' in response.data
-        assert b'"status":"error"' in response.data
+        assert response.json["message"] == "vendor invalid_id does not exist"
+        assert response.json["status"] == "error"
 
 
-def test_subscribe_to_invalid_product_id(login, client):
+def test_subscribe_to_invalid_product_id_with_invalid_uuid(login, client):
 
     with client:
         response = client.post(
@@ -150,5 +150,47 @@ def test_subscribe_to_invalid_product_id(login, client):
         )
 
         assert response.status_code == 400
-        assert b'"message":"product invalid_id does not exist"' in response.data
-        assert b'"status":"error"' in response.data
+        assert response.json["message"] == "product invalid_id does not exist"
+        assert response.json["status"] == "error"
+
+
+def test_subscribe_to_invalid_vendor_id_with_valid_uuid(login, client):
+
+    with client:
+        response = client.post(
+            "/subscriptions",
+            data={
+                "obj": "vendor",
+                "id": "38e0697e-b406-4724-80af-e39e354b291c",
+                "action": "subscribe",
+            },
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 400
+        assert (
+            response.json["message"]
+            == "vendor 38e0697e-b406-4724-80af-e39e354b291c does not exist"
+        )
+        assert response.json["status"] == "error"
+
+
+def test_subscribe_to_invalid_product_id_with_valid_uuid(login, client):
+
+    with client:
+        response = client.post(
+            "/subscriptions",
+            data={
+                "obj": "product",
+                "id": "38e0697e-b406-4724-80af-e39e354b291c",
+                "action": "subscribe",
+            },
+            follow_redirects=True,
+        )
+
+        assert response.status_code == 400
+        assert (
+            response.json["message"]
+            == "product 38e0697e-b406-4724-80af-e39e354b291c does not exist"
+        )
+        assert response.json["status"] == "error"
