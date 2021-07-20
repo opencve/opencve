@@ -10,6 +10,8 @@ from opencve.models.products import Product
 from opencve.models.vendors import Vendor
 from opencve.models import is_valid_uuid
 
+from werkzeug.exceptions import HTTPException
+
 
 @main.route("/subscriptions", methods=["POST"])
 @login_required
@@ -35,12 +37,15 @@ def subscribe_to_tag():
 
     # Vendor
     if request.form["obj"] == "vendor":
-        if (
-            not is_valid_uuid(request.form["id"])
-            or str(Vendor.query.get(request.form["id"])) == "None"
-        ):
+        if not is_valid_uuid(request.form["id"]):
             return _bad_request(request.form["obj"], request.form["id"])
-        vendor = VendorController.get({"id": request.form["id"]})
+        else:
+            try:
+                vendor = Vendor.query.get(request.form["id"])
+                if vendor is None:
+                    return _bad_request(request.form["obj"], request.form["id"])
+            except HTTPException:
+                return _bad_request(request.form["obj"], request.form["id"])
 
         # Subscribe
         if request.form["action"] == "subscribe":
@@ -60,12 +65,15 @@ def subscribe_to_tag():
 
     # Product
     elif request.form["obj"] == "product":
-        if (
-            not is_valid_uuid(request.form["id"])
-            or str(Product.query.get(request.form["id"])) == "None"
-        ):
+        if not is_valid_uuid(request.form["id"]):
             return _bad_request(request.form["obj"], request.form["id"])
-        product = Product.query.get(request.form["id"])
+        else:
+            try:
+                product = Product.query.get(request.form["id"])
+                if product is None:
+                    return _bad_request(request.form["obj"], request.form["id"])
+            except HTTPException:
+                return _bad_request(request.form["obj"], request.form["id"])
 
         # Subscribe
         if request.form["action"] == "subscribe":
