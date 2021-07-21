@@ -5,7 +5,6 @@ from flask_user import current_user, login_required
 
 from opencve.controllers.main import main
 from opencve.extensions import db
-from opencve.controllers.vendors import VendorController
 from opencve.models.products import Product
 from opencve.models.vendors import Vendor
 from opencve.models import is_valid_uuid
