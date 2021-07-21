@@ -39,13 +39,9 @@ def subscribe_to_tag():
     if request.form["obj"] == "vendor":
         if not is_valid_uuid(request.form["id"]):
             return _bad_request(request.form["obj"], request.form["id"])
-        else:
-            try:
-                vendor = Vendor.query.get(request.form["id"])
-                if vendor is None:
-                    return _bad_request(request.form["obj"], request.form["id"])
-            except HTTPException:
-                return _bad_request(request.form["obj"], request.form["id"])
+        vendor = Vendor.query.get(request.form["id"])
+        if not vendor:
+            return _bad_request(request.form["obj"], request.form["id"])
 
         # Subscribe
         if request.form["action"] == "subscribe":
