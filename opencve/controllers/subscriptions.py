@@ -67,13 +67,9 @@ def subscribe_to_tag():
     elif request.form["obj"] == "product":
         if not is_valid_uuid(request.form["id"]):
             return _bad_request(request.form["obj"], request.form["id"])
-        else:
-            try:
-                product = Product.query.get(request.form["id"])
-                if product is None:
-                    return _bad_request(request.form["obj"], request.form["id"])
-            except HTTPException:
-                return _bad_request(request.form["obj"], request.form["id"])
+        product = Product.query.get(request.form["id"])
+        if not product:
+            return _bad_request(request.form["obj"], request.form["id"])
 
         # Subscribe
         if request.form["action"] == "subscribe":
