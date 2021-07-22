@@ -1,17 +1,26 @@
 import json
 
-from flask import request
+from flask import request, jsonify
 from flask_user import current_user, login_required
 
 from opencve.controllers.main import main
 from opencve.extensions import db
 from opencve.models.products import Product
 from opencve.models.vendors import Vendor
+from opencve.models import is_valid_uuid
+
+from werkzeug.exceptions import HTTPException
 
 
 @main.route("/subscriptions", methods=["POST"])
 @login_required
 def subscribe_to_tag():
+    def _bad_request(type, id):
+        return (
+            jsonify({"status": "error", "message": f"{type} {id} does not exist"}),
+            400,
+        )
+
     if not current_user.is_authenticated:
         return json.dumps({"status": "error", "message": "not allowed"})
 
@@ -27,7 +36,11 @@ def subscribe_to_tag():
 
     # Vendor
     if request.form["obj"] == "vendor":
+        if not is_valid_uuid(request.form["id"]):
+            return _bad_request(request.form["obj"], request.form["id"])
         vendor = Vendor.query.get(request.form["id"])
+        if not vendor:
+            return _bad_request(request.form["obj"], request.form["id"])
 
         # Subscribe
         if request.form["action"] == "subscribe":
@@ -47,7 +60,11 @@ def subscribe_to_tag():
 
     # Product
     elif request.form["obj"] == "product":
+        if not is_valid_uuid(request.form["id"]):
+            return _bad_request(request.form["obj"], request.form["id"])
         product = Product.query.get(request.form["id"])
+        if not product:
+            return _bad_request(request.form["obj"], request.form["id"])
 
         # Subscribe
         if request.form["action"] == "subscribe":
