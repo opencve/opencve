@@ -199,15 +199,13 @@
                     <table class="table">
                         <thead>
                         <tr><th class="col-md-2">Date</th>
-                        <th class="col-md-1 text-center">Alerts</th>
                         <th>Vendors &amp; Products</th>
                         </tr></thead>
 
                         <tbody>
                         {% for report in reports %}
                         <tr>
-                            <td><a href="{{ url_for('main.report', link=report.public_link) }}">04/01/21</a></td>
-                            <td class="text-center">{{ report.alerts|length }}</td>
+                            <td><a href="{{ url_for('main.report', link=report.public_link) }}">{{ report.created_at.strftime("%d/%m/%y") }}</a></td>
                             <td>{{ report.details|report_excerpt|safe }}</td>
                         </tr>
                         {% endfor %}
