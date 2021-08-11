@@ -43,7 +43,9 @@ def home():
 
     objects = []
     pagination = None
-    reports = ReportController.list_items({"user_id": current_user.id})
+
+    # Only display the 5 last reports
+    reports = ReportController.list_items({"user_id": current_user.id})[:5]
 
     # If user has subscriptions we can display the last activities of the vendors
     if vendors:
