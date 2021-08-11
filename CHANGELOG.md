@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.1 - 2021-08-11
+### Added
+- tests: add tests on subscriptions controller
+- tests: added test for admin
+- feat: better JSON diff in admin view
+- feat: add the last CVE activities in homepage
+- tests: add tests on last activities feature
+
+### Fixed
+- fix: improve error messages in create-user command
+- fix: subscribe to invalid ID throws 400 instead of 500 error
+
 ## 1.2.0 - 2021-06-19
 ### Added
 - Improved search functionality on /cve
