@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2 - 2021-08-12
+
+### Fixed
+- fix: reduce the list of reports to 5 items in homepage
+- fix: remove hardcoded date and number of report alerts in homepage
+
 ## 1.2.1 - 2021-08-11
 ### Added
 - tests: add tests on subscriptions controller
