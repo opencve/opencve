@@ -14,20 +14,20 @@
 <section class="content">
     <div class="row">
         <div class="col-md-8">
-            {% if not changes.items %}
+            {% if not changes %}
             <p class="alert alert-info">
                 {% if not current_user.vendors and not current_user.products %}
                 You have to subscribe to <a href="{{ url_for('main.vendors') }}">products and vendors</a> to see their last changes.
                 {% else %}
-                Your subscriptions haven't changed yet.
+                No changes available.
                 {% endif %}
             </p>
             {% else %}
                 <ul class="timeline">
 
                     {% set ns = namespace(last_day=false) %}
-                    {% for change in changes.items %}
-                    {% set ns.current_day = change.created_at.strftime("%A, %B %d") %}
+                    {% for change in changes %}
+                    {% set ns.current_day = change.created_at.strftime("%d %b %Y") %}
                     <li class="time-label">
                         {% if ns.last_day != ns.current_day %}
                         <span class="bg-blue bg-opencve">
@@ -48,7 +48,7 @@
                         <i class="fa fa-edit bg-blue"></i>
                         {% endif %}
                         <div class="timeline-item">
-                            <span class="time"><i class="fa fa-clock-o"></i> {{ change.created_at.strftime("%H:%M") }}</span>
+                            <span class="time" title="{{ change.created_at.strftime('%d %b %Y, %H:%M') }}"><i class="fa fa-clock-o"></i> {{ change.created_at.strftime("%H:%M") }}</span>
                             <h3 class="timeline-header"><a href="{{ url_for('main.cve', cve_id=change.cve.cve_id) }}">{{ change.cve.cve_id }}</a> {% if new %}is a new CVE{% else %}has changed{% endif %}</h3>
 
                             <div class="timeline-body">
@@ -128,7 +128,13 @@
                     {% endfor %}
                 </ul>
                 <div class="center">
-                    {{ pagination.links }}
+                    <ul class="pagination">
+                        {% set prev = page - 1 %}
+                        {% if prev %}
+                        <li class="previous"><a href="{{ url_for('main.home', page=prev) }}">  « prev </a></li>
+                        {% endif %}
+                        <li class="next"><a href="{{ url_for('main.home', page=page+1) }}">next »</a></li>
+                    </ul>
                 </div>
             {% endif %}
         </div>

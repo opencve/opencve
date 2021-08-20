@@ -1,16 +1,17 @@
 from flask import current_app as app
 from flask import abort, redirect, render_template, request, url_for
-from flask_paginate import Pagination
 from flask_user import current_user
 from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import array
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, aliased
 
 from opencve.constants import PRODUCT_SEPARATOR
 from opencve.controllers.main import main, welcome
 from opencve.controllers.reports import ReportController
+from opencve.extensions import db
 from opencve.models.changes import Change
 from opencve.models.cve import Cve
+from opencve.models.events import Event
 
 
 @welcome.route("/welcome")
@@ -41,36 +42,29 @@ def home():
         [f"{p.vendor.name}{PRODUCT_SEPARATOR}{p.name}" for p in current_user.products]
     )
 
-    objects = []
-    pagination = None
+    # Handle the page parameter
+    page = request.args.get("page", type=int, default=1)
+    page = 1 if page < 1 else page
+
+    # Default values
+    per_page = app.config["ACTIVITIES_PER_PAGE"]
+    changes = []
 
     # Only display the 5 last reports
     reports = ReportController.list_items({"user_id": current_user.id})[:5]
 
     # If user has subscriptions we can display the last activities of the vendors
     if vendors:
-        page = request.args.get("page", type=int, default=1)
-        query = (
+        changes = (
             Change.query.options(joinedload("cve"))
             .options(joinedload("events"))
             .filter(Change.cve_id == Cve.id)
             .filter(Cve.vendors.has_any(array(vendors)))
             .filter(Change.events.any())
             .order_by(Change.created_at.desc())
-            .limit(500)
-            .from_self()
+            .limit(per_page)
+            .offset((page - 1) * per_page)
+            .all()
         )
 
-        # Make the pagination
-        objects = query.paginate(page, app.config["ACTIVITIES_PER_PAGE"], True)
-        pagination = Pagination(
-            page=page,
-            total=objects.total,
-            per_page=app.config["ACTIVITIES_PER_PAGE"],
-            record_name="cves",
-            css_framework="bootstrap3",
-        )
-
-    return render_template(
-        "home.html", changes=objects, pagination=pagination, reports=reports
-    )
+    return render_template("home.html", changes=changes, reports=reports, page=page)
