@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.3 - 2021-08-31
+
+### Fixed
+- fix: sort the activities in homepage and increase performance of SQL query
+
 ## 1.2.2 - 2021-08-12
 
 ### Fixed
