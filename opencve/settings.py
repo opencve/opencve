@@ -138,6 +138,13 @@ class Config(object):
         "mail", "email_from", fallback="no-reply@opencve.io"
     )
 
+    # exploit
+    EXPLOIT_LINK = config.get("core", "exploit_link", fallback="exploit-db.com,packetstormsecurity.com")
+    EXPLOIT_TAG_NIST = config.get("core", "exploit_tag_nist", fallback="Exploit")
+    EXPLOITED_LOCAL = config.get("core", "exploited_local", fallback="")
+    RSS_EXPLOITED = config.get("core", "rss_exploited", fallback="https://us-cert.cisa.gov/ncas/alerts.xml")
+    UPDATE_RSS = config.get("core", "update_rss", fallback="360")
+
     @staticmethod
     def init_app(app):
         # Flask-DebugToolbar

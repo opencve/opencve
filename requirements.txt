@@ -36,6 +36,8 @@ werkzeug==1.0.1
 itsdangerous==1.1.0
 markupSafe==1.1.1
 jinja2==2.11.3
+feedparser==6.0.8
+
 
 # Required by WTForms (new bug?)
 # see: https://stackoverflow.com/questions/61356834/wtforms-install-email-validator-for-email-validation-support

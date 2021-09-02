@@ -20,7 +20,8 @@ class Cve(BaseModel):
 
     cve_id = db.Column(db.String(), nullable=False)
     json = db.Column(JSONB)
-
+    exploit = db.Column(db.Boolean, default=False)
+    exploited = db.Column(db.Boolean, default=False)
     # We used initially secondary relationships to fetch the list of
     # associated vendors, products and cwes. But it was complicated
     # to maintain, and the performance were poor. So we now use the

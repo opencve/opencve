@@ -36,6 +36,31 @@ def subscribe_to_tag():
 
     # Vendor
     if request.form["obj"] == "vendor":
+        # Mass subscribe
+        if request.form["id"] == "all" and request.form["action"] == "subscribe":
+            query = Vendor.query.filter_by()
+            modified=False
+            for vendor in query:
+                if vendor not in current_user.vendors:
+                    current_user.vendors.append(vendor)
+                    modified=True
+            if modified:
+                db.session.commit()
+
+            return json.dumps({"status": "ok", "message": "all vendors added"})
+        # Mass unsubscribe
+        if request.form["id"] == "all" and request.form["action"] == "unsubscribe":
+            query = Vendor.query.filter_by()
+            modified=False
+            for vendor in query:
+                if vendor in current_user.vendors:
+                    current_user.vendors.remove(vendor)
+                    modified=True
+            if modified:
+                db.session.commit()
+
+            return json.dumps({"status": "ok", "message": "all vendors removed"})
+
         if not is_valid_uuid(request.form["id"]):
             return _bad_request(request.form["obj"], request.form["id"])
         vendor = Vendor.query.get(request.form["id"])

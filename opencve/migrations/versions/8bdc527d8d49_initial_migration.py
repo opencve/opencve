@@ -29,6 +29,18 @@ def upgrade():
         sa.Column("summary", sa.String(), nullable=False),
         sa.Column("cvss2", sa.Float(), nullable=True),
         sa.Column("cvss3", sa.Float(), nullable=True),
+        sa.Column(
+            "exploit",
+            sa.Boolean(),
+            server_default=sa.text("false"),
+            nullable=False,
+        ),
+        sa.Column(
+            "exploited",
+            sa.Boolean(),
+            server_default=sa.text("false"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_cves_created_at"), "cves", ["created_at"], unique=False)
@@ -240,6 +252,9 @@ def upgrade():
                 "cvss",
                 "summary",
                 "cwes",
+                "exploit",
+                "exploited",
+                "exploit_or_exploited",
                 name="event_types",
             ),
             nullable=True,

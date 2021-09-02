@@ -26,6 +26,7 @@ class CveController(BaseController):
         "vendor": {"type": str},
         "product": {"type": str},
         "cvss": {"type": str},
+        "exploit": {"type": str},
         "cwe": {"type": str},
         "tag": {"type": str},
         "user_id": {"type": str},
@@ -97,6 +98,21 @@ class CveController(BaseController):
 
             if args.get("cvss").lower() == "critical":
                 query = query.filter(and_(Cve.cvss3 >= 9.0, Cve.cvss3 <= 10.0))
+
+        # Filter by exploit public or exploited in wild
+        if args.get("exploit") in [
+            "1",
+            "2",
+            "3",
+        ]:
+            if args.get("exploit") == "1":
+                query = query.filter(Cve.exploit == True)
+
+            if args.get("exploit") == "2":
+                query = query.filter(Cve.exploited == True)
+
+            if args.get("exploit").lower() == "3":
+                query = query.filter(or_(Cve.exploited == True, Cve.exploit == True))
 
         # Filter by vendor and product
         if vendor_query and product_query:

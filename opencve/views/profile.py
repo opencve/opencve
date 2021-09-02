@@ -31,7 +31,7 @@ def notifications():
         frequency=current_user.frequency_notifications.code,
     )
 
-    filters = current_user.filters_notifications or {"event_types": [], "cvss": 0}
+    filters = current_user.filters_notifications or {"event_types": [], "cvss": 0, "exploit_or_exploited": False}
     filters_notifications_form = FiltersNotificationForm(
         obj=current_user,
         new_cve=True if "new_cve" in filters["event_types"] else False,
@@ -40,6 +40,9 @@ def notifications():
         cpes=True if "cpes" in filters["event_types"] else False,
         summary=True if "summary" in filters["event_types"] else False,
         cwes=True if "cwes" in filters["event_types"] else False,
+        exploit=True if "exploit" in filters["event_types"] else False,
+        exploited=True if "exploited" in filters["event_types"] else False,
+        exploit_or_exploited=True if filters["exploit_or_exploited"] else False,
         cvss_score=filters["cvss"],
     )
 
@@ -69,10 +72,11 @@ def notifications():
         ):
             filters = {
                 "event_types": [],
+                "exploit_or_exploited": filters_notifications_form.exploit_or_exploited.data,
                 "cvss": filters_notifications_form.cvss_score.data,
             }
 
-            for typ in ["new_cve", "references", "cvss", "cpes", "cwes", "summary"]:
+            for typ in ["new_cve", "references", "cvss", "cpes", "cwes", "summary", "exploit", "exploited"]:
                 if getattr(filters_notifications_form, typ).data:
                     filters["event_types"].append(typ)
 

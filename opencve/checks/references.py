@@ -2,6 +2,7 @@ import warnings
 
 from opencve.checks import BaseCheck
 from opencve.commands.utils import CveUtil
+from opencve.extensions import cel, db
 
 # Disable useless warnings in deepdiff
 with warnings.catch_warnings():
@@ -48,6 +49,29 @@ class References(BaseCheck):
             {"old": old_refs[url], "new": new_refs[url]} for url in modified_urls
         ]
 
+        # Check exploit
+        if (payload["changed"] or payload["added"]
+            and (cel.app.config["EXPLOIT_LINK"] or cel.app.config["EXPLOIT_TAG"])):
+            exploit_find = False
+            for refs_cve in self.cve_json["cve"]["references"]["reference_data"]:
+                if (
+                    cel.app.config["EXPLOIT_TAG_NIST"]
+                    and "tags" in refs_cve
+                    and cel.app.config["EXPLOIT_TAG_NIST"] in refs_cve["tags"]):
+                    self.cve_obj.exploit = True
+                    db.session.commit()
+                    break
+                if (
+                    cel.app.config["EXPLOIT_LINK"]
+                    and "url" in refs_cve):
+                    for links_refs in cel.app.config["EXPLOIT_LINK"].split(','):
+                        if links_refs in refs_cve["url"].lower():
+                            exploit_find = True
+                            break
+                    if exploit_find:
+                        self.cve_obj.exploit = True
+                        db.session.commit()
+                        break
         # Create the event with the references changes
         if payload["changed"] or payload["added"] or payload["removed"]:
             event = CveUtil.create_event(

@@ -25,6 +25,17 @@
             <div class="box box-primary">
                 <div class="box-header with-border">
                     <h3 class="box-title">Vendors ({{ vendors.total }})</h3>
+                    <div class="btn-group">
+                        {% if current_user.is_authenticated %}
+                        <button class="btn btn-default btn-xs subscribe"
+                                id="subscribe_vendor_all" type="button">Subscribe All
+                        </button>
+                        {% else %}
+                        <a class="btn btn-default btn-xs"
+                           href="{{ url_for('user.login', next=request.url) }}" data-toggle="tooltip"
+                           data-container="body" title="You must be signed in to subscribe">Subscribe</a>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover table-striped">

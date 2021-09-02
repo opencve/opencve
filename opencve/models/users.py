@@ -11,7 +11,8 @@ from opencve.models import BaseModel, users_products, users_vendors
 def get_default_filters():
     return {
         "cvss": 0,
-        "event_types": ["new_cve", "references", "cvss", "cpes", "summary", "cwes"],
+        "exploit_or_exploited": False,
+        "event_types": ["new_cve", "references", "cvss", "cpes", "summary", "cwes", "exploit", "exploited"],
     }
 
 

@@ -1,0 +1,40 @@
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="small-box bg-critical">
+            <div class="inner">
+                <h3>Additional information: </h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Exploit is public
+                        {% if cve.exploit %}
+                        <span class="pull-right label label-danger">True</span>
+                        {% else %}
+                        <span class="pull-right label label-default">Unknown</span>
+                        {% endif %}
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        CVE exploited in the wild
+                        {% if cve.exploited %}
+                        <span class="pull-right label label-danger">True</span>
+                        {% else %}
+                        <span class="pull-right label label-default">Unknown</span>
+                        {% endif %}
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

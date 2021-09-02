@@ -154,14 +154,24 @@ Vulnerabilities (CVE)
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <select class="form-control select2" name="cvss" data-placeholder="Filter by CVSS v3 score">
+                                    <select class="form-control select2" name="exploit" data-placeholder="Filter by exploitor exploited">
                                         <option></option>
-                                        <option {% if request.args.get('cvss') == 'none' %} selected="selected" {% endif %} value="none">None (0.0)</option>
-                                        <option {% if request.args.get('cvss') == 'low' %} selected="selected" {% endif %} value="low">Low (0.1 - 3.9)</option>
-                                        <option {% if request.args.get('cvss') == 'medium' %} selected="selected" {% endif %} value="medium">Medium (4.0 - 6.9)</option>
-                                        <option {% if request.args.get('cvss') == 'high' %} selected="selected" {% endif %} value="high">High (7.0 - 8.9)</option>
-                                        <option {% if request.args.get('cvss') == 'critical' %} selected="selected" {% endif %} value="critical">Critical (9.0 - 10.0)</option>
+                                        <option {% if request.args.get('exploit') == '1' %} selected="selected" {% endif %} value="1">Exploit in public</option>
+                                        <option {% if request.args.get('exploit') == '2' %} selected="selected" {% endif %} value="2">Exploited in wild</option>
+                                        <option {% if request.args.get('exploit') == '3' %} selected="selected" {% endif %} value="3">Exploit or exploited</option>
                                     </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                  <select class="form-control select2" name="cvss" data-placeholder="Filter by CVSS v3 score">
+                                      <option></option>
+                                      <option {% if request.args.get('cvss') == 'none' %} selected="selected" {% endif %} value="none">None (0.0)</option>
+                                      <option {% if request.args.get('cvss') == 'low' %} selected="selected" {% endif %} value="low">Low (0.1 - 3.9)</option>
+                                      <option {% if request.args.get('cvss') == 'medium' %} selected="selected" {% endif %} value="medium">Medium (4.0 - 6.9)</option>
+                                      <option {% if request.args.get('cvss') == 'high' %} selected="selected" {% endif %} value="high">High (7.0 - 8.9)</option>
+                                      <option {% if request.args.get('cvss') == 'critical' %} selected="selected" {% endif %} value="critical">Critical (9.0 - 10.0)</option>
+                                  </select>
                                 </div>
                             </div>
                             <div class="col-md-4">

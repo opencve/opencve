@@ -80,9 +80,27 @@ def handle_alerts():
             cvss_score = cve.cvss3
 
             if cvss_score and cvss_score < user.filters_notifications["cvss"]:
+                if not cve.exploited:
+                    logger.info(
+                        "Skip alert for {0} because of CVSSv3 filter ({1} < {2})".format(
+                            user.username, cvss_score, user.filters_notifications["cvss"]
+                        )
+                    )
+                    continue
+                else:
+                    logger.info(
+                        "Keep alert for {0} with of CVSSv3 filter ({1} < {2}) because exploited".format(
+                            user.username, cvss_score, user.filters_notifications["cvss"]
+                        )
+                    )
+
+            # Check Exploit & exploited
+            if ( user.filters_notifications["exploit_or_exploited"]
+                 and not (cve.exploit
+                 or cve.exploited)):
                 logger.info(
-                    "Skip alert for {0} because of CVSSv3 filter ({1} < {2})".format(
-                        user.username, cvss_score, user.filters_notifications["cvss"]
+                    "Skip alert for {0} because not exploit or not exploited".format(
+                        user.username
                     )
                 )
                 continue

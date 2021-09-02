@@ -23,7 +23,7 @@
                 </div>
             </div>
 
-            {% if cve.json.impact.baseMetricV3 or cve.json.impact.baseMetricV2 %}
+            {% if cve.json.impact.baseMetricV3 or cve.json.impact.baseMetricV2 or (cve.exploited or cve.exploit) %}
             <div class="nav-tabs-custom nav-tabs-primary">
                 <ul class="nav nav-tabs">
                     {% if cve.json.impact.baseMetricV3 %}
@@ -38,6 +38,12 @@
                                 class="label {{ cvss_bg(cve.json.impact.baseMetricV2.cvssV2.baseScore)[1] }} label-cvss">{{ cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ cve.json.impact.baseMetricV2.severity }}</span></a>
                     </li>
                     {% endif %}
+                    {% if cve.exploit or cve.exploited %}
+                    <li {% if not cve.json.impact.baseMetricV3 and not cve.json.impact.baseMetricV2 %}class="active" {% endif %}><a href="#exploit"
+                                                                                               data-toggle="tab">Additional information<span
+                                class="label {% if cve.exploited or cve.exploit %} label-critical{% else %} label-info{% endif %} label-cvss">{% if cve.exploit %}Exploit{% endif %}{% if cve.exploit and cve.exploited %} and {% endif %}{% if cve.exploited %}Exploited{% endif %}</span></a>
+                    </li>
+                    {% endif %}
                 </ul>
                 <div class="tab-content">
                     {% if cve.json.impact.baseMetricV3 %}
@@ -48,6 +54,11 @@
                     {% if cve.json.impact.baseMetricV2 %}
                     <div class="tab-pane {% if not cve.json.impact.baseMetricV3 %}active{% endif%}" id="cvss2">
                         {% include "_includes/cvss2.html" %}
+                    </div>
+                    {% endif %}
+                    {% if cve.exploit or cve.exploited %}
+                    <div class="tab-pane {% if not cve.json.impact.baseMetricV3 and not cve.json.impact.baseMetricV2 %}active{% endif%}" id="exploit">
+                        {% include "_includes/others.html" %}
                     </div>
                     {% endif %}
                 </div>

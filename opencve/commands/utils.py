@@ -2,7 +2,7 @@ import arrow
 from nested_lookup import nested_lookup
 
 from opencve.commands import info
-from opencve.extensions import db
+from opencve.extensions import cel, db
 from opencve.models.changes import Change
 from opencve.models.cve import Cve
 from opencve.models.cwe import Cwe
@@ -50,7 +50,7 @@ class CveUtil(object):
         return change
 
     @classmethod
-    def create_cve(cls, cve_json):
+    def create_cve(cls, cve_json, exploited_db = []):
         cvss2 = (
             cve_json["impact"]["baseMetricV2"]["cvssV2"]["baseScore"]
             if "baseMetricV2" in cve_json["impact"]
@@ -69,10 +69,38 @@ class CveUtil(object):
         cpes = convert_cpes(cve_json["configurations"])
         vendors = flatten_vendors(cpes)
 
+        # Check Exploit
+        exploit_find = False
+        if ( (cel.app.config["EXPLOIT_LINK"] or cel.app.config["EXPLOIT_TAG"])
+            and "reference_data" in cve_json["cve"]["references"]):
+            for refs_cve in cve_json["cve"]["references"]["reference_data"]:
+                if (
+                    cel.app.config["EXPLOIT_TAG_NIST"]
+                    and "tags" in refs_cve
+                    and cel.app.config["EXPLOIT_TAG_NIST"] in refs_cve["tags"]):
+                    exploit_find = True
+                    break
+                if (
+                    cel.app.config["EXPLOIT_LINK"]
+                    and "url" in refs_cve):
+                    for links_refs in cel.app.config["EXPLOIT_LINK"].split(','):
+                        if links_refs in refs_cve["url"].lower():
+                            exploit_find = True
+                            break
+                    if exploit_find:
+                        break
+
+        # Check if exploited from flux rss and local config
+        exploited = False
+        if cve_json["cve"]["CVE_data_meta"]["ID"] in exploited_db:
+            exploited = True
+
         # Create the CVE
         cve = Cve(
             cve_id=cve_json["cve"]["CVE_data_meta"]["ID"],
             summary=cve_json["cve"]["description"]["description_data"][0]["value"],
+            exploit=exploit_find,
+            exploited=exploited,
             json=cve_json,
             vendors=vendors,
             cwes=cwes,

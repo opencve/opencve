@@ -6,6 +6,8 @@ EVENT_TYPES = [
     ("cvss", "CVSS changed"),
     ("summary", "Summary changed"),
     ("cwes", "CWEs changed"),
+    ("exploit", "Exploit public added"),
+    ("exploited", "Exploited in wild"),
 ]
 
 # Used in the users model

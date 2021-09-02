@@ -83,6 +83,9 @@ class FiltersNotificationForm(FlaskForm):
     cpes = BooleanField("CPE changed")
     summary = BooleanField("Summary changed")
     cwes = BooleanField("CWE changed")
+    exploit = BooleanField("Exploit changed")
+    exploited = BooleanField("Exploited changed")
+    exploit_or_exploited = BooleanField("Exploit or Exploited changed",default=False)
     cvss_score = SelectField("CVSS score", coerce=int, choices=CVSS_SCORES)
     submit = SubmitField("Save changes")
 
