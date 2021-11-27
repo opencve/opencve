@@ -162,27 +162,26 @@
                             <th class="col-md-10">Events</th>
                         </thead>
                         <tbody>
-                            {% for time, events in events_by_time %}
-                                <tr>
-                                    <td>{{ time }}</td>
-                                    <td>
-                                        <table class="table table-bordered table-striped">
-                                            <thead>
-                                                <th>Type</th>
-                                                <th class="col-md-6">Values Removed</th>
-                                                <th class="col-md-6">Values Added</th>
-                                            </thead>
-                                            <tbody>
-                                                {% for event in events %}
-                                                    {% set template = 'report/' + event.type.code + '_details.html' %}
-                                                    {% include template %}
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </table>
+                        {% for time, events in events_by_time %}
+                            <tr>
+                                <td>{{ time }}</td>
+                                <td>
+                                    <table class="table table-bordered table-striped">
+                                        <thead>
+                                            <th>Type</th>
+                                            <th class="col-md-6">Values Removed</th>
+                                            <th class="col-md-6">Values Added</th>
+                                        </thead>
+                                        <tbody>
+                                        {% for event in events %}
+                                            {% set template = 'report/' + event.type.code + '_details.html' %}
+                                            {% include template %}
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        {% endfor %}
                         </tbody>
                     </table>
                 </div>
