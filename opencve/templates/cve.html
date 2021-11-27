@@ -159,7 +159,7 @@
                     <table class="table">
                         <thead>
                             <th class="col-md-1">Time</th>
-                            <th class="col-md-10">Events</th>
+                            <th class="col-md-11">Events</th>
                         </thead>
                         <tbody>
                         {% for time, events in events_by_time %}
@@ -168,9 +168,9 @@
                                 <td>
                                     <table class="table table-bordered table-striped">
                                         <thead>
-                                            <th>Type</th>
-                                            <th class="col-md-6">Values Removed</th>
-                                            <th class="col-md-6">Values Added</th>
+                                            <th class="col-md-1">Type</th>
+                                            <th class="col-md-5">Values Removed</th>
+                                            <th class="col-md-5">Values Added</th>
                                         </thead>
                                         <tbody>
                                         {% for event in events %}
