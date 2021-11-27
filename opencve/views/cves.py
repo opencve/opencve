@@ -1,4 +1,6 @@
+import itertools
 import json
+import operator
 
 from flask import abort, flash, redirect, request, render_template, url_for
 from flask_user import current_user, login_required
@@ -7,6 +9,7 @@ from opencve.controllers.cves import CveController
 from opencve.controllers.main import main
 from opencve.controllers.tags import UserTagController
 from opencve.extensions import db
+from opencve.models.events import Event
 from opencve.models.tags import CveTag
 from opencve.utils import convert_cpes, get_cwes_details
 
@@ -49,6 +52,13 @@ def cve(cve_id):
     # We have to pass an encoded list of tags for the modal box
     cve_tags_encoded = json.dumps([t.name for t in cve.tags])
 
+    events = Event.query.filter_by(cve_id=cve.id).order_by(Event.created_at.desc())
+
+    events_by_time = [
+        (time, list(evs))
+        for time, evs in (itertools.groupby(events, operator.attrgetter("created_at")))
+    ]
+
     return render_template(
         "cve.html",
         cve=cve,
@@ -57,6 +67,7 @@ def cve(cve_id):
         cwes=cwes,
         user_tags=user_tags,
         cve_tags_encoded=cve_tags_encoded,
+        events_by_time=events_by_time,
     )
 
 

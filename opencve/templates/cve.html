@@ -146,6 +146,47 @@
                 </div>
                 {% endif %}
             </div>
+
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">History</div>
+                    <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><i
+                                class="fa fa-minus"></i></button>
+                    </div>
+                </div>
+                <div class="box-body">
+                    <table class="table">
+                        <thead>
+                            <th class="col-md-1">Time</th>
+                            <th class="col-md-10">Events</th>
+                        </thead>
+                        <tbody>
+                            {% for time, events in events_by_time %}
+                                <tr>
+                                    <td>{{ time }}</td>
+                                    <td>
+                                        <table class="table table-bordered table-striped">
+                                            <thead>
+                                                <th>Type</th>
+                                                <th class="col-md-6">Values Removed</th>
+                                                <th class="col-md-6">Values Added</th>
+                                            </thead>
+                                            <tbody>
+                                                {% for event in events %}
+                                                    {% set template = 'report/' + event.type.code + '_details.html' %}
+                                                    {% include template %}
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <div class="col-md-3">
