@@ -155,6 +155,7 @@
                                 class="fa fa-minus"></i></button>
                     </div>
                 </div>
+                {% if events_by_time %}
                 <div class="box-body">
                     <table class="table">
                         <thead>
@@ -185,6 +186,11 @@
                         </tbody>
                     </table>
                 </div>
+                {% else %}
+                <div class="box-body">
+                    <p class="alert alert-info">No history.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
