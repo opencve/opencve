@@ -50,3 +50,4 @@ def test_get_cve(client, create_cve, create_cwe):
     assert b"<li>ubuntu_linux</li>" in response.data
     assert b"<strong>python-requests</strong>" in response.data
     assert b"<li>requests</li>" in response.data
+    assert b"No history." in response.data

@@ -63,5 +63,5 @@ def test_get_report(mock_send, client, login, handle_events):
     assert b"Canonical" in response.data
     assert b"CVE-2018-18074" in response.data
     assert b"9.8" in response.data
-    assert b"New CVE" in response.data
+    assert b"New&nbsp;CVE" in response.data
     db.session.commit()
