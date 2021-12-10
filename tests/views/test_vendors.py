@@ -17,3 +17,25 @@ def test_list_vendors(client, create_vendor):
     # number of associated products
     assert b">1</a>" in response.data
     assert b">2</a>" in response.data
+
+
+def test_vendor_search(client, create_vendor):
+    create_vendor("the_vendor_1", "product1")
+    create_vendor("the_vendor_2", "product1")
+    create_vendor("the_vendor_2", "product2")
+
+    response = client.get("/vendors?search=The Vendor 1")
+    assert response.status_code == 200
+    assert b"The Vendor 1" in response.data
+    assert b"The Vendor 2" not in response.data
+
+
+def test_vendor_search(client, create_vendor):
+    create_vendor("the_vendor_1", "product1")
+    create_vendor("the_vendor_2", "product1")
+    create_vendor("the_vendor_2", "product2")
+
+    response = client.get("/vendors?search=The Vendor 1")
+    assert response.status_code == 200
+    assert b"The Vendor 1" in response.data
+    assert b"The Vendor 2" not in response.data

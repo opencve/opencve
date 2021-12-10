@@ -55,13 +55,14 @@ def test_list_paginated(app, create_vendor):
     "args,result",
     [
         ({"search": "nonexistingkeyword"}, []),
-        ({"search": "1"}, ["product1"]),
-        ({"search": "product"}, ["product1", "product2"]),
+        ({"search": "1"}, ["product_1"]),
+        ({"search": "product"}, ["product_1", "product_2"]),
+        ({"search": "product 2"}, ["product_2"]),
     ],
 )
 def test_by_search(app, create_vendor, args, result):
-    create_vendor("vendor1", "product1")
-    create_vendor("vendor1", "product2")
+    create_vendor("vendor1", "product_1")
+    create_vendor("vendor1", "product_2")
 
     with app.test_request_context():
         products = ProductController.list_items({"vendor": "vendor1", **args})
