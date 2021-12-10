@@ -22,7 +22,13 @@ class VendorController(BaseController):
 
         # Search by term
         if args.get("search"):
-            search = args.get("search").lower().replace("%", "").replace("_", "")
+            search = (
+                args.get("search")
+                .lower()
+                .replace("%", "")
+                .replace("_", "")
+                .replace(" ", "_")
+            )
             query = query.filter(cls.model.name.like("%{}%".format(search)))
 
         # Search by letter
