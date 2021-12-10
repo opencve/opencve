@@ -22,13 +22,3 @@ def test_product_search(client, create_vendor):
     assert response.status_code == 200
     assert b"The Product 1" in response.data
     assert b"The Product 2" not in response.data
-
-
-def test_product_search(client, create_vendor):
-    create_vendor("the_vendor_1", "the_product_1")
-    create_vendor("the_vendor_1", "the_product_2")
-
-    response = client.get("/vendors/the_vendor_1/products?search=The Product 1")
-    assert response.status_code == 200
-    assert b"The Product 1" in response.data
-    assert b"The Product 2" not in response.data
