@@ -70,9 +70,7 @@ def test_check_cpes(create_cve, handle_events, open_file):
     }
 
     # Event has been created
-    events = Event.query.all()
-    assert len(events) == 1
-    event = events[0]
+    event = Event.query.filter_by(type="cpes").first()
     assert event.type == "cpes"
     assert event.details == {
         "added": ["cpe:2.3:a:opencveio:opencve:*:*:*:*:*:*:*:*"],

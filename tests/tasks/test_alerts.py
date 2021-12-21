@@ -2,6 +2,7 @@ import pytest
 
 from opencve.commands.utils import CveUtil
 from opencve.extensions import db
+from opencve.models import vendors
 from opencve.models.alerts import Alert
 from opencve.models.cve import Cve
 from opencve.models.users import User
@@ -45,6 +46,36 @@ def test_filter_events(app, create_user, create_cve, open_file, types):
     user.filters_notifications = {"cvss": 0, "event_types": types}
     db.session.commit()
     assert sorted([e.type.code for e in filter_events(user, events)]) == sorted(types)
+
+
+def test_filter_events_first_time(create_user, create_cve, create_vendor, open_file):
+    cve = create_cve("CVE-2018-18074")
+    event = CveUtil.create_event(
+        cve,
+        open_file(f"modified_cves/CVE-2018-18074_first_time_1.json")[0],
+        "first_time",
+        ["opencveio", "opencveio$PRODUCT$opencveio"],
+    )
+
+    # User1 doesn't have the first_time type
+    user1 = create_user("user1")
+    user1.filters_notifications = {"cvss": 0, "event_types": ["summary"]}
+    db.session.commit()
+    assert filter_events(user1, [event]) == []
+
+    # User2 hasn't subscribed to opencve vendor
+    user2 = create_user("user2")
+    vendor = create_vendor("not_existing")
+    user2.vendors.append(vendor)
+    db.session.commit()
+    assert filter_events(user2, [event]) == []
+
+    # User3 has subscribed to opencve vendor
+    user3 = create_user("user3")
+    vendor = create_vendor("opencveio")
+    user3.vendors.append(vendor)
+    db.session.commit()
+    assert filter_events(user3, [event]) == [event]
 
 
 def test_no_alerts(create_cve):
@@ -171,6 +202,44 @@ def test_alert_cvss_filter(create_cve, create_user, handle_events):
         "products": [],
         "vendors": ["canonical"],
     }
+
+
+def test_alert_first_time_filter(create_cve, create_user, create_vendor, handle_events):
+    create_cve("CVE-2018-18074")
+    handle_events("modified_cves/CVE-2018-18074_first_time_1.json")
+
+    # User1 has subscribed to opencve vendor
+    user1 = create_user("user1")
+    vendor = Vendor.query.filter_by(name="opencveio").first()
+    user1.vendors.append(vendor)
+    db.session.commit()
+
+    # User2 hasn't subscribed to opencve vendor
+    user2 = create_user("user2")
+    vendor = create_vendor("another_vendor")
+    user2.vendors.append(vendor)
+    db.session.commit()
+
+    handle_alerts()
+
+    # There is only 1 alert for user1
+    alert_1 = Alert.query.first()
+    assert alert_1.user == user1
+    assert sorted([e.type.code for e in alert_1.events]) == ["cpes", "first_time"]
+    assert sorted(Event.query.filter_by(type="first_time").first().details) == [
+        "opencveio",
+        "opencveio$PRODUCT$opencve",
+    ]
+
+    # We trigger another version of this CVE, but there is no new
+    # vendor/product, only a new version of an existing product
+    handle_events("modified_cves/CVE-2018-18074_first_time_2.json")
+    handle_alerts()
+
+    # The new alert only contains the `cpes` event
+    alerts = Alert.query.all()
+    alerts.remove(alert_1)
+    assert sorted([e.type.code for e in alerts[0].events]) == ["cpes"]
 
 
 def test_alert_types_empty_filter(create_cve, create_user, handle_events):
