@@ -78,6 +78,7 @@ class MailNotificationsForm(FlaskForm):
 
 class FiltersNotificationForm(FlaskForm):
     new_cve = BooleanField("New CVE")
+    first_time = BooleanField("Subscription appeared for the first time")
     references = BooleanField("Reference changed")
     cvss = BooleanField("CVSS changed")
     cpes = BooleanField("CPE changed")

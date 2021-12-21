@@ -35,6 +35,7 @@ def notifications():
     filters_notifications_form = FiltersNotificationForm(
         obj=current_user,
         new_cve=True if "new_cve" in filters["event_types"] else False,
+        first_time=True if "first_time" in filters["event_types"] else False,
         references=True if "references" in filters["event_types"] else False,
         cvss=True if "cvss" in filters["event_types"] else False,
         cpes=True if "cpes" in filters["event_types"] else False,
@@ -72,7 +73,15 @@ def notifications():
                 "cvss": filters_notifications_form.cvss_score.data,
             }
 
-            for typ in ["new_cve", "references", "cvss", "cpes", "cwes", "summary"]:
+            for typ in [
+                "new_cve",
+                "first_time",
+                "references",
+                "cvss",
+                "cpes",
+                "cwes",
+                "summary",
+            ]:
                 if getattr(filters_notifications_form, typ).data:
                     filters["event_types"].append(typ)
 

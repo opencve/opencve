@@ -12,9 +12,26 @@ logger = get_task_logger(__name__)
 
 
 def filter_events(user, events):
-    return [
-        e for e in events if e.type.code in user.filters_notifications["event_types"]
-    ]
+    # Only keep the wanted events
+    filtered_events = {
+        e.type.code: e
+        for e in events
+        if e.type.code in user.filters_notifications["event_types"]
+    }
+
+    # Check if new vendors/products match the user's subscriptions
+    if "first_time" in filtered_events.keys():
+
+        # TODO: refactor with controllers.home::home (+tests)
+        subscriptions = [v.name for v in user.vendors]
+        subscriptions.extend(
+            [f"{p.vendor.name}{PRODUCT_SEPARATOR}{p.name}" for p in user.products]
+        )
+
+        if not any(s in filtered_events["first_time"].details for s in subscriptions):
+            del filtered_events["first_time"]
+
+    return list(filtered_events.values())
 
 
 @cel.task(name="HANDLE_ALERTS")
