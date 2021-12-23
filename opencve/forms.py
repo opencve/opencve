@@ -111,3 +111,13 @@ class TagForm(FlaskForm):
         default="#000000",
     )
     submit = SubmitField("Save")
+
+
+class ActivitiesViewForm(FlaskForm):
+    view = RadioField(
+        "Activities View",
+        choices=[
+            ("all", "Display all activities"),
+            ("subscriptions", "Display subscriptions activities"),
+        ],
+    )

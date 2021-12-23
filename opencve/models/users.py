@@ -23,6 +23,10 @@ def get_default_filters():
     }
 
 
+def get_default_settings():
+    return {"activities_view": "all"}
+
+
 class User(BaseModel, UserMixin):
     __tablename__ = "users"
     __hash__ = UserMixin.__hash__
@@ -41,6 +45,7 @@ class User(BaseModel, UserMixin):
         db.Boolean(), nullable=False, server_default=expression.true()
     )
     filters_notifications = db.Column(JSONType, default=get_default_filters)
+    settings = db.Column(JSONType, default=get_default_settings, nullable=False)
     frequency_notifications = db.Column(ChoiceType(FREQUENCIES_TYPES), default="always")
 
     # User information
