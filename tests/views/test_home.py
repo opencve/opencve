@@ -46,6 +46,14 @@ def test_home_terms(app, client):
 def test_no_activity(client, login):
     response = client.get("/")
     assert response.status_code == 200
+    assert b"No changes available." in response.data
+
+    user = User.query.first()
+    user.settings = {"activities_view": "subscriptions"}
+    db.session.commit()
+
+    response = client.get("/")
+    assert response.status_code == 200
     assert (
         b'You have to subscribe to <a href="/vendors">products and vendors</a> to see their last changes.'
         in response.data
@@ -146,3 +154,29 @@ def test_list_paginated(app, client, login, handle_events, make_soup):
     assert b"No changes available." in response.data
 
     app.config["ACTIVITIES_PER_PAGE"] = old
+
+
+def test_list_all_or_subscriptions_activities(client, login, create_cve, handle_events):
+    create_cve("CVE-2018-18074")
+    handle_events("modified_cves/CVE-2018-18074_references.json")
+    create_cve("CVE-2020-35188")
+    handle_events("modified_cves/CVE-2020-35188_cpes.json")
+
+    user = User.query.first()
+    user.vendors.append(Vendor.query.filter_by(name="canonical").first())
+    db.session.commit()
+
+    # By default activities_view is 'all'
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"CVE-2018-18074" in response.data
+    assert b"CVE-2020-35188" in response.data
+
+    user.settings = {"activities_view": "subscriptions"}
+    db.session.commit()
+
+    # With the 'subscriptions' view the user doesn't see all the changes
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"CVE-2018-18074" in response.data
+    assert b"CVE-2020-35188" not in response.data

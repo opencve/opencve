@@ -4,7 +4,10 @@
 {% from "_macros.html" import render_tag %}
 
 <section class="content-header">
-    <h1>Last CVE updates</h1>
+    <h1>
+        Last CVE Updates
+        {% if current_user.settings['activities_view'] == 'subscriptions' %}<small class="label label-default"><i class="fa fa-filter"></i> subscriptions</small>{% endif %}
+    </h1>
     <ol class="breadcrumb">
         <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
         <li class="active">Dashboard</li>
@@ -16,7 +19,7 @@
         <div class="col-md-8">
             {% if not changes %}
             <p class="alert alert-info">
-                {% if not current_user.vendors and not current_user.products %}
+                {% if current_user.settings['activities_view'] == 'subscriptions' and not current_user.vendors and not current_user.products %}
                 You have to subscribe to <a href="{{ url_for('main.vendors') }}">products and vendors</a> to see their last changes.
                 {% else %}
                 No changes available.
@@ -140,6 +143,28 @@
         </div>
 
         <div class="col-md-4">
+
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">Dashboard Options</div>
+                </div>
+                <div class="box-body">
+                    <form action="{{ url_for('main.home') }}" method="POST" class="form" role="form">
+                        <input type="hidden" name="form-name" value="activities_view_form">
+                        {{ activities_view_form.hidden_tag() }}
+                        <div class="form-group">
+                            {% for field in activities_view_form.view %}
+                            <div class="radio">
+                                <label>
+                                    {{ field(onchange="this.form.submit()") }}
+                                    {{ field.label }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             {% if current_user.vendors or current_user.products %}
             <div class="box box-primary">
