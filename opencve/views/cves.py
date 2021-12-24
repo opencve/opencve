@@ -9,9 +9,10 @@ from opencve.controllers.cves import CveController
 from opencve.controllers.main import main
 from opencve.controllers.tags import UserTagController
 from opencve.extensions import db
+from opencve.models.changes import Change
 from opencve.models.events import Event
 from opencve.models.tags import CveTag
-from opencve.utils import convert_cpes, get_cwes_details
+from opencve.utils import convert_cpes, get_cwes_details, CustomHtmlHTML
 
 
 @main.route("/cve")
@@ -97,3 +98,32 @@ def cve_associate_tags(cve_id):
 
     flash("The CVE tags have been updated.", "success")
     return redirect(url_for("main.cve", cve_id=cve_id))
+
+
+@main.route("/cve/<cve_id>/change/<change_id>")
+def cve_change(cve_id, change_id):
+    cve = CveController.get({"cve_id": cve_id})
+
+    change = Change.query.filter_by(cve_id=cve.id, id=change_id).first()
+    if not change:
+        abort(404)
+
+    previous = (
+        Change.query.filter(Change.created_at < change.created_at)
+        .filter(Change.cve == change.cve)
+        .order_by(Change.created_at.desc())
+        .first()
+    )
+
+    previous_json = {}
+    if previous:
+        previous_json = previous.json
+
+    differ = CustomHtmlHTML()
+    diff = differ.make_table(
+        fromlines=json.dumps(previous_json, sort_keys=True, indent=2).split("\n"),
+        tolines=json.dumps(change.json, sort_keys=True, indent=2).split("\n"),
+        context=True,
+    )
+
+    return render_template("change.html", change=change, diff=diff)

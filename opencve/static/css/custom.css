@@ -187,6 +187,34 @@ h1 .label {
   margin-left: 5px;
 }
 
+.btn-json-diff {
+  margin-left: 6px;
+  color: #97a0b3;
+  font-size: 15px;
+}
+
+.diff_header {background-color:#e0e0e0; width: 10px;}
+td.diff_header {text-align:right}
+.diff_next {display: none;}
+.diff_add {background-color:#ccffd8}
+.diff_chg {background-color:#fff1b3}
+.diff_sub {background-color:#ffaaaa}
+.table-diff {width: 100%; border-collapse: collapse;}
+.table-diff > tbody > tr > td,
+.table-diff > tbody > tr > th,
+.table-diff > tfoot > tr > td,
+.table-diff > tfoot > tr > th,
+.table-diff > thead > tr > td,
+.table-diff > thead > tr > th {
+    border-top: 0px;
+    padding: 3px;
+}
+.table-diff > tbody > tr {
+    line-height: 14px;
+    height: 14px;
+}
+td.break { word-wrap: break-word; max-width: 1px; }
+
 /*
  * RainbowJSON style
  * ----------
