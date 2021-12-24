@@ -12,7 +12,7 @@
     {% for change in changes %}
     <div>
         <u>{{ change.cve.cve_id }} has changed</u>
-        [<a href="/admin/changes/{{ change.id }}">{{ change.events|length }} {{ 'events' if change.events|length > 1
+        [<a href="{{url_for('main.cve_change', cve_id=change.cve.cve_id, change_id=change.id)}}">{{ change.events|length }} {{ 'events' if change.events|length > 1
         else 'event' }}</a>]
         <ul>
             {% for event in change.events %}
