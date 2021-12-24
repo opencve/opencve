@@ -157,34 +157,27 @@
                 </div>
                 {% if events_by_time %}
                 <div class="box-body">
-                    <table class="table">
-                        <thead>
-                            <th class="col-md-1">Time</th>
-                            <th class="col-md-11">Events</th>
-                        </thead>
-                        <tbody>
-                        {% for time, events in events_by_time %}
-                            <tr>
-                                <td>{{ time }}</td>
-                                <td>
-                                    <table class="table table-bordered table-striped">
-                                        <thead>
-                                            <th class="col-md-1">Type</th>
-                                            <th class="col-md-5">Values Removed</th>
-                                            <th class="col-md-5">Values Added</th>
-                                        </thead>
-                                        <tbody>
-                                        {% for event in events %}
-                                            {% set template = 'report/' + event.type.code + '_details.html' %}
-                                            {% include template %}
-                                        {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="row">
+                        <div class="col-md-12">
+                            {% for time, events in events_by_time %}
+                            <p><strong><i class="fa fa-clock-o"></i> {{ time.strftime("%d %b %Y, %H:%M") }}</strong></p>
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <th>Type</th>
+                                    <th>Values Removed</th>
+                                    <th>Values Added</th>
+                                </thead>
+                                <tbody>
+                                {% for event in events %}
+                                    {% set template = 'report/' + event.type.code + '_details.html' %}
+                                    {% include template %}
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                            <hr />
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
                 {% else %}
                 <div class="box-body">
