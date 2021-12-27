@@ -14,12 +14,22 @@ product_fields = {
     "human_name": HumanizedNameField(attribute="name"),
 }
 
+vendor_product_fields = {
+    **product_fields,
+    "vendor_name": fields.String(attribute="vendor.name"),
+    "vendor_human_name": HumanizedNameField(attribute="vendor.name"),
+}
+
 
 class ProductListResource(BaseResource):
     @marshal_with(product_fields)
     def get(self, vendor):
         return ProductController.list_items(
-            {**request.args, "vendor": vendor, "product_page": request.args.get("page", 1)}
+            {
+                **request.args,
+                "vendor": vendor,
+                "product_page": request.args.get("page", 1),
+            }
         )
 
 
@@ -35,4 +45,12 @@ class ProductCveResource(BaseResource):
         ProductController.get({"vendor": vendor, "product": product})
         return CveController.list_items(
             {**request.args, "vendor": vendor, "product": product}
+        )
+
+
+class FlatProductListResource(BaseResource):
+    @marshal_with(vendor_product_fields)
+    def get(self):
+        return ProductController.list_items(
+            {**request.args, "product_page": request.args.get("page", 1)}
         )

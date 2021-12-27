@@ -59,3 +59,42 @@ def test_list_product_cves(client, create_user, create_cve):
         "summary": "The Requests package before 2.20.0 for Python sends an HTTP Authorization header to an http URI upon receiving a same-hostname https-to-http redirect, which makes it easier for remote attackers to discover credentials by sniffing the network.",
         "updated_at": "2019-10-03T00:03:00Z",
     }
+
+
+def test_list_flat_products(client, create_user, create_vendor):
+    create_user("opencve")
+    response = client.login("opencve").get("/api/products")
+    assert response.status_code == 200
+    assert response.json == []
+
+    create_vendor("vendor1", "product1")
+    create_vendor("vendor1", "product2")
+    response = client.login("opencve").get("/api/products")
+    assert response.status_code == 200
+    assert len(response.json) == 2
+    assert response.json == [
+        {
+            "human_name": "Product1",
+            "name": "product1",
+            "vendor_human_name": "Vendor1",
+            "vendor_name": "vendor1",
+        },
+        {
+            "human_name": "Product2",
+            "name": "product2",
+            "vendor_human_name": "Vendor1",
+            "vendor_name": "vendor1",
+        },
+    ]
+
+    response = client.login("opencve").get("/api/products?search=2")
+    assert response.status_code == 200
+    assert len(response.json) == 1
+    assert response.json == [
+        {
+            "human_name": "Product2",
+            "name": "product2",
+            "vendor_human_name": "Vendor1",
+            "vendor_name": "vendor1",
+        },
+    ]
