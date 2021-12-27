@@ -7,6 +7,7 @@ class BaseController(object):
     model = None
     order = None
     per_page_param = None
+    page_parameter = "page"
     schema = {}
 
     @classmethod
@@ -17,7 +18,9 @@ class BaseController(object):
     def parse_args(cls, args):
         args = ImmutableMultiDict(args)
 
-        parsed_args = {"page": args.get("page", type=int, default=1)}
+        parsed_args = {
+            cls.page_parameter: args.get(cls.page_parameter, type=int, default=1)
+        }
 
         for key in args.keys():
             if key in cls.schema.keys():
@@ -41,18 +44,22 @@ class BaseController(object):
         query, metas = cls.build_query(args)
 
         objects = query.order_by(cls.order).paginate(
-            args.get("page"), app.config[cls.per_page_param], True
+            args.get(cls.page_parameter), app.config[cls.per_page_param], True
         )
 
-        pagination = Pagination(
-            page=args.get("page"),
+        pagination = cls.get_pagination(args, objects)
+        return objects, metas, pagination
+
+    @classmethod
+    def get_pagination(cls, args, objects):
+        return Pagination(
+            page=args.get(cls.page_parameter),
             total=objects.total,
             per_page=app.config[cls.per_page_param],
+            page_parameter=cls.page_parameter,
             record_name="objects",
             css_framework="bootstrap3",
         )
-
-        return objects, metas, pagination
 
     @classmethod
     def list_items(cls, args={}):

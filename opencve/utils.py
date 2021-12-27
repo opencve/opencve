@@ -1,5 +1,3 @@
-import string
-
 from nested_lookup import nested_lookup
 
 from opencve.constants import PRODUCT_SEPARATOR
@@ -57,10 +55,3 @@ def get_cwes_details(problems):
         if cwe:
             cwes[cwe_id] = cwe.name
     return cwes
-
-
-def get_vendors_letters():
-    """
-    Returns a list of letters used to filter the vendors.
-    """
-    return list(string.ascii_lowercase + "@" + string.digits)

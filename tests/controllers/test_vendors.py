@@ -54,27 +54,3 @@ def test_by_search(app, create_vendor, args, result):
     with app.test_request_context():
         vendors = VendorController.list_items(args)
     assert sorted([v.name for v in vendors]) == result
-
-
-@pytest.mark.parametrize(
-    "args,result",
-    [
-        ({"letter": "a"}, []),
-        ({"letter": "f"}, ["foo"]),
-        ({"letter": "b"}, ["bar", "baz"]),
-    ],
-)
-def test_by_letter(app, create_vendor, args, result):
-    create_vendor("foo", "product")
-    create_vendor("bar", "product")
-    create_vendor("baz", "product")
-
-    with app.test_request_context():
-        vendors = VendorController.list_items(args)
-    assert sorted([v.name for v in vendors]) == result
-
-
-def test_letter_not_found(app):
-    with app.test_request_context():
-        with pytest.raises(NotFound):
-            VendorController.list_items({"letter": "$"})

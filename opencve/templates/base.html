@@ -114,7 +114,7 @@
                     class="fa fa-shield"></i> <span>Vulnerabilities (CVE)</span></a></li>
                 <li {% if is_active(
                 "main.vendors,main.products") %}class="active"{% endif %}><a href="{{ url_for('main.vendors') }}"><i
-                    class="fa fa-tags"></i> <span> Vendors (CPE)</span></a></li>
+                    class="fa fa-tags"></i> <span> Vendors & Products (CPE)</span></a></li>
                 <li {% if is_active(
                 "main.cwes") %}class="active"{% endif %}><a href="{{ url_for('main.cwes') }}"><i
                     class="fa fa-sitemap"></i> <span> Categories (CWE)</span></a></li>
