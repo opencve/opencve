@@ -62,6 +62,9 @@ def test_get_change_not_found(client, create_cve, handle_events):
     assert response.status_code == 404
 
     create_cve("CVE-2018-18074")
+    response = client.get("/cve/CVE-2018-18074/changes/not_found")
+    assert response.status_code == 404
+
     response = client.get(f"/cve/CVE-2018-18074/changes/{get_uuid()}")
     assert response.status_code == 404
 
