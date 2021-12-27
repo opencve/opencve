@@ -1,3 +1,7 @@
+from opencve.models import get_uuid
+from opencve.models.changes import Change
+
+
 def test_list_no_cves(client):
     response = client.get("/cve")
     assert response.status_code == 200
@@ -51,3 +55,36 @@ def test_get_cve(client, create_cve, create_cwe):
     assert b"<strong>python-requests</strong>" in response.data
     assert b"<li>requests</li>" in response.data
     assert b"No history." in response.data
+
+
+def test_get_change_not_found(client, create_cve, handle_events):
+    response = client.get(f"/cve/CVE-2000-1234/changes/{get_uuid()}")
+    assert response.status_code == 404
+
+    create_cve("CVE-2018-18074")
+    response = client.get(f"/cve/CVE-2018-18074/changes/{get_uuid()}")
+    assert response.status_code == 404
+
+    handle_events("modified_cves/CVE-2018-18074_summary.json")
+    change = Change.query.first()
+    response = client.get(f"/cve/CVE-2018-18074/changes/{change.id}")
+    assert response.status_code == 200
+
+
+def test_get_change(client, create_cve, handle_events, make_soup):
+    create_cve("CVE-2018-18074")
+    handle_events("modified_cves/CVE-2018-18074_summary.json")
+    change = Change.query.first()
+
+    response = client.get(f"/cve/CVE-2018-18074/changes/{change.id}")
+    assert response.status_code == 200
+    assert b"CVE-2018-18074" in response.data
+    assert b"List of Events" in response.data
+    assert b"JSON Diff" in response.data
+
+    soup = make_soup(response.data)
+    assert sorted([s.text for s in soup.find("table").find("tr").find_all("td")]) == [
+        "Summary",
+        "The Requests package before 2.20.0 for Python sends an HTTP Authorization header to an http URI upon receiving a same-hostname https-to-http redirect, which makes it easier for remote attackers to discover credentials by sniffing the network.",
+        "The summary has been changed.",
+    ]

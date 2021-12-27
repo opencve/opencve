@@ -100,7 +100,7 @@ def cve_associate_tags(cve_id):
     return redirect(url_for("main.cve", cve_id=cve_id))
 
 
-@main.route("/cve/<cve_id>/change/<change_id>")
+@main.route("/cve/<cve_id>/changes/<change_id>")
 def cve_change(cve_id, change_id):
     cve = CveController.get({"cve_id": cve_id})
 
