@@ -18,7 +18,9 @@ product_fields = {
 class ProductListResource(BaseResource):
     @marshal_with(product_fields)
     def get(self, vendor):
-        return ProductController.list_items({**request.args, "vendor": vendor})
+        return ProductController.list_items(
+            {**request.args, "vendor": vendor, "product_page": request.args.get("page", 1)}
+        )
 
 
 class ProductResource(BaseResource):

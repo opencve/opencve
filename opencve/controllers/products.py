@@ -1,4 +1,5 @@
-from flask import abort
+from flask import current_app as app
+from flask_paginate import Pagination
 
 from opencve.controllers.base import BaseController
 from opencve.controllers.vendors import VendorController
@@ -9,6 +10,7 @@ class ProductController(BaseController):
     model = Product
     order = Product.name.asc()
     per_page_param = "PRODUCTS_PER_PAGE"
+    page_parameter = "product_page"
     schema = {
         "vendor": {"type": str},
         "search": {"type": str},
@@ -16,9 +18,11 @@ class ProductController(BaseController):
 
     @classmethod
     def build_query(cls, args):
-        vendor = VendorController.get({"name": args.get("vendor")})
-
-        query = Product.query.filter_by(vendor=vendor)
+        if "vendor" in args:
+            vendor = VendorController.get({"name": args.get("vendor")})
+            query = cls.model.query.filter_by(vendor=vendor)
+        else:
+            query = cls.model.query
 
         # Search by term
         if args.get("search"):
@@ -32,6 +36,17 @@ class ProductController(BaseController):
             query = query.filter(Product.name.like("%{}%".format(search)))
 
         return query, {}
+
+    @classmethod
+    def get_pagination(cls, args, objects):
+        return Pagination(
+            product_page=args.get(cls.page_parameter),
+            total=objects.total,
+            per_page=app.config[cls.per_page_param],
+            page_parameter=cls.page_parameter,
+            record_name="objects",
+            css_framework="bootstrap3",
+        )
 
     @classmethod
     def get(cls, filters):

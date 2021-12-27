@@ -45,7 +45,9 @@ def test_list_paginated(app, create_vendor):
             "product2",
             "product3",
         ]
-        products = ProductController.list_items({"vendor": "vendor1", "page": 2})
+        products = ProductController.list_items(
+            {"vendor": "vendor1", "product_page": 2}
+        )
         assert sorted([p.name for p in products]) == ["product4"]
 
     app.config["PRODUCTS_PER_PAGE"] = old
