@@ -9,6 +9,7 @@ from opencve.controllers.cves import CveController
 from opencve.controllers.main import main
 from opencve.controllers.tags import UserTagController
 from opencve.extensions import db
+from opencve.models import is_valid_uuid
 from opencve.models.changes import Change
 from opencve.models.events import Event
 from opencve.models.tags import CveTag
@@ -103,6 +104,9 @@ def cve_associate_tags(cve_id):
 @main.route("/cve/<cve_id>/changes/<change_id>")
 def cve_change(cve_id, change_id):
     cve = CveController.get({"cve_id": cve_id})
+
+    if not is_valid_uuid(change_id):
+        abort(404)
 
     change = Change.query.filter_by(cve_id=cve.id, id=change_id).first()
     if not change:
