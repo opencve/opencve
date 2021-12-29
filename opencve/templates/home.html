@@ -87,7 +87,7 @@
                                     {% for event in change.events %}
                                     <div class="panel box box-changes">
                                         <div class="box-header collapsed pointer change-collapsed" data-toggle="collapse" data-parent="#{{ change.id }}" href="#{{ event.id }}" aria-expanded="false">
-                                            <h4 class="box-title">{{ event.type.code|capitalize }} changed
+                                            <h4 class="box-title">{{ event.type.code|event_description }}
                                             <span class="box-meta">{{ event.details|event_excerpt|safe }}<i class="fa fa-arrow-circle-o-down"></i><i class="fa fa-arrow-circle-o-up"></i></span>
                                             </h4>
                                         </div>
