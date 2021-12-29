@@ -1,7 +1,7 @@
 # Used in the Events and Alerts tables
 EVENT_TYPES = [
     ("new_cve", "New CVE"),
-    ("first_time", "Subscription appeared for the first time"),
+    ("first_time", "Vendors/Products appeared for the first time"),
     ("references", "References changed"),
     ("cpes", "CPEs changed"),
     ("cvss", "CVSS changed"),

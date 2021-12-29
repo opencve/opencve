@@ -1,7 +1,7 @@
 from flask import current_app as app
 from flask import request, url_for
 
-from opencve.constants import PRODUCT_SEPARATOR
+from opencve.constants import EVENT_TYPES, PRODUCT_SEPARATOR
 
 
 def _cvss_percent(score):
@@ -158,11 +158,22 @@ def _is_active(route):
 
 
 def _event_excerpt(details):
-    output = []
-    if "changed" in details:
-        output.append(f"<strong>{len(details['changed'])}</strong> changed")
-    if "added" in details:
-        output.append(f"<strong>{len(details['added'])}</strong> added")
-    if "removed" in details:
-        output.append(f"<strong>{len(details['removed'])}</strong> removed")
-    return ", ".join(output)
+    if isinstance(details, list):
+        return f"<strong>{len(details)}</strong> added"
+    else:
+        output = []
+        if "changed" in details:
+            output.append(f"<strong>{len(details['changed'])}</strong> changed")
+        if "added" in details:
+            output.append(f"<strong>{len(details['added'])}</strong> added")
+        if "removed" in details:
+            output.append(f"<strong>{len(details['removed'])}</strong> removed")
+        return ", ".join(output)
+
+
+def _event_description(code):
+    return dict(EVENT_TYPES)[code]
+
+
+def _remove_product_separator(s):
+    return s.replace(PRODUCT_SEPARATOR, " ")
