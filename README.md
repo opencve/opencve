@@ -8,23 +8,37 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve1.png" width="300">
-  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve2.png" width="300">
-  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve3.png" width="300">
-  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve4.png" width="300">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve1.png" width="270" height="150">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve2.png" width="270" height="150">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve3.png" width="270" height="150">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve4.png" width="270" height="150">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve5.png" width="270" height="150">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve6.png" width="270" height="150">
 </p>
 
 ----------------
 
-Check the [documentation](https://docs.opencve.io) to install and use OpenCVE.
-
-We also provide a running instance on [https://www.opencve.io](https://www.opencve.io) if you don't want to host it yourself.
+Try **for free** OpenCVE on [https://www.opencve.io](https://www.opencve.io) or check [documentation](https://docs.opencve.io) to install it yourself.
 
 ## What is OpenCVE
 
 **OpenCVE** is a platform used to locally import the list of CVEs and perform searches on it (by vendors, products, CVSS, CWE...).
 
 Users subscribe to vendors or products, and OpenCVE alerts them when a new CVE is created or when an update is done in an existing CVE.
+
+## Features
+
+- **Explore** the CVE database and filter the results by Vendor, Product, CVSS score or CWE
+- **Subscribe** to vendors and products extracted from CPE
+- **Be notified** for new CVE and for CVE updates based on subscriptions
+- **Analyse** all CVE details (vendors, products, CVSS score, CPE, CWE, References...)
+- **Create** custom tags (unread, important, devteam...) to organize the CVE list
+- **Display** the history of each CVE and see their last changes in the homepage
+- **Retrieve** the last changes in custom reports
+- **Customize** the notification settings (frequency, filter by CVSS score...)
+- **Integrate** OpenCVE with your own tools using the Rest API
+
+You can use **for free** these features on the public instance: [https://www.opencve.io](https://www.opencve.io).
 
 ## How does it work
 
@@ -35,6 +49,8 @@ After an initial import, a background task is regularly executed to synchronize 
 <p align="center">
   <img src="https://raw.githubusercontent.com/opencve/opencve/master/how-it-works.png">
 </p>
+
+Read the [How It Works](https://docs.opencve.io/how-it-works/) guide to learn in details how OpenCVE works.
 
 ## Requirements
 
