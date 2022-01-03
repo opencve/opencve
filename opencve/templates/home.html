@@ -116,11 +116,13 @@
                                     <thead>
                                         <th>Vendors</th>
                                         <th>Products</th>
+					<th>Tags</th>
                                     </thead>
                                     <tbody>
                                         <tr>
                                             <td>{{ change.cve.vendors|vendors_excerpt|safe }}</td>
                                             <td>{{ change.cve.vendors|products_excerpt|safe }}</td>
+					    <td>{{ change.cve.raw_tags|tags_excerpt|safe }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
