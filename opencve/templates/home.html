@@ -53,7 +53,6 @@
                         <div class="timeline-item">
                             <span class="time" title="{{ change.created_at.strftime('%d %b %Y, %H:%M') }}"><i class="fa fa-clock-o"></i> {{ change.created_at.strftime("%H:%M") }}</span>
                             <h3 class="timeline-header"><a href="{{ url_for('main.cve', cve_id=change.cve.cve_id) }}">{{ change.cve.cve_id }}</a> {% if new %}is a new CVE{% else %}has changed{% endif %} <a href="{{ url_for('main.cve_change', cve_id=change.cve.cve_id, change_id=change.id) }}" class="btn-json-diff" data-toggle="tooltip" data-container="body" title="View the change details"><i class="fa fa-code"></i></a></h3>
-
                             <div class="timeline-body">
                                 <div class="row">
                                     <div class="col-md-9">
@@ -116,16 +115,26 @@
                                     <thead>
                                         <th>Vendors</th>
                                         <th>Products</th>
-					<th>Tags</th>
                                     </thead>
                                     <tbody>
                                         <tr>
                                             <td>{{ change.cve.vendors|vendors_excerpt|safe }}</td>
                                             <td>{{ change.cve.vendors|products_excerpt|safe }}</td>
-					    <td>{{ change.cve.raw_tags|tags_excerpt|safe }}</td>
                                         </tr>
                                     </tbody>
                                 </table>
+				{% if change.cve.raw_tags %}
+                               <table class="table timeline-footer no-margin-bottom">
+                                    <thead>
+                                        <th>Tags</th>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>{{ change.cve.raw_tags|tags_excerpt|safe }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+				{% endif %}
                             </div>
                         </div>
                     </li>

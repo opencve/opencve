@@ -73,9 +73,11 @@ def vendors_excerpt(s):
 def products_excerpt(s):
     return _excerpt(s, "products")
 
+
 @main.app_template_filter("tags_excerpt")
 def tags_excerpt(s):
     return _excerpt(s, "tags")
+
 
 @main.app_template_filter("report_excerpt")
 def report_excerpt(s):
