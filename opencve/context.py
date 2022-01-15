@@ -1,7 +1,9 @@
 from flask import current_app as app
 from flask import request, url_for
+from flask_user import current_user
 
 from opencve.constants import EVENT_TYPES, PRODUCT_SEPARATOR
+from opencve.models.tags import UserTag
 
 
 def _cvss_percent(score):
@@ -116,11 +118,15 @@ def _excerpt(objects, _type):
             vendor, product = obj.split(PRODUCT_SEPARATOR)
             url = url_for("main.cves", vendor=vendor, product=product)
             output += f"<a href='{url}'>{_humanize_filter(product)}</a>"
-        else:
+        elif _type == "vendors":
             url = url_for("main.cves", vendor=obj)
             output += f"<a href='{url}'>{_humanize_filter(obj)}</a>"
+        else:
+            url = url_for("main.cves", tag=obj)
+            tag = UserTag.query.filter_by(user_id=current_user.id, name=obj).first()
+            output += f"<a href='{url}'><span class='label label-tag' style='background-color: {tag.color};'>{obj}</span></a>"
 
-        output += ", " if idx + 1 != len(objects) else " "
+        output += ", " if idx + 1 != len(objects) and _type != "tags" else " "
 
     if remains:
         output += "<i>and {} more</i>".format(remains)
