@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.0 - 2022-01-22
+### Added
+- feat: add tags in dashboard
+- feat: display the change details in a dedicated view
+- feat: display all activities (not only subscriptions ones)
+- feat: add the first_time event
+- feat: display change date in a human format in CVE history
+- feat: add new API endpoint to search products without vendor
+- feat: improve the vendors and products search
+- feat: display recorded change history for CVEs
+
+### Fixed
+- fix: missing template for the first_time event
+- fix: check uuid validity before searching the change
+
 ## 1.2.3 - 2021-08-31
 
 ### Fixed
