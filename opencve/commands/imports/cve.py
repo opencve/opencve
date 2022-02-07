@@ -43,7 +43,9 @@ def run():
         # Parse the XML elements
         with timed_operation("Parsing JSON elements..."):
             raw = gzip.GzipFile(fileobj=BytesIO(resp)).read()
+            del resp
             items = json.loads(raw.decode("utf-8"))["CVE_Items"]
+            del raw
 
         with timed_operation("Creating model objects..."):
 
