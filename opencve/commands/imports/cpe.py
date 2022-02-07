@@ -1,8 +1,8 @@
 import gzip
 from io import BytesIO
+import xml.etree.ElementTree
 
 import requests
-import untangle
 from cpe import CPE
 
 from opencve.commands import header, info, timed_operation
@@ -35,15 +35,19 @@ def run(mappings):
 
     # Parse the XML elements
     with timed_operation("Parsing XML elements..."):
-        raw = gzip.GzipFile(fileobj=BytesIO(resp)).read()
-        obj = untangle.parse(raw.decode("utf-8"))
-        items = obj.cpe_list.cpe_item
-        del obj
+        raw = gzip.GzipFile(fileobj=BytesIO(resp))
+        del resp
+        items = set()
+        for _, elem in xml.etree.ElementTree.iterparse(raw):
+            if elem.tag.endswith("cpe23-item"):
+                items.add(elem.get("name"))
+            elem.clear()
+        del raw
 
     # Create the objects
     with timed_operation("Creating list of mappings..."):
         for item in items:
-            obj = CPE(item.cpe_23_cpe23_item["name"])
+            obj = CPE(item)
             vendor = obj.get_vendor()[0]
             product = obj.get_product()[0]
 
