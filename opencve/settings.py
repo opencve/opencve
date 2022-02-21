@@ -41,6 +41,7 @@ class Config(object):
 
     DISPLAY_WELCOME = config.getboolean("core", "display_welcome", fallback=False)
     DISPLAY_TERMS = config.getboolean("core", "display_terms", fallback=False)
+    INCLUDE_ANALYTICS = config.getboolean("core", "include_analytics", fallback=False)
 
     # Customize the server name
     if config.get("core", "server_name"):

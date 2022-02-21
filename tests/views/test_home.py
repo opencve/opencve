@@ -43,6 +43,23 @@ def test_home_terms(app, client):
     assert b"Terms of Service" in response.data
 
 
+def test_include_analytics(app, client):
+    content = b'<script src="https://analytics.example.com/script.js"></script>'
+
+    response = client.get("/cve")
+    assert content not in response.data
+    response = client.get("/login")
+    assert content not in response.data
+
+    app.config["INCLUDE_ANALYTICS"] = True
+    response = client.get("/cve")
+    assert content in response.data
+    response = client.get("/login")
+    assert content in response.data
+
+    app.config["INCLUDE_ANALYTICS"] = False
+
+
 def test_no_activity(client, login):
     response = client.get("/")
     assert response.status_code == 200

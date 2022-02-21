@@ -22,5 +22,8 @@
 <script src="{{ url_for('static', filename='js/jquery.min.js') }}" type="text/javascript"></script>
 <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}" type="text/javascript"></script>
 <script src="{{ url_for('static', filename='js/adminlte.min.js') }}" type="text/javascript"></script>
+{% if config.INCLUDE_ANALYTICS %}
+{% include 'analytics.html' %}
+{% endif %}
 </body>
 </html>
