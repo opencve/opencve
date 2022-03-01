@@ -194,6 +194,8 @@ class UserModelView(AuthModelView):
     page_size = 20
     create_modal = False
     edit_modal = False
+    can_export = True
+    export_types = ["csv"]
     can_view_details = True
     column_filters = column_searchable_list = ["username", "email"]
     column_list = ("username", "email", "created_at", "is_confirmed")
@@ -265,6 +267,8 @@ class CveModelView(AuthModelView):
     can_create = False
     can_edit = False
     can_delete = False
+    can_export = True
+    export_types = ["csv"]
     can_view_details = True
     column_filters = ["cve_id", "summary", "cvss2", "cvss3", "updated_at"]
     column_searchable_list = ["cve_id", "summary", "cvss2", "cvss3"]
@@ -276,6 +280,8 @@ class EventModelView(AuthModelView):
     can_create = False
     can_edit = False
     can_delete = False
+    can_export = True
+    export_types = ["csv"]
     can_view_details = True
     column_filters = column_searchable_list = ["type", "created_at"]
     column_list = ("cve", "type", "created_at")
@@ -285,6 +291,8 @@ class VendorModelView(AuthModelView):
     page_size = 20
     create_modal = False
     edit_modal = False
+    can_export = True
+    export_types = ["csv"]
     can_view_details = True
     column_filters = column_searchable_list = ["name"]
     column_list = ["name", "created_at"]
@@ -294,6 +302,8 @@ class ProductModelView(AuthModelView):
     page_size = 20
     create_modal = False
     edit_modal = False
+    can_export = True
+    export_types = ["csv"]
     can_view_details = True
     column_filters = column_searchable_list = ["name"]
     column_list = ["name", "vendor", "created_at"]
