@@ -285,6 +285,10 @@ class VendorModelView(AuthModelView):
     edit_modal = False
     can_view_details = True
     column_list = ["name", "created_at"]
+    column_details_list = ["name", "users", "created_at", "updated_at"]
+    column_formatters_detail = dict(
+        users=lambda v, c, m, p: m.users
+    )
 
 
 class ProductModelView(AuthModelView):
@@ -293,3 +297,7 @@ class ProductModelView(AuthModelView):
     edit_modal = False
     can_view_details = True
     column_list = ["name", "vendor", "created_at"]
+    column_details_list = ["vendor", "name", "users", "created_at", "updated_at"]
+    column_formatters_detail = dict(
+        users=lambda v, c, m, p: m.users
+    )
