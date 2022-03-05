@@ -143,6 +143,9 @@
 <script src="{{ url_for('static', filename='js/spectrum.min.js') }}" type="text/javascript"></script>
 <script src="{{ url_for('static', filename='js/select2.full.min.js') }}" type="text/javascript"></script>
 <script src="{{ url_for('static', filename='js/custom.js') }}" type="text/javascript"></script>
+{% if config.INCLUDE_ANALYTICS %}
+{% include 'analytics.html' %}
+{% endif %}
 
 <script>
   function getContrastedColor(str){
