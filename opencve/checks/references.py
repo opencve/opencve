@@ -38,7 +38,7 @@ class References(BaseCheck):
         modified_urls = list(
             set(
                 [
-                    r.split("'")[1]
+                    r.split("'][")[0].split("['")[1]
                     for r in list(diff.get("values_changed", {}).keys())
                     + list(diff.get("iterable_item_added", {}).keys())
                 ]
