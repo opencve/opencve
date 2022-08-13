@@ -126,6 +126,7 @@ class Config(object):
     MAIL_SERVER = config.get("mail", "smtp_server")
     MAIL_PORT = config.getint("mail", "smtp_port", fallback=465)
     MAIL_USE_TLS = config.getboolean("mail", "smtp_use_tls", fallback=True)
+    MAIL_USE_SSL = config.getboolean("mail", "smtp_use_ssl", fallback=False)
     MAIL_USERNAME = config.get("mail", "smtp_username")
 
     # ensure compatibility before deprecating "stmp_password"
