@@ -112,6 +112,26 @@
                 </form>
             </div>
         </div>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Test email notification</h3>
+            </div>
+            <div class="box-body">
+                <form action="{{ url_for('main.notifications') }}" method="POST" class="form" role="form">
+                    <input type="hidden" name="form-name" value="mail_test_notifications_form">
+                    {{ mail_test_notifications_form.hidden_tag() }}
+
+                    <p>To test your email settings please use the button 'Send test notification' below. A test notification will be sent to the email address from your user profile.</p>
+
+                    <div class="pull-right">
+                        {{ render_submit_field(mail_test_notifications_form.submit) }}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
     </div>
 </div>
 

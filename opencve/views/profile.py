@@ -12,8 +12,14 @@ from opencve.forms import (
     ChangePasswordForm,
     FiltersNotificationForm,
     MailNotificationsForm,
+    MailTestNotificationsForm,
     TagForm,
 )
+# test email notification
+from celery.utils.log import get_task_logger
+from flask_user import EmailError
+from opencve.extensions import user_manager
+logger = get_task_logger(__name__)
 
 
 @main.route("/account/subscriptions", methods=["GET"])
@@ -25,6 +31,10 @@ def subscriptions():
 @main.route("/account/notifications", methods=["GET", "POST"])
 @login_required
 def notifications():
+    mail_test_notifications_form = MailTestNotificationsForm(
+        obj=current_user,
+    )
+    
     mail_notifications_form = MailNotificationsForm(
         obj=current_user,
         enable="yes" if current_user.enable_notifications else "no",
@@ -93,10 +103,34 @@ def notifications():
             )
             return redirect(url_for("main.notifications"))
 
+
+        if (
+            form_name == "mail_test_notifications_form"
+        ):
+            # send test email notification
+            try:
+                user_manager.email_manager.send_user_testmail(
+                    current_user,
+                    **{
+                        "subject": "Test notification from OpenCVE",
+                        "body": "This message was sent for testing purposes to validate your user profile email settings."
+                    },
+                )
+                logger.info("Test notification sent to: {}".format(current_user.email))
+            except EmailError as e:
+                logger.error(f"EmailError : {e}")
+
+            flash(
+                "Test notification was sent to:  {} .".format(current_user.email), "success"
+            )
+            return redirect(url_for("main.notifications"))
+
+
     return render_template(
         "profiles/notifications.html",
         mail_notifications_form=mail_notifications_form,
         filters_notifications_form=filters_notifications_form,
+        mail_test_notifications_form=mail_test_notifications_form,
     )
 
 

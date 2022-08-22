@@ -68,6 +68,10 @@ class ChangeEmailForm(FlaskForm):
         return True
 
 
+class MailTestNotificationsForm(FlaskForm):
+    submit = SubmitField("Send test notification")
+
+
 class MailNotificationsForm(FlaskForm):
     enable = RadioField(
         "Enable email notifications", choices=[("yes", "Yes"), ("no", "No")]

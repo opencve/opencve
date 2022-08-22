@@ -68,6 +68,15 @@ class CustomEmailManager(EmailManager):
             **kwargs,
         )
 
+    def send_user_testmail(self, user, **kwargs):
+        """Send the 'user test' email."""
+        self._render_and_send_email(
+            user.email,
+            user,
+            "emails/testmail",
+            **kwargs,
+        )
+
 
 class FlaskCelery(Celery):
     """
