@@ -36,7 +36,7 @@ from opencve.tasks import CELERYBEAT_SCHEDULE
 
 
 class Config(object):
-    APP_NAME = config.get("core", "app_name", fallback="OpenCVE.io")
+    APP_NAME = config.get("core", "app_name", fallback="OpenCVE")
     APP_URL = config.get("core", "app_url", fallback="http://opencve.io")
     APP_TWITTER = config.get("core", "app_url", fallback="opencve")
 
