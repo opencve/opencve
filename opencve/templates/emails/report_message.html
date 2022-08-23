@@ -196,7 +196,7 @@ Respmail v1.1 (http://charlesmudy.com/respmail/)
                                                     <table border="0" cellpadding="20" cellspacing="0" width="100%">
                                                         <tr>
                                                             <td align="center">
-                                                                <img title="OpenCVE" alt="Text" style="max-width:100%;"
+                                                                <img title="{{ config.APP_NAME }}" alt="Text" style="max-width:100%;"
                                                                      class="flexibleImageSmall"
                                                                      src="{{ url_for('main.static', filename='img/mail_icon.png', _external=True) }}">
                                                             </td>
@@ -426,8 +426,8 @@ Respmail v1.1 (http://charlesmudy.com/respmail/)
                                                                             <div style="text-align:center;font-family:Helvetica,Arial,sans-serif;font-size:15px;margin-bottom:0;margin-top:3px;color:#5F5F5F;line-height:135%;">
                                                                                 <a style="color:#ffffff;"
                                                                                    target="_blank"
-                                                                                   href="https://twitter.com/opencve">Follow
-                                                                                    OpenCVE on Twitter</a></div>
+                                                                                   href="https://twitter.com/{{ config.APP_TWITTER }}">Follow
+                                                                                   {{ config.APP_NAME }} on Twitter</a></div>
                                                                         </td>
                                                                     </tr>
                                                                     </tbody>
@@ -485,9 +485,9 @@ Respmail v1.1 (http://charlesmudy.com/respmail/)
 
                                                                 <div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#828282;text-align:center;line-height:120%">
                                                                     <div>Copyright &#169; 2021 <a
-                                                                            href="https://opencve.io" target="_blank"
+                                                                            href="{{ config.APP_URL }}" target="_blank"
                                                                             style="text-decoration:none;color:#828282"><span
-                                                                            style="color:#828282">OpenCVE.io</span></a>.
+                                                                            style="color:#828282">{{ config.APP_NAME }}</span></a>.
                                                                         All&nbsp;rights&nbsp;reserved.
                                                                     </div>
                                                                     <div>If you do not want to receive emails, you can

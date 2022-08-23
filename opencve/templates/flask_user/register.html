@@ -1,6 +1,6 @@
 {% extends 'base_blank.html' %}
 
-{% block title %}Join OpenCVE - {{ super() }}{% endblock %}
+{% block title %}Join {{ config.APP_NAME }} - {{ super() }}{% endblock %}
 
 {% block content %}
 {% from "_macros.html" import render_field %}
@@ -11,7 +11,7 @@
     <div class="register-box-body">
         <div class="register-logo">
             <img src="{{ url_for('static', filename='img/logo_full_48.png') }}" alt="Logo">
-            <a href="{{ url_for('main.home') }}">OpenCVE.io</a>
+            <a href="{{ url_for('main.home') }}">{{ config.APP_NAME }}</a>
         </div>
         {% include 'flash_messages.html' %}
         <p class="login-box-msg"><strong>Register a new membership</strong></p>

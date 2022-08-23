@@ -36,6 +36,10 @@ from opencve.tasks import CELERYBEAT_SCHEDULE
 
 
 class Config(object):
+    APP_NAME = config.get("core", "app_name", fallback="OpenCVE.io")
+    APP_URL = config.get("core", "app_url", fallback="http://opencve.io")
+    APP_TWITTER = config.get("core", "app_url", fallback="opencve")
+
     SECRET_KEY = config.get("core", "secret_key")
     USE_REVERSE_PROXY = config.getboolean("core", "use_reverse_proxy", fallback=False)
 
@@ -86,7 +90,7 @@ class Config(object):
     REPORT_COUNT_EXCERPT = 3
 
     # Flask-User
-    USER_APP_NAME = "OpenCVE.io"
+    USER_APP_NAME = config.get("core", "user_app_name", fallback="OpenCVE.io")
     USER_ENABLE_CHANGE_USERNAME = False
     USER_ENABLE_MULTIPLE_EMAILS = True
     USER_AUTO_LOGIN_AFTER_CONFIRM = False

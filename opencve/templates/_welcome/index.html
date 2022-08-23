@@ -7,7 +7,7 @@
 
     <div class="starter-template">
         <img src="{{ url_for('static', filename='img/logo_full_48.png') }}" alt="Logo">
-        <h1>Welcome to OpenCVE</h1>
+        <h1>Welcome to {{ config.APP_NAME }}</h1>
         <p class="lead">
             Start to explore the list of <a href="{{ url_for('main.cves') }}">CVE</a> or find it using <a
                 href="{{ url_for('main.vendors') }}">Vendors</a>.

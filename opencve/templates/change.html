@@ -7,7 +7,7 @@
 <section class="content-header">
     <h1><a class="btn btn-default" href="{{ url_for('main.cve', cve_id=change.cve.cve_id) }}"><i class="fa fa-arrow-left"></i></a> Change of {{ change.created_at.strftime('%d %b %Y, %H:%M') }} <small>{{ change.cve.cve_id }}</small></h1>
     <ol class="breadcrumb">
-        <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
+        <li><a href="{{ url_for('main.home') }}">{{ config.APP_NAME }}</a></li>
         <li><a href="{{ url_for('main.cves') }}">Vulnerabilities (CVE)</a></li>
         <li><a href="{{ url_for('main.cve', cve_id=change.cve.cve_id) }}">{{ change.cve.cve_id }}</a></li>
         <li class="active">Change {{ change.created_at.strftime('%d %b %Y, %H:%M') }}</li>

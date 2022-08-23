@@ -11,7 +11,7 @@
         report.created_at.strftime("%D %H:%M") }}
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
+        <li><a href="{{ url_for('main.home') }}">{{ config.APP_NAME }}</a></li>
         <li><a href="{{ url_for('main.reports') }}">Reports</a></li>
         <li class="active">Report details</li>
     </ol>

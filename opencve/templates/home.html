@@ -9,7 +9,7 @@
         {% if current_user.settings['activities_view'] == 'subscriptions' %}<small class="label label-default"><i class="fa fa-filter"></i> subscriptions</small>{% endif %}
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
+        <li><a href="{{ url_for('main.home') }}">{{ config.APP_NAME }}</a></li>
         <li class="active">Dashboard</li>
     </ol>
 </section>

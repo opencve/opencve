@@ -14,4 +14,4 @@ View the full report : {{ url_for('main.report', link=report_public_link, _exter
 
 If you do not want to receive emails, you can unsubscribe here : {{ url_for('main.notifications', _external=True, _scheme='https') }}
 
-OpenCVE - https://opencve.io
+{{ config.APP_NAME }} - {{ config.APP_URL }}

@@ -8,7 +8,7 @@
 <section class="content-header">
     <h1>{{ cve.cve_id }}</h1>
     <ol class="breadcrumb">
-        <li><a href="{{ url_for('main.home') }}">OpenCVE</a></li>
+        <li><a href="{{ url_for('main.home') }}">{{ config.APP_NAME }}</a></li>
         <li><a href="{{ url_for('main.cves') }}">Vulnerabilities (CVE)</a></li>
         <li class="active">{{ cve.cve_id }}</li>
     </ol>
