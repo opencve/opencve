@@ -85,6 +85,9 @@ class Config(object):
     COUNT_EXCERPT = 3
     REPORT_COUNT_EXCERPT = 3
 
+    # Cleanup
+    REPORTS_CLEANUP_DAYS = config.getint("core", "reports_cleanup_days", fallback=0)
+
     # Flask-User
     USER_APP_NAME = "OpenCVE.io"
     USER_ENABLE_CHANGE_USERNAME = False

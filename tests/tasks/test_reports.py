@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from unittest.mock import patch, MagicMock
 from flask_user import EmailError
@@ -13,6 +15,7 @@ from opencve.tasks.reports import (
     get_users_with_alerts,
     get_vendors_products,
     handle_reports,
+    reports_cleanup,
 )
 
 
@@ -231,3 +234,43 @@ def test_report_bad_smtp_config(mock_send, create_user, handle_events):
     assert reports[0].alerts == Alert.query.filter_by(user_id=user.id).all()
     assert len(reports[0].alerts) == 1
     assert Alert.query.filter_by(notify=False).count() == 0
+
+
+@pytest.mark.freeze_time("2022-09-19")
+def test_reports_cleanup(create_user, create_cve):
+    user = create_user()
+
+    alert_2018_18074 = Alert(cve=create_cve("CVE-2018-18074"), user=user, details={})
+    alert_2020_9392 = Alert(cve=create_cve("CVE-2020-9392"), user=user, details={})
+    alert_2020_26116 = Alert(cve=create_cve("CVE-2020-26116"), user=user, details={})
+
+    # ~/tests/opencve.cfg::reports_cleanup_days = 7
+    old_report = Report(
+        created_at=datetime(2022, 9, 10),
+        user=user,
+        alerts=[alert_2018_18074, alert_2020_9392],
+    )
+    fresh_report = Report(
+        created_at=datetime(2022, 9, 15), user=user, alerts=[alert_2020_26116]
+    )
+
+    db.session.add(alert_2018_18074)
+    db.session.add(alert_2020_9392)
+    db.session.add(alert_2020_26116)
+    db.session.add(old_report)
+    db.session.add(fresh_report)
+    db.session.commit()
+
+    assert Report.query.count() == 2
+    assert Alert.query.count() == 3
+
+    reports_cleanup()
+
+    reports = Report.query.all()
+    assert len(reports) == 1
+    assert reports[0].id == fresh_report.id
+
+    alerts = Alert.query.all()
+    assert len(alerts) == 1
+    assert alerts[0].id == alert_2020_26116.id
+    assert alerts[0].report_id == fresh_report.id
