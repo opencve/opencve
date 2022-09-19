@@ -11,16 +11,19 @@ class Alert(BaseModel):
     notify = db.Column(db.Boolean, default=False)
 
     # Relationships
-    events = db.relationship("Event", secondary=alerts_events)
+    events = db.relationship("Event", secondary=alerts_events, cascade="all, delete")
 
-    user_id = db.Column(UUIDType(binary=False), db.ForeignKey("users.id"))
+    user_id = db.Column(UUIDType(binary=False), db.ForeignKey("users.id"), index=True)
     user = db.relationship("User", back_populates="alerts")
 
-    cve_id = db.Column(UUIDType(binary=False), db.ForeignKey("cves.id"))
+    cve_id = db.Column(UUIDType(binary=False), db.ForeignKey("cves.id"), index=True)
     cve = db.relationship("Cve", back_populates="alerts")
 
     report_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("reports.id"), nullable=True
+        UUIDType(binary=False),
+        db.ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     report = db.relationship("Report", back_populates="alerts")
 
