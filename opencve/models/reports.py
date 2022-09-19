@@ -22,7 +22,12 @@ class Report(BaseModel):
     user_id = db.Column(UUIDType(binary=False), db.ForeignKey("users.id"))
     user = db.relationship("User", back_populates="reports")
 
-    alerts = db.relationship("Alert", back_populates="report")
+    alerts = db.relationship(
+        "Alert",
+        back_populates="report",
+        cascade="all, delete",
+        passive_deletes=True,
+    )
 
     def __repr__(self):
         return "<Report {}>".format(self.id)
