@@ -70,7 +70,11 @@ users_products = db.Table(
 alerts_events = db.Table(
     "alerts_events",
     db.Column(
-        "alert_id", UUIDType(binary=False), db.ForeignKey("alerts.id"), primary_key=True
+        "alert_id",
+        UUIDType(binary=False),
+        db.ForeignKey("alerts.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
     ),
     db.Column(
         "event_id", UUIDType(binary=False), db.ForeignKey("events.id"), primary_key=True

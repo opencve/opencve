@@ -17,7 +17,7 @@ class Event(BaseModel):
     cve = db.relationship("Cve", back_populates="events")
     change_id = db.Column(UUIDType(binary=False), db.ForeignKey("changes.id"))
     change = db.relationship("Change", back_populates="events")
-    alerts = db.relationship("Alert", secondary=alerts_events)
+    alerts = db.relationship("Alert", secondary=alerts_events, passive_deletes=True)
 
     def __repr__(self):
         return "<Event {}>".format(self.type)
