@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from celery import chain
+from celery.schedules import crontab
 
 from opencve.extensions import cel
 from opencve.tasks.alerts import handle_alerts
@@ -14,6 +15,12 @@ CELERYBEAT_SCHEDULE = {}
 CELERYBEAT_SCHEDULE["cve-updates-15-mn"] = {
     "task": "CVE_UPDATES",
     "schedule": timedelta(minutes=15),
+}
+
+# Periodic Reports cleanup
+CELERYBEAT_SCHEDULE["reports-cleanup-daily"] = {
+    "task": "REPORTS_CLEANUP",
+    "schedule": crontab(minute=0, hour=0),
 }
 
 

@@ -1,9 +1,11 @@
 from collections import OrderedDict
 from datetime import datetime, time
 
+import arrow
 from celery.utils.log import get_task_logger
 from flask import render_template
 from flask_user import EmailError
+from sqlalchemy import delete
 
 from opencve.context import _humanize_filter
 from opencve.extensions import cel, db, user_manager
@@ -178,3 +180,20 @@ def handle_reports():
         for alert in alerts:
             alert.notify = True
         db.session.commit()
+
+
+@cel.task(name="REPORTS_CLEANUP")
+def reports_cleanup():
+    cel.app.app_context().push()
+
+    if not cel.app.config.get("REPORTS_CLEANUP_DAYS"):
+        return
+
+    # Remove N days to the current date
+    nb_days = -abs(cel.app.config.get("REPORTS_CLEANUP_DAYS"))
+    shifted_date = arrow.utcnow().shift(days=nb_days)
+    logger.info(f"Removing old reports ({shifted_date.humanize()})...")
+
+    # Use SQLAlchemy core for performance
+    stmt = delete(Report).where(Report.created_at < shifted_date.datetime)
+    db.engine.execute(stmt)
