@@ -7,10 +7,12 @@ from opencve.models.cwe import Cwe
 
 def convert_cpes(conf):
     """
-    This function takes an object, extracts its CPE uris and transforms them into
-    a dictionnary representing the vendors with their associated products.
+    This function takes an object, extracts its CPE uris of vulnerable
+    products and transforms them into a dictionary representing
+    the vendors with their associated products.
     """
-    uris = nested_lookup("cpe23Uri", conf) if not isinstance(conf, list) else conf
+    matches = nested_lookup("cpe_match", conf) if not isinstance(conf, list) else conf
+    uris = [cpe["cpe23Uri"] for match in matches for cpe in match if cpe["vulnerable"]]
 
     # Create a list of tuple (vendor, product)
     cpes_t = list(set([tuple(uri.split(":")[3:5]) for uri in uris]))
