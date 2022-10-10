@@ -65,6 +65,9 @@ class Config(object):
         "CELERY_ACCEPT_CONTENT": ["json"],
         "CELERYD_HIJACK_ROOT_LOGGER": False,
     }
+    CELERY_LOCK_URL = config.get(
+        "core", "celery_lock_url", fallback="redis://127.0.0.1:6379/2"
+    )
 
     # Pagination
     CVES_PER_PAGE = config.getint("core", "cves_per_page", fallback=20)
