@@ -6,7 +6,7 @@ from opencve.models.vendors import Vendor
 
 class VendorController(BaseController):
     model = Vendor
-    order = Vendor.name.asc()
+    order = [Vendor.name.asc()]
     per_page_param = "VENDORS_PER_PAGE"
     schema = {
         "search": {"type": str},

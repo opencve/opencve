@@ -19,7 +19,7 @@ from opencve.models.cwe import Cwe
 
 class CveController(BaseController):
     model = Cve
-    order = Cve.updated_at.desc()
+    order = [Cve.updated_at.desc(), Cve.id.desc()]
     per_page_param = "CVES_PER_PAGE"
     schema = {
         "search": {"type": str},
