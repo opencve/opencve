@@ -9,7 +9,7 @@ from opencve.models.cve import Cve
 
 class TestController(BaseController):
     model = Cve
-    order = Cve.created_at.desc()
+    order = [Cve.created_at.desc()]
     per_page_param = "CVES_PER_PAGE"
     schema = {
         "str": {"type": str, "default": "foobar"},

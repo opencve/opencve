@@ -8,7 +8,7 @@ from opencve.models.reports import Report
 
 class ReportController(BaseController):
     model = Report
-    order = Report.created_at.desc()
+    order = [Report.created_at.desc()]
     per_page_param = "REPORTS_PER_PAGE"
     schema = {
         "user_id": {"type": str},

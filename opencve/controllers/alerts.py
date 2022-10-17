@@ -7,7 +7,7 @@ from opencve.models.alerts import Alert
 
 class AlertController(BaseController):
     model = Alert
-    order = Alert.created_at.desc()
+    order = [Alert.created_at.desc()]
     per_page_param = "ALERTS_PER_PAGE"
     schema = {
         "user_id": {"type": str},

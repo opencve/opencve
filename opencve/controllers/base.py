@@ -43,7 +43,7 @@ class BaseController(object):
         args = cls.parse_args(args)
         query, metas = cls.build_query(args)
 
-        objects = query.order_by(cls.order).paginate(
+        objects = query.order_by(*cls.order).paginate(
             args.get(cls.page_parameter), app.config[cls.per_page_param], True
         )
 
