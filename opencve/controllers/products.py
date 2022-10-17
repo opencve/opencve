@@ -8,7 +8,7 @@ from opencve.models.products import Product
 
 class ProductController(BaseController):
     model = Product
-    order = Product.name.asc()
+    order = [Product.name.asc()]
     per_page_param = "PRODUCTS_PER_PAGE"
     page_parameter = "product_page"
     schema = {

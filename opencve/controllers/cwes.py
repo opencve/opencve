@@ -9,7 +9,7 @@ from opencve.models.cwe import Cwe
 
 class CweController(BaseController):
     model = Cwe
-    order = Cwe.cwe_id.desc()
+    order = [Cwe.cwe_id.desc()]
     per_page_param = "CWES_PER_PAGE"
     schema = {
         "search": {"type": str},

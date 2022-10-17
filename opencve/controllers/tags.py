@@ -8,7 +8,7 @@ from opencve.models.tags import UserTag
 
 class UserTagController(BaseController):
     model = UserTag
-    order = UserTag.name.asc()
+    order = [UserTag.name.asc()]
     per_page_param = "TAGS_PER_PAGE"
     schema = {
         "user_id": {"type": str},
