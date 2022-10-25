@@ -53,7 +53,7 @@
                         <tbody>
                         {% for product in current_user.products %}
                         <tr {% if loop.first %}style="border-top: 0px;" {% endif %}>
-                            <td style="border-top: 0px;">{{ product.name | humanize }}</td>
+                            <td style="border-top: 0px;">{{ product.vendor | humanize }} - {{ product.name | humanize }}</td>
                             <td class="pull-right" style="border-top: 0px;">
                                 {% if product in current_user.products %}
                                 <button class="btn btn-danger btn-xs pull-right subscribe"
