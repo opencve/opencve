@@ -50,24 +50,29 @@
                 <div class="table-responsive">
                     {% if current_user.products %}
                     <table class="table table-hover table-striped">
-                        <tbody>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Product</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
                         {% for product in current_user.products %}
                         <tr {% if loop.first %}style="border-top: 0px;" {% endif %}>
-                            <td style="border-top: 0px;">{{ product.vendor.name | humanize }} - {{ product.name | humanize }}</td>
-                            <td class="pull-right" style="border-top: 0px;">
+                            <td>{{ product.vendor.name | humanize }}</td>
+                            <td>{{ product.name | humanize }}</td>
+                            <td class="text-center" style="border-top: 0px;">
                                 {% if product in current_user.products %}
-                                <button class="btn btn-danger btn-xs pull-right subscribe"
+                                <button class="btn btn-danger btn-xs subscribe"
                                         id="unsubscribe_product_{{ product.id }}" type="button">Unsubscribe
                                 </button>
                                 {% else %}
-                                <button class="btn btn-defaul tbtn-xs pull-right subscribe"
-                                        id="subscribe_product_{{ product.id }}" type="button">Subscribe
+                                <button class="btn btn-default btn-xs subscribe"
+                                        id="subscribe_product_{{ product.id }}" type="button"><i
+                                        class="fa fa-bell-o"></i> Subscribe
                                 </button>
                                 {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
-                        </tbody>
                     </table>
                     {% else %}
                     <p>You have no subscription yet, click <a href="{{ url_for('main.vendors') }}">here</a> to view the
