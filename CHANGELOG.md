@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.4.0 - 2022-11-05
+### Added
+- Add vendor name in products subscriptions
+- Add a periodic task to clean old reports
+- Increase performance with indexes on reports and alerts tables
+- Support the MAIL_USE_SSL configuration
+- Show subscribed users for vendors and products in admin
+- Add column_filters in admin views
+- Include custom HTML code in all pages for analytics
+
+### Fixed
+- Remove duplicates items when pagination is used
+- Add a lock in Celery tasks to avoid parallel chains
+- Downgrade importlib-metadata to fix a bug in Python 3.7
+- Parse modified references with quote in url
+- Fix responsive bug in login and register views
+- Fix a bug when viewing emails in Outlook
+- Rework CPE parsing to improve memory footprint
+- Release memory when possible in CVE import
+
+### Removed
+- Remove Python 3.6 support
+
 ## 1.3.0 - 2022-01-22
 ### Added
 - feat: add tags in dashboard
