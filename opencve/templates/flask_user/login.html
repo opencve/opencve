@@ -31,7 +31,9 @@
         <p>&nbsp;</p>
         <p class="center">
             <a href="{{ url_for('user.forgot_password') }}">Forgot password ?</a><br>
+            {% if config.USER_ENABLE_REGISTER %}
             <a href="{{ url_for('user.register') }}" class="text-center">Register a new membership</a>
+            {% endif %}
         </p>
 
     </div>
