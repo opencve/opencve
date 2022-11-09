@@ -96,6 +96,7 @@ class Config(object):
     USER_ENABLE_CHANGE_USERNAME = False
     USER_ENABLE_MULTIPLE_EMAILS = True
     USER_AUTO_LOGIN_AFTER_CONFIRM = False
+    USER_ENABLE_REGISTER = config.getboolean("core", "user_enable_register", fallback=True)
 
     # Flask-User redirect pages
     USER_AFTER_CHANGE_PASSWORD_ENDPOINT = "user.login"
