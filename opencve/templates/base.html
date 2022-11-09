@@ -74,9 +74,11 @@
                     <li>
                         <a href="{{ url_for('user.login') }}">Sign in</a>
                     </li>
+                    {% if config.USER_ENABLE_REGISTER %}
                     <li>
                         <a href="{{ url_for('user.register') }}">Register</a>
                     </li>
+                    {% endif %}
                     {% endif %}
                 </ul>
             </div>
