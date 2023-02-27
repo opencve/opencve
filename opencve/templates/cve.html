@@ -221,6 +221,9 @@
                     <p><strong>Updated :</strong> {{ cve.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
                     <hr/>
                     <p><strong><i class="fa fa-external-link"></i> NVD link :</strong> <a
+                            href="https://www.cve.org/CVERecord?id={{ cve.cve_id }}" target="_blank">{{
+                            cve.cve_id }}</a></p>
+                    <p><strong><i class="fa fa-external-link"></i> NVD link :</strong> <a
                             href="https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}" target="_blank">{{
                         cve.cve_id }}</a></p>
                     <p><strong><i class="fa fa-external-link"></i> Mitre link :</strong> <a
