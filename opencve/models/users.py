@@ -14,6 +14,7 @@ def get_default_filters():
         "event_types": [
             "new_cve",
             "first_time",
+            "vulnerable",
             "references",
             "cvss",
             "cpes",
