@@ -36,6 +36,7 @@ def notifications():
         obj=current_user,
         new_cve=True if "new_cve" in filters["event_types"] else False,
         first_time=True if "first_time" in filters["event_types"] else False,
+        vulnerable=True if "vulnerable" in filters["event_types"] else False,
         references=True if "references" in filters["event_types"] else False,
         cvss=True if "cvss" in filters["event_types"] else False,
         cpes=True if "cpes" in filters["event_types"] else False,
@@ -76,6 +77,7 @@ def notifications():
             for typ in [
                 "new_cve",
                 "first_time",
+                "vulnerable",
                 "references",
                 "cvss",
                 "cpes",
