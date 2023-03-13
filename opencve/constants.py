@@ -30,6 +30,8 @@ CVSS_SCORES = [
 
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
+VULNERABLE_SEPARATOR = '$VULN$'
+
 # This is the message sent by Flask-User in the `flash` function
 EMAIL_CONFIRMATION_MESSAGE = (
     "Your email address has not yet been confirmed. Check your email Inbox "
