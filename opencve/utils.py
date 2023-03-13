@@ -1,26 +1,45 @@
 from nested_lookup import nested_lookup
 from difflib import HtmlDiff
 
-from opencve.constants import PRODUCT_SEPARATOR
+from opencve.constants import PRODUCT_SEPARATOR, VULNERABLE_SEPARATOR
 from opencve.models.cwe import Cwe
 
 
-def convert_cpes(conf):
+def convert_cpes(conf, mark_vulnerable=False):
     """
     This function takes an object, extracts its CPE uris and transforms them into
     a dictionnary representing the vendors with their associated products.
     """
-    uris = nested_lookup("cpe23Uri", conf) if not isinstance(conf, list) else conf
-
-    # Create a list of tuple (vendor, product)
-    cpes_t = list(set([tuple(uri.split(":")[3:5]) for uri in uris]))
-
-    # Transform it into nested dictionnary
     cpes = {}
-    for vendor, product in cpes_t:
-        if vendor not in cpes:
-            cpes[vendor] = []
-        cpes[vendor].append(product)
+    # CPE-conversion with duplicates for vulnerability-identification
+    if mark_vulnerable:
+        matches = nested_lookup("cpe_match", conf) if not isinstance(conf, list) else conf
+        for match in matches:
+            for cpe in match:
+                if "cpe23Uri" not in cpe:
+                    continue
+                vendor_product = cpe["cpe23Uri"].split(":")[3:5]
+                if vendor_product[0] not in cpes:
+                    cpes[vendor_product[0]] = []
+                # If CPE is marked as vulnerable create a duplicate with string to identify vulnerability
+                if cpe["vulnerable"]:
+                    if VULNERABLE_SEPARATOR + vendor_product[0] not in cpes:
+                        cpes[VULNERABLE_SEPARATOR+vendor_product[0]] = []
+                    cpes[VULNERABLE_SEPARATOR+vendor_product[0]].append(vendor_product[1])
+                # Insert regular CPE information
+                cpes[vendor_product[0]].append(vendor_product[1])
+
+    else:
+        # Standard CPE-conversion
+        uris = nested_lookup("cpe23Uri", conf) if not isinstance(conf, list) else conf
+        # Create a list of tuple (vendor, product)
+        cpes_t = list(set([tuple(uri.split(":")[3:5]) for uri in uris]))
+
+        # Transform it into nested dictionnary
+        for vendor, product in cpes_t:
+            if vendor not in cpes:
+                cpes[vendor] = []
+            cpes[vendor].append(product)
 
     return cpes
 
