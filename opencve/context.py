@@ -2,7 +2,7 @@ from flask import current_app as app
 from flask import request, url_for
 from flask_user import current_user
 
-from opencve.constants import EVENT_TYPES, PRODUCT_SEPARATOR
+from opencve.constants import EVENT_TYPES, PRODUCT_SEPARATOR, VULNERABLE_SEPARATOR
 from opencve.models.tags import UserTag
 
 
@@ -99,9 +99,9 @@ def _excerpt(objects, _type):
 
     # Keep the objects of the requested type
     if _type == "products":
-        objects = [o for o in objects if PRODUCT_SEPARATOR in o]
+        objects = [o for o in objects if PRODUCT_SEPARATOR in o and VULNERABLE_SEPARATOR not in o]
     else:
-        objects = [o for o in objects if not PRODUCT_SEPARATOR in o]
+        objects = [o for o in objects if not PRODUCT_SEPARATOR in o and VULNERABLE_SEPARATOR not in o]
 
     objects = sorted(objects)
     output += '<span class="badge badge-primary">{}</span> '.format(len(objects))
