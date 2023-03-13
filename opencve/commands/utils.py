@@ -66,7 +66,7 @@ class CveUtil(object):
         cwes = get_cwes(
             cve_json["cve"]["problemtype"]["problemtype_data"][0]["description"]
         )
-        cpes = convert_cpes(cve_json["configurations"])
+        cpes = convert_cpes(cve_json["configurations"], True)
         vendors = flatten_vendors(cpes)
 
         # Create the CVE
