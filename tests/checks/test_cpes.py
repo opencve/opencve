@@ -37,6 +37,10 @@ def test_check_cpes(create_cve, handle_events, open_file):
     cve = Cve.query.filter_by(cve_id="CVE-2018-18074").first()
     assert sorted(cve.vendors) == sorted(
         [
+            f"{VULNERABLE_SEPARATOR}canonical",
+            f"{VULNERABLE_SEPARATOR}canonical{PRODUCT_SEPARATOR}ubuntu_linux",
+            f"{VULNERABLE_SEPARATOR}opencveio",
+            f"{VULNERABLE_SEPARATOR}opencveio{PRODUCT_SEPARATOR}opencve",
             "canonical",
             f"canonical{PRODUCT_SEPARATOR}ubuntu_linux",
             "opencveio",
