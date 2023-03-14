@@ -30,7 +30,7 @@ CVSS_SCORES = [
 
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
-VULNERABLE_SEPARATOR = '$VULN$'
+VULNERABLE_SEPARATOR = "$VULN$"
 
 # This is the message sent by Flask-User in the `flash` function
 EMAIL_CONFIRMATION_MESSAGE = (

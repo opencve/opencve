@@ -13,7 +13,9 @@ def convert_cpes(conf, mark_vulnerable=False):
     cpes = {}
     # CPE-conversion with duplicates for vulnerability-identification
     if mark_vulnerable:
-        matches = nested_lookup("cpe_match", conf) if not isinstance(conf, list) else conf
+        matches = (
+            nested_lookup("cpe_match", conf) if not isinstance(conf, list) else conf
+        )
         for match in matches:
             for cpe in match:
                 if "cpe23Uri" not in cpe:
@@ -24,8 +26,10 @@ def convert_cpes(conf, mark_vulnerable=False):
                 # If CPE is marked as vulnerable create a duplicate with string to identify vulnerability
                 if cpe["vulnerable"]:
                     if VULNERABLE_SEPARATOR + vendor_product[0] not in cpes:
-                        cpes[VULNERABLE_SEPARATOR+vendor_product[0]] = []
-                    cpes[VULNERABLE_SEPARATOR+vendor_product[0]].append(vendor_product[1])
+                        cpes[VULNERABLE_SEPARATOR + vendor_product[0]] = []
+                    cpes[VULNERABLE_SEPARATOR + vendor_product[0]].append(
+                        vendor_product[1]
+                    )
                 # Insert regular CPE information
                 cpes[vendor_product[0]].append(vendor_product[1])
 

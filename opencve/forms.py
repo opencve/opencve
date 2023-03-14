@@ -120,6 +120,9 @@ class ActivitiesViewForm(FlaskForm):
         choices=[
             ("all", "Display all activities"),
             ("subscriptions", "Display subscriptions activities"),
-            ("vulnerable", "Display activities with subscriptions as source of vulnerability"),
+            (
+                "vulnerable",
+                "Display activities with subscriptions as source of vulnerability"
+            ),
         ],
     )

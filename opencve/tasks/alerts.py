@@ -77,10 +77,18 @@ def handle_alerts():
                     if user not in users.keys():
                         users[user] = {"products": [], "vendors": []}
                     # User only wants notification for alerts where subscriptions are marked as vulnerable
-                    if "vulnerable" in user.filters_notifications and VULNERABLE_SEPARATOR in product.name:
-                        users[user]["products"].append(product.name.replace(VULNERABLE_SEPARATOR, ""))
+                    if (
+                            "vulnerable" in user.filters_notifications
+                            and VULNERABLE_SEPARATOR in product.name
+                    ):
+                        users[user]["products"].append(
+                            product.name.replace(VULNERABLE_SEPARATOR, "")
+                        )
                     # User wants all notifications for subscriptions independent independent of vulnerability
-                    elif "vulnerable" not in user.filters_notifications and VULNERABLE_SEPARATOR not in product.name:
+                    elif (
+                            "vulnerable" not in user.filters_notifications
+                            and VULNERABLE_SEPARATOR not in product.name
+                    ):
                         users[user]["products"].append(product.name)
             # Vendor
             else:
