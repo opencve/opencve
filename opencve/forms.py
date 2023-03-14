@@ -122,7 +122,7 @@ class ActivitiesViewForm(FlaskForm):
             ("subscriptions", "Display subscriptions activities"),
             (
                 "vulnerable",
-                "Display activities with subscriptions as source of vulnerability"
+                "Display activities with subscriptions as source of vulnerability",
             ),
         ],
     )
