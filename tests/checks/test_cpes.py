@@ -1,4 +1,4 @@
-from opencve.constants import PRODUCT_SEPARATOR
+from opencve.constants import PRODUCT_SEPARATOR, VULNERABLE_SEPARATOR
 from opencve.models.cve import Cve
 from opencve.models.changes import Change
 from opencve.models.events import Event
@@ -12,6 +12,10 @@ def test_check_cpes(create_cve, handle_events, open_file):
     cve = create_cve("CVE-2018-18074")
     assert sorted(cve.vendors) == sorted(
         [
+            f"{VULNERABLE_SEPARATOR}python-requests",
+            f"{VULNERABLE_SEPARATOR}python-requests{PRODUCT_SEPARATOR}requests",
+            f"{VULNERABLE_SEPARATOR}canonical",
+            f"{VULNERABLE_SEPARATOR}canonical{PRODUCT_SEPARATOR}ubuntu_linux",
             "python-requests",
             f"python-requests{PRODUCT_SEPARATOR}requests",
             "canonical",
