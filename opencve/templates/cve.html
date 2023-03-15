@@ -128,18 +128,18 @@
                                         {% if loop.index == 1 and child.cpe_match|length > 1 %}
                                         <td class="col-md-1 rowspaned" rowspan="{{ child.cpe_match|length }}">OR</td>
                                         {% endif %}
-                                        <td>{{ cpe.cpe23Uri }}</td>
+                                        <td colspan="{{ 5 - ('versionStartIncluding' in cpe or 'versionStartExcluding' in cpe) - ('versionEndIncluding' in cpe or 'versionEndExcluding' in cpe)   }}">{{ cpe.cpe23Uri }}</td>
                                         {% if cpe.versionStartIncluding %}
-                                            <td class="col-md-1 rowspaned" rowspan="1">From including<br>{{ cpe.versionStartIncluding }}</td>
+                                            <td>From including<br>{{ cpe.versionStartIncluding }}</td>
                                         {% elif cpe.versionStartExcluding %}
-                                            <td class="col-md-1 rowspaned" rowspan="1">From excluding<br>{{ cpe.versionStartExcluding }}</td>
+                                            <td>From excluding<br>{{ cpe.versionStartExcluding }}</td>
                                         {% endif %}
                                         {% if cpe.versionEndIncluding %}
-                                            <td class="col-md-1 rowspaned" rowspan="1">Up to including<br>{{ cpe.versionEndIncluding }}</td>
+                                            <td>Up to including<br>{{ cpe.versionEndIncluding }}</td>
                                         {% elif cpe.versionEndExcluding %}
-                                            <td class="col-md-1 rowspaned" rowspan="1">Up to excluding<br>{{ cpe.versionEndExcluding }}</td>
+                                            <td>Up to excluding<br>{{ cpe.versionEndExcluding }}</td>
                                         {% endif %}
-                                        <td class="col-md-1 rowspaned" rowspan="1">Vulnerability source<br>{{ cpe.vulnerable }}</td>
+                                        <td class="col-md-1 rowspaned" rowspan="1">Vulnerable<br>{{ cpe.vulnerable }}</td>
                                     </tr>
                                     {% endfor %}
                                 </table>
