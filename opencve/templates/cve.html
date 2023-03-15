@@ -129,6 +129,17 @@
                                         <td class="col-md-1 rowspaned" rowspan="{{ child.cpe_match|length }}">OR</td>
                                         {% endif %}
                                         <td>{{ cpe.cpe23Uri }}</td>
+                                        {% if cpe.versionStartIncluding %}
+                                            <td class="col-md-1 rowspaned" rowspan="1">From including<br>{{ cpe.versionStartIncluding }}</td>
+                                        {% elif cpe.versionStartExcluding %}
+                                            <td class="col-md-1 rowspaned" rowspan="1">From excluding<br>{{ cpe.versionStartExcluding }}</td>
+                                        {% endif %}
+                                        {% if cpe.versionEndIncluding %}
+                                            <td class="col-md-1 rowspaned" rowspan="1">Up to including<br>{{ cpe.versionEndIncluding }}</td>
+                                        {% elif cpe.versionEndExcluding %}
+                                            <td class="col-md-1 rowspaned" rowspan="1">Up to excluding<br>{{ cpe.versionEndExcluding }}</td>
+                                        {% endif %}
+                                        <td class="col-md-1 rowspaned" rowspan="1">Vulnerability source<br>{{ cpe.vulnerable }}</td>
                                     </tr>
                                     {% endfor %}
                                 </table>
