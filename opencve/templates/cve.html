@@ -231,12 +231,16 @@
                     <p><strong>Published :</strong> {{ cve.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
                     <p><strong>Updated :</strong> {{ cve.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
                     <hr/>
+                    
                     <p><strong><i class="fa fa-external-link"></i> NVD link :</strong> <a
                             href="https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}" target="_blank">{{
                         cve.cve_id }}</a></p>
                     <p><strong><i class="fa fa-external-link"></i> Mitre link :</strong> <a
                             href="https://cve.mitre.org/cgi-bin/cvename.cgi?name={{ cve.cve_id }}" target="_blank">{{
                         cve.cve_id }}</a></p>
+                        <p><strong><i class="fa fa-external-link"></i> CVE.ORG link :</strong> <a
+                            href="https://www.cve.org/CVERecord?id={{ cve.cve_id }}" target="_blank">{{
+                            cve.cve_id }}</a></p>
                     <hr/>
                     <p><strong><i class="fa fa-code"></i> JSON object :</strong> <a class="pointer" data-toggle="modal"
                                                                                     data-target="#modal-default">View</a>
