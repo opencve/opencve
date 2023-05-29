@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.1 - 2023-05-26
+### Added
+- Add the cve.org link in CVE html page
+
+### Fixed
+- Upgrade jsmin package to fix a dependency issue
+
 ## 1.4.0 - 2022-11-05
 ### Added
 - Add vendor name in products subscriptions
