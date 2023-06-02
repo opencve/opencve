@@ -1,6 +1,6 @@
 from celery.utils.log import get_task_logger
 
-from opencve.constants import PRODUCT_SEPARATOR
+from opencve.constants import PRODUCT_SEPARATOR, VULNERABLE_SEPARATOR
 from opencve.extensions import cel, db
 from opencve.models.alerts import Alert
 from opencve.models.cve import Cve
@@ -64,17 +64,38 @@ def handle_alerts():
                 vendor = Vendor.query.filter_by(
                     name=v.split(PRODUCT_SEPARATOR)[0]
                 ).first()
+                # Skip if vendor is duplicate for vulnerability identification
+                if vendor is None:
+                    continue
                 product = Product.query.filter_by(
                     name=v.split(PRODUCT_SEPARATOR)[1], vendor_id=vendor.id
                 ).first()
+                # Skip if product is duplicate for vulnerability identification
+                if product is None:
+                    continue
                 for user in product.users:
                     if user not in users.keys():
                         users[user] = {"products": [], "vendors": []}
-                    users[user]["products"].append(product.name)
-
+                    # User only wants notification for alerts where subscriptions are marked as vulnerable
+                    if (
+                        "vulnerable" in user.filters_notifications
+                        and VULNERABLE_SEPARATOR in product.name
+                    ):
+                        users[user]["products"].append(
+                            product.name.replace(VULNERABLE_SEPARATOR, "")
+                        )
+                    # User wants all notifications for subscriptions independent independent of vulnerability
+                    elif (
+                        "vulnerable" not in user.filters_notifications
+                        and VULNERABLE_SEPARATOR not in product.name
+                    ):
+                        users[user]["products"].append(product.name)
             # Vendor
             else:
                 vendor = Vendor.query.filter_by(name=v).first()
+                # Skip if v is duplicate of vendor to identify vulnerability
+                if vendor is None:
+                    continue
                 for user in vendor.users:
                     if user not in users.keys():
                         users[user] = {"products": [], "vendors": []}

@@ -1,7 +1,7 @@
 import datetime
 
 from opencve.commands.utils import CveUtil
-from opencve.constants import PRODUCT_SEPARATOR
+from opencve.constants import PRODUCT_SEPARATOR, VULNERABLE_SEPARATOR
 from opencve.extensions import db
 from opencve.models.changes import Change
 from opencve.models.cve import Cve
@@ -24,6 +24,10 @@ def test_create_cve(app, open_file):
     assert cve.cwes == ["CWE-116"]
     assert sorted(cve.vendors) == sorted(
         [
+            f"{VULNERABLE_SEPARATOR}fedoraproject",
+            f"{VULNERABLE_SEPARATOR}fedoraproject{PRODUCT_SEPARATOR}fedora",
+            f"{VULNERABLE_SEPARATOR}python",
+            f"{VULNERABLE_SEPARATOR}python{PRODUCT_SEPARATOR}python",
             "fedoraproject",
             f"fedoraproject{PRODUCT_SEPARATOR}fedora",
             "python",

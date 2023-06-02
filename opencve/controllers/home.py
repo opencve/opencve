@@ -5,7 +5,7 @@ from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.orm import joinedload, aliased
 
-from opencve.constants import PRODUCT_SEPARATOR
+from opencve.constants import PRODUCT_SEPARATOR, VULNERABLE_SEPARATOR
 from opencve.controllers.main import main, welcome
 from opencve.controllers.reports import ReportController
 from opencve.extensions import db
@@ -78,6 +78,19 @@ def home():
         vendors.extend(
             [
                 f"{p.vendor.name}{PRODUCT_SEPARATOR}{p.name}"
+                for p in current_user.products
+            ]
+        )
+        if not vendors:
+            vendors = [None]
+        query = query.filter(Cve.vendors.has_any(array(vendors)))
+
+    # Filter by vulnerable subscriptions
+    if current_user.settings["activities_view"] == "vulnerable":
+        vendors = [VULNERABLE_SEPARATOR + v.name for v in current_user.vendors]
+        vendors.extend(
+            [
+                f"{VULNERABLE_SEPARATOR}{p.vendor.name}{PRODUCT_SEPARATOR}{p.name}"
                 for p in current_user.products
             ]
         )

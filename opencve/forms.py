@@ -79,6 +79,7 @@ class MailNotificationsForm(FlaskForm):
 class FiltersNotificationForm(FlaskForm):
     new_cve = BooleanField("New CVE")
     first_time = BooleanField("Subscription appeared for the first time")
+    vulnerable = BooleanField("Subscription appeared as vulnerable")
     references = BooleanField("Reference changed")
     cvss = BooleanField("CVSS changed")
     cpes = BooleanField("CPE changed")
@@ -119,5 +120,9 @@ class ActivitiesViewForm(FlaskForm):
         choices=[
             ("all", "Display all activities"),
             ("subscriptions", "Display subscriptions activities"),
+            (
+                "vulnerable",
+                "Display activities with subscriptions as source of vulnerability",
+            ),
         ],
     )

@@ -21,9 +21,9 @@ class Cpes(BaseCheck):
         # The CPEs list has been modified
         if payload["added"] or payload["removed"]:
 
-            # Change the CVE's vendors attribute
+            # Change the CVE's vendors attribute and mark vulnerable vendors/products
             self.cve_obj.vendors = flatten_vendors(
-                convert_cpes(self.cve_json["configurations"])
+                convert_cpes(self.cve_json["configurations"], True)
             )
             db.session.commit()
 

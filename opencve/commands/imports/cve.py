@@ -7,6 +7,7 @@ import requests
 
 from opencve.commands import header, info, timed_operation
 from opencve.commands.imports.cpe import get_slug
+from opencve.constants import VULNERABLE_SEPARATOR
 from opencve.extensions import db
 from opencve.utils import convert_cpes, flatten_vendors, get_cwes
 from opencve.models import get_uuid
@@ -67,7 +68,7 @@ def run():
                 cwes = get_cwes(
                     item["cve"]["problemtype"]["problemtype_data"][0]["description"]
                 )
-                cpes = convert_cpes(item["configurations"])
+                cpes = convert_cpes(item["configurations"], True)
                 vendors = flatten_vendors(cpes)
 
                 # Create the CVEs mappings
@@ -88,7 +89,9 @@ def run():
 
                 # Create the vendors and their products
                 for vendor, products in cpes.items():
-
+                    # Skips duplicates, which identify vulnerable parts of configuration
+                    if VULNERABLE_SEPARATOR in vendor:
+                        continue
                     # Create the vendor
                     if vendor not in mappings["vendors"].keys():
                         mappings["vendors"][vendor] = dict(id=get_uuid(), name=vendor)
