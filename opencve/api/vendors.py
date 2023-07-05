@@ -11,6 +11,7 @@ from opencve.controllers.vendors import VendorController
 vendor_list_fields = {
     "name": fields.String(attribute="name"),
     "human_name": HumanizedNameField(attribute="name"),
+    "vendor_id": fields.String(attribute="id")
 }
 
 vendor_fields = dict(
