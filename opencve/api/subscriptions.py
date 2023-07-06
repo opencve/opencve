@@ -11,7 +11,7 @@ from opencve.models import is_valid_uuid
 vendor_list_fields = {
     "name": fields.String(attribute="name"),
     "human_name": HumanizedNameField(attribute="name"),
-    "vendor_id": fields.String(attribute="id")
+    "vendor_id": fields.String(attribute="id"),
 }
 
 product_list_fields = {
@@ -38,8 +38,11 @@ class SubscriptionListRessourceProduct(BaseResource):
         ).first()
         return user.products
 
+
 class SubscriptionAddVendor(BaseResource):
-    def post(self,):
+    def post(
+        self,
+    ):
         user = User.query.filter_by(
             username=request.authorization.get("username")
         ).first()

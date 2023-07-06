@@ -16,7 +16,7 @@ from opencve.api.vendors import VendorListResource, VendorResource, VendorCveRes
 from opencve.api.subscriptions import (
     SubscriptionListRessourceVendor,
     SubscriptionListRessourceProduct,
-    SubscriptionAddVendor
+    SubscriptionAddVendor,
 )
 
 

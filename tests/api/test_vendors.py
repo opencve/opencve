@@ -1,5 +1,6 @@
 from opencve.models.vendors import Vendor
 
+
 def test_list_vendors_authentication(client, create_user):
     create_user("opencve")
     response = client.get("/api/vendors")
@@ -21,7 +22,11 @@ def test_list_vendors(client, create_user, create_vendor):
     vendor_id = str(Vendor.query.filter_by(name="the_vendor").first().id)
     assert response.status_code == 200
     assert len(response.json) == 1
-    assert response.json[0] == {"human_name": "The Vendor", "name": "the_vendor", "vendor_id": vendor_id}
+    assert response.json[0] == {
+        "human_name": "The Vendor",
+        "name": "the_vendor",
+        "vendor_id": vendor_id,
+    }
 
 
 def test_get_vendor_not_found(client, create_user):
