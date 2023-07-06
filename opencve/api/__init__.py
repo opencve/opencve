@@ -16,6 +16,7 @@ from opencve.api.vendors import VendorListResource, VendorResource, VendorCveRes
 from opencve.api.subscriptions import (
     SubscriptionListRessourceVendor,
     SubscriptionListRessourceProduct,
+    SubscriptionAddVendor
 )
 
 
@@ -31,6 +32,7 @@ api.add_resource(CveListResource, "/cve")
 api.add_resource(CveResource, "/cve/<string:id>")
 api.add_resource(ReportListResource, "/reports")
 api.add_resource(SubscriptionListRessourceVendor, "/account/subscriptions/vendors")
+api.add_resource(SubscriptionAddVendor, "/account/subscriptions/vendor/add")
 api.add_resource(SubscriptionListRessourceProduct, "/account/subscriptions/products")
 api.add_resource(ReportResource, "/reports/<string:link>")
 api.add_resource(AlertListResource, "/reports/<string:link>/alerts")
