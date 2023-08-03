@@ -1,0 +1,66 @@
+{% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
+
+{% block title %}{{ project.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    <div class="col-lg-6 col-md-6 col-sm-6">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Vendors ({{ project.subscriptions.vendors|length }})</h3>
+            </div>
+            <div class="box-body">
+                <div class="table-responsive">
+                    {% if project.subscriptions.vendors %}
+                    <table class="table table-hover table-striped">
+                        <tbody>
+                        {% for vendor in project.subscriptions.vendors %}
+                        <tr {% if loop.first %}style="border-top: 0px;" {% endif %}>
+                            <td style="border-top: 0px;">{{ vendor | humanize }}</td>
+                            <td class="pull-right" style="border-top: 0px;">
+                                <a class="btn btn-default btn-xs" href="{% search_vendor_url vendor %}"><i class="fa fa-bell-o"></i> Manage subscriptions</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>You have no subscription yet, click <a href="{% url 'vendors' %}">here</a> to view the entire list of vendors and products.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 col-md-6 col-sm-6">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Products ({{ project.subscriptions.products|length }})</h3>
+            </div>
+            <div class="box-body">
+                <div class="table-responsive">
+                    {% if project.subscriptions.products %}
+                    <table class="table table-hover table-striped">
+                        <tbody>
+                        {% for product in project.subscriptions.products %}
+                        <tr {% if loop.first %}style="border-top: 0px;" {% endif %}>
+                            <td style="border-top: 0px;">{{ product | remove_product_separator | humanize }}</td>
+                            <td class="pull-right" style="border-top: 0px;">
+                                <a class="btn btn-default btn-xs" href="{% search_vendor_url product %}"><i class="fa fa-bell-o"></i> Manage subscriptions</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>You have no subscription yet, click <a href="{% url 'vendors' %}">here</a> to view the entire list of vendors and products.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends 'users/base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}Sign in - {{ block.super }}{% endblock %}
+
+{% block header %}Sign in to your account{% endblock %}
+
+{% block content%}{% crispy form %}{% endblock %}
+
+{% block links %}
+<a href="{% url 'password_reset' %}">Forgot password ?</a><br>
+<a href="{% url 'register' %}" class="text-center">Register a new membership</a>
+{% endblock %}

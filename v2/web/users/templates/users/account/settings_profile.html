@@ -1,0 +1,9 @@
+{% extends 'users/account/base_account.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_account %}
+
+{% crispy form %}
+<a href="{% url 'settings_password' %}">Change password ?</a><br>
+
+{% endblock %}

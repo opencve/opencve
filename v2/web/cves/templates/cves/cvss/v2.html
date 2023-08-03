@@ -1,0 +1,70 @@
+{% load opencve_extras %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Access Vector
+                        <span class="pull-right label label-{% metric_label 'v2' 'accessVector' cvss.accessVector %}">{{ cvss.accessVector }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Access Complexity
+                        <span class="pull-right label label-{% metric_label 'v2' 'accessComplexity' cvss.accessComplexity %}">{{ cvss.accessComplexity }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Authentication
+                        <span class="pull-right label label-{% metric_label 'v2' 'authentication' cvss.authentication %}">{{ cvss.authentication }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Confidentiality Impact
+                        <span class="pull-right label label-{% metric_label 'v2' 'confidentialityImpact' cvss.confidentialityImpact %}">{{ cvss.confidentialityImpact }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Integrity Impact
+                        <span class="pull-right label label-{% metric_label 'v2' 'integrityImpact' cvss.integrityImpact %}">{{ cvss.integrityImpact }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Availability Impact
+                        <span class="pull-right label label-{% metric_label 'v2' 'availabilityImpact' cvss.availabilityImpact %}">{{ cvss.availabilityImpact }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <canvas class="cvss-radar" data-chart="{{ cvss|cvss_chart_data }}"></canvas>
+    </div>
+</div>

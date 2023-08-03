@@ -1,0 +1,143 @@
+{% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
+
+{% block title %}{{ project.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    <div class="col-md-8">
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Activity Feed</h3>
+            </div>
+            <div class="box-body">
+                {% if not changes %}
+                <p class="alert alert-info">No changes available.</p>
+                {% else %}
+                <ul class="timeline timeline-inverse">
+                    {% for change in changes %}
+                    <li class="time-label">
+                        {% ifchanged change.created_at|date:"d b Y" %}
+                        <span class="bg-blue bg-opencve">
+                            {{ change.created_at|date:"d b Y" }}
+                        </span>
+                        {% endifchanged %}
+                    </li>
+
+                    <li>
+                        {% if change.events.all|is_new_cve %}
+                        <i class="fa fa-plus bg-red"></i>
+                        {% else %}
+                        <i class="fa fa-edit bg-blue"></i>
+                        {% endif %}
+                        <div class="timeline-item">
+                            <span class="time" title="{{ change.created_at|date:'d b Y, H:i' }}"><i class="fa fa-clock-o"></i> {{ change.created_at|date:"H:i" }}</span>
+                            <h3 class="timeline-header"><a href="{% url 'cve' cve_id=change.cve.cve_id %}">{{ change.cve.cve_id }}</a> <i>{% if change.events.all|is_new_cve %}is a new CVE{% else %}has changed{% endif %}</i> <a href="{% url 'change' cve_id=change.cve.cve_id id=change.id %}" class="btn-json-diff" data-toggle="tooltip" data-container="body" title="View the change details"><i class="fa fa-code"></i></a></h3>
+                            <div class="timeline-body">
+                                <p>{{ change.cve.summary }}</p>
+                                {% if not change.events.all|is_new_cve %}
+                                <div class="box-group" id="{{ change.id }}">
+                                    {% for event in change.events.all %}
+                                    <div class="panel box box-changes">
+                                        <div class="box-header">
+                                            <h4 class="box-title">{{ event.get_type_display }}
+                                            <span class="box-meta">{{ event.details|event_excerpt|safe }}</span>
+                                            </h4>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+
+                </ul>
+                {% endif %}
+
+                {% if changes %}
+                <div class="center">
+                    <ul class="pagination">
+                        {% if page_obj.has_previous %}
+                            <li class="previous"><a href="{% url 'home'%}?{% query_params_url 'page' page_obj.previous_page_number %}">« prev </a></li>
+                        {% endif %}
+                        {% if page_obj.has_next %}
+                            <li class="previous"><a href="{% url 'home'%}?{% query_params_url 'page' page_obj.next_page_number %}">next »</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+    <div class="col-md-4">
+        <div class="box box-primary">
+            <div class="box-header">
+                <div class="box-title">Subscriptions</div>
+                <div class="box-tools pull-right">
+                    <a class="btn btn-box-tool" href="{% url 'subscriptions' name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="Manage this project subscriptions"><i class="fa fa-gears"></i></a>
+                </div>
+            </div>
+            <div class="box-body box-subscriptions">
+                {% with vendors=project.subscriptions.vendors products=project.subscriptions.products %}
+                {% if vendors or products %}
+                    {% if vendors %}
+                    <h5><strong>Vendors <span>({{ vendors|length }})</span></strong></h5>
+                    {% for vendor in vendors %}
+                    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ vendor }}">{{ vendor| humanize }}</a>
+                    {% endfor %}
+
+                    {% if products %}
+                    <hr/>
+                    {% endif %}
+                    {% endif %}
+                    {% if products %}
+                    <h5><strong>Products <span>({{ products|length }})</span></strong></h5>
+                    {% for product in products %}
+                    {% with product|split:"$PRODUCT$" as p %}
+                    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ p.0 }}&product={{ p.1 }}">{{ product|remove_product_separator|humanize }}</a>
+                    {% endwith %}
+                    {% endfor %}
+                    {% endif %}
+                {% else %}
+                <p class="alert alert-info">You don't have any subscriptions yet, explore the list of <a href="{% url 'vendors' %}">Vendors & Products</a> to select some.</p>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Last Reports</h3>
+                <div class="box-tools pull-right">
+                    <a class="btn btn-box-tool" href="{% url 'reports' name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="See this project reports"><i class="fa fa-list-ul"></i></a>
+                </div>
+            </div>
+            <div class="box-body">
+                <table class="table">
+                    <thead>
+                    <tr><th class="col-md-2">Date</th>
+                    <th>Vendors &amp; Products</th>
+                    </tr></thead>
+
+                    <tbody>
+                    <tr>
+                        <td><a href="#">17/04/2023</a></td>
+                        <td>Google, Microsoft</td>
+                    </tr>
+                    <tr>
+                        <td><a href="#">16/04/2023</a></td>
+                        <td>Linux, Debian, Fedora</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

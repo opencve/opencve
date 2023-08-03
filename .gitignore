@@ -23,3 +23,10 @@ celerybeat-schedule.db
 # Tests and coverage
 .coverage
 htmlcov/
+
+# OpenCVE v2
+v2/scheduler/logs/
+v2/scheduler/airflow.cfg
+v2/scheduler/standalone_admin_password.txt
+v2/web/.pytest_cache/
+v2/web/opencve/settings.py

@@ -1,0 +1,7 @@
+apache-airflow-providers-postgres==5.6.0
+apache-airflow-providers-redis==3.2.0
+arrow==1.2.2
+gitpython==3.1.30
+more-itertools==9.1.0
+nested-lookup==0.2.25
+psycopg2-binary==2.9.3

@@ -1,0 +1,61 @@
+{% load opencve_extras %}
+
+{% if cve.cvss31 or cve.cvss30 or cve.cvss20 %}
+<div class="nav-tabs-custom nav-tabs-primary">
+    <ul class="nav nav-tabs">
+        <li class="active">
+            {% if cve.cvss31 %}
+            <a href="#cvss31" data-toggle="tab">CVSS v3.1 <span class="label label-{{ cve.cvss31|cvss_level }} label-cvss">{{ cve.cvss31 }} {{ cve.cvss31|cvss_human_score|title }}</span></a>
+            {% else %}
+            <a href="#cvss31" data-toggle="tab">CVSS v3.1 <span class="label label-default label-cvss">N/A</span></a>
+            {% endif %}
+        </li>
+        <li>
+            {% if cve.cvss30 %}
+            <a href="#cvss30" data-toggle="tab">CVSS v3.0 <span class="label label-{{ cve.cvss30|cvss_level }} label-cvss">{{ cve.cvss30 }} {{ cve.cvss30|cvss_human_score|title }}</span></a>
+            {% else %}
+            <a href="#cvss30" data-toggle="tab">CVSS v3.0 <span class="label label-default label-cvss">N/A</span></a>
+            {% endif %}
+        </li>
+        <li>
+            {% if cve.cvss20 %}
+            <a href="#cvss2" data-toggle="tab">CVSS v2 <span class="label label-{{ cve.cvss20|cvss_level }} label-cvss">{{ cve.cvss20 }} {{ cve.cvss20|cvss_human_score|title }}</span></a>
+            {% else %}
+            <a href="#cvss2" data-toggle="tab">CVSS v2 <span class="label label-default label-cvss">N/A</span></a>
+            {% endif %}
+        </li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane active" id="cvss31">
+            {% if cve.cvss31 %}
+            {% include "cves/cvss/v3.html" with cvss=cve.nvd_json.metrics.cvssMetricV31.0.cvssData %}
+            {% else %}
+            <p class="alert alert-info">No CVSS v3.1</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane" id="cvss30">
+            {% if cve.cvss30 %}
+            {% include "cves/cvss/v3.html" with cvss=cve.nvd_json.metrics.cvssMetricV30.0.cvssData %}
+            {% else %}
+            <p class="alert alert-info">No CVSS v3.0</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane" id="cvss2">
+            {% if cve.cvss20 %}
+            {% include "cves/cvss/v2.html" with cvss=cve.nvd_json.metrics.cvssMetricV2.0.cvssData %}
+            {% else %}
+            <p class="alert alert-info">No CVSS v2</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="box box-primary">
+    <div class="box-header">
+        <div class="box-title">CVSS</div>
+    </div>
+    <div class="box-body">
+        <p class="alert alert-info">No CVSS.</p>
+    </div>
+</div>
+{% endif %}

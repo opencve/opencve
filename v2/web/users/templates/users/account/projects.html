@@ -1,0 +1,40 @@
+{% extends 'users/account/base_account.html' %}
+
+{% block content_account %}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="callout callout-info">
+            <p>The projects allows you to organize your subscriptions and notifications. <a href="{% url 'create_project' %}">Create a new project?</a></p>
+        </div>
+        {% if projects %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <tbody>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th></th>
+                </tr>
+                {% for project in projects %}
+                <tr>
+                    <td>{{ project.name }}</td>
+                    <td>{{ project.description|default:'' }}</td>
+                    <td class="pull-right">
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'project' name=project.name %}" class="btn btn-default btn-xs">View Project</a>
+                            <a href="{% url 'edit_project' name=project.name %}" class="btn btn-default btn-xs">Edit</a>
+                            <a href="{% url 'delete_project' name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}

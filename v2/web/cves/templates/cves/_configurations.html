@@ -1,0 +1,43 @@
+<div class="box box-primary">
+    <div class="box-header">
+        <div class="box-title">Configurations</div>
+        <div class="box-tools pull-right">
+            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+        </div>
+    </div>
+    {% if cve.nvd_json.configurations %}
+    <div class="box-body">
+        {% for conf in cve.nvd_json.configurations %}
+
+        <p><strong>Configuration {{ forloop.counter }}</strong> (<a class="pointer config-toggle" id="config-{{ forloop.counter }}">hide</a>)</p>
+        <table class="table table-configuration" id="config-{{ forloop.counter }}-table">
+            <tr>
+                {% if conf.operator == "AND" %}
+                <td class="col-md-1 rowspaned">AND</td>
+                {% endif %}
+                <td class="col-md-11 and">
+                    {% for node in conf.nodes %}
+                    <table class="table table-bordered no-margin-bottom">
+                        {% for cpe in node.cpeMatch %}
+                        <tr>
+                            {% if forloop.counter == 1 and node.cpeMatch|length > 1 %}
+                            <td class="col-md-1 rowspaned" rowspan="{{ node.cpeMatch|length }}">OR</td>
+                            {% endif %}
+                            <td>{{ cpe.criteria }}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    {% endfor %}
+                </td>
+            </tr>
+        </table>
+        <hr/>
+
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="box-body">
+        <p class="alert alert-info">No configuration.</p>
+    </div>
+    {% endif %}
+</div>
