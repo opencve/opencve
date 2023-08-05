@@ -128,20 +128,7 @@
                                         {% if loop.index == 1 and child.cpe_match|length > 1 %}
                                         <td class="col-md-1 rowspaned" rowspan="{{ child.cpe_match|length }}">OR</td>
                                         {% endif %}
-                                                                                <td colspan="{{ 5 - ('versionStartIncluding' in cpe or 'versionStartExcluding' in cpe) - ('versionEndIncluding' in cpe or 'versionEndExcluding' in cpe)   }}">{{ cpe.cpe23Uri }}</td>
-                                        {% if cpe.versionStartIncluding %}
-                                            <td>From including<br>{{ cpe.versionStartIncluding }}</td>
-                                        {% elif cpe.versionStartExcluding %}
-                                            <td>From excluding<br>{{ cpe.versionStartExcluding }}</td>
-                                        {% endif %}
-                                        {% if cpe.versionEndIncluding %}
-                                            <td>Up to including<br>{{ cpe.versionEndIncluding }}</td>
-                                        {% elif cpe.versionEndExcluding %}
-                                            <td>Up to excluding<br>{{ cpe.versionEndExcluding }}</td>
-                                        {% endif %}
-                                        {% if cpe.vulnerable %}
-                                            <td class="col-md-1 rowspaned" rowspan="1">Vulnerable</td>
-                                        {% endif %}
+                                        <td>{{ cpe.cpe23Uri }}</td>
                                     </tr>
                                     {% endfor %}
                                 </table>
