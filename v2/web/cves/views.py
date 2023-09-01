@@ -7,6 +7,7 @@ from django.db.models import F, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 from changes.models import Event
 from cves.constants import PRODUCT_SEPARATOR
@@ -221,7 +222,7 @@ class CveDetailView(DetailView):
         return redirect("cve", cve_id=cve.cve_id)
 
 
-class SubscriptionView(TemplateView):
+class SubscriptionView(LoginRequiredMixin, TemplateView):
     template_name = "cves/vendor_subscribe.html"
 
     def get_context_data(self, **kwargs):
@@ -257,10 +258,6 @@ class SubscriptionView(TemplateView):
         return context
 
     def post(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            raise Http404()
-
-        # Handle the parameters
         action = request.POST.get("action")
         obj_type = request.POST.get("obj_type")
         obj_id = request.POST.get("obj_id")

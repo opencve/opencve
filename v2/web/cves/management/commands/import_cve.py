@@ -25,21 +25,16 @@ class Command(BaseCommand):
         cve_year = cve_id.split("-")[1]
         return pathlib.Path(self.nvd_path) / cve_year / f"{cve_id}.json"
 
-    def get_nvd_data(self, cve_nvd_path):
-        nvd_data = {
-            "vendors": [],
-            "cwes": [],
-            "cvss": {"v20": None, "v30": None, "v31": None},
-        }
-
+    @staticmethod
+    def get_nvd_data(cve_nvd_path):
         with open(cve_nvd_path) as f:
             cve_nvd_data = json.load(f)
 
-        # Parse the CVE vendors
-        nvd_data["vendors"] = vendors_conf_to_flat(cve_nvd_data.get("configurations"))
-
-        # Parse the CVE CWEs
-        nvd_data["cwes"] = weaknesses_to_flat(cve_nvd_data.get("weaknesses"))
+        nvd_data = {
+            "vendors": vendors_conf_to_flat(cve_nvd_data.get("configurations")),
+            "cwes": weaknesses_to_flat(cve_nvd_data.get("weaknesses")),
+            "cvss": {"v20": None, "v30": None, "v31": None},
+        }
 
         # Parse the CVE scores
         if "metrics" in cve_nvd_data:
@@ -70,7 +65,7 @@ class Command(BaseCommand):
         self.info(commands)
 
     def insert_cve(self, cve_file):
-        sources = {"mitre": os.path.relpath(cve_file, self.mitre_path)}
+        mitre_path = os.path.relpath(cve_file, self.mitre_path)
 
         with open(cve_file) as f:
             cve_data = json.load(f)
@@ -96,32 +91,35 @@ class Command(BaseCommand):
             descriptions = [d for d in descriptions if d["lang"] in ("en", "en-US")]
         description = descriptions[0]["value"]
 
-        # Append the NVD data to this CVE
-        cve_nvd_path = self.get_nvd_cve_path(cve_id)
-
-        nvd_data = {
-            "vendors": [],
-            "cwes": [],
-            "cvss": {"v20": None, "v30": None, "v31": None},
-        }
-        if pathlib.Path.exists(cve_nvd_path):
-            nvd_data.update(self.get_nvd_data(cve_nvd_path))
-            sources["nvd"] = os.path.relpath(str(cve_nvd_path), self.nvd_path)
-
-        # Call the stored procedure which create the CVE and its associated objects
         self.call_procedure(
-            procedure="cves",
+            procedure="mitre",
             params={
                 "cve": cve_id,
                 "created": cve_created_utc,
                 "updated": cve_updated_utc,
                 "summary": description,
-                "cvss": Json(nvd_data["cvss"]),
-                "vendors": Json(nvd_data["vendors"]),
-                "cwes": Json(nvd_data["cwes"]),
-                "source": Json(sources),
+                "path": Json({"mitre": mitre_path})
             }
         )
+
+        # Handles the NVD data
+        cve_nvd_path = self.get_nvd_cve_path(cve_id)
+        if pathlib.Path.exists(cve_nvd_path):
+            nvd_data = self.get_nvd_data(cve_nvd_path)
+            nvd_path = os.path.relpath(str(cve_nvd_path), self.nvd_path)
+
+            self.call_procedure(
+                procedure="nvd",
+                params={
+                    "cve": cve_id,
+                    "created": cve_created_utc,
+                    "updated": cve_updated_utc,
+                    "cvss": Json(nvd_data["cvss"]),
+                    "vendors": Json(nvd_data["vendors"]),
+                    "cwes": Json(nvd_data["cwes"]),
+                    "source": Json({"nvd": nvd_path}),
+                }
+            )
 
     def handle(self, *args, **options):
         if not self.repos_exist([self.mitre_path, self.nvd_path]):

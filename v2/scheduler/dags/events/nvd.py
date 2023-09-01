@@ -15,18 +15,6 @@ class NvdEvents(object):
         raise NotImplementedError
 
 
-class Summary(NvdEvents):
-    def execute(self):
-        new_summary = self.new["descriptions"][0]["value"]
-        old_summary = self.old["descriptions"][0]["value"]
-
-        if new_summary != old_summary:
-            return {
-                "type": "summary",
-                "details": {"old": old_summary, "new": new_summary},
-            }
-
-
 class FirstTime(NvdEvents):
     def execute(self):
         old_confs = vendors_conf_to_flat(self.old.get("configurations"))

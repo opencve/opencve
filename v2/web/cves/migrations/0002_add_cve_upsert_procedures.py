@@ -3,16 +3,52 @@
 from django.db import migrations
 
 
-SQL = """
-CREATE PROCEDURE cve_upsert(
-    cve_name text,
+# The MITRE handles the CVE_ID and the Summary
+# Syntax:
+# > CALL mitre_upsert(%(cve)s, %(created)s, %(updated)s, %(summary)s, %(path)s);
+MITRE_SQL = """
+CREATE PROCEDURE mitre_upsert(
+    cve text,
     created timestamp,
     updated timestamp,
     summary text,
+    path jsonb
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- add a new CVE or update an existing one
+    INSERT INTO opencve_cves (id, created_at, updated_at, cve_id, vendors, cwes, sources, summary, cvss)
+    VALUES(uuid_generate_v4(), created, updated, cve, '[]', '[]', path, summary, '{}')
+    ON CONFLICT (cve_id) DO
+    UPDATE SET
+      updated_at = updated,
+      summary = EXCLUDED.summary,
+      sources = opencve_cves.sources || path;
+END;
+$$;
+"""
+MITRE_REVERSE_SQL = """
+DROP PROCEDURE mitre_upsert(
+    cve text,
+    created timestamp,
+    updated timestamp,
+    summary text,
+    path jsonb
+);"""
+
+# The NVD handles the CVE_ID, the CVSS, the Vendors and the CWEs
+# Syntax:
+# > CALL nvd_upsert(%(cve)s, %(created)s, %(updated)s, %(cvss)s, %(vendors)s, %(cwes)s, %(path)s);
+NVD_SQL = """
+CREATE PROCEDURE nvd_upsert(
+    cve text,
+    created timestamp,
+    updated timestamp,
     cvss jsonb,
     vendors jsonb,
     cwes jsonb,
-    source jsonb
+    path jsonb
 )
 LANGUAGE plpgsql
 AS $$
@@ -24,16 +60,15 @@ DECLARE
    _product   text;
 BEGIN
     -- add a new CVE or update an existing one
-    INSERT INTO opencve_cves (id, created_at, updated_at, cve_id, vendors, cwes, sources, summary, cvss)
-    VALUES(uuid_generate_v4(), created, updated, cve_name, vendors, cwes, source, summary, cvss)
+    INSERT INTO opencve_cves (id, created_at, updated_at, cve_id, vendors, cwes, sources, cvss)
+    VALUES(uuid_generate_v4(), created, updated, cve, vendors, cwes, path, cvss)
     ON CONFLICT (cve_id) DO
     UPDATE SET
       updated_at = updated,
-      summary = EXCLUDED.summary,
       cvss = EXCLUDED.cvss,
       vendors = EXCLUDED.vendors,
       cwes = EXCLUDED.cwes,
-      sources = opencve_cves.sources || source;
+      sources = opencve_cves.sources || path;
 
     -- add the new CWEs
     FOR _cwe IN SELECT * FROM json_array_elements_text(cwes::json)
@@ -65,16 +100,15 @@ BEGIN
 END;
 $$;
 """
-REVERSE_SQL = """
-DROP PROCEDURE cve_upsert(
-    cve_name text,
+NVD_REVERSE_SQL = """
+DROP PROCEDURE nvd_upsert(
+    cve text,
     created timestamp,
     updated timestamp,
-    summary text,
     cvss jsonb,
     vendors jsonb,
     cwes jsonb,
-    source jsonb
+    path jsonb
 );"""
 
 
@@ -84,4 +118,7 @@ class Migration(migrations.Migration):
         ('cves', '0001_initial'),
     ]
 
-    operations = [migrations.RunSQL(sql=SQL, reverse_sql=REVERSE_SQL)]
+    operations = [
+        migrations.RunSQL(sql=NVD_SQL, reverse_sql=NVD_REVERSE_SQL),
+        migrations.RunSQL(sql=MITRE_SQL, reverse_sql=MITRE_REVERSE_SQL),
+    ]

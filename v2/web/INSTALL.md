@@ -77,3 +77,5 @@ Import list of CVEs (took between 10mn & 45mn on my laptop):
 ```
 python manage.py import_cve
 ```
+
+This command will give you to Airflow command used to import variables. Note them, we'll reuse it in the Airflow installation.

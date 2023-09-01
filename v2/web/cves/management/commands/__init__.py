@@ -11,7 +11,8 @@ class BaseCommand(DjangoBaseCommand):
     mitre_path = settings.MITRE_REPO_PATH
     nvd_path = settings.NVD_REPO_PATH
     procedures = {
-        "cves": "CALL cve_upsert(%(cve)s, %(created)s, %(updated)s, %(summary)s, %(cvss)s, %(vendors)s, %(cwes)s, %(source)s);",
+        "mitre": "CALL mitre_upsert(%(cve)s, %(created)s, %(updated)s, %(summary)s, %(path)s);",
+        "nvd": "CALL nvd_upsert(%(cve)s, %(created)s, %(updated)s, %(cvss)s, %(vendors)s, %(cwes)s, %(path)s);"
     }
 
     def error(self, message, ending=None):

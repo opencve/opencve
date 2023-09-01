@@ -74,6 +74,20 @@ airflow db init
 airflow users create --username admin --firstname Amber --lastname Security --role Admin --email admin@local
 ```
 
+You have to create 2 variables used by the DAGs. The commands had been given during the web installation:
+
+```
+airflow variables set mitre_last_commit xxxx
+airflow variables set nvd_last_commit xxxx
+```
+
+The connection to the OpenCVE database has to be created in the `opencve_postgres` conn_id:
+
+```
+airflow connections add opencve_postgres --conn-uri postgres://localhost:5432/opencvedb
+airflow connections add opencve_redis --conn-uri redis://localhost:6379 --conn-extra '{"db": 3}'
+```
+
 You can finally launch the components:
 
 ```
