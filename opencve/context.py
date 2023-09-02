@@ -183,3 +183,32 @@ def _event_description(code):
 
 def _remove_product_separator(s):
     return s.replace(PRODUCT_SEPARATOR, " ")
+
+
+def _display_sorting_icon(args: list, desc: str, asc: str):
+    if args is None or (desc not in args and asc not in args):
+        return "fa fa-sort"
+    if desc in args and asc in args:
+        if args.index(desc) < args.index(asc):
+            output = "fa fa-sort-desc"
+        else:
+            output = "fa fa-sort-asc"
+    elif desc in args:
+        output = "fa fa-sort-desc"
+    elif asc in args:
+        output = "fa fa-sort-asc"
+    return output
+
+
+def _get_sort_parameter(args, value):
+    if args is None:
+        args = []
+    if value in args:
+        args = args[: args.index(value)]
+        args.append(value + "_asc")
+    elif value + "_asc" in args:
+        args = args[: args.index(value + "_asc")]
+    else:
+        args.append(value)
+
+    return args
