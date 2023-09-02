@@ -195,21 +195,44 @@ Vulnerabilities (CVE)
             <div class="box box-primary">
                 <div class="box-body table-responsive no-padding">
                     <table class="table" id="cves">
+                        {% set sorting = request.args.getlist('sort') if request.args.get('sort') is not none else none %}
                         <thead>
-                        <th>CVE</th>
-                        <th>Vendors</th>
-                        <th>Products</th>
-                        <th class="text-center">Updated</th>
-                        <th class="text-center">CVSS v2</th>
-                        <th class="text-center">CVSS v3</th>
+                        <th>
+                            <a href='{{ url_for( 'main.cves' , sort=get_sort_parameter(request.args.getlist('sort'), 'cve'), tag=request.args.get('tag'), cvss=request.args.get('cvss'), search=request.args.get('search')) }}' class="btn btn-outline btn-block" style="color: #2b4049; font-weight: 600; font-size: 16px; text-align: left">
+                                CVE <i class="{{ display_sorting_icon(sorting, 'cve', 'cve_asc') }}"></i>
+                            </a>
+                        </th>
+                        <th style="color: #2b4049; font-weight: 600; font-size: 16px; text-align: left; vertical-align: middle">Vendors</th>
+                        <th style="color: #2b4049; font-weight: 600; font-size: 16px; text-align: left; vertical-align: middle">Products</th>
+                        <th class="text-center">
+                            <a href='{{ url_for( 'main.cves' , sort=get_sort_parameter(request.args.getlist('sort'), 'updated'), tag=request.args.get('tag'), cvss=request.args.get('cvss'), search=request.args.get('search')) }}' class="btn btn-outline btn-block" style="color: #2b4049; font-weight: 600; font-size: 16px">
+                                Updated <i class="{{ display_sorting_icon(sorting, 'updated', 'updated_asc') }}"></i>
+                            </a>
+                        </th>
+                        <th class="text-center">
+                            <a href='{{ url_for( 'main.cves' , sort=get_sort_parameter(request.args.getlist('sort'), 'published'), tag=request.args.get('tag'), cvss=request.args.get('cvss'), search=request.args.get('search')) }}' class="btn btn-outline btn-block" style="color: #2b4049; font-weight: 600; font-size: 16px;">
+                                Published <i class="{{ display_sorting_icon(sorting, 'published', 'published_asc') }}"></i>
+                            </a>
+                        </th>
+                        <th class="text-center">
+                            <a href='{{ url_for( 'main.cves' , sort=get_sort_parameter(request.args.getlist('sort'), 'cvss2'), tag=request.args.get('tag'), cvss=request.args.get('cvss'), search=request.args.get('search')) }}' class="btn btn-outline btn-block" style="color: #2b4049; font-weight: 600; font-size: 16px; text-align: left">
+                                CVSS v2 <i class="{{ display_sorting_icon(sorting, 'cvss2', 'cvss2_asc') }}"></i>
+                            </a>
+                        </th>
+                        <th class="text-center">
+                            <a href='{{ url_for( 'main.cves' , sort=get_sort_parameter(request.args.getlist('sort'), 'cvss3'), tag=request.args.get('tag'), cvss=request.args.get('cvss'), search=request.args.get('search')) }}' class="btn btn-outline btn-block" style="color: #2b4049; font-weight: 600; font-size: 16px; text-align: left">
+                                CVSS v3 <i class="{{ display_sorting_icon(sorting, 'cvss3', 'cvss3_asc') }}"></i>
+                            </a>
+                        </th>
                         </thead>
                         {% for cve in cves.items %}
                         <tr class="cve-header">
-                            <td class="col-md-2"><a href="{{ url_for('.cve', cve_id=cve.cve_id) }}"><strong>{{
+                            <td class="col-md-1"><a href="{{ url_for('.cve', cve_id=cve.cve_id) }}"><strong>{{
                                 cve.cve_id }}</strong></a></td>
-                            <td class="col-md-3">{{ cve.vendors|vendors_excerpt|safe }}</td>
+                            <td class="col-md-2">{{ cve.vendors|vendors_excerpt|safe }}</td>
                             <td class="col-md-3">{{ cve.vendors|products_excerpt|safe }}</td>
                             <td class="col-md-2 text-center">{{ cve.updated_at.strftime('%Y-%m-%d') }}</td>
+                            <td class="col-md-2 text-center">{{ cve.created_at.strftime('%Y-%m-%d') }}</td>
                             {% if cve.json.impact.baseMetricV2 %}
                             <td class="col-md-1 text-center"><span
                                     class="label {{ cvss_bg(cve.json.impact.baseMetricV2.cvssV2.baseScore)[1] }}">{{ cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ cve.json.impact.baseMetricV2.severity }}</span>
@@ -226,11 +249,10 @@ Vulnerabilities (CVE)
                             {% endif %}
                         </tr>
                         <tr class="cve-summary">
-                            <td class="col-md-12 no-bordered" colspan="5">{{ cve.summary }}</td>
+                            <td class="col-md-12 no-bordered" colspan="6">{{ cve.summary }}</td>
                         </tr>
                         {% endfor %}
                     </table>
-
                     <div class="center">
                         {{ pagination.links }}
                     </div>

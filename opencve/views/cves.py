@@ -5,6 +5,8 @@ import operator
 from flask import abort, flash, redirect, request, render_template, url_for
 from flask_user import current_user, login_required
 
+from werkzeug.datastructures import MultiDict
+
 from opencve.controllers.cves import CveController
 from opencve.controllers.main import main
 from opencve.controllers.tags import UserTagController
@@ -21,7 +23,8 @@ def cves():
     args = request.args
     user_tags = []
     if current_user.is_authenticated:
-        args = {**request.args, "user_id": current_user.id}
+        args = MultiDict(request.args)
+        args.add("user_id", current_user.id)
         user_tags = UserTagController.list_items({"user_id": current_user.id})
 
     objects, metas, pagination = CveController.list(args)

@@ -9,6 +9,7 @@ class BaseController(object):
     per_page_param = None
     page_parameter = "page"
     schema = {}
+    multi_value_parameter = []
 
     @classmethod
     def build_query(cls, args):
@@ -21,9 +22,11 @@ class BaseController(object):
         parsed_args = {
             cls.page_parameter: args.get(cls.page_parameter, type=int, default=1)
         }
-
         for key in args.keys():
             if key in cls.schema.keys():
+                if key in cls.multi_value_parameter and key not in parsed_args:
+                    parsed_args[key] = args.getlist(key)
+                    continue
                 parsed_args[key] = args.get(
                     key,
                     type=cls.schema.get(key).get("type"),
