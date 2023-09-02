@@ -15,6 +15,8 @@ from opencve.context import (
     _metric_bg,
     _remove_product_separator,
     _report_excerpt,
+    _display_sorting_icon,
+    _get_sort_parameter,
 )
 
 main = Blueprint(
@@ -45,6 +47,16 @@ def cvss_bg():
 @main.context_processor
 def metric_bg():
     return {"metric_bg": _metric_bg}
+
+
+@main.context_processor
+def display_sorting_icon():
+    return {"display_sorting_icon": _display_sorting_icon}
+
+
+@main.context_processor
+def get_sort_parameter():
+    return {"get_sort_parameter": _get_sort_parameter}
 
 
 from flask import url_for
