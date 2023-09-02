@@ -3,7 +3,7 @@ import json
 from flask import current_app as app
 from flask import abort, redirect, render_template, request, url_for
 from flask_paginate import Pagination
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, nullslast
 
 from opencve.constants import PRODUCT_SEPARATOR
 from opencve.controllers.base import BaseController
@@ -19,7 +19,6 @@ from opencve.models.cwe import Cwe
 
 class CveController(BaseController):
     model = Cve
-    order = [Cve.updated_at.desc(), Cve.id.desc()]
     per_page_param = "CVES_PER_PAGE"
     schema = {
         "search": {"type": str},
@@ -29,10 +28,13 @@ class CveController(BaseController):
         "cwe": {"type": str},
         "tag": {"type": str},
         "user_id": {"type": str},
+        "sort": {"type": str},
     }
+    multi_value_parameter = ["sort"]
 
     @classmethod
     def build_query(cls, args):
+        cls.order = [Cve.updated_at.desc(), Cve.id.desc()]
         vendor = None
         product = None
         tag = None
@@ -142,5 +144,27 @@ class CveController(BaseController):
                 .filter(CveTag.user_id == args.get("user_id"))
                 .filter(CveTag.tags.contains([args.get("tag")]))
             )
+        if args.get("sort"):
+            options = {
+                "cve": Cve.cve_id.desc,
+                "cve_asc": Cve.cve_id.asc,
+                "updated": Cve.updated_at.desc,
+                "updated_asc": Cve.updated_at.asc,
+                "published": Cve.created_at.desc,
+                "published_asc": Cve.created_at.asc,
+                "cvss2": Cve.cvss2.desc,
+                "cvss2_asc": Cve.cvss2.asc,
+                "cvss3": Cve.cvss3.desc,
+                "cvss3_asc": Cve.cvss3.asc,
+            }
+
+            sorting = args.get("sort")
+            if any(x in options.keys() for x in sorting):
+                cls.order = []
+                for x in sorting:
+                    if x in options:
+                        cls.order.append(nullslast(options[x]()))
+                        options.pop(x.rstrip("_asc"))
+                        options.pop(x.rstrip("_asc") + "_asc")
 
         return query, {"vendor": vendor, "product": product, "tag": tag}
