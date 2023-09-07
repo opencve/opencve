@@ -145,7 +145,7 @@ class MitreHandler(DiffHandler):
                 "created": created_at,
                 "updated": updated_at,
                 "summary": description,
-                "source": Json({"mitre": self.path}),
+                "path": Json({"mitre": self.path}),
             },
         )
 

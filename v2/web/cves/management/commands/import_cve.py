@@ -117,7 +117,7 @@ class Command(BaseCommand):
                     "cvss": Json(nvd_data["cvss"]),
                     "vendors": Json(nvd_data["vendors"]),
                     "cwes": Json(nvd_data["cwes"]),
-                    "source": Json({"nvd": nvd_path}),
+                    "path": Json({"nvd": nvd_path}),
                 }
             )
 
