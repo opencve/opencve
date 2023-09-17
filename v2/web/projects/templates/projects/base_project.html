@@ -2,6 +2,8 @@
 {% load static %}
 {% load opencve_extras %}
 
+{% block navbar_title %}{{ project.name }}{% endblock %}
+
 {% block content %}
 
 <div class="row">
@@ -21,9 +23,8 @@
                     <a href="{% url 'notifications' name=project.name %}">Notifications</a>
                 </li>
                 <li class="pull-right">
-                    <a href="{% url 'edit_project' name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="" data-original-title="{{ project.description }}">
-                        <i class="fa fa-rocket"></i>
-                        Project <strong>{{ project.name }}</strong>
+                    <a href="{% url 'edit_project' name=project.name %}">
+                        <i class="fa fa-gear"></i>
                     </a>
                 </li>
             </ul>
