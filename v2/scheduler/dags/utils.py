@@ -1,9 +1,12 @@
 import json
 
 import more_itertools
+from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from nested_lookup import nested_lookup
+
+from constants import REPOS_PATH
 
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
@@ -115,3 +118,9 @@ def merge_projects_changes(projects_subscriptions, vendors_changes):
         projects_changes[project] = list(projects_changes[project])
 
     return {k: v for k, v in projects_changes.items() if v}
+
+
+def get_repo_path(kind):
+    if kind not in ["nvd", "mitre"]:
+        raise AirflowException(f"Kind {kind} is not supported")
+    return REPOS_PATH.get(kind)

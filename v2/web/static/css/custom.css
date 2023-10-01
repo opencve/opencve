@@ -33,13 +33,15 @@
     color: #253841;
   }
   .skin-opencve .box.box-primary {
-    color: #050649;
     border-color: #050649;
   }
   .box-subscriptions .label {
     line-height: 25px;
     font-size: 85%;
     font-weight: 600;
+  }
+  .bg-blue{
+    background-color: #1D1E71 !important;
   }
   .bg-primary {
     background-color: #050649;

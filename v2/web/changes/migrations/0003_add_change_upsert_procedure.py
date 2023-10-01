@@ -26,6 +26,9 @@ BEGIN
     INSERT INTO opencve_changes (id, created_at, updated_at, cve_id, commit, path)
     VALUES(change_id, created, updated, _cve_id, commit, path);
 
+    -- TODO: check idempotence
+    -- something like ON CONFLICT (created_at, updated_at, cve_id, commit) DO NOTHING (and avoid events creation)
+
     -- add the events in it
     FOR _event IN SELECT * FROM json_array_elements(events::json)
     LOOP

@@ -8,44 +8,7 @@
 
 <section class="content">
     <div class="row">
-        <div class="col-md-3">
-            <div class="box box-widget widget-user">
-                <div class="widget-user-header bg-primary">
-                    <h3 class="widget-user-username">{{ user.username }}</h3>
-                </div>
-                <div class="widget-user-image">
-                    <img class="img-circle" src="{{ user.email | gravatar_url:88 }}" alt="User Avatar">
-                </div>
-                <div class="box-footer">
-                    <div class="row">
-                        <div class="col-md-6 border-right">
-                            <div class="description-block">
-                                <h5 class="description-header">1,234</h5>
-                                <span class="description-text">TOCOMPLETE</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="description-block">
-                                <h5 class="description-header">12,345</h5>
-                                <span class="description-text">TOCOMPLETE</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="box box-solid">
-                <div class="box-body no-padding">
-                    <ul class="nav nav-pills nav-stacked">
-                        <li><a href="{% url 'create_project' %}"><i class="fa fa-plus"></i> New Project</a></li>
-                        <li><a href="{% url 'create_tag' %}"><i class="fa fa-plus"></i> New Tag</a></li>
-                    </ul>
-                </div>
-
-            </div>
-        </div>
-
-        <div class="col-md-9">
+        <div class="col-md-8 col-md-offset-2">
             {% if messages %}
             {% for message in messages %}
             <div class="alert alert-{{ message.tags}} alert-dismissible fade in">

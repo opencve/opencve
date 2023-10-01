@@ -1,18 +1,11 @@
 from nested_lookup import nested_lookup
 
+from events import BaseEvents
 from utils import vendors_conf_to_flat, weaknesses_to_flat
 
 
-class NvdEvents(object):
-    def __init__(self, old, new):
-        self.old = old
-        self.new = new
-
-    def get_name(self):
-        return self.__class__.__name__
-
-    def execute(self):
-        raise NotImplementedError
+class NvdEvents(BaseEvents):
+    pass
 
 
 class FirstTime(NvdEvents):
