@@ -19,7 +19,9 @@ class MitreHandler(DiffHandler):
         # cves/2023/23xxx/CVE-2023-23002.json
         # cves/2009/3xxx/CVE-2009-3005.json
         regex = r"cves\/\d{4}\/.+\/CVE-.*.json"
-        return re.match(regex, self.path)
+        if not re.match(regex, self.path):
+            return False
+        return True
 
     def get_description(self):
         cna = self.right["containers"]["cna"]
@@ -32,8 +34,9 @@ class MitreHandler(DiffHandler):
 
         return description
 
-    @staticmethod
-    def get_dates(metadata):
+    def get_dates(self):
+        metadata = self.right["cveMetadata"]
+
         # Rejected CVEs doesn't have published date
         cve_created = metadata.get("datePublished") or metadata["dateReserved"]
         cve_created_utc = arrow.get(cve_created).to("utc").datetime.isoformat()
@@ -45,11 +48,8 @@ class MitreHandler(DiffHandler):
         return cve_created_utc, cve_updated_utc
 
     def execute(self):
-        metadata = self.right["cveMetadata"]
-        cve_id = metadata["cveId"]
-
-        # Get the description and the dates of the CVE
-        created_at, updated_at = self.get_dates(metadata)
+        cve_id = self.right["cveMetadata"]["cveId"]
+        created_at, updated_at = self.get_dates()
         description = self.get_description()
 
         run_sql(

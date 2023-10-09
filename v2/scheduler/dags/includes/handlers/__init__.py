@@ -59,7 +59,7 @@ class DiffHandler:
         events = []
 
         if self.is_new:
-            events.append({"type": f"new_{self.kind}", "details": {}})
+            events.append({"type": f"{self.kind}_new", "details": {}})
         else:
             for event_cls in diff_cls.__subclasses__():
                 event = event_cls(self.left, self.right).execute()
@@ -86,12 +86,12 @@ class DiffHandler:
 
     def handle(self):
         if not self.validate_files():
-            return
+            return False
         self.logger.info(f"Checking %s (%s)", self.diff.b_path, self.diff.change_type)
         self.execute()
 
     def execute(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def validate_files(self):
-        raise NotImplemented
+        raise NotImplementedError

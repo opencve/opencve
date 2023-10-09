@@ -104,10 +104,10 @@ def merge_projects_changes(projects_subscriptions, vendors_changes):
     It associates the projects with their changes according to the subscriptions.
 
     Example:
-        >>> projects_subscriptions = {'projet1': ['foo', 'bar'], 'projet2': ['baz'], 'projet3': ['lorem', 'foo']}
+        >>> projects_subscriptions = {'project1': ['foo', 'bar'], 'project2': ['baz'], 'project3': ['lorem', 'foo']}
         >>> vendors_changes = {'foo': ['change1', 'change2'], 'bar': ['change3'], 'oil': ['change1']}
         >>> merge_projects_changes(projects_subscriptions, vendors_changes)
-        {'projet1': ['change2', 'change1', 'change3'], 'projet2': [], 'projet3': ['change2', 'change1']}
+        {'project1': ['change1', 'change2', 'change3'], 'project3': ['change1', 'change2']}
     """
     projects_changes = {}
     for project, subscriptions in projects_subscriptions.items():

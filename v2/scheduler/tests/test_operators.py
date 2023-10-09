@@ -41,7 +41,9 @@ def test_parser_operator_interval_end_subtract_one_second():
         # The data_interval_end is 2023-01-01T01:00:00, but we need to call
         # the `iter_commits()` function with 2023-01-01T00:59:59
         expected_end = end.subtract(seconds=1)
-        mock.iter_commits.assert_called_with(after=start, before=expected_end, reverse=True)
+        mock.iter_commits.assert_called_with(
+            after=start, before=expected_end, reverse=True
+        )
 
 
 def test_parser_operator_no_commit_found():
@@ -55,7 +57,7 @@ def test_parser_operator_no_commit_found():
             operator.execute({"data_interval_start": start, "data_interval_end": end})
 
 
-def test_parser_operator_first_commit(cvelistv5_repo):
+def test_parser_operator_first_commit(mitre_repo):
     operator = ParserOperator(task_id="parse_test", kind="mitre")
 
     # The only commit between 2023-01-01T00:00:00 and 2023-01-01T00:59:59
@@ -63,14 +65,14 @@ def test_parser_operator_first_commit(cvelistv5_repo):
     start = pendulum.datetime(2023, 1, 1, tz="UTC")
     end = start.add(hours=1)
 
-    with patch.object(operator, "repo", cvelistv5_repo):
+    with patch.object(operator, "repo", mitre_repo):
         with pytest.raises(AirflowException):
             operator.execute({"data_interval_start": start, "data_interval_end": end})
 
 
 @patch.object(ParserOperator, "handle")
 @pytest.mark.parametrize("hour,count", [(1, 2), (2, 1)])
-def test_parser_operator_handler_calls_count(handler_mock, cvelistv5_repo, hour, count):
+def test_parser_operator_handler_calls_count(handler_mock, mitre_repo, hour, count):
     operator = ParserOperator(task_id="parse_test", kind="mitre")
 
     # There are 2 commits between 2023-01-01T01:00:00 and 2023-01-01T01:59:59
@@ -78,20 +80,20 @@ def test_parser_operator_handler_calls_count(handler_mock, cvelistv5_repo, hour,
     start = pendulum.datetime(2023, 1, 1, hour, tz="UTC")
     end = start.add(hours=1)
 
-    with patch.object(operator, "repo", cvelistv5_repo):
+    with patch.object(operator, "repo", mitre_repo):
         operator.execute({"data_interval_start": start, "data_interval_end": end})
     assert handler_mock.call_count == count
 
 
 @patch("includes.handlers.mitre.MitreHandler")
-def test_parser_operator_handler_call_mitre(handler_mock, cvelistv5_repo):
+def test_parser_operator_handler_call_mitre(handler_mock, mitre_repo):
     operator = ParserOperator(task_id="parse_test", kind="mitre")
 
     # There is 1 commit between 2023-01-01T02:00:00 and 2023-01-01T02:59:59
     start = pendulum.datetime(2023, 1, 1, 2, tz="UTC")
     end = start.add(hours=1)
 
-    with patch.object(operator, "repo", cvelistv5_repo):
+    with patch.object(operator, "repo", mitre_repo):
         operator.execute({"data_interval_start": start, "data_interval_end": end})
 
     # There are 2 diffs in this commit
@@ -107,4 +109,3 @@ def test_parser_operator_handler_call_mitre(handler_mock, cvelistv5_repo):
 
         # Commit date is `Sun Jan 1 02:10:00 2023 +0000`
         assert args[1].committed_date == 1672539000
-

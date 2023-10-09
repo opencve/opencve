@@ -5,25 +5,17 @@ class MitreEvents(BaseEvents):
     pass
 
 
-class Summary(MitreEvents):
-    @staticmethod
-    def get_description(cve_data):
-        # If no descriptions, take the rejected reasons
-        cna = cve_data["containers"]["cna"]
-        descriptions = cna.get("descriptions") or cna["rejectedReasons"]
-
-        # In case of multiple languages, keep the EN one
-        if len(descriptions) > 1:
-            descriptions = [d for d in descriptions if d["lang"] in ("en", "en-US")]
-
-        return descriptions[0]["value"]
-
+class MitreSummary(MitreEvents):
     def execute(self):
-        new_summary = self.get_description(self.new)
-        old_summary = self.get_description(self.old)
+        old = self.old["containers"]["cna"]
+        old_descriptions = old.get("descriptions") or old["rejectedReasons"]
+        old_summary = self.get_flat_descriptions(old_descriptions)
 
-        if new_summary != old_summary:
-            return {
-                "type": "summary",
-                "details": {"old": old_summary, "new": new_summary},
-            }
+        new = self.new["containers"]["cna"]
+        new_descriptions = new.get("descriptions") or new["rejectedReasons"]
+        new_summary = self.get_flat_descriptions(new_descriptions)
+
+        payload = self.get_descriptions_payload(old_summary, new_summary)
+
+        if payload["added"] or payload["removed"] or payload["changed"]:
+            return {"type": "mitre_summary", "details": payload}
