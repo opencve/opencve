@@ -3,7 +3,7 @@ import click
 from flask.cli import with_appcontext
 
 from opencve.commands import ensure_config, info, timed_operation
-from opencve.commands.imports import cpe, cve, cwe
+from opencve.commands.imports import cpe, cve, cwe, epss
 from opencve.extensions import db
 from opencve.models.cve import Cve
 from opencve.models.metas import Meta
@@ -33,13 +33,8 @@ def import_data(confirm):
             info("Bye.")
             return
 
-    # Import the CWE list
-    cwe.run()
-
-    # Import the CVE, then use the returned list of vendors
-    # to merge them with the official CPE dictionnary list.
-    vendors = cve.run()
-    cpe.run(vendors)
+    # Import the epss data
+    epss.run()
 
     # Populate the metas table
     with timed_operation("Populating metas table..."):

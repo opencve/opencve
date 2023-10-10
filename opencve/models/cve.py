@@ -39,6 +39,7 @@ class Cve(BaseModel):
     events = db.relationship("Event", back_populates="cve")
     changes = db.relationship("Change", back_populates="cve")
     alerts = db.relationship("Alert", back_populates="cve")
+    epss = db.relationship("Epss", back_populates="cve", uselist=False)
 
     # Index
     __table_args__ = (

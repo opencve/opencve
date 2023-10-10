@@ -2,7 +2,6 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
-
 with open(
     Path(__file__).parent.resolve() / "opencve" / "VERSION", encoding="utf-8"
 ) as ver:
@@ -10,7 +9,6 @@ with open(
 
 with open("requirements.txt", encoding="utf-8") as req:
     requirements = [r.rstrip() for r in req.readlines()]
-
 
 dev_requirements = [
     "pytest==5.4.1",

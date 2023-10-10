@@ -9,6 +9,7 @@ from opencve.controllers.cves import CveController
 cves_fields = {
     "id": fields.String(attribute="cve_id"),
     "summary": fields.String(attribute="summary"),
+    "epss": fields.Float(attribute="epss.score"),
     "created_at": DatetimeField(),
     "updated_at": DatetimeField(),
 }
