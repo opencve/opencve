@@ -51,19 +51,6 @@ class Command(BaseCommand):
 
         return nvd_data
 
-    def display_scheduler_commands(self):
-        mitre_last_commit = git.Repo(self.mitre_path).head.commit
-        nvd_last_commit = git.Repo(self.nvd_path).head.commit
-
-        commands = dedent(
-            f"""
-        You can now launch the following commands in Airflow Scheduler:
-        > {self.bold(f"airflow variables set mitre_last_commit {mitre_last_commit}")}
-        > {self.bold(f"airflow variables set nvd_last_commit {nvd_last_commit}")}
-        """
-        )
-        self.info(commands)
-
     def insert_cve(self, cve_file):
         mitre_path = os.path.relpath(cve_file, self.mitre_path)
 
@@ -133,5 +120,3 @@ class Command(BaseCommand):
         with self.timed_operation(msg):
             for cve_file in sorted(cve_files):
                 self.insert_cve(cve_file)
-
-        self.display_scheduler_commands()

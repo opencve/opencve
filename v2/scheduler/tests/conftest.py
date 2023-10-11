@@ -1,10 +1,29 @@
+import json
+import os
 import pathlib
 import shutil
-import git
-import json
 
+import git
 import pendulum
 import pytest
+
+# Override Airflow configuration during tests
+os.environ["AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS"] = "False"
+os.environ["AIRFLOW__CORE__LOAD_EXAMPLES"] = "False"
+os.environ["AIRFLOW__CORE__UNIT_TEST_MODE"] = "True"
+os.environ["AIRFLOW_HOME"] = os.path.dirname(os.path.dirname(__file__))
+
+
+@pytest.fixture(autouse=True, scope="session")
+def reset_db():
+    from airflow.utils import db
+
+    db.resetdb()
+    yield
+
+    # Cleanup temp files generated during tests
+    os.remove(os.path.join(os.environ["AIRFLOW_HOME"], "unittests.cfg"))
+    os.remove(os.path.join(os.environ["AIRFLOW_HOME"], "unittests.db"))
 
 
 @pytest.fixture(scope="session")
@@ -17,6 +36,7 @@ class TestRepo:
         self.kind = kind
         self.data_path = tests_path / f"data/{self.kind}/repo"
         self.repo_path = tmp_path_factory.mktemp(self.kind)
+        # self.repo_path = pathlib.Path("/tmp/foobar")
         self.repo = git.Repo.init(self.repo_path)
         self.author = git.Actor("opencve", "opencve@example.com")
         self.initialize()
@@ -46,7 +66,7 @@ def mitre_repo(tests_path, tmp_path_factory):
     repo.commit("b", day=1, hour=1, minute=40)
     repo.commit("c", day=1, hour=2, minute=10)
     repo.commit("d", day=1, hour=3, minute=15)
-    return repo.repo
+    return repo
 
 
 @pytest.fixture(scope="session")
@@ -56,13 +76,13 @@ def nvd_repo(tests_path, tmp_path_factory):
     repo.commit("b", day=1, hour=1, minute=40)
     repo.commit("c", day=1, hour=2, minute=10)
     repo.commit("d", day=1, hour=3, minute=15)
-    return repo.repo
+    return repo
 
 
 @pytest.fixture
 def get_commit(mitre_repo, nvd_repo):
     def wrapper(kind, folder):
-        repos = {"mitre": mitre_repo, "nvd": nvd_repo}
+        repos = {"mitre": mitre_repo.repo, "nvd": nvd_repo.repo}
         repo = repos.get(kind)
         return [c for c in repo.iter_commits() if c.message == folder][0]
 

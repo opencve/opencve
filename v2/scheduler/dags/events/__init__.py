@@ -35,4 +35,3 @@ class BaseEvents(object):
                 }
 
         return payload
-

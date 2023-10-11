@@ -3,11 +3,6 @@ import pathlib
 from airflow.configuration import conf
 
 
-REPOS_PATH = {
-    "mitre": pathlib.Path(conf.get("opencve", "mitre_repo_path")),
-    "nvd": pathlib.Path(conf.get("opencve", "nvd_repo_path")),
-}
-
 SQL_PROCEDURES = {
     "events": "CALL change_events(%(cve)s, %(change_id)s, %(created)s, %(updated)s, %(commit)s, %(path)s, %(events)s);",
     "mitre": "CALL mitre_upsert(%(cve)s, %(created)s, %(updated)s, %(summary)s, %(path)s);",

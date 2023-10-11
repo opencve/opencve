@@ -1,12 +1,10 @@
 import json
 
 import more_itertools
-from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from nested_lookup import nested_lookup
 
-from constants import REPOS_PATH
 
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
@@ -21,7 +19,7 @@ def vendors_conf_to_dict(conf):
     # Create a list of tuple (vendor, product)
     cpes_t = list(set([tuple(uri.split(":")[3:5]) for uri in uris]))
 
-    # Transform it into nested dictionnary
+    # Transform it into nested dictionary
     cpes = {}
     for vendor, product in cpes_t:
         if vendor not in cpes:
@@ -118,9 +116,3 @@ def merge_projects_changes(projects_subscriptions, vendors_changes):
         projects_changes[project] = list(projects_changes[project])
 
     return {k: v for k, v in projects_changes.items() if v}
-
-
-def get_repo_path(kind):
-    if kind not in ["nvd", "mitre"]:
-        raise AirflowException(f"Kind {kind} is not supported")
-    return REPOS_PATH.get(kind)

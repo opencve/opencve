@@ -2,17 +2,11 @@ import importlib
 
 import git
 from airflow.exceptions import AirflowException, AirflowSkipException
-from airflow.models.baseoperator import BaseOperator
 
-from utils import get_repo_path
+from includes.operators import KindOperator
 
 
-class ParserOperator(BaseOperator):
-    def __init__(self, kind: str, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.kind = kind
-        self.repo = git.Repo(get_repo_path(self.kind))
-
+class ParserOperator(KindOperator):
     def handle(self, commit, diffs):
         handler_mod = importlib.import_module(f"includes.handlers.{self.kind}")
         handler_name = f"{self.kind.capitalize()}Handler"
@@ -21,13 +15,12 @@ class ParserOperator(BaseOperator):
             getattr(handler_mod, handler_name)(self.log, commit, diff).handle()
 
     def execute(self, context):
+        repo_path = self.get_repo_path()
         start = context.get("data_interval_start")
         end = context.get("data_interval_end")
 
         if not all([start, end]):
-            raise AirflowException(
-                "This operator can't be executed without interval dates"
-            )
+            raise AirflowException("Start and end intervals must be set")
 
         # Each DagRun only parses its associated commits (schedule is hourly).
         # We'll use the interval dates to list commits during this period, but
@@ -36,12 +29,11 @@ class ParserOperator(BaseOperator):
         end = end.subtract(seconds=1)
 
         self.log.info("Listing the commits between %s and %s", start, end)
-        commits = list(self.repo.iter_commits(after=start, before=end, reverse=True))
-        self.repo.commit()
+        repo = git.Repo(repo_path)
+        commits = list(repo.iter_commits(after=start, before=end, reverse=True))
 
         if not commits:
-            self.log.info("No commit found, skip the task.")
-            raise AirflowSkipException
+            raise AirflowSkipException("No commit found, skip the task")
         else:
             self.log.info(
                 "Found %s commit(s), from %s to %s",

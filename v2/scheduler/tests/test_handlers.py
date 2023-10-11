@@ -1,10 +1,9 @@
-import json
 import logging
 
 import pytest
 from unittest.mock import patch
 
-from includes.handlers import DiffHandler
+from includes.handlers import DiffHandler, RedisHook
 from includes.handlers.mitre import MitreHandler
 from includes.handlers.nvd import NvdHandler
 from events.mitre import MitreEvents
@@ -159,21 +158,23 @@ def test_mitre_handler_get_dates(get_commit, get_diff):
 
 
 @patch("includes.handlers.run_sql")
-def test_mitre_handler_create_change_new(run_sql_mock, get_commit, get_diff):
+@patch.object(RedisHook, "get_conn")
+def test_mitre_handler_create_change_new(
+    redis_mock, run_sql_mock, get_commit, get_diff
+):
     commit = get_commit("mitre", "c")
     diff = get_diff("mitre", "c", 1)
 
-    handler = MitreHandler(logger, commit, diff)
-    with patch.object(handler, "execute"):
-        handler.handle()
-
     # Create a change between commits `b` and `c`
-    handler.create_change("CVE-2023-5305", MitreEvents)
-    _, kwargs = run_sql_mock.call_args
-    assert kwargs["query"] == SQL_PROCEDURES.get("events")
+    handler = MitreHandler(logger, commit, diff)
 
     # The CVE-2023-5305 cve appeared in commit `c`
+    handler.create_change("CVE-2023-5305", MitreEvents)
+
+    # Check the `run_sql` call
+    _, kwargs = run_sql_mock.call_args
     parameters = kwargs["parameters"]
+    assert kwargs["query"] == SQL_PROCEDURES.get("events")
     assert parameters["cve"] == "CVE-2023-5305"
     assert parameters["created"] == "2023-01-01T02:10:00+00:00"
     assert parameters["updated"] == "2023-01-01T02:10:00+00:00"
@@ -181,23 +182,30 @@ def test_mitre_handler_create_change_new(run_sql_mock, get_commit, get_diff):
     assert len(parameters["events"].adapted) == 1
     assert parameters["events"].adapted[0]["type"] == "mitre_new"
 
+    # Check the `redis.sadd` call
+    args, _ = redis_mock().sadd.call_args
+    assert args[0] == "changes_ids"
+    assert args[1] == parameters["change_id"]
+
 
 @patch("includes.handlers.run_sql")
-def test_mitre_handler_create_change_update(run_sql_mock, get_commit, get_diff):
+@patch.object(RedisHook, "get_conn")
+def test_mitre_handler_create_change_update(
+    redis_mock, run_sql_mock, get_commit, get_diff
+):
     commit = get_commit("mitre", "c")
     diff = get_diff("mitre", "c", 0)
 
-    handler = MitreHandler(logger, commit, diff)
-    with patch.object(handler, "execute"):
-        handler.handle()
-
     # Create a change between commits `b` and `c`
-    handler.create_change("CVE-2023-5301", MitreEvents)
-    _, kwargs = run_sql_mock.call_args
-    assert kwargs["query"] == SQL_PROCEDURES.get("events")
+    handler = MitreHandler(logger, commit, diff)
 
-    # The summary of CVE-2023-5301 was changed in commit `c`
+    # The CVE-2023-5301 cve appeared in commit `c`
+    handler.create_change("CVE-2023-5301", MitreEvents)
+
+    # Check the `run_sql` call
+    _, kwargs = run_sql_mock.call_args
     parameters = kwargs["parameters"]
+    assert kwargs["query"] == SQL_PROCEDURES.get("events")
     assert parameters["cve"] == "CVE-2023-5301"
     assert parameters["created"] == "2023-01-01T02:10:00+00:00"
     assert parameters["updated"] == "2023-01-01T02:10:00+00:00"
@@ -205,22 +213,27 @@ def test_mitre_handler_create_change_update(run_sql_mock, get_commit, get_diff):
     assert len(parameters["events"].adapted) == 1
     assert parameters["events"].adapted[0]["type"] == "mitre_summary"
 
+    # Check the `redis.sadd` call
+    args, _ = redis_mock().sadd.call_args
+    assert args[0] == "changes_ids"
+    assert args[1] == parameters["change_id"]
+
 
 @patch("includes.handlers.run_sql")
-def test_nvd_handler_create_change_new(run_sql_mock, get_commit, get_diff):
+@patch.object(RedisHook, "get_conn")
+def test_nvd_handler_create_change_new(redis_mock, run_sql_mock, get_commit, get_diff):
     commit = get_commit("nvd", "c")
     diff = get_diff("nvd", "c", 1)
 
-    handler = NvdHandler(logger, commit, diff)
-    with patch.object(handler, "execute"):
-        handler.handle()
-
     # Create a change between commits `b` and `c`
-    handler.create_change("CVE-2023-5305", NvdEvents)
-    _, kwargs = run_sql_mock.call_args
-    assert kwargs["query"] == SQL_PROCEDURES.get("events")
+    handler = NvdHandler(logger, commit, diff)
 
     # The CVE-2023-5305 cve appeared in commit `c`
+    handler.create_change("CVE-2023-5305", MitreEvents)
+
+    # Check the `run_sql` call
+    _, kwargs = run_sql_mock.call_args
+    assert kwargs["query"] == SQL_PROCEDURES.get("events")
     parameters = kwargs["parameters"]
     assert parameters["cve"] == "CVE-2023-5305"
     assert parameters["created"] == "2023-01-01T02:10:00+00:00"
@@ -229,26 +242,38 @@ def test_nvd_handler_create_change_new(run_sql_mock, get_commit, get_diff):
     assert len(parameters["events"].adapted) == 1
     assert parameters["events"].adapted[0]["type"] == "nvd_new"
 
+    # Check the `redis.sadd` call
+    args, _ = redis_mock().sadd.call_args
+    assert args[0] == "changes_ids"
+    assert args[1] == parameters["change_id"]
+
 
 @patch("includes.handlers.run_sql")
-def test_nvd_handler_create_change_update(run_sql_mock, get_commit, get_diff):
+@patch.object(RedisHook, "get_conn")
+def test_nvd_handler_create_change_update(
+    redis_mock, run_sql_mock, get_commit, get_diff
+):
     commit = get_commit("nvd", "c")
     diff = get_diff("nvd", "c", 0)
 
-    handler = NvdHandler(logger, commit, diff)
-    with patch.object(handler, "execute"):
-        handler.handle()
-
     # Create a change between commits `b` and `c`
-    handler.create_change("CVE-2023-5301", NvdEvents)
-    _, kwargs = run_sql_mock.call_args
-    assert kwargs["query"] == SQL_PROCEDURES.get("events")
+    handler = NvdHandler(logger, commit, diff)
 
-    # The summary of CVE-2023-5301 was changed in commit `c`
+    # The CVE-2023-5301 cve appeared in commit `c`
+    handler.create_change("CVE-2023-5301", NvdEvents)
+
+    # Check the `run_sql` call
+    _, kwargs = run_sql_mock.call_args
     parameters = kwargs["parameters"]
+    assert kwargs["query"] == SQL_PROCEDURES.get("events")
     assert parameters["cve"] == "CVE-2023-5301"
     assert parameters["created"] == "2023-01-01T02:10:00+00:00"
     assert parameters["updated"] == "2023-01-01T02:10:00+00:00"
     assert parameters["path"] == "2023/CVE-2023-5301.json"
     assert len(parameters["events"].adapted) == 1
     assert parameters["events"].adapted[0]["type"] == "nvd_summary"
+
+    # Check the `redis.sadd` call
+    args, _ = redis_mock().sadd.call_args
+    assert args[0] == "changes_ids"
+    assert args[1] == parameters["change_id"]

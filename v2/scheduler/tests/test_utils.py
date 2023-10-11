@@ -1,12 +1,10 @@
 from unittest.mock import patch
 
 import pytest
-from airflow.exceptions import AirflowException
 
 from utils import (
     decode_hmap,
     get_chunks,
-    get_repo_path,
     merge_projects_changes,
     PRODUCT_SEPARATOR,
     PostgresHook,
@@ -86,7 +84,8 @@ def test_vendors_dict_to_flat(open_file):
 
 
 def test_vendors_conf_to_flat(open_file):
-    assert vendors_conf_to_dict({}) == {}
+    assert vendors_conf_to_flat() == []
+    assert vendors_conf_to_flat({}) == []
 
     # Simple case
     configurations = [
@@ -208,12 +207,3 @@ def test_merge_projects_changes():
     merged = merge_projects_changes(projects_subscriptions, vendors_changes)
     assert sorted(merged["project1"]) == sorted(["change1", "change2", "change3"])
     assert sorted(merged["project3"]) == sorted(["change1", "change2"])
-
-
-@patch("utils.REPOS_PATH", {"mitre": "/path/to/mitre", "nvd": "/path/to/nvd"})
-def test_get_repo_path():
-    assert get_repo_path("mitre") == "/path/to/mitre"
-    assert get_repo_path("nvd") == "/path/to/nvd"
-
-    with pytest.raises(AirflowException):
-        get_repo_path("foo")

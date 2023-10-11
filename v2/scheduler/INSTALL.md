@@ -55,10 +55,6 @@ load_examples = False
 
 [database]
 sql_alchemy_conn = postgresql+psycopg2://localhost:5432/opencve_airflow
-
-[opencve]
-nvd_repo_path = /Users/ncrocfer/Dev/nvd
-mitre_repo_path = /Users/ncrocfer/Dev/cvelistV5
 ```
 
 Note: the NVD and the MITRE repositories have been cloned in the web installation.
@@ -76,11 +72,11 @@ airflow db init
 airflow users create --username admin --firstname Amber --lastname Security --role Admin --email admin@local
 ```
 
-You have to create 2 variables used by the DAGs. The commands had been given during the web installation:
+You have to create 2 variables used by the DAGs to know the repositories path:
 
 ```
-airflow variables set mitre_last_commit xxxx
-airflow variables set nvd_last_commit xxxx
+airflow variables set mitre_repo_path /Users/ncrocfer/Dev/cvelistV5
+airflow variables set nvd_repo_path /Users/ncrocfer/Dev/nvd
 ```
 
 The connection to the OpenCVE database has to be created in the `opencve_postgres` conn_id:
@@ -101,6 +97,4 @@ The webserver listens on http://localhost:8080.
 
 ## DAGs
 
-### Changes
-
-
+### Updater
