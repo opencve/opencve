@@ -33,14 +33,16 @@ class ParserOperator(KindOperator):
         commits = list(repo.iter_commits(after=start, before=end, reverse=True))
 
         if not commits:
-            raise AirflowSkipException("No commit found, skip the task")
-        else:
-            self.log.info(
-                "Found %s commit(s), from %s to %s",
-                str(len(commits)),
-                commits[0],
-                commits[-1],
-            )
+            self.log.info("No commit found, skip the task")
+            return
+
+        # Iterate over all commits
+        self.log.info(
+            "Found %s commit(s), from %s to %s",
+            str(len(commits)),
+            commits[0],
+            commits[-1],
+        )
 
         for commit in commits:
             commit_stats = commit.stats.total

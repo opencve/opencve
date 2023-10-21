@@ -1,118 +1,114 @@
-import json
 import logging
+import uuid
 
-import arrow
 from airflow.decorators import task
+from airflow.exceptions import AirflowSkipException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from psycopg2.extras import Json
 
-from constants import SQL_VENDORS_PER_CHANGE, SQL_REPORTS
-from utils import decode_hmap, merge_projects_changes
+from constants import (
+    SQL_CHANGE_WITH_VENDORS,
+    SQL_PROJECT_WITH_SUBSCRIPTIONS,
+    SQL_PROCEDURES,
+    PRODUCT_SEPARATOR,
+)
+from utils import (
+    decode_hmap,
+    get_project_subscriptions,
+    get_vendor_changes,
+    get_reports,
+)
 
 logger = logging.getLogger(__name__)
 
 
+def get_start_end_dates(context):
+    start = context.get("data_interval_start")
+    end = context.get("data_interval_end").subtract(seconds=1)
+    return start, end
+
+
 @task
-def get_changes():
+def get_changes(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    start, end = get_start_end_dates(context)
 
-    # Get the list of the changes ids saved in a previous task
-    changes_ids = tuple([id.decode() for id in redis_hook.smembers("changes_ids")])
-    logger.info(f"Got {len(changes_ids)} changes to analyze")
-    if not changes_ids:
-        return
-
-    # Get the associated vendors for each change
-    logger.info("Get the associated vendors for each change")
-    changes = postgres_hook.get_records(
-        sql=SQL_VENDORS_PER_CHANGE, parameters={"changes": changes_ids}
+    # Get the list of changes with their associated vendors
+    records = postgres_hook.get_records(
+        sql=SQL_CHANGE_WITH_VENDORS, parameters={"start": start, "end": end}
     )
 
-    # Sort the changes per vendors
-    logger.info(f"Sorting {len(changes_ids)} changes per vendor...")
-    vendors_changes = {}
-    for change_id, vendors in changes:
-        for vendor in vendors:
-            if vendor not in vendors_changes:
-                vendors_changes[vendor] = []
-            vendors_changes[vendor].append(change_id)
+    # Group the change by vendors
+    changes = get_vendor_changes(records)
+    if not changes:
+        raise AirflowSkipException(f"No vendor changes from {start} to {end}")
+    else:
+        logger.info(f"Got {len(changes)} vendors/products with changes: {changes}")
 
-    # Encode the dictionary to save it in redis
-    vendors_changes = {k: json.dumps(v) for k, v in vendors_changes.items()}
-
-    # Save the result to reuse it in a next task
-    logger.info(
-        f"Saving {len(vendors_changes)} vendors and their changes in redis (key: vendors_changes)"
-    )
-
-    redis_hook.delete("vendors_changes")
-    redis_hook.hset("vendors_changes", mapping=vendors_changes)
-
-    # Clean the existing `changes_ids` redis key
-    redis_hook.delete("changes_ids")
+    # Save the result in redis
+    redis_hook.json().set(f"changes_{start}_{end}", "$", changes)
 
 
 @task
-def get_subscriptions():
-    logger.info("Listing projects and their subscriptions")
-
+def get_subscriptions(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    start, end = get_start_end_dates(context)
 
-    # Retrieve the list of projects
-    projects = postgres_hook.get_records(
-        sql="SELECT id, subscriptions FROM opencve_projects"
+    # Get the list of changes
+    changes = redis_hook.json().objkeys(f"changes_{start}_{end}")
+    if not changes:
+        raise AirflowSkipException(f"No change from {start} to {end}")
+
+    # Extract vendors & products based on the separator
+    vendors = [c for c in changes if PRODUCT_SEPARATOR not in c]
+    logger.info(f"Got {len(vendors)} vendors: {vendors}")
+    products = [c for c in changes if PRODUCT_SEPARATOR in c]
+    logger.info(f"Got {len(products)} products: {products}")
+
+    # List the projects with subscriptions to these vendors & products
+    records = postgres_hook.get_records(
+        sql=SQL_PROJECT_WITH_SUBSCRIPTIONS,
+        parameters={"vendors": vendors, "products": products},
     )
-    logger.info(f"Got {len(projects)} rows from database")
+    items = get_project_subscriptions(records)
 
-    # Remove the project without subscriptions
-    projects_subscriptions = {}
-    for project in projects:
-        vendors = project[1]["vendors"] + project[1]["products"]
-        if vendors:
-            projects_subscriptions[project[0]] = json.dumps(vendors)
-
-    # Save this result in redis to reuse it in the next task
-    logger.info(
-        f"Saving {len(projects_subscriptions)} projects with subscriptions in redis (key: projects_subscriptions)"
-    )
-    redis_hook.delete("projects_subscriptions")
-    redis_hook.hset("projects_subscriptions", mapping=projects_subscriptions)
+    # Save the result in redis
+    key = f"subscriptions_{start}_{end}"
+    redis_hook.json().set(key, "$", items)
 
 
 @task
-def populate_reports(execution_date=None):
-    day = arrow.get(execution_date).floor("day").to("utc").datetime.isoformat()
+def populate_reports(**context):
+    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
+    start, end = get_start_end_dates(context)
 
-    # Retrieve the projects and their subscriptions
-    projects_subscriptions = decode_hmap("projects_subscriptions")
-    logger.info(f"Got {len(projects_subscriptions)} projects and their subscriptions")
-    if not projects_subscriptions:
-        return
+    # Get the list of changes
+    changes = redis_hook.json().get(f"changes_{start}_{end}")
+    if not changes:
+        raise AirflowSkipException(f"No change from {start} to {end}")
 
-    # Retrieve the changes and their vendors
-    vendors_changes = decode_hmap("vendors_changes")
-    logger.info(f"Got {len(vendors_changes)} changes and their vendors")
-    if not vendors_changes:
-        return
+    # Get the list of subscriptions
+    subscriptions = redis_hook.json().get(f"subscriptions_{start}_{end}")
+    if not subscriptions:
+        raise AirflowSkipException(f"No subscriptions from {start} to {end}")
 
     # Associate each project to its changes
-    projects_changes = merge_projects_changes(projects_subscriptions, vendors_changes)
-    logger.info(f"Got {len(projects_changes)} projects with changes")
-    if not projects_changes:
-        return
+    reports = get_reports(changes, subscriptions)
+    logger.info(f"Got {len(reports)} reports to insert in database")
 
     # Create the reports for each project
     hook = PostgresHook(postgres_conn_id="opencve_postgres")
-    for project, changes in projects_changes.items():
+    report_id = str(uuid.uuid4())
+    for project_id, changes_id in reports.items():
         hook.run(
-            sql=SQL_REPORTS,
+            sql=SQL_PROCEDURES.get("report"),
             parameters={
-                "created": day,  # TODO: je me demande si le day doit pas être lié à la date de change
-                "project": project,
-                "details": Json({"cves": [], "vendors": []}),
-                "changes": Json(changes),
+                "report": report_id,
+                "project": project_id,
+                "created": start,  # TODO: début de journée, là c'est start de l'interval
+                "changes": Json(changes_id),
             },
         )

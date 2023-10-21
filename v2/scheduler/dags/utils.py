@@ -1,12 +1,12 @@
 import json
 
+import arrow
 import more_itertools
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from nested_lookup import nested_lookup
 
-
-PRODUCT_SEPARATOR = "$PRODUCT$"
+from constants import PRODUCT_SEPARATOR
 
 
 def vendors_conf_to_dict(conf):
@@ -94,25 +94,79 @@ def decode_hmap(key):
     return {k.decode(): json.loads(v.decode()) for k, v in hook.hgetall(key).items()}
 
 
-def merge_projects_changes(projects_subscriptions, vendors_changes):
+def get_vendor_changes(records):
     """
-    This function takes 2 parameters:
-        - a list of projects with their subscriptions
-        - a list of vendors with their last changes
-    It associates the projects with their changes according to the subscriptions.
+    This function takes a list of changes and
+    associates them with their vendors.
 
     Example:
-        >>> projects_subscriptions = {'project1': ['foo', 'bar'], 'project2': ['baz'], 'project3': ['lorem', 'foo']}
-        >>> vendors_changes = {'foo': ['change1', 'change2'], 'bar': ['change3'], 'oil': ['change1']}
-        >>> merge_projects_changes(projects_subscriptions, vendors_changes)
-        {'project1': ['change1', 'change2', 'change3'], 'project3': ['change1', 'change2']}
+        >>> records = [
+            ('de7989bd-68c1-45b2-9fab-273df1bb53ef', ['foo', 'bar']),
+            ('2d8a382a-d43f-4601-b4b2-d55b49013b8b', ['bar'])
+        ]
+        >>> get_vendor_changes(records)
+        {
+            'foo': ['de7989bd-68c1-45b2-9fab-273df1bb53ef'],
+            'bar': ['de7989bd-68c1-45b2-9fab-273df1bb53ef', '2d8a382a-d43f-4601-b4b2-d55b49013b8b']
+        }
+    """
+    vendors_changes = {}
+
+    for change_id, vendors in records:
+        for vendor in vendors:
+            if vendor not in vendors_changes:
+                vendors_changes[vendor] = []
+            vendors_changes[vendor].append(change_id)
+
+    return vendors_changes
+
+
+def get_project_subscriptions(records):
+    """
+    This function returns a list of projects with their associated
+    vendors and products.
+
+    Example:
+        >>> records = [(
+            '8d5d399c-1f3c-4e83-91ba-6f7cf057b70b', {'vendors': ['foo', 'bar'], 'products': ['vendor$PRODUCT$product']}
+        )]
+        >>> get_project_subscriptions(records)
+        >>> {'8d5d399c-1f3c-4e83-91ba-6f7cf057b70b': ['foo', 'bar', 'vendor$PRODUCT$product']}
+    """
+    projects_subscriptions = {}
+    for project in records:
+        vendors = project[1]["vendors"] + project[1]["products"]
+        if vendors:
+            projects_subscriptions[project[0]] = vendors
+    return projects_subscriptions
+
+
+def get_reports(changes, subscriptions):
+    """
+    This associates the project subscriptions with their changes.
+
+    Example:
+        >>> changes = {
+            'foo': ['de7989bd-68c1-45b2-9fab-273df1bb53ef'],
+            'bar': ['de7989bd-68c1-45b2-9fab-273df1bb53ef', '2d8a382a-d43f-4601-b4b2-d55b49013b8b']
+        }
+        >>> subscriptions = {
+            '8d5d399c-1f3c-4e83-91ba-6f7cf057b70b': ['foo', 'bar', 'vendor$PRODUCT$product']
+        }
+        >>> get_reports(subscriptions, changes)
+        {
+            "8d5d399c-1f3c-4e83-91ba-6f7cf057b70b": [
+                "de7989bd-68c1-45b2-9fab-273df1bb53ef",
+                "2d8a382a-d43f-4601-b4b2-d55b49013b8b"
+            ]
+        }
     """
     projects_changes = {}
-    for project, subscriptions in projects_subscriptions.items():
+    for project, subscriptions in subscriptions.items():
         projects_changes[project] = set()
         for subscription in subscriptions:
-            if subscription in vendors_changes.keys():
-                projects_changes[project].update(vendors_changes[subscription])
+            if subscription in changes.keys():
+                projects_changes[project].update(changes[subscription])
         projects_changes[project] = list(projects_changes[project])
 
     return {k: v for k, v in projects_changes.items() if v}

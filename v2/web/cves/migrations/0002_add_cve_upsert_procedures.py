@@ -9,8 +9,8 @@ from django.db import migrations
 MITRE_SQL = """
 CREATE PROCEDURE mitre_upsert(
     cve text,
-    created timestamp,
-    updated timestamp,
+    created timestamptz,
+    updated timestamptz,
     summary text,
     path jsonb
 )
@@ -31,8 +31,8 @@ $$;
 MITRE_REVERSE_SQL = """
 DROP PROCEDURE mitre_upsert(
     cve text,
-    created timestamp,
-    updated timestamp,
+    created timestamptz,
+    updated timestamptz,
     summary text,
     path jsonb
 );"""
@@ -43,8 +43,8 @@ DROP PROCEDURE mitre_upsert(
 NVD_SQL = """
 CREATE PROCEDURE nvd_upsert(
     cve text,
-    created timestamp,
-    updated timestamp,
+    created timestamptz,
+    updated timestamptz,
     cvss jsonb,
     vendors jsonb,
     cwes jsonb,
@@ -103,8 +103,8 @@ $$;
 NVD_REVERSE_SQL = """
 DROP PROCEDURE nvd_upsert(
     cve text,
-    created timestamp,
-    updated timestamp,
+    created timestamptz,
+    updated timestamptz,
     cvss jsonb,
     vendors jsonb,
     cwes jsonb,

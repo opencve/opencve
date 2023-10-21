@@ -2,6 +2,15 @@
  * Override skin style
  * ----------
  */
+  a {
+    color: #1F1172;
+  }
+  a:hover {
+    color: #7767da;
+  }
+  .skin-opencve .sidebar a {
+    color: #bfc5c6;
+  }
   .skin-opencve .main-header .navbar {
     background-color: #fff;
     border-bottom: 1px solid #dcdcdc;
@@ -21,19 +30,19 @@
   }
 
   .skin-opencve .main-header .logo {
-    background-color: #050649;
+    background-color: #090031;
   }
   .skin-opencve .main-header .logo:hover {
-    background-color: #050649;
+    background-color: #090031;
   }
   .skin-opencve .main-header li.user-header {
-    background-color: #050649;
+    background-color: #090031;
   }
   .skin-opencve .box-title {
     color: #253841;
   }
   .skin-opencve .box.box-primary {
-    border-color: #050649;
+    border-color: #090031;
   }
   .box-subscriptions .label {
     line-height: 25px;
@@ -41,20 +50,20 @@
     font-weight: 600;
   }
   .bg-blue{
-    background-color: #1D1E71 !important;
+    background-color: #5648D8 !important;
   }
   .bg-primary {
-    background-color: #050649;
+    background-color: #5648D8;
   }
   .btn-primary {
     color: #fff;
-    background-color: #1D1E71;
-    border: 1px solid #1D1E71;
+    background-color: #5648D8;
+    border: 1px solid #5648D8;
   }
   .btn-primary:hover,
   .btn-primary:focus,
   .btn-primary:active {
-    background-color: #050649 !important;
+    background-color: #090031 !important;
   }
 
   .box-header button.subscribe {
@@ -62,7 +71,15 @@
   }
 
   .badge-primary {
-    background-color: #050649;
+    background-color: #090031;
+  }
+
+  .bg-light-blue, .label-primary, .modal-primary .modal-body {
+    background-color: #5842DF !important;
+  }
+
+  a.label-primary:hover, button.btn-primary:hover {
+    background-color: #1F1172 !important;
   }
 
   .center {
@@ -102,11 +119,11 @@
   }
 
   .nav-tabs-primary > .nav-tabs > li.active {
-    border-top-color: #050649;
+    border-top-color: #090031;
   }
   .nav-tabs-profile > .nav-tabs > li.active {
     border-top: 0px;
-    border-bottom: 3px solid #050649;
+    border-bottom: 3px solid #090031;
   }
 
   .nav-tabs-account > .tab-content {
@@ -118,7 +135,7 @@
   }
 
   .dropcap {
-    color: #050649;
+    color: #090031;
     display: block;
     float: left;
     font-size: 3.1em;
@@ -163,7 +180,7 @@
 
 .tabs-report {
   border-radius: 3px;
-  border-top: 3px solid #050649!important;
+  border-top: 3px solid #090031!important;
 }
 
 .tabs-vertical-env {
@@ -338,7 +355,7 @@ pre.plainJSON{
 }
 
 .bg-opencve {
-  background-color: #050649 !important;
+  background-color: #090031 !important;
 }
 
 .timeline,

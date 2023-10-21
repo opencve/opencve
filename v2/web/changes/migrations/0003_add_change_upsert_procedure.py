@@ -4,11 +4,11 @@ from django.db import migrations
 
 
 SQL = """
-CREATE PROCEDURE change_events(
+CREATE PROCEDURE change_upsert(
     cve_name text,
     change_id uuid,
-    created timestamp,
-    updated timestamp,
+    created timestamptz,
+    updated timestamptz,
     commit text,
     path text,
     events jsonb
@@ -41,11 +41,11 @@ $$;
 """
 
 REVERSE_SQL = """
-DROP PROCEDURE change_events(
+DROP PROCEDURE change_upsert(
     cve_name text,
     change_id uuid,
-    created timestamp,
-    updated timestamp,
+    created timestamptz,
+    updated timestamptz,
     commit text,
     path text,
     events jsonb

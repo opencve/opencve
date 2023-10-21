@@ -1,12 +1,9 @@
-import logging
 import pathlib
 
 import git
 from airflow.exceptions import AirflowException
 
 from includes.operators import KindOperator
-
-logger = logging.getLogger(__name__)
 
 
 class FetcherOperator(KindOperator):
@@ -24,12 +21,12 @@ class FetcherOperator(KindOperator):
 
         # Pull the last changes
         last_commit = repo.head.commit
-        logger.info(f"Local HEAD is {last_commit}")
-        logger.info(f"Pulling last changes from {repo_path}...")
+        self.log.info(f"Local HEAD is {last_commit}")
+        self.log.info(f"Pulling last changes from {repo_path}...")
         repo.remotes.origin.pull("main")
 
         if last_commit == repo.head.commit:
-            logger.info("No change detected")
+            self.log.info("No change detected")
             return
 
-        logger.info(f"New HEAD is {repo.head.commit})")
+        self.log.info(f"New HEAD is {repo.head.commit})")

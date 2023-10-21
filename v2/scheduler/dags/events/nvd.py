@@ -32,7 +32,6 @@ class NvdCvss(NvdEvents):
     def execute(self):
         old_metrics = self.old.get("metrics")
         new_metrics = self.new.get("metrics")
-        print(new_metrics)
 
         # Check the new CVSS scores
         new = {}

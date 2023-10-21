@@ -3,7 +3,7 @@ from django.contrib.admin.views.main import ChangeList
 from django.db.models import Count
 from django.urls import reverse
 
-from changes.models import Change, Task
+from changes.models import Change
 from cves.admin import BaseReadOnlyAdminMixin
 
 
@@ -16,30 +16,6 @@ class TaskChangeList(ChangeList):
 class ChangeChangeList(ChangeList):
     def url_for_result(self, result):
         return f"{reverse('change', kwargs={'cve_id': result.cve.cve_id, 'id': result.id})}"
-
-
-@admin.register(Task)
-class TaskAdmin(BaseReadOnlyAdminMixin, admin.ModelAdmin):
-    ordering = ("-created_at",)
-    list_display = (
-        "created_at",
-        "changes_count",
-        "nvd_checksum",
-    )
-
-    def changes_count(self, obj):
-        return obj.changes_count
-
-    def get_queryset(self, request):
-        queryset = super(TaskAdmin, self).get_queryset(request)
-
-        first_task = Task.objects.order_by("created_at").first()
-        if first_task:
-            queryset = queryset.exclude(id=first_task.id)
-        return queryset.annotate(changes_count=Count("changes"))
-
-    def get_changelist(self, request, **kwargs):
-        return TaskChangeList
 
 
 @admin.register(Change)

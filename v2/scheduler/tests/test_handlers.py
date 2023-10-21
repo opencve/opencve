@@ -174,7 +174,7 @@ def test_mitre_handler_create_change_new(
     # Check the `run_sql` call
     _, kwargs = run_sql_mock.call_args
     parameters = kwargs["parameters"]
-    assert kwargs["query"] == SQL_PROCEDURES.get("events")
+    assert kwargs["query"] == SQL_PROCEDURES.get("change")
     assert parameters["cve"] == "CVE-2023-5305"
     assert parameters["created"] == "2023-01-01T02:10:00+00:00"
     assert parameters["updated"] == "2023-01-01T02:10:00+00:00"
@@ -205,7 +205,7 @@ def test_mitre_handler_create_change_update(
     # Check the `run_sql` call
     _, kwargs = run_sql_mock.call_args
     parameters = kwargs["parameters"]
-    assert kwargs["query"] == SQL_PROCEDURES.get("events")
+    assert kwargs["query"] == SQL_PROCEDURES.get("change")
     assert parameters["cve"] == "CVE-2023-5301"
     assert parameters["created"] == "2023-01-01T02:10:00+00:00"
     assert parameters["updated"] == "2023-01-01T02:10:00+00:00"
@@ -233,7 +233,7 @@ def test_nvd_handler_create_change_new(redis_mock, run_sql_mock, get_commit, get
 
     # Check the `run_sql` call
     _, kwargs = run_sql_mock.call_args
-    assert kwargs["query"] == SQL_PROCEDURES.get("events")
+    assert kwargs["query"] == SQL_PROCEDURES.get("change")
     parameters = kwargs["parameters"]
     assert parameters["cve"] == "CVE-2023-5305"
     assert parameters["created"] == "2023-01-01T02:10:00+00:00"
@@ -265,7 +265,7 @@ def test_nvd_handler_create_change_update(
     # Check the `run_sql` call
     _, kwargs = run_sql_mock.call_args
     parameters = kwargs["parameters"]
-    assert kwargs["query"] == SQL_PROCEDURES.get("events")
+    assert kwargs["query"] == SQL_PROCEDURES.get("change")
     assert parameters["cve"] == "CVE-2023-5301"
     assert parameters["created"] == "2023-01-01T02:10:00+00:00"
     assert parameters["updated"] == "2023-01-01T02:10:00+00:00"

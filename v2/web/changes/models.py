@@ -1,28 +1,8 @@
-import hashlib
-import uuid
-
 from django.db import models
 
 from cves.models import Cve
 from opencve.models import BaseModel
 from projects.models import Project
-
-
-def get_random_sha256():
-    return hashlib.sha256(str(uuid.uuid4()).encode()).hexdigest()
-
-
-class Task(BaseModel):
-    # TODO: remove this model as it's no longer used
-    nvd_checksum = models.CharField(
-        max_length=64, unique=True, default=get_random_sha256
-    )
-
-    class Meta:
-        db_table = "opencve_tasks"
-
-    def __str__(self):
-        return self.nvd_checksum
 
 
 class Change(BaseModel):
@@ -37,20 +17,7 @@ class Change(BaseModel):
 
 
 class Event(BaseModel):
-    class EventType(models.TextChoices):
-        NEW_CVE = "new_cve", "New CVE"
-        FIRST_TIME = "first_time", "Vendor(s)/Product(s) appeared for the first time"
-        REFERENCES = "references", "Reference(s) changed"
-        CPES = "cpes", "CPE(s) changed"
-        CVSS = "cvss", "CVSS changed"
-        SUMMARY = "summary", "Summary changed"
-        CWES = "cwes", "CWE(s) changed"
-
-    type = models.CharField(
-        max_length=10,
-        choices=EventType.choices,
-        default=EventType.NEW_CVE,
-    )
+    type = models.CharField(max_length=50)
     details = models.JSONField()
 
     # Relationships
@@ -66,7 +33,6 @@ class Event(BaseModel):
 
 class Report(BaseModel):
     seen = models.BooleanField(default=False)
-    details = models.JSONField()
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="reports")
     changes = models.ManyToManyField(Change)

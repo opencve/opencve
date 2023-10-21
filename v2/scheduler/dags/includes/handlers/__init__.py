@@ -2,7 +2,6 @@ import json
 import uuid
 
 import arrow
-from airflow.providers.redis.hooks.redis import RedisHook
 from psycopg2.extras import Json
 
 from constants import SQL_PROCEDURES
@@ -19,13 +18,6 @@ class DiffHandler:
         self._source = None
         self._left = None
         self._right = None
-        self._redis = None
-
-    @property
-    def redis(self):
-        if not self._redis:
-            self._redis = RedisHook(redis_conn_id="opencve_redis").get_conn()
-        return self._redis
 
     @property
     def is_new(self):
@@ -80,9 +72,8 @@ class DiffHandler:
 
             # We first create the change and its events, then we add it
             # in Redis to reuse it in a next task.
-            # TODO: make the `change_events` procedure idempotent to avoid duplicated changes
-            run_sql(query=SQL_PROCEDURES.get("events"), parameters=parameters)
-            self.redis.sadd("changes_ids", change_id)
+            # TODO: make the `change_upsert` procedure idempotent to avoid duplicated changes
+            run_sql(query=SQL_PROCEDURES.get("change"), parameters=parameters)
 
     def handle(self):
         if not self.validate_files():
