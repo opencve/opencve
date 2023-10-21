@@ -14,7 +14,6 @@ from constants import (
     PRODUCT_SEPARATOR,
 )
 from utils import (
-    decode_hmap,
     get_project_subscriptions,
     get_vendor_changes,
     get_reports,
@@ -111,7 +110,7 @@ def populate_reports(**context):
             parameters={
                 "report": report_id,
                 "project": project_id,
-                "day": start,  # TODO: début de journée, là c'est start de l'interval
+                "day": start,
                 "changes": Json(changes_id),
             },
         )

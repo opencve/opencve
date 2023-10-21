@@ -3,12 +3,10 @@ from unittest.mock import patch
 import pytest
 
 from utils import (
-    decode_hmap,
     get_chunks,
     merge_projects_changes,
     PRODUCT_SEPARATOR,
     PostgresHook,
-    RedisHook,
     run_sql,
     vendors_conf_to_dict,
     vendors_conf_to_flat,
@@ -187,10 +185,6 @@ def test_run_sql(mock):
         ({b"foo": b'["bar", "baz"]'}, {"foo": ["bar", "baz"]}),
     ],
 )
-@patch.object(RedisHook, "get_conn")
-def test_decode_hmap(mock, input, output):
-    mock().hgetall.return_value = input
-    assert decode_hmap("foo") == output
 
 
 def test_merge_projects_changes():

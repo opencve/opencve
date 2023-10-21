@@ -83,17 +83,6 @@ def run_sql(query, parameters):
     hook.run(sql=query, parameters=parameters)
 
 
-def decode_hmap(key):
-    """
-    Transform an encoded Redis hmap into a valid dictionary.
-
-        Before: {b'uuid': b'["cisco", "microsoft"]'}
-        After:  {'uuid': ['cisco', 'microsoft']}
-    """
-    hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    return {k.decode(): json.loads(v.decode()) for k, v in hook.hgetall(key).items()}
-
-
 def get_vendor_changes(records):
     """
     This function takes a list of changes and
