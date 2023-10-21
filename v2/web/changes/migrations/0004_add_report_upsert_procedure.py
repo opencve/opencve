@@ -17,13 +17,13 @@ DECLARE
    _report_id   uuid;
 BEGIN
     -- create the daily report for the project
-    INSERT INTO opencve_reports (id, created_at, updated_at, seen, project_id)
-    VALUES(report, created, created, 'f', project)
-    ON CONFLICT (created_at, project_id) DO NOTHING;
-    
+    INSERT INTO opencve_reports (id, created_at, updated_at, day, seen, project_id)
+    VALUES(report, created, created, DATE(created), 'f', project)
+    ON CONFLICT (day, project_id) DO NOTHING;
+
     -- retrieve the report ID
     SELECT id INTO _report_id FROM opencve_reports
-    WHERE project_id = project AND created_at = created;
+    WHERE project_id = project AND day = DATE(created);
     
     -- associate the changes to the report
     FOR _change IN SELECT * FROM json_array_elements_text(changes::json)

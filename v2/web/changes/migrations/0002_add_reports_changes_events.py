@@ -35,6 +35,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='report',
-            constraint=models.UniqueConstraint(fields=('created_at', 'project_id'), name='ix_unique_project_created_at'),
+            constraint=models.UniqueConstraint(fields=('day', 'project_id'), name='ix_unique_project_day'),
         ),
     ]

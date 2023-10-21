@@ -62,17 +62,15 @@ class DiffHandler:
             change_id = str(uuid.uuid4())
             parameters = {
                 "cve": cve_id,
-                "change_id": change_id,
-                "path": self.path,
-                "commit": str(self.commit),
+                "change": change_id,
+                "file_path": self.path,
+                "commit_hash": str(self.commit),
                 "events": Json(events),
                 "created": arrow.get(self.commit.authored_date).datetime.isoformat(),
                 "updated": arrow.get(self.commit.authored_date).datetime.isoformat(),
             }
 
-            # We first create the change and its events, then we add it
-            # in Redis to reuse it in a next task.
-            # TODO: make the `change_upsert` procedure idempotent to avoid duplicated changes
+            # Create the change and its events
             run_sql(query=SQL_PROCEDURES.get("change"), parameters=parameters)
 
     def handle(self):

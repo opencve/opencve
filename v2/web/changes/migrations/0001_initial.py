@@ -45,6 +45,7 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
                 ('created_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
                 ('updated_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
+                ('day', models.DateField(default=django.utils.timezone.now)),
                 ('seen', models.BooleanField(default=False)),
                 ('changes', models.ManyToManyField(to='changes.change')),
             ],

@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 from cves.models import Cve
 from opencve.models import BaseModel
@@ -14,6 +15,11 @@ class Change(BaseModel):
 
     class Meta:
         db_table = "opencve_changes"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["created_at", "cve_id", "commit"], name="ix_unique_cve_commit_created_at"
+            )
+        ]
 
 
 class Event(BaseModel):
@@ -26,6 +32,11 @@ class Event(BaseModel):
 
     class Meta:
         db_table = "opencve_events"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["created_at", "change_id", "type"], name="ix_unique_change_type_created_at"
+            )
+        ]
 
     def __str__(self):
         return self.type
@@ -34,6 +45,7 @@ class Event(BaseModel):
 class Report(BaseModel):
     seen = models.BooleanField(default=False)
 
+    day = models.DateField(default=timezone.now)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="reports")
     changes = models.ManyToManyField(Change)
 
@@ -41,8 +53,8 @@ class Report(BaseModel):
         db_table = "opencve_reports"
         constraints = [
             models.UniqueConstraint(
-                fields=["created_at", "project_id"], name="ix_unique_project_created_at"
-            )
+                fields=["day", "project_id"], name="ix_unique_project_day"
+            ),
         ]
 
     @property

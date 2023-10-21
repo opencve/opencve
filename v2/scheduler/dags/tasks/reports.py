@@ -48,7 +48,9 @@ def get_changes(**context):
         logger.info(f"Got {len(changes)} vendors/products with changes: {changes}")
 
     # Save the result in redis
-    redis_hook.json().set(f"changes_{start}_{end}", "$", changes)
+    key = f"changes_{start}_{end}"
+    redis_hook.json().set(key, "$", changes)
+    redis_hook.expire(key, 60*60*24)
 
 
 @task
@@ -78,6 +80,7 @@ def get_subscriptions(**context):
     # Save the result in redis
     key = f"subscriptions_{start}_{end}"
     redis_hook.json().set(key, "$", items)
+    redis_hook.expire(key, 60 * 60 * 24)
 
 
 @task
@@ -108,7 +111,7 @@ def populate_reports(**context):
             parameters={
                 "report": report_id,
                 "project": project_id,
-                "created": start,  # TODO: début de journée, là c'est start de l'interval
+                "day": start,  # TODO: début de journée, là c'est start de l'interval
                 "changes": Json(changes_id),
             },
         )

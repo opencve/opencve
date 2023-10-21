@@ -1,10 +1,10 @@
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
 SQL_PROCEDURES = {
-    "change": "CALL change_upsert(%(cve)s, %(change_id)s, %(created)s, %(updated)s, %(commit)s, %(path)s, %(events)s);",
+    "change": "CALL change_upsert(%(cve)s, %(change)s, %(created)s, %(updated)s, %(commit_hash)s, %(file_path)s, %(events)s);",
     "mitre": "CALL mitre_upsert(%(cve)s, %(created)s, %(updated)s, %(summary)s, %(path)s);",
     "nvd": "CALL nvd_upsert(%(cve)s, %(created)s, %(updated)s, %(cvss)s, %(vendors)s, %(cwes)s, %(path)s);",
-    "report": "CALL report_upsert(%(report)s, %(project)s, %(created)s, %(changes)s);",
+    "report": "CALL report_upsert(%(report)s, %(project)s, %(day)s, %(changes)s);",
 }
 
 SQL_CHANGE_WITH_VENDORS = """

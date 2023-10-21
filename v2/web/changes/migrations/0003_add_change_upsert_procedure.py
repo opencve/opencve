@@ -6,17 +6,18 @@ from django.db import migrations
 SQL = """
 CREATE PROCEDURE change_upsert(
     cve_name text,
-    change_id uuid,
-    created timestamptz,
-    updated timestamptz,
-    commit text,
-    path text,
-    events jsonb
+    change      uuid,
+    created     timestamptz,
+    updated     timestamptz,
+    commit_hash text,
+    file_path   text,
+    events      jsonb
 )
 LANGUAGE plpgsql
 AS $$
 DECLARE
    _cve_id    uuid;
+   _change_id uuid;
    _event     json;
 BEGIN
     -- retrieve the cve ID
@@ -24,16 +25,19 @@ BEGIN
 
     -- create a new change
     INSERT INTO opencve_changes (id, created_at, updated_at, cve_id, commit, path)
-    VALUES(change_id, created, updated, _cve_id, commit, path);
+    VALUES(change, created, updated, _cve_id, commit_hash, file_path)
+    ON CONFLICT (created_at, cve_id, commit) DO NOTHING;
 
-    -- TODO: check idempotence
-    -- something like ON CONFLICT (created_at, updated_at, cve_id, commit) DO NOTHING (and avoid events creation)
+    -- retrieve the change ID
+    SELECT id INTO _change_id FROM opencve_changes AS oc
+    WHERE created_at = created AND cve_id = _cve_id AND commit = commit_hash AND path = file_path;
 
     -- add the events in it
     FOR _event IN SELECT * FROM json_array_elements(events::json)
     LOOP
         INSERT INTO opencve_events (id, created_at, updated_at, change_id, cve_id, type, details)
-        VALUES(uuid_generate_v4(), created, updated, change_id, _cve_id, trim('"' FROM (_event -> 'type')::text), _event -> 'details');
+        VALUES(uuid_generate_v4(), created, updated, _change_id, _cve_id, trim('"' FROM (_event -> 'type')::text), _event -> 'details')
+        ON CONFLICT (created_at, change_id, type) DO NOTHING;
     END LOOP;
 
 END;
@@ -42,13 +46,13 @@ $$;
 
 REVERSE_SQL = """
 DROP PROCEDURE change_upsert(
-    cve_name text,
-    change_id uuid,
-    created timestamptz,
-    updated timestamptz,
-    commit text,
-    path text,
-    events jsonb
+    cve_name    text,
+    change      uuid,
+    created     timestamptz,
+    updated     timestamptz,
+    commit_hash text,
+    path        text,
+    events      jsonb
 );
 """
 
