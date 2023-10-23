@@ -1,4 +1,5 @@
 {% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
 
 {% block title %}{{ project.name }} - {{ block.super }}{% endblock %}
 
@@ -12,18 +13,18 @@
                     <thead>
                         <tr>
                             <th class="col-md-2">Date</th>
-                            <th class="col-md-1 text-center">Changes</th>
-                            <th class="col-md-4" >Vendors & Products</th>
-                            <th class="col-md-5">CVEs</th>
+                            <th class="col-md-9">CVE changed</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for report in reports %}
                         <tr>
                             <td><a href="{% url 'report' name=project.name day=report.created_at %}">{{ report.created_at|date:"D d M Y" }}</a></td>
-                            <td class="text-center">2</td>
-                            <td>{{ report.vendors_as_html }}</td>
-                            <td>{{ report.cves_as_html }}</td>
+                            <td>
+                                {% for change in report.changes.all %}
+                                <a class="label label-primary" href="{% url 'cve' cve_id=change.cve.cve_id%}" data-toggle="tooltip" data-placement="right" data-container="body" title="{{ change.cve.vendors|flat_vendors }}">{{ change.cve.cve_id }}</a>
+                                {% endfor %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -39,23 +40,6 @@
             </div>
             <div class="box-body">
                 <p>The reports are used to group the changes of your subscriptions on a <strong>daily basis</strong>.</p>
-            </div>
-        </div>
-        <div class="box box-primary">
-            <div class="box-header">
-                <h3 class="box-title">Daily mail</h3>
-            </div>
-            <div class="box-body">
-                <div class="form-group">
-                    <div class="checkbox">
-                        <label>
-                            <input type="checkbox">Enabled
-                        </label>
-                    </div>
-                </div>
-            </div>
-            <div class="box-footer">
-                <button type="button" class="btn btn-primary pull-right" data-dismiss="modal">Update</button>
             </div>
         </div>
     </div>

@@ -201,3 +201,17 @@ def is_active_link(context, *args):
 @register.filter
 def split(value, key):
     return value.split(key)
+
+
+@register.filter
+def flat_vendors(vendors):
+    output = []
+
+    for vendor in vendors:
+        if PRODUCT_SEPARATOR in vendor:
+            product = " ".join(vendor.split(PRODUCT_SEPARATOR))
+            output.append(humanize(product))
+        else:
+            output.append(humanize(vendor))
+    sorted(output)
+    return ", ".join(output)

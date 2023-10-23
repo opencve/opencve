@@ -1,6 +1,4 @@
 import importlib
-import itertools
-import operator
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -67,7 +65,15 @@ class ReportsView(ProjectMixin, ListView):
 
     def get_queryset(self):
         project = self.get_object()
-        query = Report.objects.filter(project=project).all()
+        changes_with_cve_prefetch = Prefetch(
+            "changes",
+            queryset=Change.objects.select_related("cve"),
+        )
+        query = (
+            Report.objects.filter(project=project)
+            .prefetch_related(changes_with_cve_prefetch)
+            .all()
+        )
         return query.order_by("-updated_at")
 
 
@@ -87,7 +93,14 @@ class ReportView(ProjectMixin, DetailView):
             changes[change.cve].append([change.created_at, change.events.all()])
 
         # Sort the changes by CVSS score
-        ordered_changes = {k: v for k, v in sorted(changes.items(), key=lambda t: getattr(t[0], "cvss3") if getattr(t[0], "cvss3") else 0, reverse=True)}
+        ordered_changes = {
+            k: v
+            for k, v in sorted(
+                changes.items(),
+                key=lambda t: getattr(t[0], "cvss3") if getattr(t[0], "cvss3") else 0,
+                reverse=True,
+            )
+        }
 
         return {"report": report, "changes": ordered_changes}
 
