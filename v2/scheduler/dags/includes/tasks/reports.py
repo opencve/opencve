@@ -13,6 +13,7 @@ from constants import (
     SQL_PROCEDURES,
     PRODUCT_SEPARATOR,
 )
+from includes.tasks import get_start_end_dates
 from utils import (
     get_project_subscriptions,
     get_vendor_changes,
@@ -20,12 +21,6 @@ from utils import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def get_start_end_dates(context):
-    start = context.get("data_interval_start")
-    end = context.get("data_interval_end").subtract(seconds=1)
-    return start, end
 
 
 @task
@@ -49,7 +44,7 @@ def get_changes(**context):
     # Save the result in redis
     key = f"changes_{start}_{end}"
     redis_hook.json().set(key, "$", changes)
-    redis_hook.expire(key, 60*60*24)
+    redis_hook.expire(key, 60 * 60 * 24)
 
 
 @task

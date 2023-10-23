@@ -159,3 +159,19 @@ def get_reports(changes, subscriptions):
         projects_changes[project] = list(projects_changes[project])
 
     return {k: v for k, v in projects_changes.items() if v}
+
+
+def get_project_notifications(records):
+    """
+    TO COMPLETE
+    """
+    projects_notifications = {}
+    for notification in records:
+        project_id, notif_type, notif_conf = notification
+        if project_id not in projects_notifications:
+            projects_notifications[project_id] = []
+        projects_notifications[project_id].append({
+            "type": notif_type,
+            "conf": notif_conf
+        })
+    return projects_notifications

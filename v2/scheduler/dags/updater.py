@@ -6,8 +6,8 @@ from airflow.utils.task_group import TaskGroup
 
 from includes.operators.fetcher_operator import FetcherOperator
 from includes.operators.parser_operator import ParserOperator
+from includes.tasks.notifications import get_notifications, send_notifications
 from includes.tasks.reports import populate_reports, get_subscriptions, get_changes
-
 
 logger = logging.getLogger(__name__)
 
@@ -26,20 +26,17 @@ def updater():
         ]
 
     with TaskGroup(group_id="parsers") as parse_group:
-        _ = [
-            ParserOperator(task_id="parse_mitre", kind="mitre"),
-            ParserOperator(task_id="parse_nvd", kind="nvd"),
-        ]
+        ParserOperator(task_id="parse_mitre", kind="mitre") >> ParserOperator(
+            task_id="parse_nvd", kind="nvd"
+        )
 
     with TaskGroup(group_id="reports") as reports_group:
-        get_subscriptions() >> get_changes() >> populate_reports()
+        get_changes() >> get_subscriptions() >> populate_reports()
 
-    """with TaskGroup(group_id="notifications") as notifications_group:
-        _ = [send_reports(), send_notifications()]"""
+    with TaskGroup(group_id="notifications") as notifications_group:
+        get_notifications() >> send_notifications()
 
-    (
-        fetch_group >> parse_group >> reports_group
-    )
+    (fetch_group >> parse_group >> reports_group >> notifications_group)
 
 
 updater()

@@ -29,3 +29,30 @@ WHERE
   subscriptions->'vendors' ?| %(vendors)s
   OR subscriptions->'products' ?| %(products)s;
 """
+
+SQL_PROJECT_WITH_NOTIFICATIONS = """
+SELECT
+  projects.id,
+  notifications.type,
+  notifications.configuration
+FROM
+  opencve_notifications AS notifications
+  JOIN opencve_projects AS projects ON projects.id = notifications.project_id
+WHERE
+  is_enabled = 't'
+  AND projects.id IN %(projects)s;
+"""
+
+SQL_CHANGE_WITH_CVE = """
+SELECT
+  changes.id,
+  cves.cve_id,
+  cves.summary,
+  cves.cvss,
+FROM
+  opencve_cves AS cves
+  JOIN opencve_changes AS changes ON cves.id = changes.cve_id
+WHERE
+  changes.created_at >= %(start)s
+  AND changes.created_at <= %(end)s;
+"""
