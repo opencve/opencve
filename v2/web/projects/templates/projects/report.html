@@ -1,28 +1,14 @@
 {% extends 'projects/base_project.html' %}
 {% load opencve_extras %}
 
-{% block title %}{{ project.name }} - {{ block.super }}{% endblock %}
+{% block title %}{{ project.name }} > Report for {{ object.report.created_at|date:'M, d Y' }} - {{ block.super }}{% endblock %}
+{% block navbar_title %}{{ project.name }} > Report for {{ object.report.created_at|date:'M, d Y' }}{% endblock %}
 
 {% block content_project %}
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="box box-primary">
-            <div class="box-header">
-                <div class="box-title">{{object.changes.items|length}} changes on {{ object.report.created_at|date:'M, d Y' }}</div>
-            </div>
-            <div class="box-body">
-                <p>Vendors and products concerned by this report: <a href="/cve/?vendor=lightbend&amp;product=akka_actor">Akka Actor</a>, <a href="/cve/?vendor=lightbend&amp;product=akka_discovery">Akka Discovery</a>, <a href="/cve/?vendor=lightbend&amp;product=akka_actor">Akka Actor</a>, <a href="/cve/?vendor=lightbend&amp;product=akka_discovery">Akka Discovery</a>, <a href="/cve/?vendor=lightbend&amp;product=akka_actor">Akka Actor</a>, <a href="/cve/?vendor=lightbend&amp;product=akka_discovery">Akka Discovery</a>, <a href="/cve/?vendor=lightbend&amp;product=akka_actor">Akka Actor</a>, <a href="/cve/?vendor=lightbend&amp;product=akka_discovery">Akka Discovery</a></p>
-            </div>
-            <div class="box-footer text-center">
-                <a href="{% url 'reports' name=project.name %}" class="uppercase"><i class="fa fa-arrow-circle-left"></i> List of Reports</a>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <div class="row">
-
     <div class="col-md-12">
         <div class="tabs-vertical-env tabs-report">
             <ul class="nav tabs-vertical">
@@ -30,8 +16,8 @@
                 <li class="{% if forloop.first %}active{% endif %}">
                     <a aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" data-toggle="tab"  href="#{{cve.cve_id}}">
                         {{cve.cve_id}}
-                        {% if cve.json.metrics.cvssMetricV31 %}
-                        <span class="label label-{{ cve.json.metrics.cvssMetricV31.0.cvssData.baseScore|cvss_level }}">{{ cve.json.metrics.cvssMetricV31.0.cvssData.baseScore }}</span>
+                        {% if cve.nvd_json.metrics.cvssMetricV31 %}
+                        <span class="label label-{{ cve.nvd_json.metrics.cvssMetricV31.0.cvssData.baseScore|cvss_level }}">{{ cve.nvd_json.metrics.cvssMetricV31.0.cvssData.baseScore }}</span>
                         {% else %}
                         <span class="label label-default">N/A</span>
                         {% endif %}
@@ -44,12 +30,14 @@
                 <div id="{{cve.cve_id}}" class="tab-pane {% if forloop.first %}active{% endif %}">
 
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
+                            <h3 style="margin-top: 0px;">Summary</h3>
                             <div class="callout callout-info">
-                                <p><i class="fa fa-info-circle"></i> {{ cve.summary }}</p>
+                                <p>{{ cve.summary }}</p>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
+                            <h3>Vendors & Products impacted</h3>
                             <div class="report-cve">
                                 <table class="table">
                                     <thead>
@@ -69,6 +57,7 @@
                         </div>
                     </div>
 
+                    <h3>History</h3>
                     {% for date, events in dates %}
                     <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ date|date:"P" }}</p>
                     <table class="table table-bordered table-striped table-events">

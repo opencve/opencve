@@ -93,16 +93,17 @@ class ReportView(ProjectMixin, DetailView):
             changes[change.cve].append([change.created_at, change.events.all()])
 
         # Sort the changes by CVSS score
-        ordered_changes = {
+        """ordered_changes = {
             k: v
             for k, v in sorted(
                 changes.items(),
-                key=lambda t: getattr(t[0], "cvss3") if getattr(t[0], "cvss3") else 0,
+                key=lambda t: getattr(t[0], "cvss.v30") if getattr(t[0], "cvss.v30") else 0,
                 reverse=True,
             )
         }
 
-        return {"report": report, "changes": ordered_changes}
+        return {"report": report, "changes": ordered_changes}"""
+        return {"report": report, "changes": {k: v for k, v in changes.items()}}
 
     def get_object(self, queryset=None):
         project = super(ReportView, self).get_object()
