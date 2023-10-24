@@ -98,8 +98,9 @@ def populate_reports(**context):
 
     # Create the reports for each project
     hook = PostgresHook(postgres_conn_id="opencve_postgres")
-    report_id = str(uuid.uuid4())
+
     for project_id, changes_id in reports.items():
+        report_id = str(uuid.uuid4())
         hook.run(
             sql=SQL_PROCEDURES.get("report"),
             parameters={
