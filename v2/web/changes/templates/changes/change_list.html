@@ -32,7 +32,7 @@ Dashboard
                             {% for project in projects %}
                             <tr>
                                 <td><a href="{% url 'project' name=project.name %}">{{ project.name }}</a></td>
-                                <td>Wordpress, Cisco and {{ project.subscriptions_count }} more</td>
+                                <td>{{ project.subscriptions }}</td>
                             </a></tr>
                             {% endfor %}
                             </tbody>

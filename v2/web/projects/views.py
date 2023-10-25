@@ -55,6 +55,14 @@ class ProjectDetailView(ProjectMixin, DetailView):
             query = query.filter(cve__vendors__has_any_keys=vendors)
             context["changes"] = query.all().order_by("-created_at")[:10]
 
+        # Last reports
+        query = (
+            Report.objects.filter(project=self.get_object())
+            .prefetch_related("changes")
+            .all()
+        )
+        context["reports"] = query.order_by("-created_at")[:10]
+
         return context
 
 
@@ -74,7 +82,7 @@ class ReportsView(ProjectMixin, ListView):
             .prefetch_related(changes_with_cve_prefetch)
             .all()
         )
-        return query.order_by("-updated_at")
+        return query.order_by("-created_at")
 
 
 class ReportView(ProjectMixin, DetailView):
@@ -87,23 +95,18 @@ class ReportView(ProjectMixin, DetailView):
         # A CVE can have several changes in 1 day,
         # so we need to group them by date.
         for change in report.changes.all():
+
             if change.cve not in changes:
-                changes[change.cve] = []
+                score = change.cve.cvss["v31"] if change.cve.cvss.get("v31") else 0
+                changes[change.cve] = {
+                    "cve": change.cve,
+                    "score": score,
+                    "changes": []
+                }
 
-            changes[change.cve].append([change.created_at, change.events.all()])
+            changes[change.cve]["changes"].append([change.created_at, change.events.all()])
 
-        # Sort the changes by CVSS score
-        """ordered_changes = {
-            k: v
-            for k, v in sorted(
-                changes.items(),
-                key=lambda t: getattr(t[0], "cvss.v30") if getattr(t[0], "cvss.v30") else 0,
-                reverse=True,
-            )
-        }
-
-        return {"report": report, "changes": ordered_changes}"""
-        return {"report": report, "changes": {k: v for k, v in changes.items()}}
+        return {"report": report, "changes": changes.values()}
 
     def get_object(self, queryset=None):
         project = super(ReportView, self).get_object()
@@ -119,9 +122,7 @@ class ReportView(ProjectMixin, DetailView):
         report = get_object_or_404(
             queryset,
             project=project,
-            created_at__day=self.kwargs["day"].day,
-            created_at__month=self.kwargs["day"].month,
-            created_at__year=self.kwargs["day"].year,
+            day=self.kwargs["day"],
         )
 
         return self.get_report_statistics(report)

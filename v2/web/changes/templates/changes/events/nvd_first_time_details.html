@@ -1,1 +1,13 @@
-to complete
+{% load opencve_extras %}
+<tr>
+    {% if not hide_type %}
+    <td>NVD First Time</td>
+    {% endif %}
+    <td></td>
+    <td>
+        {% for item in event.details %}
+        {{ item|remove_product_separator|humanize }}
+        <br />
+        {% endfor %}
+    </td>
+</tr>

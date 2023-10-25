@@ -36,7 +36,7 @@
                             <span class="time" title="{{ change.created_at|date:'d b Y, H:i' }}"><i class="fa fa-clock-o"></i> {{ change.created_at|date:"H:i" }}</span>
                             <h3 class="timeline-header"><a href="{% url 'cve' cve_id=change.cve.cve_id %}">{{ change.cve.cve_id }}</a> <i>{% if change.events.all|is_new_cve %}is a new CVE{% else %}has changed{% endif %}</i> <a href="{% url 'change' cve_id=change.cve.cve_id id=change.id %}" class="btn-json-diff" data-toggle="tooltip" data-container="body" title="View the change details"><i class="fa fa-code"></i></a></h3>
                             <div class="timeline-body">
-                                <p>{{ change.cve.summary }}</p>
+                                <p class="timeline-cve-summary">{{ change.cve.summary }}</p>
                                 {% if not change.events.all|is_new_cve %}
                                 <div class="box-group" id="{{ change.id }}">
                                     {% for event in change.events.all %}
@@ -120,19 +120,18 @@
             <div class="box-body">
                 <table class="table">
                     <thead>
-                    <tr><th class="col-md-2">Date</th>
-                    <th>Vendors &amp; Products</th>
-                    </tr></thead>
-
+                        <tr>
+                            <th class="col-md-6">Date</th>
+                            <th class="text-center">Number of Changes</th>
+                        </tr>
+                    </thead>
                     <tbody>
+                    {% for report in reports %}
                     <tr>
-                        <td><a href="#">17/04/2023</a></td>
-                        <td>Google, Microsoft</td>
+                        <td><a href="{% url 'report' name=project.name day=report.day %}">{{ report.day|date:"D d M Y" }}</a></td>
+                        <td class="text-center">{{ report.changes.count }}</td>
                     </tr>
-                    <tr>
-                        <td><a href="#">16/04/2023</a></td>
-                        <td>Linux, Debian, Fedora</td>
-                    </tr>
+                    {% endfor %}
                     </tbody>
                 </table>
             </div>

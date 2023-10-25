@@ -35,7 +35,7 @@
                     <div class="row">
                         <div class="col-md-12">
                             {% for time, events in events_by_time %}
-                            <p><strong><i class="fa fa-clock-o"></i> {{ time|date:"d b Y, H:M" }}</strong></p>
+                            <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ time|date:"d b Y, P" }}</p>
                             <table class="table table-bordered table-striped">
                                 <thead>
                                     <th>Type</th>

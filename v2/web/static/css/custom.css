@@ -183,6 +183,10 @@
   border-top: 3px solid #090031!important;
 }
 
+.tabs-report h3 {
+    margin-bottom: 20px;
+}
+
 .tabs-vertical-env {
   background-color: #eeeeee;
   margin-bottom: 30px;
@@ -370,6 +374,18 @@ pre.plainJSON{
 
 .timeline-inverse>li>.timeline-item {
     background-color: #f9f9f9;
+}
+
+.timeline-cve-summary {
+  overflow:hidden;
+  line-height: 2rem;
+  max-height: 8rem;
+  -webkit-box-orient: vertical;
+  display: block;
+  display: -webkit-box;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: 4;
 }
 
 .box-group > .box-changes {

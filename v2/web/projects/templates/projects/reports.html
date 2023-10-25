@@ -19,10 +19,12 @@
                     <tbody>
                         {% for report in reports %}
                         <tr>
-                            <td><a href="{% url 'report' name=project.name day=report.created_at %}">{{ report.created_at|date:"D d M Y" }}</a></td>
+                            <td><a href="{% url 'report' name=project.name day=report.day %}">{{ report.day|date:"D d M Y" }}</a></td>
                             <td>
-                                {% for change in report.changes.all %}
+                                {% for change in report.changes.all|dictsortreversed:'cve.cve_id' %}
+                                {% ifchanged %}
                                 <a class="label label-primary" href="{% url 'cve' cve_id=change.cve.cve_id%}" data-toggle="tooltip" data-placement="right" data-container="body" title="{{ change.cve.vendors|flat_vendors }}">{{ change.cve.cve_id }}</a>
+                                {% endifchanged %}
                                 {% endfor %}
                             </td>
                         </tr>

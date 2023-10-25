@@ -1,8 +1,8 @@
 {% extends 'projects/base_project.html' %}
 {% load opencve_extras %}
 
-{% block title %}{{ project.name }} > Report for {{ object.report.created_at|date:'M, d Y' }} - {{ block.super }}{% endblock %}
-{% block navbar_title %}{{ project.name }} > Report for {{ object.report.created_at|date:'M, d Y' }}{% endblock %}
+{% block title %}{{ project.name }} > Report for {{ object.report.day|date:'M, d Y' }} - {{ block.super }}{% endblock %}
+{% block navbar_title %}{{ project.name }} > Report for {{ object.report.day|date:'M, d Y' }}{% endblock %}
 
 {% block content_project %}
 
@@ -12,12 +12,12 @@
     <div class="col-md-12">
         <div class="tabs-vertical-env tabs-report">
             <ul class="nav tabs-vertical">
-                {% for cve, dates in object.changes.items  %}
+                {% for change in object.changes|dictsortreversed:'score' %}
                 <li class="{% if forloop.first %}active{% endif %}">
-                    <a aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" data-toggle="tab"  href="#{{cve.cve_id}}">
-                        {{cve.cve_id}}
-                        {% if cve.nvd_json.metrics.cvssMetricV31 %}
-                        <span class="label label-{{ cve.nvd_json.metrics.cvssMetricV31.0.cvssData.baseScore|cvss_level }}">{{ cve.nvd_json.metrics.cvssMetricV31.0.cvssData.baseScore }}</span>
+                    <a aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" data-toggle="tab"  href="#{{change.cve.cve_id}}">
+                        {{change.cve.cve_id}}
+                        {% if change.cve.nvd_json.metrics.cvssMetricV31 %}
+                        <span class="label label-{{ change.cve.nvd_json.metrics.cvssMetricV31.0.cvssData.baseScore|cvss_level }}">{{ change.cve.nvd_json.metrics.cvssMetricV31.0.cvssData.baseScore }}</span>
                         {% else %}
                         <span class="label label-default">N/A</span>
                         {% endif %}
@@ -26,39 +26,40 @@
                 {% endfor %}
             </ul>
             <div class="tab-content" style="width: 100%;">
-                {% for cve, dates in object.changes.items %}
-                <div id="{{cve.cve_id}}" class="tab-pane {% if forloop.first %}active{% endif %}">
+                {% for change in object.changes|dictsortreversed:'score' %}
+                <div id="{{change.cve.cve_id}}" class="tab-pane {% if forloop.first %}active{% endif %}">
 
                     <div class="row">
                         <div class="col-md-12">
-                            <h3 style="margin-top: 0px;">Summary</h3>
                             <div class="callout callout-info">
-                                <p>{{ cve.summary }}</p>
+                                <h4>
+                                    {{ change.cve.cve_id }}
+                                    <small><a href="{% url 'cve' cve_id=change.cve.cve_id%}" target="_blank"><i class="fa fa-external-link"></i></a></small>
+                                </h4>
+                                <p>{{ change.cve.summary }}</p>
                             </div>
                         </div>
                         <div class="col-md-12">
                             <h3>Vendors & Products impacted</h3>
-                            <div class="report-cve">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Vendors</th>
-                                            <th>Products</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr class="cve-header">
-                                            <td class="col-md-6"><span class="badge badge-primary">1</span> <a href="/cve/?vendor=lightbend">Lightbend</a></td>
-                                            <td class="col-md-6"><span class="badge badge-primary">2</span> <a href="/cve/?vendor=lightbend&amp;product=akka_actor">Akka Actor</a>, <a href="/cve/?vendor=lightbend&amp;product=akka_discovery">Akka Discovery</a></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Vendors</th>
+                                        <th>Products</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="cve-header">
+                                        <td class="col-md-6">{{ change.cve.vendors|vendors_excerpt }}</td>
+                                        <td class="col-md-6">{{ change.cve.vendors|products_excerpt }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <h3>History</h3>
-                    {% for date, events in dates %}
+                    <h3>Changes</h3>
+                    {% for date, events in change.changes|dictsortreversed:0 %}
                     <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ date|date:"P" }}</p>
                     <table class="table table-bordered table-striped table-events">
                         <thead>
