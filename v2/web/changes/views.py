@@ -66,7 +66,7 @@ class ChangeListView(LoginRequiredMixin, ListView):
         context["tags"] = self.request.user.tags.all()
 
         # Add the projects
-        context["projects"] = self.request.user.projects.all().order_by("-updated_at")
+        context["projects"] = self.request.user.projects.all().order_by("name")
 
         # Add the view form
         view = self.request.user.settings["activities_view"]

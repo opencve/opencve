@@ -198,6 +198,19 @@ def is_active_link(context, *args):
     return ""
 
 
+@register.simple_tag(takes_context=True)
+def is_active_project_link(context, *args):
+    resolver = context["request"].resolver_match
+    if not resolver.route.startswith("projects/"):
+        return ""
+
+    current_project_name = resolver.kwargs["name"]
+    if current_project_name == args[0]:
+        return "active"
+
+    return ""
+
+
 @register.filter
 def split(value, key):
     return value.split(key)

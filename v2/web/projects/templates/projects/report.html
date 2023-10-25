@@ -1,8 +1,8 @@
 {% extends 'projects/base_project.html' %}
 {% load opencve_extras %}
 
-{% block title %}{{ project.name }} > Report for {{ object.report.day|date:'M, d Y' }} - {{ block.super }}{% endblock %}
-{% block navbar_title %}{{ project.name }} > Report for {{ object.report.day|date:'M, d Y' }}{% endblock %}
+{% block title %}{{ project.name }} - Report for {{ object.report.day|date:'M, d Y' }} - {{ block.super }}{% endblock %}
+{% block navbar_title %}{{ project.name }} - Report for {{ object.report.day|date:'M, d Y' }}{% endblock %}
 
 {% block content_project %}
 

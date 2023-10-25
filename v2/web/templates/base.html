@@ -64,7 +64,20 @@
                         <li class="{% is_active_link 'cwes' %}"><a href="{% url 'cwes' %}"><i class="fa fa-sitemap"></i> <span> Categories</span></a></li>
                         {% if user.is_authenticated %}
                         <li class="header">SETTINGS</li>
-                        <li class="{% is_active_link 'projects' 'create_project' 'edit_project' 'delete_project' 'project' 'notifications' 'create_notification' 'edit_notification' 'reports' 'report' 'subscriptions' %}"><a href="{% url 'projects' %}"><i class="fa fa-rocket"></i> <span> Projects</span></a></li>
+                        <li class="treeview {% is_active_link 'projects' 'create_project' 'edit_project' 'delete_project' 'project' 'notifications' 'create_notification' 'edit_notification' 'reports' 'report' 'subscriptions' %}">
+                            <a href="#">
+                                <i class="fa fa-rocket"></i>
+                                <span>Projects</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-left pull-right"></i>
+                                </span>
+                            </a>
+                            <ul class="treeview-menu">
+                                {% for project in user_projects %}
+                                <li class="{% is_active_project_link project.name %}"><a href="{% url 'project' name=project.name %}"><i class="fa fa-circle-o"></i> {{ project.name }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </li>
                         <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}"><a href="{% url 'tags' %}"><i class="fa fa-tags"></i> <span> Tags</span></a></li>
                         <li class="{% is_active_link 'settings_profile' 'settings_password' %}"><a href="{% url 'settings_profile' %}"><i class="fa fa-user"></i> <span> Profile</span></a></li>
                         {% if user.is_superuser %}

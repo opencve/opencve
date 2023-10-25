@@ -44,6 +44,9 @@
   .skin-opencve .box.box-primary {
     border-color: #090031;
   }
+  .skin-opencve .sidebar-menu>li>.treeview-menu {
+    background: #2e235d;
+}
   .box-subscriptions .label {
     line-height: 25px;
     font-size: 85%;
