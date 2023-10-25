@@ -27,7 +27,7 @@ class NvdHandler(DiffHandler):
         }
 
         # Parse the CVE scores
-        if "metrics" in cve_data:
+        if "metrics" in self.right:
             cvss_keys = {
                 "v20": "cvssMetricV2",
                 "v30": "cvssMetricV30",
