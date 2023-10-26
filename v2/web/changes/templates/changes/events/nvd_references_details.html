@@ -6,7 +6,7 @@
     <td>
         {% if event.details.removed %}
         <ul>{% for ref in event.details.removed %}
-            <li><s>{{ ref }}</s></li>
+            <li><s[{{ ref.source }}] <a href="{{ ref.url }}" target="_blank">{{ ref.url }}</a>{% if ref.tags %} - {{ ref.tags|join:', ' }}{% endif %}</s></li>
             {% endfor %}
         </ul>
         {% endif %}
@@ -15,7 +15,7 @@
         {% if event.details.added %}
         <ul>
             {% for ref in event.details.added %}
-            <li>({{ ref.refsource }}) {{ ref.url }} - {{ ref.tags|join:', ' }}</li>
+            <li>[{{ ref.source }}] <a href="{{ ref.url }}" target="_blank">{{ ref.url }}</a>{% if ref.tags %} - {{ ref.tags|join:', ' }}{% endif %}</li>
             {% endfor %}
         </ul>
         {% endif %}
