@@ -28,7 +28,7 @@
     {% if not hide_type %}
     <td>Nvd References</td>
     {% endif %}
-    <td><s>({{ ref.old.refsource }}) {{ ref.old.url }} - {{ ref.old.tags|join:', ' }}</s></td>
-    <td>({{ ref.new.refsource }}) {{ ref.new.url }} - {{ ref.new.tags|join:', ' }}</td>
+    <td><s>[{{ ref.old.source }}] <a href="{{ ref.old.url }}" target="_blank">{{ ref.old.url }}</a>{% if ref.old.tags %} - {{ ref.old.tags|join:', ' }}{% endif %}</s></td>
+    <td>[{{ ref.new.source }}] <a href="{{ ref.new.url }}" target="_blank">{{ ref.new.url }}</a>{% if ref.new.tags %} - {{ ref.new.tags|join:', ' }}{% endif %}</td>
 </tr>
 {% endfor %}
