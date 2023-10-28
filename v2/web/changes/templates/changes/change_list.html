@@ -92,14 +92,16 @@ Dashboard
                             <thead>
                                 <tr>
                                     <th class="col-md-4">Name</th>
-                                    <th class="col-md-8">Subscriptions</th>
+                                    <th class="col-md-4 center">Vendors</th>
+                                    <th class="col-md-4 center">Products</th>
                                 </tr>
                             </thead>
                             <tbody>
                             {% for project in projects %}
                             <tr>
                                 <td><a href="{% url 'project' name=project.name %}">{{ project.name }}</a></td>
-                                <td>{{ project.subscriptions }}</td>
+                                <td class="center">{{ project.subscriptions.vendors|length }}</td>
+                                <td class="center">{{ project.subscriptions.products|length }}</td>
                             </a></tr>
                             {% endfor %}
                             </tbody>
@@ -108,6 +110,9 @@ Dashboard
                         <p class="alert alert-info">You have no project yet. <a href="{% url 'create_project' %}">Create a new one?</a></p>
                         {% endif %}
                     </div>
+                </div>
+                <div class="box-footer text-center">
+                    <a href="{% url 'projects' %}" class="uppercase">View All Projects</a>
                 </div>
             </div>
 

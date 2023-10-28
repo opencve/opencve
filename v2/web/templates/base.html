@@ -76,6 +76,7 @@
                                 {% for project in user_projects %}
                                 <li class="{% is_active_project_link project.name %}"><a href="{% url 'project' name=project.name %}"><i class="fa fa-circle-o"></i> {{ project.name }}</a></li>
                                 {% endfor %}
+                                <li class="{% is_active_link 'create_project' %}"><a href="{% url 'create_project' %}"><i class="fa fa-plus"></i> New Project</a></li>
                             </ul>
                         </li>
                         <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}"><a href="{% url 'tags' %}"><i class="fa fa-tags"></i> <span> Tags</span></a></li>
