@@ -9,9 +9,9 @@ from django.views.generic import DetailView, ListView
 
 from changes.forms import ActivitiesViewForm
 from changes.models import Change
+from changes.models import Report
 from changes.utils import CustomHtmlHTML
 from cves.constants import PRODUCT_SEPARATOR
-from projects.models import Project
 
 
 class ActivityPaginator(Paginator):
@@ -66,7 +66,16 @@ class ChangeListView(LoginRequiredMixin, ListView):
         context["tags"] = self.request.user.tags.all()
 
         # Add the projects
-        context["projects"] = self.request.user.projects.all().order_by("name")
+        projects = self.request.user.projects.all()
+        context["projects"] = projects.order_by("name")
+
+        # Add the reports
+        context["reports"] = (
+            Report.objects.filter(project__in=projects)
+            .prefetch_related("changes")
+            .select_related("project")
+            .order_by("-day")[:10]
+        )
 
         # Add the view form
         view = self.request.user.settings["activities_view"]

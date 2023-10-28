@@ -186,8 +186,13 @@ def event_excerpt(details):
 
 
 @register.filter
+def event_humanized_type(event_type):
+    return event_type
+
+
+@register.filter
 def is_new_cve(events):
-    return len(events) == 1 and events[0].type == "new_cve"
+    return len(events) == 1 and events[0].type in ("mitre_new", "nvd_new",)
 
 
 @register.simple_tag(takes_context=True)
