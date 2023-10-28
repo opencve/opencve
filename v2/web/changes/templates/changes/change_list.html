@@ -118,6 +118,19 @@ Dashboard
 
             <div class="box box-primary">
                 <div class="box-header with-border">
+                    <h3 class="box-title">Tags</h3>
+                </div>
+                <div class="box-body">
+                    {% for tag in tags %}
+                    <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
+                        <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="box box-primary">
+                <div class="box-header with-border">
                     <h3 class="box-title">Last Reports</h3>
                 </div>
                 <div class="box-body">

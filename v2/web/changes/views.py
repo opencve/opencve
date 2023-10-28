@@ -31,7 +31,7 @@ class ChangeListView(LoginRequiredMixin, ListView):
     model = Change
     context_object_name = "changes"
     template_name = "changes/change_list.html"
-    paginate_by = 20
+    paginate_by = 10
     paginator_class = ActivityPaginator
     form_class = ActivitiesViewForm
 
