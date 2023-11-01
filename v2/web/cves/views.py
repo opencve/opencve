@@ -18,6 +18,69 @@ from projects.models import Project
 from users.models import CveTag, UserTag
 
 
+def list_filtered_cves(request):
+    """
+    This function takes a query in parameter and filter the list
+    of returned CVEs based on given filters (search, vendors, cvss...)
+    """
+    query = Cve.objects.order_by("-updated_at")
+
+    search = request.GET.get("search")
+    if search:
+        query = query.filter(
+            Q(cve_id__icontains=search)
+            | Q(summary__icontains=search)
+            | Q(vendors__contains=search)
+        )
+
+    # Filter by CWE
+    cwe = request.GET.get("cwe")
+    if cwe:
+        query = query.filter(cwes__contains=cwe)
+
+    # Filter by CVSS score
+    cvss = request.GET.get("cvss", "").lower()
+    if cvss in [
+        "empty",
+        "low",
+        "medium",
+        "high",
+        "critical",
+    ]:
+        if cvss == "empty":
+            query = query.filter(cvss__v31__isnull=True)
+        if cvss == "low":
+            query = query.filter(Q(cvss__v31__gte=0) & Q(cvss__v31__lte=3.9))
+        if cvss == "medium":
+            query = query.filter(Q(cvss__v31__gte=4.0) & Q(cvss__v31__lte=6.9))
+        if cvss == "high":
+            query = query.filter(Q(cvss__v31__gte=7.0) & Q(cvss__v31__lte=8.9))
+        if cvss == "critical":
+            query = query.filter(Q(cvss__v31__gte=9.0) & Q(cvss__v31__lte=10.0))
+
+    # Filter by Vendor and Product
+    vendor_param = request.GET.get("vendor", "").replace(" ", "").lower()
+    product_param = request.GET.get("product", "").replace(" ", "_").lower()
+
+    if vendor_param:
+        vendor = get_object_or_404(Vendor, name=vendor_param)
+        query = query.filter(vendors__contains=vendor.name)
+
+        if product_param:
+            product = get_object_or_404(Product, name=product_param, vendor=vendor)
+            query = query.filter(
+                vendors__contains=f"{vendor.name}{PRODUCT_SEPARATOR}{product.name}"
+            )
+
+    # Filter by tag
+    tag = request.GET.get("tag", "").lower()
+    if tag and request.user.is_authenticated:
+        tag = get_object_or_404(UserTag, name=tag, user=request.user)
+        query = query.filter(cve_tags__tags__contains=tag.name)
+
+    return query.all()
+
+
 class CweListView(ListView):
     context_object_name = "cwes"
     template_name = "cves/cwe_list.html"
@@ -71,63 +134,7 @@ class CveListView(ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        query = Cve.objects.order_by("-updated_at")
-
-        # Filter by keyword
-        search = self.request.GET.get("search")
-        if search:
-            query = query.filter(
-                Q(cve_id__icontains=search)
-                | Q(summary__icontains=search)
-                | Q(vendors__contains=search)
-            )
-
-        # Filter by CWE
-        cwe = self.request.GET.get("cwe")
-        if cwe:
-            query = query.filter(cwes__contains=cwe)
-
-        # Filter by CVSS score
-        cvss = self.request.GET.get("cvss", "").lower()
-        if cvss in [
-            "empty",
-            "low",
-            "medium",
-            "high",
-            "critical",
-        ]:
-            if cvss == "empty":
-                query = query.filter(cvss__v31__isnull=True)
-            if cvss == "low":
-                query = query.filter(Q(cvss__v31__gte=0) & Q(cvss__v31__lte=3.9))
-            if cvss == "medium":
-                query = query.filter(Q(cvss__v31__gte=4.0) & Q(cvss__v31__lte=6.9))
-            if cvss == "high":
-                query = query.filter(Q(cvss__v31__gte=7.0) & Q(cvss__v31__lte=8.9))
-            if cvss == "critical":
-                query = query.filter(Q(cvss__v31__gte=9.0) & Q(cvss__v31__lte=10.0))
-
-        # Filter by Vendor and Product
-        vendor_param = self.request.GET.get("vendor", "").replace(" ", "").lower()
-        product_param = self.request.GET.get("product", "").replace(" ", "_").lower()
-
-        if vendor_param:
-            vendor = get_object_or_404(Vendor, name=vendor_param)
-            query = query.filter(vendors__contains=vendor.name)
-
-            if product_param:
-                product = get_object_or_404(Product, name=product_param, vendor=vendor)
-                query = query.filter(
-                    vendors__contains=f"{vendor.name}{PRODUCT_SEPARATOR}{product.name}"
-                )
-
-        # Filter by tag
-        tag = self.request.GET.get("tag", "").lower()
-        if tag and self.request.user.is_authenticated:
-            tag = get_object_or_404(UserTag, name=tag, user=self.request.user)
-            query = query.filter(cve_tags__tags__contains=tag.name)
-
-        return query
+        return list_filtered_cves(self.request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

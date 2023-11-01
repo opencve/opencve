@@ -3,13 +3,13 @@
 
 {% block title %}
 {% if vendor %}
-{{ vendor.name | humanize }}
+{{ vendor.name | humanize }}
 {% if product %}
-- {{ product.name | humanize }}
+- {{ product.name | humanize }}
 {% endif %}
 CVE
 {% elif request.GET.cwe %}
-CWE-{{ request.GET.cwe }} CVE
+{{ request.GET.cwe }} CVE
 {% else %}
 Vulnerabilities (CVE)
 {% endif %}

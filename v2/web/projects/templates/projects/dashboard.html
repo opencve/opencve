@@ -42,7 +42,7 @@
                                     {% for event in change.events.all %}
                                     <div class="panel box box-changes">
                                         <div class="box-header">
-                                            <h4 class="box-title">{{ event.get_type_display }}
+                                            <h4 class="box-title">{{ event|event_humanized_type }}
                                             <span class="box-meta">{{ event.details|event_excerpt|safe }}</span>
                                             </h4>
                                         </div>
