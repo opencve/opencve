@@ -5,12 +5,18 @@ from django.db import models
 from django.urls import reverse
 
 from opencve.models import BaseModel
-from projects.utils import get_default_configuration
-from users.models import User
+from organizations.models import Organization
 
 
 def get_default_subscriptions():
     return dict(vendors=[], products=[])
+
+
+def get_default_configuration():
+    return {
+        "cvss": 0,
+        "events": []
+    }
 
 
 class Project(BaseModel):
@@ -19,13 +25,13 @@ class Project(BaseModel):
     subscriptions = models.JSONField(default=get_default_subscriptions)
 
     # Relationships
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="projects")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="projects")
 
     class Meta:
         db_table = "opencve_projects"
         constraints = [
             models.UniqueConstraint(
-                fields=["name", "user_id"], name="ix_unique_projects"
+                fields=["name", "organization_id"], name="ix_unique_organization_project_name"
             )
         ]
 
@@ -33,14 +39,7 @@ class Project(BaseModel):
         return self.name
 
     def get_absolute_url(self):
-        return reverse("project", kwargs={"name": self.name})
-
-    @property
-    def subscriptions_count(self):
-        vendors = self.subscriptions["vendors"]
-        products = self.subscriptions["products"]
-
-        return len(vendors) + len(products)
+        return reverse("project", kwargs={"name": self.name, "orgname": self.organization.name})
 
 
 class Notification(BaseModel):

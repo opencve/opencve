@@ -11,8 +11,15 @@ Dashboard
 
 {% block content %}
 
+
 <section class="content">
     <div class="row">
+        {% if not request.user_organization %}
+        <div class="col-md-8 col-md-offset-2">
+            <div class="callout callout-info">
+            <p>You must be part of at least one organization to use OpenCVE. <a href="{% url 'list_organizations' %}">Manage your organizations?</a></p>
+        </div>
+        {% else %}
         <div class="col-md-8">
             <div class="box box-primary">
                 <div class="box-header with-border">
@@ -99,7 +106,7 @@ Dashboard
                             <tbody>
                             {% for project in projects %}
                             <tr>
-                                <td><a href="{% url 'project' name=project.name %}">{{ project.name }}</a></td>
+                                <td><a href="{% url 'project' orgname=request.user_organization.name name=project.name %}">{{ project.name }}</a></td>
                                 <td class="center">{{ project.subscriptions.vendors|length }}</td>
                                 <td class="center">{{ project.subscriptions.products|length }}</td>
                             </a></tr>
@@ -107,12 +114,12 @@ Dashboard
                             </tbody>
                         </table>
                         {% else %}
-                        <p class="alert alert-info">You have no project yet. <a href="{% url 'create_project' %}">Create a new one?</a></p>
+                        <p class="alert alert-info">You have no project yet. <a href="{% url 'create_project' orgname=request.user_organization.name %}">Create a new one?</a></p>
                         {% endif %}
                     </div>
                 </div>
                 <div class="box-footer text-center">
-                    <a href="{% url 'projects' %}" class="uppercase">View All Projects</a>
+                    <a href="{% url 'list_projects' orgname=request.user_organization.name %}" class="uppercase">View All Projects</a>
                 </div>
             </div>
 
@@ -155,8 +162,8 @@ Dashboard
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
-
 </section>
 
 

@@ -7,7 +7,6 @@ from django.contrib.auth.views import (
     PasswordResetView,
 )
 from django.contrib.messages.views import SuccessMessageMixin
-from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import (
@@ -18,13 +17,11 @@ from django.views.generic import (
 )
 
 from cves.models import Product, Vendor
-from projects.models import Project
 from users.forms import (
     LoginForm,
     PasswordChangeForm,
     PasswordResetForm,
     ProfileChangeForm,
-    ProjectForm,
     RegisterForm,
     SetPasswordForm,
     UserTagForm,
@@ -46,68 +43,6 @@ class RequestViewMixin:
         kwargs = super(RequestViewMixin, self).get_form_kwargs()
         kwargs["request"] = self.request
         return kwargs
-
-
-# PROJECTS views
-
-
-class ProjectsListView(LoginRequiredMixin, ListView):
-    context_object_name = "projects"
-    template_name = "users/account/projects.html"
-
-    def get_queryset(self):
-        query = Project.objects.filter(user=self.request.user).all()
-        return query.order_by("name")
-
-
-class ProjectCreateView(
-    LoginRequiredMixin, SuccessMessageMixin, RequestViewMixin, CreateView
-):
-    model = Project
-    form_class = ProjectForm
-    template_name = "users/account/project_create_update.html"
-    success_message = "The project has been successfully created."
-
-    def form_valid(self, form):
-        form.instance.user = self.request.user
-        return super().form_valid(form)
-
-
-class ProjectEditView(
-    LoginRequiredMixin, SuccessMessageMixin, RequestViewMixin, UpdateView
-):
-    model = Project
-    form_class = ProjectForm
-    template_name = "users/account/project_create_update.html"
-    success_url = reverse_lazy("projects")
-    success_message = "The project has been successfully updated."
-    slug_field = "name"
-    slug_url_kwarg = "name"
-    context_object_name = "project"
-
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            Project, user=self.request.user, name=self.kwargs["name"]
-        )
-
-    def get_form(self, form_class=None):
-        form = super(ProjectEditView, self).get_form()
-        form.fields["name"].disabled = True
-        return form
-
-
-class ProjectDeleteView(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
-    model = Project
-    slug_field = "name"
-    slug_url_kwarg = "name"
-    template_name = "users/account/delete_project.html"
-    success_message = "The project has been deleted."
-    success_url = reverse_lazy("projects")
-
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            Project, user=self.request.user, name=self.kwargs["name"]
-        )
 
 
 # TAGS views

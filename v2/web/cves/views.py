@@ -16,6 +16,7 @@ from cves.utils import convert_cpes, list_cwes
 from opencve.utils import is_valid_uuid
 from projects.models import Project
 from users.models import CveTag, UserTag
+from organizations.mixins import OrganizationRequiredMixin
 
 
 def list_filtered_cves(request):
@@ -229,7 +230,7 @@ class CveDetailView(DetailView):
         return redirect("cve", cve_id=cve.cve_id)
 
 
-class SubscriptionView(LoginRequiredMixin, TemplateView):
+class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateView):
     template_name = "cves/vendor_subscribe.html"
 
     def get_context_data(self, **kwargs):
@@ -259,7 +260,7 @@ class SubscriptionView(LoginRequiredMixin, TemplateView):
             "object": obj,
             "object_type": obj_type,
             "object_name": obj_name,
-            "projects": Project.objects.filter(user=self.request.user).order_by("name").all()
+            "projects": Project.objects.filter(organization=self.request.user_organization).order_by("name").all()
         })
 
         return context
@@ -279,8 +280,8 @@ class SubscriptionView(LoginRequiredMixin, TemplateView):
         ):
             raise Http404()
 
-        # Check if the project belongs to the user
-        project = get_object_or_404(Project, id=project_id, user=request.user)
+        # Check if the project belongs to the current organization
+        project = get_object_or_404(Project, id=project_id, organization=request.user_organization)
 
         # Vendor subscription
         if obj_type == "vendor":

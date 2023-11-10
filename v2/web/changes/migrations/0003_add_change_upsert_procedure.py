@@ -60,7 +60,8 @@ DROP PROCEDURE change_upsert(
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('changes', '0002_add_reports_changes_events'),
+        #('changes', '0002_add_reports_changes_events'),
+        ('changes', '0002_initial'),
     ]
 
     operations = [migrations.RunSQL(sql=SQL, reverse_sql=REVERSE_SQL)]

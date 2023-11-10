@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+{% load crispy_forms_tags %}
+
+{% block title %}Edit Organization - {{ block.super }}{% endblock %}
+{% block navbar_title%}Edit Organization{% endblock %}
+
+{% block content %}
+
+<section class="content">
+  {% include "messages.html" %}
+  <div class="row">
+    <div class="col-md-6">
+      <div class="box box-primary">
+        <div class="box-body">
+          {% crispy form %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="box box-primary">
+          <div class="box-header with-border">
+            <h3 class="box-title">New member</h3>
+          </div>
+          <div class="box-body">
+              <form action="{% url 'list_organization_members' name=request.user_organization.name %}" method="post">
+                  {% csrf_token %}
+                  {% crispy members_form %}
+              </form>
+          </div>
+      </div>
+      <div class="box box-primary">
+        <div class="box-header with-border">
+            <h3 class="box-title">Members</h3>
+          </div>
+        <div class="box-body table-responsive no-padding">
+            <table class="table table-hover table-striped">
+                <tbody>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th></th>
+                </tr>
+                {% for member in members %}
+                <tr>
+                    <td>{{ member.user.username }}</td>
+                    <td>{{ member.user.email }}</td>
+                    <td>{{ member.role }}</td>
+                    <td class="pull-right">
+                        <div class="btn-group" role="group">
+                            <a href="#" class="btn btn-danger btn-xs" type="button">Delete</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

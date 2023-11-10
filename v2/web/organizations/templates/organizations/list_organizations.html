@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Organizations - {{ block.super }}{% endblock %}
+{% block navbar_title%}Organizations{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+            {% include "messages.html" %}
+
+            <div class="callout callout-info">
+                <p>The organizations allows you to manage your projects. <a href="{% url 'create_organization' %}">Create a new organization?</a></p>
+            </div>
+
+            <div class="box box-primary">
+                <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover table-striped">
+                        <tbody>
+                        <tr>
+                            <th>Name</th>
+                            <th></th>
+                        </tr>
+                        {% for organization in organizations %}
+                        <tr>
+                            <td>{{ organization.name }}</td>
+                            <td class="pull-right">
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'edit_organization' name=organization.name %}" class="btn btn-default btn-xs">Edit</a>
+                                    <a href="{% url 'delete_organization' name=organization.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2">No organization yet</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

@@ -6,6 +6,11 @@ from projects.views import (
     NotificationsView,
     NotificationUpdateView,
     ProjectDetailView,
+    ProjectCreateView,
+    ProjectDeleteView,
+    ProjectEditView,
+    ProjectsListView,
+    ProjectVulnerabilitiesView,
     ReportsView,
     ReportView,
     SubscriptionsView,
@@ -14,24 +19,30 @@ from projects.views import (
 register_converter(DateConverter, "date")
 
 urlpatterns = [
-    path("projects/<name>", ProjectDetailView.as_view(), name="project"),
+# Projects
+    path("org/<orgname>/projects/", ProjectsListView.as_view(), name="list_projects"),
+    path("org/<orgname>/projects/add", ProjectCreateView.as_view(), name="create_project"),
+    path("org/<orgname>/projects/<name>", ProjectDetailView.as_view(), name="project"),
+    path("org/<orgname>/projects/<name>/edit", ProjectEditView.as_view(), name="edit_project"),
+    path("org/<orgname>/projects/<name>/delete", ProjectDeleteView.as_view(), name="delete_project"),
+    path("org/<orgname>/projects/<name>/vulnerabilities", ProjectVulnerabilitiesView.as_view(), name="project_vulnerabilities"),
     path(
-        "projects/<name>/notifications", NotificationsView.as_view(), name="notifications"
+        "org/<orgname>/projects/<name>/notifications", NotificationsView.as_view(), name="notifications"
     ),
     path(
-        "projects/<name>/notifications/add",
+        "org/<orgname>/projects/<name>/notifications/add",
         NotificationCreateView.as_view(),
         name="create_notification",
     ),
     path(
-        "projects/<name>/notifications/<notification>",
+        "org/<orgname>/projects/<name>/notifications/<notification>",
         NotificationUpdateView.as_view(),
         name="edit_notification",
     ),
-    path("projects/<name>/reports", ReportsView.as_view(), name="reports"),
-    path("projects/<name>/reports/<date:day>", ReportView.as_view(), name="report"),
+    path("org/<orgname>/projects/<name>/reports", ReportsView.as_view(), name="reports"),
+    path("org/<orgname>/projects/<name>/reports/<date:day>", ReportView.as_view(), name="report"),
     path(
-        "projects/<name>/subscriptions",
+        "org/<orgname>/projects/<name>/subscriptions",
         SubscriptionsView.as_view(),
         name="subscriptions",
     ),

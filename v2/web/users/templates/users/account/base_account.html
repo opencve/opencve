@@ -21,9 +21,6 @@
 
             <div class="nav-tabs-custom nav-tabs-primary nav-tabs-account">
                 <ul class="nav nav-tabs">
-                    <li class="{% is_active_link 'projects' 'create_project' 'edit_project' 'delete_project' %}">
-                        <a href="{% url 'projects' %}">Projects</a>
-                    </li>
                     <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}">
                         <a href="{% url 'tags' %}">Tags</a>
                     </li>

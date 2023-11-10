@@ -7,6 +7,7 @@
 
 <div class="row">
     <div class="col-md-9">
+        {% if reports %}
         <div class="box box-primary">
             <div class="box-body table-responsive no-padding">
                 <table class="table">
@@ -33,6 +34,9 @@
                 </table>
             </div>
         </div>
+        {% else %}
+        <p class="alert alert-info">No report yet.</p>
+        {% endif %}
     </div>
 
     <div class="col-md-3">

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create Organization - {{ block.super }}{% endblock %}
+{% block navbar_title%}Create Organization{% endblock %}
+
+{% block content %}
+
+<section class="content">
+  <div class="row">
+    <div class="col-md-8 col-md-offset-2">
+      <div class="box box-primary">
+        <div class="box-body">
+          {% crispy form %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

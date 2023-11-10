@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Projects - {{ block.super }}{% endblock %}
+{% block navbar_title%}Projects{% endblock %}
+
+{% block content %}
+<section class="content">
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+            {% include "messages.html" %}
+
+            <div class="callout callout-info">
+                <p>The projects allows you to organize your subscriptions and notifications. <a href="{% url 'create_project' orgname=request.user_organization.name %}">Create a new project?</a></p>
+            </div>
+
+            <div class="box box-primary">
+                <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover table-striped">
+                        <tbody>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th></th>
+                        </tr>
+                        {% if projects %}
+                        {% for project in projects %}
+                        <tr>
+                            <td>{{ project.name }}</td>
+                            <td>{{ project.description|default:'' }}</td>
+                            <td class="pull-right">
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'project' orgname=request.user_organization.name name=project.name %}" class="btn btn-default btn-xs">View Project</a>
+                                    <a href="{% url 'edit_project' orgname=request.user_organization.name name=project.name %}" class="btn btn-default btn-xs">Edit</a>
+                                    <a href="{% url 'delete_project' orgname=request.user_organization.name name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="3">No project yet.</td>
+                        </tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+{% endblock %}

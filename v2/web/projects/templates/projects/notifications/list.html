@@ -18,7 +18,7 @@
                                 <img src="{% static 'img/'|add:notification.type|add:'.png' %}" alt="{{ notification.type }}" />
                             </div>
                             <div class="product-info">
-                                <a href="{% url 'edit_notification' name=project.name notification=notification.name %}" class="product-title">{{ notification.name }} ({{ notification.type }})
+                                <a href="{% url 'edit_notification' orgname=request.user_organization.name name=project.name notification=notification.name %}" class="product-title">{{ notification.name }} ({{ notification.type }})
                                     {% if notification.is_enabled %}
                                     <span class="label label-success pull-right">Enabled</span>
                                     {% else %}
@@ -52,9 +52,8 @@
                 <h3 class="box-title">New Notification</h3>
             </div>
             <div class="box-body">
-                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' name=project.name %}?type=email"><i class="fa fa-plus"></i> Email</a>
-                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' name=project.name %}?type=webhook"><i class="fa fa-plus"></i> Webhook</a>
-                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' name=project.name %}?type=slack"><i class="fa fa-plus"></i> Slack</a>
+                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' orgname=request.user_organization.name name=project.name %}?type=email"><i class="fa fa-plus"></i> Email</a>
+                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' orgname=request.user_organization.name name=project.name %}?type=webhook"><i class="fa fa-plus"></i> Webhook</a>
             </div>
         </div>
     </div>

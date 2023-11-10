@@ -12,6 +12,7 @@ from changes.models import Change
 from changes.models import Report
 from changes.utils import CustomHtmlHTML
 from cves.constants import PRODUCT_SEPARATOR
+from organizations.mixins import OrganizationRequiredMixin
 
 
 class ActivityPaginator(Paginator):
@@ -27,7 +28,7 @@ class ActivityPaginator(Paginator):
         return 9999999999
 
 
-class ChangeListView(LoginRequiredMixin, ListView):
+class ChangeListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
     model = Change
     context_object_name = "changes"
     template_name = "changes/change_list.html"
@@ -38,6 +39,7 @@ class ChangeListView(LoginRequiredMixin, ListView):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect("cves")
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
@@ -66,7 +68,7 @@ class ChangeListView(LoginRequiredMixin, ListView):
         context["tags"] = self.request.user.tags.all()
 
         # Add the projects
-        projects = self.request.user.projects.all()
+        projects = self.request.user_organization.projects.all()
         context["projects"] = projects.order_by("name")
 
         # Add the reports
@@ -93,7 +95,7 @@ class ChangeListView(LoginRequiredMixin, ListView):
         return redirect("home")
 
 
-class ChangeDetailView(DetailView):
+class ChangeDetailView(DetailView, OrganizationRequiredMixin):
     model = Change
     template_name = "changes/change_detail.html"
 

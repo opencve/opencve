@@ -1,6 +1,7 @@
 import requests
-from notifications.plugins import BaseNotification
 from requests.exceptions import HTTPError, RequestException
+
+from projects.notifications import BaseNotification
 
 
 class WebhookNotification(BaseNotification):

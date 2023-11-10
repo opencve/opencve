@@ -54,17 +54,21 @@
 
             <aside class="main-sidebar">
                 <section class="sidebar">
+                    {% if user.is_authenticated and request.user_organization %}
+                    <form action="#" method="get" class="sidebar-form">
+                        <select class="form-control select2-organizations" name="organization">
+                            {% for orga in request.user_organizations %}
+                            <option {% if request.user_organization == orga %} selected="selected" {% endif %} value="{{ orga.name }}">{{ orga.name }}</option>
+                            {% endfor  %}
+                        </select>
+                    </form>
+                    {% endif %}
                     <ul class="sidebar-menu" data-widget="tree">
                         <li class="header">MAIN NAVIGATION</li>
                         {% if user.is_authenticated %}
                         <li class="{% is_active_link 'home' %}"><a href="{% url 'home' %}"><i class="fa fa-home"></i><span>Dashboard</span></a></li>
-                        {% endif %}
-                        <li class="{% is_active_link 'cves' 'cve' 'change' %}"><a href="{% url 'cves' %}"><i class="fa fa-shield"></i> <span>Vulnerabilities</span></a></li>
-                        <li class="{% is_active_link 'vendors' 'subscribe' %}"><a href="{% url 'vendors' %}"><i class="fa fa-th-list"></i> <span> Vendors & Products</span></a></li>
-                        <li class="{% is_active_link 'cwes' %}"><a href="{% url 'cwes' %}"><i class="fa fa-sitemap"></i> <span> Categories</span></a></li>
-                        {% if user.is_authenticated %}
-                        <li class="header">SETTINGS</li>
-                        <li class="treeview {% is_active_link 'projects' 'create_project' 'edit_project' 'delete_project' 'project' 'notifications' 'create_notification' 'edit_notification' 'reports' 'report' 'subscriptions' %}">
+                        {% if request.user_organization %}
+                        <li class="treeview {% is_active_link 'list_projects' 'create_project' 'edit_project' 'delete_project' 'project' 'notifications' 'create_notification' 'edit_notification' 'reports' 'report' 'subscriptions' %}">
                             <a href="#">
                                 <i class="fa fa-rocket"></i>
                                 <span>Projects</span>
@@ -73,13 +77,21 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                {% for project in user_projects %}
-                                <li class="{% is_active_project_link project.name %}"><a href="{% url 'project' name=project.name %}"><i class="fa fa-circle-o"></i> {{ project.name }}</a></li>
+                                {% for project in request.user_organization.projects.all|dictsort:"name" %}
+                                <li class="{% is_active_project_link project.name %}"><a href="{% url 'project' orgname=request.user_organization.name name=project.name %}"><i class="fa fa-circle-o"></i> {{ project.name }}</a></li>
                                 {% endfor %}
-                                <li class="{% is_active_link 'create_project' %}"><a href="{% url 'create_project' %}"><i class="fa fa-plus"></i> New Project</a></li>
+                                <li class="{% is_active_link 'list_projects' %}"><a href="{% url 'list_projects' orgname=request.user_organization.name %}"><i class="fa fa-edit"></i> Manage Projects</a></li>
                             </ul>
                         </li>
+                        {% endif %}
+                        {% endif %}
+                        <li class="{% is_active_link 'cves' 'cve' 'change' %}"><a href="{% url 'cves' %}"><i class="fa fa-shield"></i> <span>Vulnerabilities</span></a></li>
+                        <li class="{% is_active_link 'vendors' 'subscribe' %}"><a href="{% url 'vendors' %}"><i class="fa fa-th-list"></i> <span> Vendors & Products</span></a></li>
+                        <li class="{% is_active_link 'cwes' %}"><a href="{% url 'cwes' %}"><i class="fa fa-sitemap"></i> <span> Categories</span></a></li>
+                        {% if user.is_authenticated %}
                         <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}"><a href="{% url 'tags' %}"><i class="fa fa-tags"></i> <span> Tags</span></a></li>
+                        <li class="header">SETTINGS</li>
+                        <li class="{% is_active_link 'list_organizations' 'create_organization' 'edit_organization' 'delete_organization' %}"><a href="{% url 'list_organizations' %}"><i class="fa fa-group"></i> <span> Organizations</span></a></li>
                         <li class="{% is_active_link 'settings_profile' 'settings_password' %}"><a href="{% url 'settings_profile' %}"><i class="fa fa-user"></i> <span> Profile</span></a></li>
                         {% if user.is_superuser %}
                         <li><a href="{% url 'admin:index' %}"><i class="fa fa-gear"></i> <span> Admin</span></a></li>
@@ -101,6 +113,7 @@
 
         <script type="text/javascript">
             const SUBSCRIBE_URL = "{% url 'subscribe' %}";
+            const CHANGE_ORGANIZATION_URL = "{% url 'change_organization' %}";
         </script>
         <script src="{% static 'js/jquery.min.js' %}" type="text/javascript"></script>
         <script src="{% static 'js/bootstrap.min.js' %}" type="text/javascript"></script>

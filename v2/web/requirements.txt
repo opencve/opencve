@@ -1,6 +1,7 @@
 django==4.2.3
 django[bcrypt]==4.2.3
 django-crispy-forms==2.0
+django-extensions==3.2.3
 django-debug-toolbar==4.1.0
 django-hijack==3.4.1
 drf-nested-routers==0.93.4

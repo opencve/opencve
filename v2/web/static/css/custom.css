@@ -511,3 +511,13 @@ pre.plainJSON{
     margin-top: 0;
     margin-bottom: 0;
 }
+
+.users-list > li {
+    width: unset;
+    padding: 0;
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+.sidebar-form .select2-results { background-color: #ededed !important; }
+.sidebar-form .select2-selection { background-color: #ededed !important; }

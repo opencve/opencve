@@ -1,4 +1,4 @@
-from notifications.plugins import BaseNotification
+from projects.notifications import BaseNotification
 
 
 class EmailNotification(BaseNotification):

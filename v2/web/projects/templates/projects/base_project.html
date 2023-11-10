@@ -11,19 +11,22 @@
         <div class="nav-tabs-custom nav-tabs-profile nav-tabs-primary">
             <ul class="nav nav-tabs">
                 <li class="{% is_active_link 'project' %}">
-                    <a href="{% url 'project' name=project.name %}">Dashboard</a>
+                    <a href="{% url 'project' orgname=request.user_organization.name name=project.name %}">Dashboard</a>
+                </li>
+                <li class="{% is_active_link 'project_vulnerabilities' %}">
+                    <a href="{% url 'project_vulnerabilities' orgname=request.user_organization.name name=project.name %}">Vulnerabilities</a>
                 </li>
                 <li class="{% is_active_link 'reports' 'report' %}">
-                    <a href="{% url 'reports' name=project.name %}">Reports</a>
+                    <a href="{% url 'reports' orgname=request.user_organization.name name=project.name %}">Reports</a>
                 </li>
                 <li class="{% is_active_link 'subscriptions' %}">
-                    <a href="{% url 'subscriptions' name=project.name %}">Subscriptions</a>
+                    <a href="{% url 'subscriptions' orgname=request.user_organization.name name=project.name %}">Subscriptions</a>
                 </li>
                 <li class="{% is_active_link 'notifications' 'create_notification' 'edit_notification' %}">
-                    <a href="{% url 'notifications' name=project.name %}">Notifications</a>
+                    <a href="{% url 'notifications' orgname=request.user_organization.name name=project.name %}">Notifications</a>
                 </li>
                 <li class="pull-right">
-                    <a href="{% url 'edit_project' name=project.name %}">
+                    <a href="{% url 'edit_project' orgname=request.user_organization.name name=project.name %}">
                         <i class="fa fa-gear"></i>
                     </a>
                 </li>
@@ -35,14 +38,7 @@
 <section class="content">
     <div class="row">
         <div class="col-md-12">
-            {% if messages %}
-                {% for message in messages %}
-                <div class="alert alert-{{ message.tags}} alert-dismissible fade in">
-                    <button aria-label="Close" data-dismiss="alert" class="close" type="button"><span aria-hidden="true">×</span></button>
-                    <p>{{ message }}</p>
-                </div>
-                {% endfor %}
-            {% endif %}
+            {% include "messages.html" %}
             {% block content_project %}{% endblock %}
         </div>
     </div>

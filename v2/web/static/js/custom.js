@@ -73,6 +73,23 @@ function getContrastedColor(str){
     $('.select2').select2({allowClear: true});
     $('#select2-tags').val($('.select2').data("values")).trigger('change');
 
+    // Input used to list the user organizations
+    $('.select2-organizations').select2({allowClear: false, minimumResultsForSearch: Infinity});
+    $('.select2-organizations').on('select2:selecting', function(e) {
+        var organization = e.params.args.data.text;
+        $.ajax({
+            url: CHANGE_ORGANIZATION_URL,
+            data: { "organization": organization },
+            dataType: 'json',
+            type: 'POST',
+            success: function(data) {
+                if ( data.status == 'ok' ) {
+                    document.location.href="/";
+                }
+            }
+        });
+    });
+
     // Subscriptions handler
     $('.subscribe').click(function() {
         var button = $(this)

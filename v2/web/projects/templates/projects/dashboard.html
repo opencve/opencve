@@ -14,7 +14,7 @@
             </div>
             <div class="box-body">
                 {% if not changes %}
-                <p class="alert alert-info">No changes available.</p>
+                <p class="alert alert-info">No change available.</p>
                 {% else %}
                 <ul class="timeline timeline-inverse">
                     {% for change in changes %}
@@ -79,7 +79,7 @@
             <div class="box-header">
                 <div class="box-title">Subscriptions</div>
                 <div class="box-tools pull-right">
-                    <a class="btn btn-box-tool" href="{% url 'subscriptions' name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="Manage this project subscriptions"><i class="fa fa-gears"></i></a>
+                    <a class="btn btn-box-tool" href="{% url 'subscriptions' orgname=request.user_organization.name name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="Manage subscriptions"><i class="fa fa-gears"></i></a>
                 </div>
             </div>
             <div class="box-body box-subscriptions">
@@ -110,14 +110,33 @@
             </div>
         </div>
 
+        <!--<div class="box box-primary">
+            <div class="box-header">
+                <div class="box-title">Members</div>
+                <div class="box-tools pull-right">
+                    <button type="button" class="btn btn-box-tool"  data-toggle="tooltip" data-container="body" data-placement="left" title="Edit members""><i class="fa fa-edit"></i></button>
+                </div>
+            </div>
+            <div class="box-body">
+                <ul class="users-list clearfix">
+                    <li data-toggle="tooltip" data-container="body" data-placement="top" title="nicolas.crocfer">
+                        <a href="#">
+                            <img src="https://www.gravatar.com/avatar/45d9fe7e350adcdc720b9234281ac63d?s=40" class="img-sm" alt="User Image">
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>-->
+
         <div class="box box-primary">
             <div class="box-header with-border">
                 <h3 class="box-title">Last Reports</h3>
                 <div class="box-tools pull-right">
-                    <a class="btn btn-box-tool" href="{% url 'reports' name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="See this project reports"><i class="fa fa-list-ul"></i></a>
+                    <a class="btn btn-box-tool" href="{% url 'reports' orgname=request.user_organization.name name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="See this project reports"><i class="fa fa-list-ul"></i></a>
                 </div>
             </div>
             <div class="box-body">
+                {% if reports %}
                 <table class="table">
                     <thead>
                         <tr>
@@ -134,6 +153,9 @@
                     {% endfor %}
                     </tbody>
                 </table>
+                {% else %}
+                <p class="alert alert-info">No report available.</p>
+                {% endif %}
             </div>
         </div>
     </div>

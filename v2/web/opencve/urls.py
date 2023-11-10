@@ -47,6 +47,7 @@ urlpatterns = [
     path("__debug__/", include("debug_toolbar.urls")),
     path("", include("changes.urls")),
     path("", include("cves.urls")),
+    path("", include("organizations.urls")),
     path("", include("projects.urls")),
     path("register/", register, name="register"),
     path("account/", include("users.urls")),

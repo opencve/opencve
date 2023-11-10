@@ -75,7 +75,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "opencve.context_processors.current_user_projects",
+                "opencve.context_processors.user_organization_projects",
             ],
         },
     },

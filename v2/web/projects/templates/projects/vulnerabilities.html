@@ -1,0 +1,42 @@
+{% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
+
+{% block title %}{{ project.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    <div class="col-md-12">
+        {% if cves %}
+        <div class="box box-primary">
+            <div class="box-body table-responsive no-padding">
+                {% include "cves/_cve_table.html" %}
+
+                <div class="center">
+                    <div class="pagination">
+                        <span class="step-links">
+                            {% if page_obj.has_previous %}
+                                <a href="{% url 'project_vulnerabilities' orgname=request.user_organization.name name=project.name %}?{% query_params_url 'page' 1 %}">&laquo; first</a>
+                                <a href="{% url 'project_vulnerabilities' orgname=request.user_organization.name name=project.name %}?{% query_params_url 'page' page_obj.previous_page_number %}">previous</a>
+                            {% endif %}
+
+                            <span class="current">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                            </span>
+
+                            {% if page_obj.has_next %}
+                                <a href="{% url 'project_vulnerabilities' orgname=request.user_organization.name name=project.name %}?{% query_params_url 'page' page_obj.next_page_number %}">next</a>
+                                <a href="{% url 'project_vulnerabilities' orgname=request.user_organization.name name=project.name %}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="alert alert-info">No CVE found.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

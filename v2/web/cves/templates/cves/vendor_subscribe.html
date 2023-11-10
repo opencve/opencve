@@ -11,7 +11,7 @@
     <div class="row">
         <div class='col-md-8 col-md-offset-2'>
             <div class="callout callout-info">
-                <p>Subscriptions are managed per <a href="{% url 'projects' %}">project</a>. Choose the ones you want to subscribe the {{ object_type }} <strong>{{ object.name | humanize }}</strong>.</p>
+                <p>Subscriptions are managed per <a href="{% url 'list_projects' orgname=request.user_organization.name %}">project</a>. Choose the ones you want to subscribe the {{ object_type }} <strong>{{ object.name | humanize }}</strong>.</p>
             </div>
             <div class="box box-primary">
                 <div class="box-header with-border">
@@ -24,7 +24,7 @@
                             <tbody>
                             {% for project in projects %}
                             <tr>
-                                <td class="col-md-3">{{ project.name }} <a href="{% url 'subscriptions' name=project.name %}"><i class="fa fa-search"></i></a></td>
+                                <td class="col-md-3">{{ project.name }} <a href="{% url 'subscriptions' orgname=request.user_organization.name name=project.name %}"><i class="fa fa-search"></i></a></td>
                                 <td class="col-md-8">{{ project.description|default:'' }}</td>
                                 <td class="col-md-1">
                                     {% if object_type == 'vendor' and object_name in project.subscriptions.vendors %}

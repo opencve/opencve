@@ -206,11 +206,13 @@ def is_active_link(context, *args):
 @register.simple_tag(takes_context=True)
 def is_active_project_link(context, *args):
     resolver = context["request"].resolver_match
-    if not resolver.route.startswith("projects/"):
+    if "/projects/" not in resolver.route:
         return ""
 
-    current_project_name = resolver.kwargs["name"]
-    if current_project_name == args[0]:
+    current_project_name = resolver.kwargs.get("name")
+    if not current_project_name:
+        return ""
+    elif current_project_name == args[0]:
         return "active"
 
     return ""

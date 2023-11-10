@@ -10,7 +10,6 @@ from django.contrib.auth.forms import (
     UserCreationForm,
 )
 
-from projects.models import Project
 from users.models import User, UserTag
 
 
@@ -195,46 +194,5 @@ class UserTagForm(forms.ModelForm):
         if self.instance.name != name:
             if UserTag.objects.filter(user=self.request.user, name=name).exists():
                 raise forms.ValidationError("This tag already exists.")
-
-        return name
-
-
-class ProjectForm(forms.ModelForm):
-    class Meta:
-        model = Project
-        fields = ["name", "description"]
-
-    def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop("request")
-        super(ProjectForm, self).__init__(*args, **kwargs)
-
-        self.helper = FormHelper()
-        self.helper.layout = Layout(
-            "name",
-            "description",
-            FormActions(
-                HTML(
-                    """<a href="{% url 'projects' %}" class="btn btn-default">Cancel</a> """
-                ),
-                Submit("save", "Save"),
-                css_class="pull-right",
-            ),
-        )
-
-    def clean_name(self):
-        name = self.cleaned_data["name"]
-
-        # Check if the project is not a reserved keyword
-        if name in ("add",):
-            raise forms.ValidationError("This project is reserved.")
-
-        # In case of update, check if the user tried to change the name
-        if (bool(self.instance.name)) and (self.instance.name != name):
-            raise forms.ValidationError("Existing projects can't be renamed.")
-
-        # Check if the tag already exists for this user
-        if self.instance.name != name:
-            if Project.objects.filter(user=self.request.user, name=name).exists():
-                raise forms.ValidationError("This project already exists.")
 
         return name

@@ -22,7 +22,7 @@
                         {% endwith %}
                     </div>
                     <div class="pull-right">
-                        <a href="{% url 'notifications' name=project.name %}" class="btn btn-default">Cancel</a>
+                        <a href="{% url 'notifications' orgname=request.user_organization.name name=project.name %}" class="btn btn-default">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </div>
                 </div>
