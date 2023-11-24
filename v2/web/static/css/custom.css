@@ -521,3 +521,9 @@ pre.plainJSON{
 
 .sidebar-form .select2-results { background-color: #ededed !important; }
 .sidebar-form .select2-selection { background-color: #ededed !important; }
+
+.form-new-member .form-group,
+.form-new-member input.form-control,
+.form-new-member select.form-control {
+  width: 100%
+}

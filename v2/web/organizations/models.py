@@ -30,11 +30,18 @@ class Membership(models.Model):
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    role = models.CharField(max_length=10, choices=ROLES, default=MEMBER)
-    email = models.EmailField(blank=True)
-    date_invited = models.DateField(default=timezone.now)
-    date_joined = models.DateField(blank=True, null=True)
+    role = models.CharField(max_length=20, choices=ROLES, default=MEMBER)
+    date_invited = models.DateTimeField(default=timezone.now, db_index=True)
+    date_joined = models.DateTimeField(null=True, blank=True, db_index=True)
     key = models.CharField(max_length=64, blank=True, null=True)
 
     class Meta:
         db_table = "opencve_memberships"
+
+    @property
+    def is_owner(self):
+        return self.role == Membership.OWNER
+
+    @property
+    def is_invited(self):
+        return not self.date_joined

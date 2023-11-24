@@ -20,15 +20,21 @@
                         <tbody>
                         <tr>
                             <th>Name</th>
+                            <th>Role</th>
                             <th></th>
                         </tr>
-                        {% for organization in organizations %}
+                        {% for membership in memberships %}
                         <tr>
-                            <td>{{ organization.name }}</td>
+                            <td>{{ membership.organization.name }}</td>
+                            <td>{{ membership.role }}</td>
                             <td class="pull-right">
                                 <div class="btn-group" role="group">
-                                    <a href="{% url 'edit_organization' name=organization.name %}" class="btn btn-default btn-xs">Edit</a>
-                                    <a href="{% url 'delete_organization' name=organization.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                    {% if membership.is_owner %}
+                                    <a href="{% url 'edit_organization' name=membership.organization.name %}" class="btn btn-default btn-xs">Edit</a>
+                                    <a href="{% url 'delete_organization' name=membership.organization.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                    {% elif membership.is_invited %}
+                                    <a href="{% url 'accept_organization_invitation' name=membership.organization.name key=membership.key %}" class="btn btn-primary btn-xs" type="button">Accept Invitation</a>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>

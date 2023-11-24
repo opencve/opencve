@@ -1,4 +1,4 @@
-from organizations.models import Organization
+from organizations.models import Membership
 
 
 class OrganizationMiddleware:
@@ -9,10 +9,14 @@ class OrganizationMiddleware:
         if not request.user.is_authenticated:
             return self.get_response(request)
 
-        # List all organizations associated to the user
-        organizations = Organization.objects.filter(
-            members=request.user
-        ).order_by("name").all()
+        # List all memberships associated to the user
+        memberships = Membership.objects.filter(
+            user=request.user,
+            role__in=[Membership.OWNER, Membership.MEMBER],
+            date_joined__isnull=False,
+        ).order_by("organization__name").all()
+        organizations = [m.organization for m in memberships]
+
         if not organizations:
             request.user_organization = None
             request.user_organizations = []

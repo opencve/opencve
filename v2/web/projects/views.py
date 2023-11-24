@@ -22,21 +22,7 @@ EVENT_TYPES = [
 ]
 
 
-class ProjectMixin(LoginRequiredMixin, OrganizationRequiredMixin):
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            Project,
-            organization=self.request.user_organization,
-            name=self.kwargs["name"]
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["project"] = self.get_object()
-        return context
-
-
-class ProjectsListView(LoginRequiredMixin, ListView):
+class ProjectsListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
     context_object_name = "projects"
     template_name = "projects/list_projects.html"
 
@@ -125,12 +111,20 @@ class ProjectVulnerabilitiesView(LoginRequiredMixin, OrganizationRequiredMixin, 
         return context
 
 
-class ProjectDetailView(ProjectMixin, DetailView):
+class ProjectDetailView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
     model = Project
     template_name = "projects/dashboard.html"
 
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"]
+        )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["project"] = self.get_object()
 
         # Get the list of vendors and products
         vendors = (
@@ -153,7 +147,7 @@ class ProjectDetailView(ProjectMixin, DetailView):
         return context
 
 
-class ReportsView(ProjectMixin, ListView):
+class ReportsView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
     context_object_name = "reports"
     template_name = "projects/reports.html"
     paginate_by = 20
@@ -171,8 +165,20 @@ class ReportsView(ProjectMixin, ListView):
         )
         return query.order_by("-created_at")
 
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"]
+        )
 
-class ReportView(ProjectMixin, DetailView):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.get_object()
+        return context
+
+
+class ReportView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
     model = Report
     template_name = "projects/report.html"
 
@@ -226,34 +232,64 @@ class ReportView(ProjectMixin, DetailView):
         }
 
 
-class SubscriptionsView(ProjectMixin, DetailView):
+class SubscriptionsView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
     model = Project
     template_name = "projects/subscriptions.html"
 
-
-class NotificationsView(ProjectMixin, DetailView):
-    model = Project
-    template_name = "projects/notifications/list.html"
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"]
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["project"] = self.get_object()
+        return context
+
+
+class NotificationsView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
+    model = Project
+    template_name = "projects/notifications/list.html"
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"]
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.get_object()
         context["notifications"] = (
             Notification.objects.filter(project=self.object).order_by("name").all()
         )
         return context
 
 
-class NotificationViewMixin(ProjectMixin):
+class NotificationViewMixin(LoginRequiredMixin, OrganizationRequiredMixin):
     model = Project
     template_name = "projects/notifications/save.html"
 
     def get_type(self):
         raise NotImplementedError()
 
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"]
+        )
+
     def get_context_data(self, **kwargs):
         return {
             **super(NotificationViewMixin, self).get_context_data(**kwargs),
-            **{"type": self.request.GET.get("type")},
+            **{
+                "type": self.request.GET.get("type"),
+                "project": self.get_object()
+            },
         }
 
     def get_form_class(self):

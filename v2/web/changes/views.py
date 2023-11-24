@@ -68,16 +68,18 @@ class ChangeListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
         context["tags"] = self.request.user.tags.all()
 
         # Add the projects
-        projects = self.request.user_organization.projects.all()
-        context["projects"] = projects.order_by("name")
+        organization = self.request.user_organization
+        if organization:
+            projects = organization.projects.all()
+            context["projects"] = projects.order_by("name")
 
-        # Add the reports
-        context["reports"] = (
-            Report.objects.filter(project__in=projects)
-            .prefetch_related("changes")
-            .select_related("project")
-            .order_by("-day")[:10]
-        )
+            # Add the reports
+            context["reports"] = (
+                Report.objects.filter(project__in=projects)
+                .prefetch_related("changes")
+                .select_related("project")
+                .order_by("-day")[:10]
+            )
 
         # Add the view form
         view = self.request.user.settings["activities_view"]

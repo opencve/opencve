@@ -2,27 +2,29 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views import View
-from django.views.generic import CreateView, DetailView, ListView, UpdateView, DeleteView, FormView
+from django.shortcuts import get_object_or_404, redirect
+from django.views.generic import CreateView, ListView, UpdateView, DeleteView, FormView, View
 from django.views.generic.detail import SingleObjectMixin
 from django.urls import reverse, reverse_lazy
-from django.http import HttpResponseForbidden
+from django.utils.crypto import get_random_string
+from django.utils.timezone import now
 
-from organizations.models import Organization, Membership
 from organizations.forms import OrganizationForm, MembershipForm
+from organizations.models import Organization, Membership
+from organizations.mixins import OrganizationIsOwnerMixin
+from users.models import User
 
 # TODO: bouger ça dans un opencve/mixins.py
 from users.views import RequestViewMixin
 
 
 class OrganizationsListView(LoginRequiredMixin, ListView):
-    context_object_name = "organizations"
+    context_object_name = "memberships"
     template_name = "organizations/list_organizations.html"
 
     def get_queryset(self):
-        query = Organization.objects.filter(members=self.request.user).all()
-        return query.order_by("name")
+        query = Membership.objects.filter(user=self.request.user).all()
+        return query.order_by("organization__name")
 
 
 class OrganizationCreateView(
@@ -35,10 +37,13 @@ class OrganizationCreateView(
 
     def form_valid(self, form):
         response = super(OrganizationCreateView, self).form_valid(form)
+        date_now = now()
         Membership.objects.create(
             user=self.request.user,
             organization=self.object,
             role=Membership.OWNER,
+            date_invited=date_now,
+            date_joined=date_now,
         )
         return response
 
@@ -47,7 +52,7 @@ class OrganizationCreateView(
 
 
 class OrganizationEditView(
-    LoginRequiredMixin, SuccessMessageMixin, RequestViewMixin, UpdateView
+    LoginRequiredMixin, OrganizationIsOwnerMixin, SuccessMessageMixin, RequestViewMixin, UpdateView
 ):
     model = Organization
     form_class = OrganizationForm
@@ -56,11 +61,6 @@ class OrganizationEditView(
     slug_field = "name"
     slug_url_kwarg = "name"
     context_object_name = "organization"
-
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            Organization, members=self.request.user, name=self.kwargs["name"]
-        )
 
     def get_form(self, form_class=None):
         form = super().get_form()
@@ -77,7 +77,7 @@ class OrganizationEditView(
         return reverse("edit_organization", kwargs={"name": self.object.name})
 
 
-class OrganizationDeleteView(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
+class OrganizationDeleteView(LoginRequiredMixin, OrganizationIsOwnerMixin, SuccessMessageMixin, DeleteView):
     model = Organization
     slug_field = "name"
     slug_url_kwarg = "name"
@@ -85,13 +85,8 @@ class OrganizationDeleteView(LoginRequiredMixin, SuccessMessageMixin, DeleteView
     success_message = "The organization has been deleted."
     success_url = reverse_lazy("list_organizations")
 
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            Organization, members=self.request.user, name=self.kwargs["name"]
-        )
 
-
-class OrganizationMembersFormView(LoginRequiredMixin, SingleObjectMixin, SuccessMessageMixin, FormView):
+class OrganizationMembersFormView(LoginRequiredMixin, OrganizationIsOwnerMixin, SingleObjectMixin, SuccessMessageMixin, FormView):
     http_method_names = ["post"]
     form_class = MembershipForm
     model = Organization
@@ -101,22 +96,54 @@ class OrganizationMembersFormView(LoginRequiredMixin, SingleObjectMixin, Success
 
     def post(self, request, *args, **kwargs):
         object = self.get_object()
-        if not Membership.objects.filter(user=request.user, organization=object, role=Membership.OWNER).exists():
-            return redirect(reverse("list_organizations"))
 
-        # TODO: check if membership already exist
-
+        # Check the form validity
         form = self.get_form_class()(request.POST)
         if not form.is_valid():
             messages.error(request, "Error in the form")
             return redirect(reverse("edit_organization", kwargs={"name": object.name}))
 
-        print("yes ça le fait")
+        # Check if the invited user exists
+        user = User.objects.filter(email=form.cleaned_data["email"]).first()
+        if not user:
+            messages.error(request, "User not found")
+            return redirect(reverse("edit_organization", kwargs={"name": object.name}))
+
+        # Check if the member already exists
+        if Membership.objects.filter(user=user, organization=object).exists():
+            messages.error(request, "Member already exist")
+            return redirect(reverse("edit_organization", kwargs={"name": object.name}))
+
+        # Create the membership
+        Membership.objects.create(
+            user=user,
+            organization=object,
+            role=form.cleaned_data["role"],
+            key=get_random_string(64).lower(),
+        )
+
         return super().post(request, *args, **kwargs)
 
     def get_success_url(self):
         object = self.get_object()
         return reverse("edit_organization", kwargs={"name": object.name})
+
+
+class OrganizationInvitationView(LoginRequiredMixin, SingleObjectMixin, View):
+    model = Membership
+
+    def get(self, *args, **kwargs):
+        object = self.get_object()
+        object.key = None
+        object.date_joined = now()
+        object.save()
+
+        messages.success(self.request, "The invitation has been accepted")
+
+        return redirect("list_organizations")
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(self.model, user=self.request.user, key=self.kwargs["key"].lower())
 
 
 def change_organization(request):

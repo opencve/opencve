@@ -68,7 +68,7 @@
                         {% if user.is_authenticated %}
                         <li class="{% is_active_link 'home' %}"><a href="{% url 'home' %}"><i class="fa fa-home"></i><span>Dashboard</span></a></li>
                         {% if request.user_organization %}
-                        <li class="treeview {% is_active_link 'list_projects' 'create_project' 'edit_project' 'delete_project' 'project' 'notifications' 'create_notification' 'edit_notification' 'reports' 'report' 'subscriptions' %}">
+                        <li class="treeview {% is_active_link 'list_projects' 'create_project' 'edit_project' 'delete_project' 'project' 'notifications' 'create_notification' 'edit_notification' 'reports' 'report' 'subscriptions' 'project_vulnerabilities' %}">
                             <a href="#">
                                 <i class="fa fa-rocket"></i>
                                 <span>Projects</span>

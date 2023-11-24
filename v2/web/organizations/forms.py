@@ -51,14 +51,14 @@ class MembershipForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(MembershipForm, self).__init__(*args, **kwargs)
-
+        self.fields['email'].widget.attrs['placeholder'] = self.fields['email'].label
         self.helper = FormHelper()
+        self.helper.form_show_labels = False
         self.helper.layout = Layout(
-            "email",
-            "role",
-            FormActions(
+            Div(Field('email'), css_class='col-md-6'),
+            Div(Field('role'), css_class='col-md-4'),
+            Div(FormActions(
                 Submit("save", "Add"),
-                css_class="pull-right",
-            ),
+            ), css_class='col-md-2'),
         )
 
