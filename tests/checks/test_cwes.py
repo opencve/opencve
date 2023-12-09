@@ -36,12 +36,7 @@ def test_check_cwes(create_cve, handle_events, open_file):
     assert len(changes) == 1
     change = changes[0]
     assert change.task.id == task.id
-    assert (
-        change.json["cve"]["problemtype"]["problemtype_data"][0]["description"][0][
-            "value"
-        ]
-        == new
-    )
+    assert change.json["weaknesses"][0]["description"][0]["value"] == new
 
     # Event has been created
     events = Event.query.all()

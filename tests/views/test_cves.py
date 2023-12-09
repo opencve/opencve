@@ -87,7 +87,7 @@ def test_get_change(client, create_cve, handle_events, make_soup):
 
     soup = make_soup(response.data)
     assert sorted([s.text for s in soup.find("table").find("tr").find_all("td")]) == [
+        "(en) The Requests package before 2.20.0 for Python sends an HTTP Authorization header to an http URI upon receiving a same-hostname https-to-http redirect, which makes it easier for remote attackers to discover credentials by sniffing the network.",
+        "(en) The summary has been changed.",
         "Summary",
-        "The Requests package before 2.20.0 for Python sends an HTTP Authorization header to an http URI upon receiving a same-hostname https-to-http redirect, which makes it easier for remote attackers to discover credentials by sniffing the network.",
-        "The summary has been changed.",
     ]

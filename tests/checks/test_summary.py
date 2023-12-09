@@ -26,14 +26,23 @@ def test_check_summary(create_cve, handle_events, open_file):
     assert len(changes) == 1
     change = changes[0]
     assert change.task.id == task.id
-    assert change.json["cve"]["description"]["description_data"][0]["value"] == new
+    assert change.json["descriptions"][0]["value"] == new
 
     # Event has been created
     events = Event.query.all()
     assert len(events) == 1
     event = events[0]
     assert event.type == "summary"
-    assert event.details == {"old": old, "new": new}
+    assert event.details == {
+        "changed": {
+            "en": {
+                "old": "The Requests package before 2.20.0 for Python sends an HTTP Authorization header to an http URI upon receiving a same-hostname https-to-http redirect, which makes it easier for remote attackers to discover credentials by sniffing the network.",
+                "new": "The summary has been changed.",
+            }
+        },
+        "added": {},
+        "removed": {},
+    }
     assert event.review == False
     assert event.cve.cve_id == "CVE-2018-18074"
     assert event.change.id == change.id

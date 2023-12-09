@@ -66,8 +66,8 @@ def test_list_paginated(mock_send, app, handle_events, create_user):
     with app.test_request_context():
         reports = ReportController.list_items({"user_id": user.id})
         assert len(reports) == 2
-        assert reports[0].details == ["python"]
-        assert reports[1].details == ["linux"]
+        assert sorted(reports[0].details) == ["canonical", "python"]
+        assert sorted(reports[1].details) == ["canonical", "linux"]
 
         reports = ReportController.list_items({"user_id": user.id, "page": 2})
         assert len(reports) == 1

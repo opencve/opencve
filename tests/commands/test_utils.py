@@ -9,7 +9,6 @@ from opencve.models.cwe import Cwe
 from opencve.models.events import Event
 from opencve.models.tasks import Task
 from opencve.models.vendors import Vendor
-from opencve.models.products import Product
 
 
 def test_create_cve(app, open_file):
@@ -21,11 +20,23 @@ def test_create_cve(app, open_file):
     # The CVE has been created
     assert cve.id == cves[0].id
     assert cve.cve_id == "CVE-2020-26116"
-    assert cve.cwes == ["CWE-116"]
+    assert cve.cwes == ["CWE-74"]
     assert sorted(cve.vendors) == sorted(
         [
+            "canonical",
+            "canonical$PRODUCT$ubuntu_linux",
+            "debian",
+            "debian$PRODUCT$debian_linux",
             "fedoraproject",
             f"fedoraproject{PRODUCT_SEPARATOR}fedora",
+            "netapp",
+            "netapp$PRODUCT$hci_compute_node",
+            "netapp$PRODUCT$hci_storage_node",
+            "netapp$PRODUCT$solidfire",
+            "opensuse",
+            "opensuse$PRODUCT$leap",
+            "oracle",
+            "oracle$PRODUCT$zfs_storage_appliance_kit",
             "python",
             f"python{PRODUCT_SEPARATOR}python",
         ]
@@ -45,11 +56,11 @@ def test_create_cve(app, open_file):
     cwes = Cwe.query.all()
     assert len(cwes) == 1
     cwe = cwes[0]
-    assert cwe.cwe_id == "CWE-116"
+    assert cwe.cwe_id == "CWE-74"
 
     # The vendors and products has been created
     vendors = Vendor.query.all()
-    assert len(vendors) == 2
+    assert len(vendors) == 7
 
     vendor_1 = Vendor.query.filter_by(name="fedoraproject").first()
     assert len(vendor_1.products) == 1
