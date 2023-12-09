@@ -1,0 +1,27 @@
+{% for conf in cve.json.configurations %}
+
+<p><strong>Configuration {{ loop.index }}</strong> (<a class="pointer config-toggle" id="config-{{ loop.index }}">hide</a>)</p>
+<table class="table table-configuration" id="config-{{ loop.index }}-table">
+    <tr>
+        {% if conf.operator == "AND" %}
+        <td class="col-md-1 rowspaned">AND</td>
+        {% endif %}
+        <td class="col-md-11 and">
+            {% for node in conf.nodes %}
+            <table class="table table-bordered no-margin-bottom">
+                {% for cpe in node.cpeMatch %}
+                <tr>
+                    {% if loop.index == 1 and node.cpeMatch|length > 1 %}
+                    <td class="col-md-1 rowspaned" rowspan="{{ node.cpeMatch|length }}">OR</td>
+                    {% endif %}
+                    <td>{{ cpe.criteria }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            {% endfor %}
+        </td>
+    </tr>
+</table>
+<hr/>
+
+{% endfor %}

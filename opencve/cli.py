@@ -9,6 +9,7 @@ from opencve.commands.init import init
 from opencve.commands.upgrade_db import upgrade_db
 from opencve.commands.imports import import_data
 from opencve.commands.webserver import webserver
+from opencve.commands.migrate_nvd import migrate_nvd
 
 
 @click.group()
@@ -24,3 +25,4 @@ cli.add_command(import_data)
 cli.add_command(init)
 cli.add_command(upgrade_db)
 cli.add_command(webserver)
+cli.add_command(migrate_nvd)

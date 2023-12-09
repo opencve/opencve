@@ -10,25 +10,21 @@ from opencve.utils import convert_cpes, flatten_vendors
 
 class Cpes(BaseCheck):
     def execute(self):
-        old = nested_lookup("cpe23Uri", self.cve_obj.json["configurations"])
-        new = nested_lookup("cpe23Uri", self.cve_json["configurations"])
+        old_cpes = nested_lookup("criteria", self.cve_obj.json.get("configurations"))
+        new_cpes = nested_lookup("criteria", self.cve_json.get("configurations"))
 
         payload = {
-            "added": list(set(new) - set(old)),
-            "removed": list(set(old) - set(new)),
+            "added": list(set(new_cpes) - set(old_cpes)),
+            "removed": list(set(old_cpes) - set(new_cpes)),
         }
 
         # The CPEs list has been modified
         if payload["added"] or payload["removed"]:
 
             # Change the CVE's vendors attribute
-            self.cve_obj.vendors = flatten_vendors(
-                convert_cpes(self.cve_json["configurations"])
-            )
+            vendors_products = convert_cpes(self.cve_json.get("configurations", {}))
+            self.cve_obj.vendors = flatten_vendors(vendors_products)
             db.session.commit()
-
-            # Create the vendors and products objects if they don't exist
-            vendors_products = convert_cpes(payload["added"])
 
             for vendor, products in vendors_products.items():
                 v_obj = Vendor.query.filter_by(name=vendor).first()

@@ -210,16 +210,16 @@ Vulnerabilities (CVE)
                             <td class="col-md-3">{{ cve.vendors|vendors_excerpt|safe }}</td>
                             <td class="col-md-3">{{ cve.vendors|products_excerpt|safe }}</td>
                             <td class="col-md-2 text-center">{{ cve.updated_at.strftime('%Y-%m-%d') }}</td>
-                            {% if cve.json.impact.baseMetricV2 %}
+                            {% if cve.cvss2_score %}
                             <td class="col-md-1 text-center"><span
-                                    class="label {{ cvss_bg(cve.json.impact.baseMetricV2.cvssV2.baseScore)[1] }}">{{ cve.json.impact.baseMetricV2.cvssV2.baseScore }} {{ cve.json.impact.baseMetricV2.severity }}</span>
+                                    class="label {{ cvss_bg(cve.cvss2_score)[1] }}">{{ cve.cvss2_score }} {{ cve.cvss2_severity }}</span>
                             </td>
                             {% else %}
                             <td class="col-md-1 text-center"><span class="label label-default">N/A</span></td>
                             {% endif %}
-                            {% if cve.json.impact.baseMetricV3 %}
+                            {% if cve.cvss3_score %}
                             <td class="col-md-1 text-center"><span
-                                    class="label {{ cvss_bg(cve.json.impact.baseMetricV3.cvssV3.baseScore)[1] }}">{{ cve.json.impact.baseMetricV3.cvssV3.baseScore }} {{ cve.json.impact.baseMetricV3.cvssV3.baseSeverity }}</span>
+                                    class="label {{ cvss_bg(cve.cvss3_score)[1] }}">{{ cve.cvss3_score }} {{ cve.cvss3_severity }}</span>
                             </td>
                             {% else %}
                             <td class="col-md-1 text-center"><span class="label label-default">N/A</span></td>

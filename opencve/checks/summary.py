@@ -4,13 +4,42 @@ from opencve.extensions import db
 
 
 class Summary(BaseCheck):
+    @staticmethod
+    def get_flat_descriptions(descriptions):
+        return {d["lang"]: d["value"] for d in descriptions}
+
+    @staticmethod
+    def get_descriptions_payload(old, new):
+        payload = {"changed": {}, "added": {}, "removed": {}}
+
+        added = list(set(new.keys()) - set(old.keys()))
+        payload["added"] = {lang: new[lang] for lang in added}
+
+        removed = list(set(old.keys()) - set(new.keys()))
+        payload["removed"] = {lang: old[lang] for lang in removed}
+
+        for lang, desc in new.items():
+            if lang in old.keys() and desc != old[lang]:
+                payload["changed"][lang] = {
+                    "old": old[lang],
+                    "new": new[lang],
+                }
+
+        return payload
+
     def execute(self):
-        summary = self.cve_json["cve"]["description"]["description_data"][0]["value"]
+        old_summary = self.get_flat_descriptions(self.cve_obj.json["descriptions"])
+        new_summary = self.get_flat_descriptions(self.cve_json["descriptions"])
+        payload = self.get_descriptions_payload(old_summary, new_summary)
+
+        # In case of multiple languages, keep the EN one
+        descriptions = self.cve_json["descriptions"]
+        if len(descriptions) > 1:
+            descriptions = [d for d in descriptions if d["lang"] in ("en", "en-US")]
+        summary = descriptions[0]["value"]
 
         # Check if the summary has changed
-        if self.cve_obj.summary != summary:
-            # Replace it in the CVE
-            old = self.cve_obj.summary
+        if payload["added"] or payload["removed"] or payload["changed"]:
             self.cve_obj.summary = summary
             db.session.commit()
 
@@ -19,7 +48,7 @@ class Summary(BaseCheck):
                 self.cve_obj,
                 self.cve_json,
                 "summary",
-                {"old": old, "new": self.cve_obj.summary},
+                payload,
             )
             return event
 

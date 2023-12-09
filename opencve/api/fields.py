@@ -29,7 +29,7 @@ class CveVendorsField(fields.Raw):
     """
 
     def format(self, json):
-        return convert_cpes(json["configurations"])
+        return convert_cpes(json.get("configurations", {}))
 
 
 class DatetimeField(fields.Raw):

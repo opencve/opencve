@@ -12,41 +12,23 @@ class References(BaseCheck):
     def execute(self):
         payload = {"changed": [], "added": [], "removed": []}
 
-        # List the old and new references then make the diff between them
-        old_refs = {
-            ref["url"]: ref
-            for ref in self.cve_obj.json["cve"]["references"]["reference_data"]
-        }
-        new_refs = {
-            ref["url"]: ref
-            for ref in self.cve_json["cve"]["references"]["reference_data"]
-        }
-        diff = DeepDiff(old_refs, new_refs)
+        old_refs = {ref["url"]: ref for ref in self.cve_obj.json.get("references")}
+        new_refs = {ref["url"]: ref for ref in self.cve_json.get("references")}
 
-        # New references
-        payload["added"] = [
-            new_refs[r[6:-2]] for r in diff.get("dictionary_item_added", [])
-        ]
+        for new_url, new_ref in new_refs.items():
+            # New reference
+            if new_url not in old_refs.keys():
+                payload["added"].append(new_ref)
+                continue
 
-        # Removed references
-        payload["removed"] = [
-            old_refs[r[6:-2]] for r in diff.get("dictionary_item_removed", [])
-        ]
+            # Changed reference
+            if new_ref != old_refs[new_url]:
+                payload["changed"].append({"old": old_refs[new_url], "new": new_ref})
 
-        # Changed references (the following code parses the DeepDiff result
-        # and extracts the urls of modified references)
-        modified_urls = list(
-            set(
-                [
-                    r.split("'][")[0].split("['")[1]
-                    for r in list(diff.get("values_changed", {}).keys())
-                    + list(diff.get("iterable_item_added", {}).keys())
-                ]
-            )
-        )
-        payload["changed"] = [
-            {"old": old_refs[url], "new": new_refs[url]} for url in modified_urls
-        ]
+        for old_url, old_ref in old_refs.items():
+            # Removed reference
+            if old_url not in new_refs.keys():
+                payload["removed"].append(old_ref)
 
         # Create the event with the references changes
         if payload["changed"] or payload["added"] or payload["removed"]:
