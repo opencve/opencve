@@ -9,19 +9,19 @@ from opencve.models.cwe import Cwe
 from opencve.models.events import Event
 from opencve.models.products import Product
 from opencve.models.vendors import Vendor
-from opencve.utils import convert_cpes, flatten_vendors, get_cwes
+from opencve.utils import convert_cpes, flatten_vendors, weaknesses_to_flat
 
 
 class CveUtil(object):
     @classmethod
     def cve_has_changed(cls, cve_db, cve_json):
-        return arrow.get(cve_json["lastModifiedDate"]) != cve_db.updated_at
+        return arrow.get(cve_json["lastModified"]) != cve_db.updated_at
 
     @classmethod
     def create_event(cls, cve_obj, cve_json, type, payload={}):
         event = Event(
-            created_at=arrow.get(cve_json["lastModifiedDate"]).datetime,
-            updated_at=arrow.get(cve_json["lastModifiedDate"]).datetime,
+            created_at=arrow.get(cve_json["lastModified"]).datetime,
+            updated_at=arrow.get(cve_json["lastModified"]).datetime,
             cve=cve_obj,
             type=type,
             details=payload,
@@ -36,8 +36,8 @@ class CveUtil(object):
     @classmethod
     def create_change(cls, cve_obj, cve_json, task, events):
         change = Change(
-            created_at=arrow.get(cve_json["lastModifiedDate"]).datetime,
-            updated_at=arrow.get(cve_json["lastModifiedDate"]).datetime,
+            created_at=arrow.get(cve_json["lastModified"]).datetime,
+            updated_at=arrow.get(cve_json["lastModified"]).datetime,
             cve=cve_obj,
             task=task,
             events=events,
@@ -51,35 +51,41 @@ class CveUtil(object):
 
     @classmethod
     def create_cve(cls, cve_json):
-        cvss2 = (
-            cve_json["impact"]["baseMetricV2"]["cvssV2"]["baseScore"]
-            if "baseMetricV2" in cve_json["impact"]
-            else None
-        )
-        cvss3 = (
-            cve_json["impact"]["baseMetricV3"]["cvssV3"]["baseScore"]
-            if "baseMetricV3" in cve_json["impact"]
-            else None
-        )
+        # Takes the CVSS scores
+        if "cvssMetricV31" in cve_json["metrics"]:
+            cvss3 = cve_json.get("metrics")["cvssMetricV31"][0]["cvssData"]["baseScore"]
+        elif "cvssMetricV30" in cve_json["metrics"]:
+            cvss3 = cve_json.get("metrics")["cvssMetricV30"][0]["cvssData"]["baseScore"]
+        else:
+            cvss3 = None
+
+        if "cvssMetricV2" in cve_json.get("metrics"):
+            cvss2 = cve_json.get("metrics")["cvssMetricV2"][0]["cvssData"]["baseScore"]
+        else:
+            cvss2 = None
 
         # Construct CWE and CPE lists
-        cwes = get_cwes(
-            cve_json["cve"]["problemtype"]["problemtype_data"][0]["description"]
-        )
-        cpes = convert_cpes(cve_json["configurations"])
-        vendors = flatten_vendors(cpes)
+        cwes = weaknesses_to_flat(cve_json.get("weaknesses"))
+        vendors_products = convert_cpes(cve_json.get("configurations", {}))
+        vendors_flatten = flatten_vendors(vendors_products)
+
+        # In case of multiple languages, keep the EN one
+        descriptions = cve_json["descriptions"]
+        if len(descriptions) > 1:
+            descriptions = [d for d in descriptions if d["lang"] in ("en", "en-US")]
+        summary = descriptions[0]["value"]
 
         # Create the CVE
         cve = Cve(
-            cve_id=cve_json["cve"]["CVE_data_meta"]["ID"],
-            summary=cve_json["cve"]["description"]["description_data"][0]["value"],
+            cve_id=cve_json.get("id"),
+            summary=summary,
             json=cve_json,
-            vendors=vendors,
+            vendors=vendors_flatten,
             cwes=cwes,
             cvss2=cvss2,
             cvss3=cvss3,
-            created_at=arrow.get(cve_json["publishedDate"]).datetime,
-            updated_at=arrow.get(cve_json["lastModifiedDate"]).datetime,
+            created_at=arrow.get(cve_json["published"]).datetime,
+            updated_at=arrow.get(cve_json["lastModified"]).datetime,
         )
         db.session.add(cve)
         db.session.commit()
@@ -96,9 +102,6 @@ class CveUtil(object):
                 db.session.commit()
 
         # Add the CPEs
-        vendors_products = convert_cpes(
-            nested_lookup("cpe23Uri", cve_json["configurations"])
-        )
         for vendor, products in vendors_products.items():
             v_obj = Vendor.query.filter_by(name=vendor).first()
 

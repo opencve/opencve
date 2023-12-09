@@ -5,22 +5,31 @@ from opencve.extensions import db
 
 class Cvss(BaseCheck):
     def execute(self):
-        # Some CVE does not have CVSS, or they just have one version
-        # Check the old values
-        old = {}
-        if self.cve_obj.cvss2:
-            old["v2"] = self.cve_obj.cvss2
-        if self.cve_obj.cvss3:
-            old["v3"] = self.cve_obj.cvss3
 
-        # Check the new values
+        old_metrics = self.cve_obj.json.get("metrics")
+        new_metrics = self.cve_json.get("metrics")
+
+        # Check the new CVSS scores
         new = {}
-        if "baseMetricV2" in self.cve_json["impact"]:
-            new["v2"] = self.cve_json["impact"]["baseMetricV2"]["cvssV2"]["baseScore"]
-        if "baseMetricV3" in self.cve_json["impact"]:
-            new["v3"] = self.cve_json["impact"]["baseMetricV3"]["cvssV3"]["baseScore"]
+        if "cvssMetricV31" in new_metrics:
+            new["v3"] = new_metrics["cvssMetricV31"][0]["cvssData"]["baseScore"]
+        elif "cvssMetricV30" in new_metrics:
+            new["v3"] = new_metrics["cvssMetricV30"][0]["cvssData"]["baseScore"]
 
-        # If at least one version has changed, update the CVE
+        if "cvssMetricV2" in new_metrics:
+            new["v2"] = new_metrics["cvssMetricV2"][0]["cvssData"]["baseScore"]
+
+        # Retrieve the old CVSS scores
+        old = {}
+        if "cvssMetricV31" in old_metrics:
+            old["v3"] = old_metrics["cvssMetricV31"][0]["cvssData"]["baseScore"]
+        elif "cvssMetricV30" in old_metrics:
+            old["v3"] = old_metrics["cvssMetricV30"][0]["cvssData"]["baseScore"]
+
+        if "cvssMetricV2" in old_metrics:
+            old["v2"] = old_metrics["cvssMetricV2"][0]["cvssData"]["baseScore"]
+
+        # Update the CVE
         if old != new:
             self.cve_obj.cvss2 = new.get("v2")
             self.cve_obj.cvss3 = new.get("v3")
