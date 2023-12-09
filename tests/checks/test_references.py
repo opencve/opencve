@@ -6,7 +6,7 @@ from opencve.models.tasks import Task
 
 def test_check_references(create_cve, handle_events, open_file):
     cve = create_cve("CVE-2018-18074")
-    references = cve.json["cve"]["references"]["reference_data"]
+    references = cve.json["references"]
     assert len(references) == 9
     assert [r["url"] for r in references] == [
         "http://docs.python-requests.org/en/master/community/updates/#release-and-version-history",
@@ -23,7 +23,7 @@ def test_check_references(create_cve, handle_events, open_file):
     # 1 reference added, 1 modified and 7 removed
     handle_events("modified_cves/CVE-2018-18074_references.json")
     cve = Cve.query.filter_by(cve_id="CVE-2018-18074").first()
-    references = cve.json["cve"]["references"]["reference_data"]
+    references = cve.json["references"]
     assert len(references) == 3
     assert sorted([r["url"] for r in references]) == sorted(
         [
@@ -43,7 +43,7 @@ def test_check_references(create_cve, handle_events, open_file):
     assert len(changes) == 1
     change = changes[0]
     assert change.task.id == task.id
-    references = change.json["cve"]["references"]["reference_data"]
+    references = change.json["references"]
     assert len(references) == 3
     assert sorted([r["url"] for r in references]) == sorted(
         [
@@ -67,7 +67,7 @@ def test_check_references(create_cve, handle_events, open_file):
     added = event.details["added"]
     assert len(added) == 1
     assert added[0]["name"] == "OPENCVE-1234"
-    assert added[0]["refsource"] == "OPENCVE"
+    assert added[0]["source"] == "OPENCVE"
     assert added[0]["tags"] == ["opencve"]
     assert added[0]["url"] == "https://www.opencve.io/"
 
@@ -88,7 +88,7 @@ def test_check_references(create_cve, handle_events, open_file):
 
 def test_check_references_with_quote(create_cve, handle_events, open_file):
     cve = create_cve("CVE-2022-3122")
-    references = cve.json["cve"]["references"]["reference_data"]
+    references = cve.json["references"]
     assert len(references) == 2
     assert [r["url"] for r in references] == [
         "https://github.com/joinia/webray.com.cn/blob/main/Clinic's-Patient-Management-System/cpmssql.md",
@@ -109,7 +109,7 @@ def test_check_references_with_quote(create_cve, handle_events, open_file):
     assert len(changes) == 1
     change = changes[0]
     assert change.task.id == task.id
-    references = change.json["cve"]["references"]["reference_data"]
+    references = change.json["references"]
     assert len(references) == 2
     assert sorted([r["url"] for r in references]) == sorted(
         [

@@ -81,28 +81,16 @@ def test_get_cwes():
     assert sorted(get_cwes(problems)) == ["CWE-532", "CWE-732"]
 
 
-def test_get_cwes_details():
+def test_get_cwes_details(open_file):
     db.session.add(
-        Cwe(cwe_id="CWE-1", name="Name of CWE-1", description="Description of CWE-1")
-    )
-    db.session.add(
-        Cwe(cwe_id="CWE-2", name="Name of CWE-2", description="Description of CWE-2")
+        Cwe(
+            cwe_id="CWE-522",
+            name="Name of CWE-522",
+            description="Description of CWE-522",
+        )
     )
     db.session.commit()
 
-    cwes = get_cwes_details(
-        [{"lang": "en", "value": "CWE-1"}, {"lang": "en", "value": "CWE-2"}]
-    )
-    assert cwes == {"CWE-1": "Name of CWE-1", "CWE-2": "Name of CWE-2"}
-
-    cwes = get_cwes_details(
-        [
-            {"lang": "en", "value": "CWE-1"},
-            {"lang": "en", "value": "CWE-1"},
-            {"lang": "en", "value": "CWE-2"},
-        ]
-    )
-    assert cwes == {"CWE-1": "Name of CWE-1", "CWE-2": "Name of CWE-2"}
-
-    cwes = get_cwes_details([{"lang": "en", "value": "CWE-3"}])
-    assert cwes == {"CWE-3": None}
+    data = open_file("cves/CVE-2018-18074.json")
+    cwes = get_cwes_details(data)
+    assert cwes == {"CWE-522": "Name of CWE-522"}

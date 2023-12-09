@@ -86,7 +86,7 @@ def test_list_cves_paginated(app, create_cves):
         ({"search": "18074"}, ["CVE-2018-18074"]),
         ({"search": "2020"}, ["CVE-2020-26116", "CVE-2020-9392"]),
         ({"search": "python"}, ["CVE-2018-18074", "CVE-2020-26116"]),
-        ({"search": "canonical"}, ["CVE-2018-18074"]),
+        ({"search": "canonical"}, ["CVE-2018-18074", "CVE-2020-26116"]),
     ],
 )
 def test_search_cves(app, create_cves, args, result):
