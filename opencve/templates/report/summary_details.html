@@ -24,6 +24,7 @@
 </tr>
 {% endif %}
 
+{% if event.details["changed"] %}
 {% for lang, values in event.details["changed"].items() %}
 <tr>
     {% if not hide_type %}
@@ -33,3 +34,14 @@
     <td>({{ lang }}) {{ values.new }}</td>
 </tr>
 {% endfor %}
+{% endif %}
+
+{% if event.details["old"] %}
+<tr>
+    {% if not hide_type %}
+    <td>Summary</td>
+    {% endif %}
+    <td><s>{{ event.details.old }}</s></td>
+    <td>{{ event.details.new }}</td>
+</tr>
+{% endif %}
