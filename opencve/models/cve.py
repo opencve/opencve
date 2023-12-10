@@ -136,7 +136,7 @@ class Cve(BaseModel):
     def cvss3_severity(self):
         if "cve" in self.json.keys():
             if "baseMetricV3" in self.json["impact"]:
-                return self.json["impact"]["baseMetricV3"]["severity"]
+                return self.json["impact"]["baseMetricV3"]["cvssV3"]["baseSeverity"]
         else:
             if "cvssMetricV31" in self.json["metrics"]:
                 return self.json["metrics"]["cvssMetricV31"][0]["cvssData"][
