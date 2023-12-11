@@ -1,0 +1,4 @@
+[
+  "cves/tests/test_views.py::test_foobar",
+  "projects/tests/test_models.py::CveViewTest::test_absolute_url"
+]

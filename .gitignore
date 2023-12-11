@@ -25,9 +25,9 @@ celerybeat-schedule.db
 htmlcov/
 
 # OpenCVE v2
-v2/scheduler/logs/
-v2/scheduler/airflow.cfg
-v2/scheduler/standalone_admin_password.txt
-v2/scheduler/airflow-webserver.pid
-v2/web/.pytest_cache/
-v2/web/opencve/settings.py
+scheduler/logs/
+scheduler/airflow.cfg
+scheduler/standalone_admin_password.txt
+scheduler/airflow-webserver.pid
+web/.pytest_cache/
+web/opencve/settings.py
