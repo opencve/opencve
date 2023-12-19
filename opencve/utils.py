@@ -89,10 +89,8 @@ class CustomHtmlHTML(HtmlDiff):
     def _format_line(self, side, flag, linenum, text):
         text = text.replace("&", "&amp;").replace(">", "&gt;").replace("<", "&lt;")
         text = text.replace(" ", "&nbsp;").rstrip()
-        return '<td class="diff_header">%s</td><td class="break">%s</td>' % (
-            linenum,
-            text,
-        )
+        return f'<td class="diff_header">{linenum}</td><td class="break">{text}</td>'
+       
 
 
 def vendors_conf_to_dict(conf):
