@@ -44,7 +44,7 @@ class ChangeListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
 
     def get_queryset(self):
         query = Change.objects
-        query = query.select_related("cve").prefetch_related("events")
+        query = query.select_related("cve")
 
         # Filter on user subscriptions
         if self.request.user.settings["activities_view"] == "subscriptions":
@@ -114,21 +114,13 @@ class ChangeDetailView(DetailView, OrganizationRequiredMixin):
         context = super().get_context_data(**kwargs)
         change = context["change"]
 
-        previous = (
-            Change.objects.filter(created_at__lt=change.created_at)
-            .filter(cve=change.cve)
-            .order_by("-created_at")
-            .first()
-        )
-
-        previous_json = {}
-        if previous:
-            previous_json = previous.json
+        previous_change = change.get_previous_change()
+        previous_data = previous_change.kb_data if previous_change else {}
 
         differ = CustomHtmlHTML()
         context["diff"] = differ.make_table(
-            fromlines=json.dumps(previous_json, sort_keys=True, indent=2).split("\n"),
-            tolines=json.dumps(change.json, sort_keys=True, indent=2).split("\n"),
+            fromlines=json.dumps(previous_data, sort_keys=True, indent=4).split("\n"),
+            tolines=json.dumps(change.kb_data, sort_keys=True, indent=4).split("\n"),
             context=True,
         )
         return context

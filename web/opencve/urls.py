@@ -4,7 +4,7 @@ from rest_framework_nested import routers
 
 from cves.resources import CveViewSet, CweViewSet, ProductViewSet, VendorViewSet
 from projects.resources import ProjectViewSet
-from changes.resources import ChangeViewSet, EventViewSet, ReportViewSet
+from changes.resources import ChangeViewSet, ReportViewSet
 from users.views import CustomLoginView, register
 
 
@@ -37,7 +37,7 @@ projects_router = routers.NestedSimpleRouter(router, r'projects', lookup='projec
 projects_router.register(r'reports', ReportViewSet, basename='project-reports')
 
 changes_router = routers.NestedSimpleRouter(router, r'changes', lookup='change')
-changes_router.register(r'events', EventViewSet, basename='change-events')
+#changes_router.register(r'events', EventViewSet, basename='change-events')
 
 vendors_router = routers.NestedSimpleRouter(router, r'vendors', lookup='vendor')
 vendors_router.register(r'products', ProductViewSet, basename='vendor-products')

@@ -7,14 +7,14 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from psycopg2.extras import Json
 
-from constants import (
+from includes.constants import (
     SQL_CHANGE_WITH_VENDORS,
     SQL_PROJECT_WITH_SUBSCRIPTIONS,
     SQL_PROCEDURES,
     PRODUCT_SEPARATOR,
 )
 from includes.tasks import get_start_end_dates
-from utils import (
+from includes.utils import (
     get_project_subscriptions,
     get_vendor_changes,
     get_reports,

@@ -1,3 +1,7 @@
+import json
+import pathlib
+
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -9,6 +13,7 @@ from projects.models import Project
 class Change(BaseModel):
     path = models.TextField(default=None)
     commit = models.CharField(max_length=40)
+    types = models.JSONField(default=list)
 
     # Relationships
     cve = models.ForeignKey(Cve, on_delete=models.CASCADE, related_name="changes")
@@ -21,25 +26,29 @@ class Change(BaseModel):
             )
         ]
 
+    @property
+    def full_path(self):
+        return pathlib.Path(settings.KB_REPO_PATH) / self.path
 
-class Event(BaseModel):
-    type = models.CharField(max_length=50)
-    details = models.JSONField()
+    @property
+    def events(self):
+        with open(self.full_path) as f:
+            change_data = json.load(f)
+        return change_data.get("events", {})
 
-    # Relationships
-    cve = models.ForeignKey(Cve, on_delete=models.CASCADE, related_name="events")
-    change = models.ForeignKey(Change, on_delete=models.CASCADE, related_name="events")
+    @property
+    def kb_data(self):
+        with open(self.full_path) as f:
+            data = json.load(f)
+        return data
 
-    class Meta:
-        db_table = "opencve_events"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["created_at", "change_id", "type"], name="ix_unique_change_type_created_at"
-            )
-        ]
-
-    def __str__(self):
-        return self.type
+    def get_previous_change(self):
+        return (
+            Change.objects.filter(created_at__lt=self.created_at)
+            .filter(cve=self.cve)
+            .order_by("-created_at")
+            .first()
+        )
 
 
 class Report(BaseModel):

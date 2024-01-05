@@ -34,9 +34,9 @@ function getContrastedColor(str){
       var conf = $(this).attr("id");
       $("#" + conf + "-table").toggle();
       if ( $("#" + conf + "-table").is(":hidden") ) {
-        $(this).text("show");
+        $(this).text("[+]");
       } else {
-        $(this).text("hide");
+        $(this).text("[-]");
       }
     });
     $('#config-all-toggle').click(function(){

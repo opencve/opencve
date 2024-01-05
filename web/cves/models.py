@@ -15,7 +15,6 @@ class Cve(BaseModel):
     cve_id = models.CharField(max_length=20, unique=True)
     vendors = models.JSONField(default=list)
     cwes = models.JSONField(default=list)
-    sources = models.JSONField(default=dict)
 
     # Keep the summary separated when searching keywords
     summary = models.TextField(default=None, null=True)
@@ -24,8 +23,9 @@ class Cve(BaseModel):
     cvss = models.JSONField(default=dict)
 
     # Raw Json data
-    _mitre_json = None
-    _nvd_json = None
+    _kb_json = {}
+    _mitre_json = {}
+    _nvd_json = {}
 
     class Meta:
         db_table = "opencve_cves"
@@ -43,25 +43,39 @@ class Cve(BaseModel):
         ]
 
     @property
+    def kb_path(self):
+        cve_path = f"{self.cve_id.split('-')[1]}/{self.cve_id}/{self.cve_id}.json"
+        return pathlib.Path(settings.KB_REPO_PATH) / cve_path
+
+    @property
+    def kb_json(self):
+        if not self._kb_json:
+            with open(self.kb_path) as f:
+                self._kb_json = json.load(f)
+        return self._kb_json
+
+    @property
     def mitre_json(self):
         if not self._mitre_json:
-            if "mitre" in self.sources:
-                path = pathlib.Path(settings.MITRE_REPO_PATH) / self.sources.get("mitre")
-                with open(path) as f:
-                    self._mitre_json = json.load(f)
-            else:
+            mitre_data = self.kb_json.get("mitre")
+            if not mitre_data:
                 self._mitre_json = {}
+            else:
+                mitre_path = pathlib.Path(settings.MITRE_REPO_PATH) / mitre_data["mitre_repo_path"]
+                with open(mitre_path) as f:
+                    self._mitre_json = json.load(f)
         return self._mitre_json
 
     @property
     def nvd_json(self):
         if not self._nvd_json:
-            if "nvd" in self.sources:
-                path = pathlib.Path(settings.NVD_REPO_PATH) / self.sources.get("nvd")
-                with open(path) as f:
-                    self._nvd_json = json.load(f)
-            else:
+            nvd_data = self.kb_json.get("nvd")
+            if not nvd_data:
                 self._nvd_json = {}
+            else:
+                nvd_path = pathlib.Path(settings.NVD_REPO_PATH) / nvd_data["nvd_repo_path"]
+                with open(nvd_path) as f:
+                    self._nvd_json = json.load(f)
         return self._nvd_json
 
     @property

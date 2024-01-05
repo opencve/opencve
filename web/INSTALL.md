@@ -1,6 +1,6 @@
 ## Requirements
 
-Use a virtualenv:
+Use a virtualenv (developed with Python 3.11):
 
 ```
 cd web
@@ -19,8 +19,8 @@ git clone https://github.com/opencve/nvd.git
 ## Database
 
 ```
-CREATE DATABASE opencvedb;
-\c opencvedb
+CREATE DATABASE opencve_web;
+\c opencve_web
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 ```
@@ -30,13 +30,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 ### Configuration
 
-Copy the `settings.py` template:
-
-```
-cp opencve/settings.py.example opencve/settings.py
-```
-
-And customize its fields:
+Customize the `settings.py` file:
 
 ```
 ...
@@ -55,8 +49,9 @@ DATABASES = {
 
 EMAIL_BACKEND = "..."
 
-MITRE_REPO_PATH = "/Users/ncrocfer/Dev/cvelistV5"
-NVD_REPO_PATH = "/Users/ncrocfer/Dev/nvd"
+KB_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-kb"
+MITRE_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/cvelistV5"
+NVD_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/nvd"
 ...
 ```
 

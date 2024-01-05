@@ -90,7 +90,6 @@ WSGI_APPLICATION = "opencve.wsgi.application"
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'guardian.backends.ObjectPermissionBackend',
 )
 
 
@@ -99,7 +98,7 @@ AUTHENTICATION_BACKENDS = (
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "opencvedb",
+        "NAME": "opencve_web",
         "USER": "",
         "PASSWORD": "",
         "HOST": "127.0.0.1",
@@ -201,5 +200,6 @@ CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
 CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379 /1"
 
 # Scheduler configuration
-MITRE_REPO_PATH = "/Users/ncrocfer/Dev/cvelistV5"
-NVD_REPO_PATH = "/Users/ncrocfer/Dev/nvd"
+KB_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-kb-development"
+MITRE_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/cvelistV5"
+NVD_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/nvd"

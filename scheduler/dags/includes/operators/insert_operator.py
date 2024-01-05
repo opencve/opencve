@@ -7,13 +7,6 @@ from includes.operators import KindOperator
 
 
 class ParserOperator(KindOperator):
-    def handle(self, commit, diffs):
-        handler_mod = importlib.import_module(f"includes.handlers.{self.kind}")
-        handler_name = f"{self.kind.capitalize()}Handler"
-
-        for diff in diffs:
-            getattr(handler_mod, handler_name)(self.log, commit, diff).handle()
-
     def execute(self, context):
         repo_path = self.get_repo_path()
         start = context.get("data_interval_start")

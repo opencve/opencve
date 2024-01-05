@@ -1,24 +1,14 @@
 from rest_framework import mixins, permissions, viewsets
 from rest_framework.viewsets import GenericViewSet
 
-from changes.models import Change, Event, Report
-from changes.serializers import ChangeSerializer, EventSerializer, ReportSerializer, ReportDetailSerializer
+from changes.models import Change, Report
+from changes.serializers import ChangeSerializer, ReportSerializer, ReportDetailSerializer
 
 
 class ChangeViewSet(mixins.RetrieveModelMixin, GenericViewSet):
     serializer_class = ChangeSerializer
     permission_classes = (permissions.IsAuthenticated,)
     queryset = Change.objects.order_by("-created_at").all()
-
-
-class EventViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = EventSerializer
-    permission_classes = (permissions.IsAuthenticated,)
-
-    serializer_classes = {
-        "list": EventSerializer,
-        "retrieve": EventSerializer,
-    }
 
     def get_queryset(self):
         return Event.objects.filter(

@@ -10,7 +10,7 @@
     </thead>
     {% for cve in cves %}
     <tr class="cve-header">
-        <td class="col-md-2"><a href="{% url 'cve' cve_id=cve.cve_id %}"><strong>{{cve.cve_id }}</strong></a></td>
+        <td class="col-md-2"><a href="{% url 'cve' cve_id=cve.cve_id %}">{{cve.cve_id }}</a></td>
         <td class="col-md-3">{{ cve.vendors|vendors_excerpt }}</td>
         <td class="col-md-3">{{ cve.vendors|products_excerpt }}</td>
         <td class="col-md-2 text-center">{{ cve.updated_at|date:"Y-m-d" }}</td>

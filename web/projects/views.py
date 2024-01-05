@@ -132,7 +132,7 @@ class ProjectDetailView(LoginRequiredMixin, OrganizationRequiredMixin, DetailVie
         )
 
         if vendors:
-            query = Change.objects.select_related("cve").prefetch_related("events")
+            query = Change.objects.select_related("cve")
             query = query.filter(cve__vendors__has_any_keys=vendors)
             context["changes"] = query.all().order_by("-created_at")[:10]
 
@@ -207,7 +207,7 @@ class ReportView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
         # Optimize the query to return the associated events and CVE
         changes_with_cve_prefetch = Prefetch(
             "changes",
-            queryset=Change.objects.select_related("cve").prefetch_related("events"),
+            queryset=Change.objects.select_related("cve"),
         )
         queryset = self.model.objects.prefetch_related(changes_with_cve_prefetch)
 

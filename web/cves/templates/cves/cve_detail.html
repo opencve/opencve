@@ -19,9 +19,9 @@
 
             {% include "cves/cvss/base.html" %}
 
-            {% include "cves/_references.html" %}
-
             {% include "cves/_configurations.html" %}
+
+            {% include "cves/_references.html" %}
 
             <div class="box box-primary">
                 <div class="box-header">
@@ -135,36 +135,18 @@
 
             <div class="box box-primary">
                 <div class="box-header">
-                    <div class="box-title">Products Affected</div>
-                </div>
-                {% if vendors %}
-                <div class="box-body">
-                    {% for vendor, products in vendors.items %}
-                    <p><strong>{{ vendor }}</strong></p>
-                    <ul>
-                        {% for product in products %}
-                        <li>{{ product }} (<a href="#"><i class="fa fa-shield"></i> CVE</a>)</li>
-                        {% endfor %}
-                    </ul>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="box-body">
-                    <p class="alert alert-info">No product.</p>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="box box-primary">
-                <div class="box-header">
                     <div class="box-title">CWE</div>
                 </div>
                 <div class="box-body">
                     {% if cwes %}
+                        <ul>
                         {% for cwe_id, name in cwes.items %}
-                        <strong><a href="{% url 'cves' %}?cwe={{ cwe_id }}">{{ cwe_id }}</a></strong>
-                        {% if name %}<p class="cwe-name">{{ name }}</p>{% endif %}
+                        <li>
+                            <a href="{% url 'cves' %}?cwe={{ cwe_id }}">{{ cwe_id }}</a>
+                            {% if name %}<p class="cwe-name">{{ name }}</p>{% endif %}
+                        </li>
                         {% endfor %}
+                        </ul>
                     {% else %}
                     <p class="alert alert-info">No CWE.</p>
                     {% endif %}

@@ -27,17 +27,17 @@
                     </li>
 
                     <li>
-                        {% if change.events.all|is_new_cve %}
+                        {% if change|is_new_cve %}
                         <i class="fa fa-plus bg-red"></i>
                         {% else %}
                         <i class="fa fa-edit bg-blue"></i>
                         {% endif %}
                         <div class="timeline-item">
                             <span class="time" title="{{ change.created_at|date:'d b Y, H:i' }}"><i class="fa fa-clock-o"></i> {{ change.created_at|date:"H:i" }}</span>
-                            <h3 class="timeline-header"><a href="{% url 'cve' cve_id=change.cve.cve_id %}">{{ change.cve.cve_id }}</a> <i>{% if change.events.all|is_new_cve %}is a new CVE{% else %}has changed{% endif %}</i> <a href="{% url 'change' cve_id=change.cve.cve_id id=change.id %}" class="btn-json-diff" data-toggle="tooltip" data-container="body" title="View the change details"><i class="fa fa-code"></i></a></h3>
+                            <h3 class="timeline-header"><a href="{% url 'cve' cve_id=change.cve.cve_id %}">{{ change.cve.cve_id }}</a> <i>{% if change|is_new_cve %}is a new CVE{% else %}has changed{% endif %}</i> <a href="{% url 'change' cve_id=change.cve.cve_id id=change.id %}" class="btn-json-diff" data-toggle="tooltip" data-container="body" title="View the change details"><i class="fa fa-code"></i></a></h3>
                             <div class="timeline-body">
                                 <p class="timeline-cve-summary">{{ change.cve.summary }}</p>
-                                {% if not change.events.all|is_new_cve %}
+                                {% if not change|is_new_cve %}
                                 <div class="box-group" id="{{ change.id }}">
                                     {% for event in change.events.all %}
                                     <div class="panel box box-changes">

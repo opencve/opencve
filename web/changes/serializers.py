@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from changes.models import Change, Event, Report
+from changes.models import Change, Report
 
 
 class ChangeSerializer(serializers.ModelSerializer):
@@ -9,12 +9,6 @@ class ChangeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Change
         fields = ["id", "created_at", "updated_at", "path", "commit", "cve",]
-
-
-class EventSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Event
-        fields = ["id", "created_at", "updated_at", "type", "details",]
 
 
 class ReportSerializer(serializers.ModelSerializer):

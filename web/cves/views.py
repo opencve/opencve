@@ -9,7 +9,6 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from changes.models import Event
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Cve, Cwe, Product, Vendor
 from cves.utils import convert_cpes, list_cwes
@@ -172,13 +171,14 @@ class CveDetailView(DetailView):
         context["mitre_json"] = json.dumps(context["cve"].mitre_json)
 
         # Add the events history
-        events = Event.objects.filter(cve_id=context["cve"].id).order_by("-created_at")
+        """events = Event.objects.filter(cve_id=context["cve"].id).order_by("-created_at")
         context["events_by_time"] = [
             (time, list(evs))
             for time, evs in (
                 itertools.groupby(events, operator.attrgetter("created_at"))
             )
-        ]
+        ]"""
+        context["events_by_time"] = []
 
         # Add the associated Vendors and CWEs
         context["vendors"] = convert_cpes(context["cve"].nvd_json.get("configurations", {}))
