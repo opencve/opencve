@@ -13,14 +13,12 @@ python3 -m venv venv && source venv/bin/activate && pip install pip --upgrade
 First install Apache Airflow (tested on my laptop with **Python 3.10.0**):
 
 ```
-AIRFLOW_VERSION=2.6.3
+AIRFLOW_VERSION=2.7.3
 PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)"
 CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
 
 pip install "apache-airflow==${AIRFLOW_VERSION}" --constraint "${CONSTRAINT_URL}"
 ```
-
-**Note:** this is not the latest version, I tried to upgrade Airflow 2.7.1 but a bug prevents me from executing the **test** command, which is annoying during development (aka `airflow tasks test changes fetchers.fetch_nvd`). This bug will be fixed in `2.7.2` (see https://github.com/apache/airflow/pull/34120).
 
 Then install the DAGs dependencies:
 
@@ -54,7 +52,7 @@ executor = LocalExecutor
 load_examples = False
 
 [database]
-sql_alchemy_conn = postgresql+psycopg2://localhost:5432/opencve_airflow
+sql_alchemy_conn = postgresql+psycopg2://localhost:5432/opencve_scheduler
 ```
 
 Note: the NVD and the MITRE repositories have been cloned in the web installation.
@@ -68,7 +66,7 @@ fernet_key = ywvTuNQw6bW-UlEyS0ykTqiz9on1cyMlHT7e1Ddo060=
 You can now init the DB and create the fist admin:
 
 ```
-airflow db init
+airflow db migrate
 airflow users create --username admin --firstname Amber --lastname Security --role Admin --email admin@local
 ```
 
@@ -82,7 +80,7 @@ airflow variables set nvd_repo_path /Users/ncrocfer/Dev/nvd
 The connection to the OpenCVE database has to be created in the `opencve_postgres` conn_id:
 
 ```
-airflow connections add opencve_postgres --conn-uri postgres://localhost:5432/opencvedb
+airflow connections add opencve_postgres --conn-uri postgres://localhost:5432/opencve_web
 airflow connections add opencve_redis --conn-uri redis://localhost:6379 --conn-extra '{"db": 3}'
 ```
 
@@ -92,9 +90,3 @@ You can finally launch the components:
 airflow webserver -p 8080
 airflow scheduler
 ```
-
-The webserver listens on http://localhost:8080.
-
-## DAGs
-
-### Updater

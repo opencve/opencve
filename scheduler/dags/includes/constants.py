@@ -1,11 +1,31 @@
+import pathlib
+
+from airflow.configuration import conf
+
+
+NVD_LOCAL_REPO = pathlib.Path(conf.get("opencve", "nvd_repo_path"))
+MITRE_LOCAL_REPO = pathlib.Path(conf.get("opencve", "mitre_repo_path"))
+KB_LOCAL_REPO = pathlib.Path(conf.get("opencve", "kb_repo_path"))
+
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
-SQL_PROCEDURES = {
-    "change": "CALL change_upsert(%(cve)s, %(change)s, %(created)s, %(updated)s, %(commit_hash)s, %(file_path)s, %(events)s);",
-    "mitre": "CALL mitre_upsert(%(cve)s, %(created)s, %(updated)s, %(summary)s, %(path)s);",
-    "nvd": "CALL nvd_upsert(%(cve)s, %(created)s, %(updated)s, %(cvss)s, %(vendors)s, %(cwes)s, %(path)s);",
-    "report": "CALL report_upsert(%(report)s, %(project)s, %(day)s, %(changes)s);",
-}
+CHANGE_UPSERT_PROCEDURE = """
+CALL change_upsert(
+    %(cve)s, %(change)s, %(created)s, %(updated)s, %(commit_hash)s, %(file_path)s, %(event_types)s
+);
+"""
+
+CVE_UPSERT_PROCEDURE = """
+CALL cve_upsert(
+    %(cve)s, %(created)s, %(updated)s, %(summary)s, %(cvss)s, %(vendors)s, %(cwes)s
+);
+"""
+
+REPORT_UPSERT_PROCEDURE = """
+CALL report_upsert(
+    %(report)s, %(project)s, %(day)s, %(changes)s
+);
+"""
 
 SQL_CHANGE_WITH_VENDORS = """
 SELECT

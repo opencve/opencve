@@ -1,12 +1,10 @@
-import json
-
 import arrow
 import more_itertools
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.providers.redis.hooks.redis import RedisHook
 from nested_lookup import nested_lookup
+from psycopg2.extras import Json
 
-from constants import PRODUCT_SEPARATOR
+from includes.constants import PRODUCT_SEPARATOR
 
 
 def vendors_conf_to_dict(conf):
@@ -175,3 +173,73 @@ def get_project_notifications(records):
             "conf": notif_conf
         })
     return projects_notifications
+
+
+def format_procedure_payload(data, raw_fields, json_fields):
+    payload = {}
+    for k, v in data.items():
+        if k in raw_fields:
+            payload[k] = v
+        if k in json_fields:
+            payload[k] = Json(v)
+    return payload
+
+
+def get_start_end_dates(context):
+    start = context.get("data_interval_start")
+    end = context.get("data_interval_end").subtract(seconds=1)
+    return start, end
+
+
+def format_cve_payload(kb_data):
+    """
+    This function parses the CVE defined in KB file and uses a pre-defined
+    priority order to populate the CVE fields based on MITRE and NVD data.
+
+    Here is a summary of each field:
+    - `created`: most recent date between MITRE & NVD fields
+    - `updated`: most recent date between MITRE & NVD fields
+    - `summary`: first the Mitre summary, then the Nvd one
+    - `vendors`: from the NVD only
+    - `cvss`: from the NVD only
+    - `cwes`: from the NVD only
+    """
+    payload = {
+        "summary": None,
+        "created": "1970-01-01T00:00:00.000000+00:00",
+        "updated": "1970-01-01T00:00:00.000000+00:00",
+        "vendors": Json([]),
+        "cvss": Json({}),
+        "cwes": Json([]),
+    }
+
+    if "mitre" in kb_data:
+        payload.update({
+            "summary": kb_data["mitre"]["summary"],
+            "created": kb_data["mitre"]["created"],
+            "updated": kb_data["mitre"]["updated"],
+        })
+
+    if "nvd" in kb_data:
+        # Take the most recent created date
+        if arrow.get(payload["created"]) < arrow.get(kb_data["nvd"]["created"]):
+            payload["created"] = kb_data["nvd"]["created"]
+
+        # Take the most recent updated date
+        if arrow.get(payload["updated"]) < arrow.get(kb_data["nvd"]["updated"]):
+            payload["updated"] = kb_data["nvd"]["updated"]
+
+        # Use the Mitre summary, then the NVD one
+        # TODO: add the nvd summary in internal scheduler
+        if not payload["summary"]:
+            #payload["summary"] = kb_data["nvd"]["summary"]
+            payload["summary"] = "here will be the nvd summary"
+
+        # Use the NVD only fields
+        payload.update({
+            "vendors": Json(kb_data["nvd"]["vendors"]),
+            "cvss": Json(kb_data["nvd"]["cvss"]),
+            "cwes": Json(kb_data["nvd"]["cwes"])
+        })
+
+    return payload

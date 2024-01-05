@@ -10,12 +10,12 @@ from psycopg2.extras import Json
 from includes.constants import (
     SQL_CHANGE_WITH_VENDORS,
     SQL_PROJECT_WITH_SUBSCRIPTIONS,
-    SQL_PROCEDURES,
     PRODUCT_SEPARATOR,
+    REPORT_UPSERT_PROCEDURE,
 )
-from includes.tasks import get_start_end_dates
 from includes.utils import (
     get_project_subscriptions,
+    get_start_end_dates,
     get_vendor_changes,
     get_reports,
 )
@@ -102,7 +102,7 @@ def populate_reports(**context):
     for project_id, changes_id in reports.items():
         report_id = str(uuid.uuid4())
         hook.run(
-            sql=SQL_PROCEDURES.get("report"),
+            sql=REPORT_UPSERT_PROCEDURE,
             parameters={
                 "report": report_id,
                 "project": project_id,

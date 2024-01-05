@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
     catchup=False,
     max_active_runs=1,
 )
-def updater():
+def sync_kb():
     with TaskGroup(group_id="fetchers") as fetch_group:
         _ = [
             FetchOperator(task_id="fetch_kb", kind="kb"),
@@ -33,4 +33,4 @@ def updater():
     (fetch_group >> insert_changes_task >> list_projects_task >> populate_reports_task >> send_notifications_task)
 
 
-updater()
+sync_kb()
