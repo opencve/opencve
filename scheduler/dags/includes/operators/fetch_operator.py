@@ -6,7 +6,7 @@ from airflow.exceptions import AirflowException
 from includes.operators import KindOperator
 
 
-class FetchOperator(KindOperator):
+class GitPullOperator(KindOperator):
     def execute(self, context):
         repo_path = self.get_repo_path()
 

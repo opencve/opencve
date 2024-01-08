@@ -17,7 +17,7 @@ CALL change_upsert(
 
 CVE_UPSERT_PROCEDURE = """
 CALL cve_upsert(
-    %(cve)s, %(created)s, %(updated)s, %(summary)s, %(cvss)s, %(vendors)s, %(cwes)s
+    %(cve)s, %(created)s, %(updated)s, %(description)s, %(title)s, %(metrics)s, %(vendors)s, %(weaknesses)s
 );
 """
 

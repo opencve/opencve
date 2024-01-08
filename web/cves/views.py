@@ -29,7 +29,7 @@ def list_filtered_cves(request):
     if search:
         query = query.filter(
             Q(cve_id__icontains=search)
-            | Q(summary__icontains=search)
+            | Q(description__icontains=search)
             | Q(vendors__contains=search)
         )
 

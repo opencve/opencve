@@ -65,7 +65,6 @@ class DiffHandler:
 
     def format_cve(self):
         data = format_cve_payload(self.data)
-        data["cve"] = self.cve_id
         return data
 
     def format_change(self):

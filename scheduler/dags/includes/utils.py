@@ -192,54 +192,15 @@ def get_start_end_dates(context):
 
 
 def format_cve_payload(kb_data):
-    """
-    This function parses the CVE defined in KB file and uses a pre-defined
-    priority order to populate the CVE fields based on MITRE and NVD data.
-
-    Here is a summary of each field:
-    - `created`: most recent date between MITRE & NVD fields
-    - `updated`: most recent date between MITRE & NVD fields
-    - `summary`: first the Mitre summary, then the Nvd one
-    - `vendors`: from the NVD only
-    - `cvss`: from the NVD only
-    - `cwes`: from the NVD only
-    """
+    data = kb_data["opencve"]
     payload = {
-        "summary": None,
-        "created": "1970-01-01T00:00:00.000000+00:00",
-        "updated": "1970-01-01T00:00:00.000000+00:00",
-        "vendors": Json([]),
-        "cvss": Json({}),
-        "cwes": Json([]),
+        "cve": data["cve"],
+        "description": data["description"],
+        "title": data["title"],
+        "created": data["created"],
+        "updated": data["updated"],
+        "vendors": Json(data["vendors"]),
+        "metrics": Json(data["metrics"]),
+        "weaknesses": Json(data["weaknesses"]),
     }
-
-    if "mitre" in kb_data:
-        payload.update({
-            "summary": kb_data["mitre"]["summary"],
-            "created": kb_data["mitre"]["created"],
-            "updated": kb_data["mitre"]["updated"],
-        })
-
-    if "nvd" in kb_data:
-        # Take the most recent created date
-        if arrow.get(payload["created"]) < arrow.get(kb_data["nvd"]["created"]):
-            payload["created"] = kb_data["nvd"]["created"]
-
-        # Take the most recent updated date
-        if arrow.get(payload["updated"]) < arrow.get(kb_data["nvd"]["updated"]):
-            payload["updated"] = kb_data["nvd"]["updated"]
-
-        # Use the Mitre summary, then the NVD one
-        # TODO: add the nvd summary in internal scheduler
-        if not payload["summary"]:
-            #payload["summary"] = kb_data["nvd"]["summary"]
-            payload["summary"] = "here will be the nvd summary"
-
-        # Use the NVD only fields
-        payload.update({
-            "vendors": Json(kb_data["nvd"]["vendors"]),
-            "cvss": Json(kb_data["nvd"]["cvss"]),
-            "cwes": Json(kb_data["nvd"]["cwes"])
-        })
-
     return payload

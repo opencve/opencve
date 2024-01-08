@@ -60,7 +60,7 @@ class NotificationForm(forms.ModelForm):
     first_time = forms.BooleanField(required=False)
     cvss = forms.BooleanField(required=False)
     cpes = forms.BooleanField(required=False)
-    summary = forms.BooleanField(required=False)
+    description = forms.BooleanField(required=False)
     cwes = forms.BooleanField(required=False)
     references = forms.BooleanField(required=False)
     cvss_score = forms.ChoiceField(

@@ -13,7 +13,7 @@ python3 -m venv venv && source venv/bin/activate && pip install pip --upgrade
 First install Apache Airflow (tested on my laptop with **Python 3.10.0**):
 
 ```
-AIRFLOW_VERSION=2.7.3
+AIRFLOW_VERSION=2.8.0
 PYTHON_VERSION="$(python --version | cut -d " " -f 2 | cut -d "." -f 1-2)"
 CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
 

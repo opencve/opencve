@@ -20,22 +20,24 @@ class BaseReadOnlyAdminMixin:
 
 @admin.register(Cve)
 class CveAdmin(BaseReadOnlyAdminMixin, admin.ModelAdmin):
-    search_fields = ["cve_id", "summary"]
+    search_fields = ["cve_id", "description"]
     list_display = (
         "cve_id",
-        "summary",
+        "description",
         "updated_at",
-        "cvss",
+        "vendors",
+        "metrics",
+        "weaknesses",
     )
     ordering = ("-updated_at",)
     fields = (
         "cve_id",
-        "summary",
+        "description",
         "created_at",
         "updated_at",
-        "cvss",
+        "metrics",
         "vendors",
-        "cwes",
+        "weaknesses",
         "json_pre",
     )
 

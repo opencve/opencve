@@ -3,39 +3,41 @@ from django.db import migrations
 
 CVE_SQL = """
 CREATE PROCEDURE cve_upsert(
-    cve     text,
-    created timestamptz,
-    updated timestamptz,
-    summary text,
-    cvss    jsonb,
-    vendors jsonb,
-    cwes    jsonb
+    cve         text,
+    created     timestamptz,
+    updated     timestamptz,
+    description text,
+    title       text,
+    metrics     jsonb,
+    vendors     jsonb,
+    weaknesses  jsonb
 )
 LANGUAGE plpgsql
 AS $$
 DECLARE
-   _cwe       text;
+   _weakness  text;
    _vendors   text;
    _vendor    text;
    _vendor_id text;
    _product   text;
 BEGIN
     -- add a new CVE or update an existing one
-    INSERT INTO opencve_cves (id, created_at, updated_at, cve_id, summary, vendors, cwes, cvss)
-    VALUES(uuid_generate_v4(), created, updated, cve, summary, vendors, cwes, cvss)
+    INSERT INTO opencve_cves (id, created_at, updated_at, cve_id, description, title, vendors, weaknesses, metrics)
+    VALUES(uuid_generate_v4(), created, updated, cve, description, title, vendors, weaknesses, metrics)
     ON CONFLICT (cve_id) DO
     UPDATE SET
       updated_at = updated,
-      summary = EXCLUDED.summary,
-      cvss = EXCLUDED.cvss,
+      description = EXCLUDED.description,
+      title = EXCLUDED.title,
+      metrics = EXCLUDED.metrics,
       vendors = EXCLUDED.vendors,
-      cwes = EXCLUDED.cwes;
+      weaknesses = EXCLUDED.weaknesses;
 
-    -- add the new CWEs
-    FOR _cwe IN SELECT * FROM json_array_elements_text(cwes::json)
+    -- add the new weaknesses
+    FOR _weakness IN SELECT * FROM json_array_elements_text(weaknesses::json)
     LOOP
       INSERT INTO opencve_cwes (id, created_at, updated_at, cwe_id)
-      VALUES(uuid_generate_v4(), NOW(), NOW(), _cwe)
+      VALUES(uuid_generate_v4(), NOW(), NOW(), _weakness)
       ON CONFLICT (cwe_id) DO NOTHING;
     END LOOP;
 
@@ -63,13 +65,14 @@ $$;
 """
 CVE_REVERSE_SQL = """
 DROP PROCEDURE cve_upsert(
-    cve     text,
-    created timestamptz,
-    updated timestamptz,
-    summary text,
-    cvss    jsonb,
-    vendors jsonb,
-    cwes    jsonb
+    cve         text,
+    created     timestamptz,
+    updated     timestamptz,
+    description text,
+    title       text,
+    metrics     jsonb,
+    vendors     jsonb,
+    weaknesses  jsonb
 );"""
 
 

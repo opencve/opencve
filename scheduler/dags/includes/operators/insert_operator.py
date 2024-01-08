@@ -14,7 +14,7 @@ from includes.handler import DiffHandler
 from includes.utils import format_cve_payload
 
 
-class InsertOperator(BaseOperator):
+class ProcessKbOperator(BaseOperator):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.hook = PostgresHook(postgres_conn_id="opencve_postgres")
@@ -75,13 +75,15 @@ class InsertOperator(BaseOperator):
             handler = DiffHandler(commit, diff)
             self.log.info(f"Checking file %s (%s)", handler.path, handler.diff.change_type)
 
+            if handler.diff.change_type == "D":
+                continue
+
             if handler.is_cve_file():
                 self.log.info(f"Inserting %s data", handler.cve_id)
                 self.hook.run(sql=CVE_UPSERT_PROCEDURE, parameters=handler.format_cve())
                 data["cves"].append(handler.cve_id)
 
             elif handler.is_change_file():
-                self.log.info(f"Saving %s data for %s", "CHANGE", handler.cve_id)
                 data["changes"][handler.cve_id] = []
                 data["changes"][handler.cve_id].append(handler.format_change())
             else:
@@ -126,11 +128,9 @@ class InsertOperator(BaseOperator):
                     cve_kb = KB_LOCAL_REPO / cve_id.split("-")[1] / cve_id / f"{cve_id}.json"
                     with open(cve_kb) as f:
                         cve_data = json.load(f)
-                    data = format_cve_payload(cve_data)
-                    data["cve"] = cve_id
 
                     self.log.info(f"Inserting %s data", cve_id)
-                    self.hook.run(sql=CVE_UPSERT_PROCEDURE, parameters=format_cve_payload(data))
+                    self.hook.run(sql=CVE_UPSERT_PROCEDURE, parameters=format_cve_payload(format_cve_payload(cve_data)))
 
                 # Create the change and its events
                 for payload in payloads:

@@ -13,14 +13,11 @@ from opencve.models import BaseModel
 
 class Cve(BaseModel):
     cve_id = models.CharField(max_length=20, unique=True)
+    title = models.TextField(default=None, null=True)
+    description = models.TextField(default=None, null=True)
     vendors = models.JSONField(default=list)
-    cwes = models.JSONField(default=list)
-
-    # Keep the summary separated when searching keywords
-    summary = models.TextField(default=None, null=True)
-
-    # Keep CVSS separated when searching CVEs by score
-    cvss = models.JSONField(default=dict)
+    weaknesses = models.JSONField(default=list)
+    metrics = models.JSONField(default=dict)
 
     # Raw Json data
     _kb_json = {}
@@ -31,10 +28,10 @@ class Cve(BaseModel):
         db_table = "opencve_cves"
         indexes = [
             GinIndex(name="ix_cves_vendors", fields=["vendors"]),
-            GinIndex(name="ix_cves_cwes", fields=["cwes"]),
+            GinIndex(name="ix_cves_weaknesses", fields=["weaknesses"]),
             GinIndex(
-                OpClass(Upper("summary"), name="gin_trgm_ops"),
-                name="ix_cves_summary",
+                OpClass(Upper("description"), name="gin_trgm_ops"),
+                name="ix_cves_description",
             ),
             GinIndex(
                 OpClass(Upper("cve_id"), name="gin_trgm_ops"),
@@ -80,15 +77,15 @@ class Cve(BaseModel):
 
     @property
     def cvss20(self):
-        return self.cvss.get("v20")
+        return self.metrics.get("v20")
 
     @property
     def cvss30(self):
-        return self.cvss.get("v30")
+        return self.metrics.get("v30")
 
     @property
     def cvss31(self):
-        return self.cvss.get("v31")
+        return self.metrics.get("v31")
 
     def __str__(self):
         return self.cve_id
