@@ -8,8 +8,8 @@
 - {{ product.name | humanize }}
 {% endif %}
 CVE
-{% elif request.GET.cwe %}
-{{ request.GET.cwe }} CVE
+{% elif request.GET.weakness %}
+{{ request.GET.weakness }} Weakness
 {% else %}
 Vulnerabilities (CVE)
 {% endif %}
@@ -21,15 +21,15 @@ Vulnerabilities (CVE)
 {% block content %}
 
 <section class="content">
-    {% if request.GET.cwe %}
+    {% if request.GET.weakness %}
     <div class="row">
         <div class="col-xs-6">
             <div class="box box-info">
                 <div class="box-header">
-                    <div class="box-title"><i class="fa fa-filter"></i> Filtered by {{ request.GET.cwe }}
+                    <div class="box-title"><i class="fa fa-filter"></i> Filtered by {{ request.GET.weakness }}
                     </div>
                     <div class="box-tools pull-right">
-                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="#"><i class="fa fa-times"></i></a>
+                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="{% url 'cves' %}"><i class="fa fa-times"></i></a>
                     </div>
                 </div>
             </div>

@@ -1,54 +1,19 @@
-import pathlib
 import json
-from typing import List
 
 from git.objects.commit import Commit
-from git.repo import Repo
-from pendulum.datetime import DateTime
 from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.models.baseoperator import BaseOperator
 
 from includes.constants import KB_LOCAL_REPO, CHANGE_UPSERT_PROCEDURE, CVE_UPSERT_PROCEDURE
 from includes.handler import DiffHandler
-from includes.utils import format_cve_payload
+from includes.utils import format_cve_payload, list_commits
 
 
 class ProcessKbOperator(BaseOperator):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.hook = PostgresHook(postgres_conn_id="opencve_postgres")
-
-    def list_commits(self, start: DateTime, end: DateTime) -> List[Commit]:
-        self.log.info("Reading %s repository", KB_LOCAL_REPO)
-        repo_path = pathlib.Path(KB_LOCAL_REPO)
-
-        if not all([start, end]):
-            raise AirflowException("Start and end intervals must be set")
-
-        # Each DagRun only parses its associated commits (schedule is hourly).
-        # We'll use the interval dates to list commits during this period, but
-        # git log --before and --after options are both included, so we need to
-        # subtract 1 second to the end date in order to avoid duplicates commits.
-        end = end.subtract(seconds=1)
-
-        self.log.info("Listing commits between %s and %s", start, end)
-        repo = Repo(repo_path)
-        commits = list(repo.iter_commits(after=start, before=end, reverse=True))
-
-        if not commits:
-            self.log.info("No commit found, skip the task")
-            return []
-
-        # Iterate over all commits
-        self.log.info(
-            "Found %s commit(s), from %s to %s",
-            str(len(commits)),
-            commits[0],
-            commits[-1],
-        )
-
-        return commits
 
     @staticmethod
     def raise_if_no_parents(commit: Commit):
@@ -94,7 +59,8 @@ class ProcessKbOperator(BaseOperator):
         return data
 
     def execute(self, context):
-        commits = self.list_commits(
+        commits = list_commits(
+            logger=self.log,
             start=context.get("data_interval_start"),
             end=context.get("data_interval_end")
         )

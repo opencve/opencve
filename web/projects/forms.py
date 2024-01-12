@@ -61,7 +61,7 @@ class NotificationForm(forms.ModelForm):
     cvss = forms.BooleanField(required=False)
     cpes = forms.BooleanField(required=False)
     description = forms.BooleanField(required=False)
-    cwes = forms.BooleanField(required=False)
+    weaknesses = forms.BooleanField(required=False)
     references = forms.BooleanField(required=False)
     cvss_score = forms.ChoiceField(
         choices=CVSS_SCORES,

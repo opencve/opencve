@@ -36,7 +36,7 @@ BEGIN
     -- add the new weaknesses
     FOR _weakness IN SELECT * FROM json_array_elements_text(weaknesses::json)
     LOOP
-      INSERT INTO opencve_cwes (id, created_at, updated_at, cwe_id)
+      INSERT INTO opencve_weaknesses (id, created_at, updated_at, cwe_id)
       VALUES(uuid_generate_v4(), NOW(), NOW(), _weakness)
       ON CONFLICT (cwe_id) DO NOTHING;
     END LOOP;

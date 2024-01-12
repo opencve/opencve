@@ -1,15 +1,15 @@
 <tr>
     {% if not hide_type %}
-    <td>NVD CVSS</td>
+    <td class="col-md-2">NVD CVSS</td>
     {% endif %}
-    <td>
+    <td class="col-md-5">
         v2 : <s>{{ event.details.old.v2 | default:'unknown' }}</s>
         <br/>
         v3.0 : <s>{{ event.details.old.v30 | default:'unknown' }}</s>
         <br/>
         v3.1 : <s>{{ event.details.old.v31 | default:'unknown' }}</s>
     </td>
-    <td>
+    <td class="col-md-5">
         v2 : {{ event.details.new.v2 | default:'unknown' }}
         <br/>
         v3.0 : {{ event.details.new.v30 | default:'unknown' }}

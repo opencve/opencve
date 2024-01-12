@@ -18,20 +18,26 @@ from includes.utils import (
     get_start_end_dates,
     get_vendor_changes,
     get_reports,
+    list_commits,
 )
 
 logger = logging.getLogger(__name__)
 
 
 @task
-def get_changes(**context):
+def list_changes(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     start, end = get_start_end_dates(context)
 
     # Get the list of changes with their associated vendors
+    commits = [c.hexsha for c in list_commits(
+        logger=logger,
+        start=context.get("data_interval_start"),
+        end=context.get("data_interval_end")
+    )]
     records = postgres_hook.get_records(
-        sql=SQL_CHANGE_WITH_VENDORS, parameters={"start": start, "end": end}
+        sql=SQL_CHANGE_WITH_VENDORS, parameters={"commits": tuple(commits)}
     )
 
     # Group the change by vendors
@@ -43,12 +49,13 @@ def get_changes(**context):
 
     # Save the result in redis
     key = f"changes_{start}_{end}"
+    logger.info(f"Saving data in Redis (key: {key})")
     redis_hook.json().set(key, "$", changes)
     redis_hook.expire(key, 60 * 60 * 24)
 
 
 @task
-def get_subscriptions(**context):
+def list_subscriptions(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     start, end = get_start_end_dates(context)

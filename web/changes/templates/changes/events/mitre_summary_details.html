@@ -1,9 +1,9 @@
 {% if event.details.removed or event.details.added %}
 <tr>
     {% if not hide_type %}
-    <td>Mitre Summary</td>
+    <td class="col-md-2">Mitre Summary</td>
     {% endif %}
-    <td>
+    <td class="col-md-5">
         {% if event.details.removed %}
         <ul>
             {% for lang, summary in event.details.removed.items %}
@@ -12,7 +12,7 @@
         </ul>
         {% endif %}
     </td>
-    <td>
+    <td class="col-md-5">
         {% if event.details.added %}
         <ul>
             {% for lang, summary in event.details.added.items %}
@@ -27,9 +27,9 @@
 {% for lang, values in event.details.changed.items %}
 <tr>
     {% if not hide_type %}
-    <td>Mitre Summary</td>
+    <td class="col-md-2">Mitre Summary</td>
     {% endif %}
-    <td><s>({{ lang }}) {{ values.old }}</s></td>
-    <td>({{ lang }}) {{ values.new }}</td>
+    <td class="col-md-5"><s>({{ lang }}) {{ values.old }}</s></td>
+    <td class="col-md-5">({{ lang }}) {{ values.new }}</td>
 </tr>
 {% endfor %}

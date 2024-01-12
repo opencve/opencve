@@ -3,7 +3,7 @@
 
 {% block title %}{{ change.cve.cve_id }} - {{ block.super }}{% endblock %}
 
-{% block navbar_title%}Change {{ change.created_at|date:'d b Y, h:i' }}{% endblock %}
+{% block navbar_title%}{{ change.cve.cve_id }} - <small><i>Change {{ change.created_at|date:'d b Y, h:i' }}</i></small>{% endblock %}
 
 {% block content %}
 

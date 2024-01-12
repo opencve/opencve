@@ -4,7 +4,9 @@
 
 {% block title %}{{ cve.cve_id }} - {{ block.super }}{% endblock %}
 
-{% block navbar_title%}{{ cve.cve_id }}{% endblock %}
+{% block navbar_title%}
+{{ cve.cve_id }}{% if cve.title %}<small><i> - {{ cve.title }}</i></small>{% endif %}
+{% endblock %}
 
 {% block content %}
 
@@ -30,27 +32,30 @@
                         <button type="button" class="btn btn-box-tool" data-widget="collapse"><iclass="fa fa-minus"></i></button>
                     </div>
                 </div>
-                {% if events_by_time %}
+
+                {% if changes %}
                 <div class="box-body">
                     <div class="row">
                         <div class="col-md-12">
-                            {% for time, events in events_by_time %}
-                            <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ time|date:"d b Y, P" }}</p>
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <th>Type</th>
-                                    <th>Values Removed</th>
-                                    <th>Values Added</th>
-                                </thead>
-                                <tbody>
+                            {% for change in changes %}
+                            <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ change.created_at|date:"d b Y, P" }}</p>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <th>Type</th>
+                                        <th>Values Removed</th>
+                                        <th>Values Added</th>
+                                    </thead>
+                                    <tbody>
 
-                                {% for event in events %}
-                                    {% with template_name="changes/events/"|add:event.type|add:"_details.html" %}
-                                    {% include template_name %}
-                                    {% endwith %}
-                                {% endfor %}
-                                </tbody>
-                            </table>
+                                    {% for event in change.events %}
+                                        {% with template_name="changes/events/"|add:event.type|add:"_details.html" %}
+                                        {% include template_name %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
                             <hr />
                             {% endfor %}
                         </div>
@@ -138,11 +143,11 @@
                     <div class="box-title">CWE</div>
                 </div>
                 <div class="box-body">
-                    {% if cwes %}
+                    {% if weaknesses %}
                         <ul>
-                        {% for cwe_id, name in cwes.items %}
+                        {% for cwe_id, name in weaknesses.items %}
                         <li>
-                            <a href="{% url 'cves' %}?cwe={{ cwe_id }}">{{ cwe_id }}</a>
+                            <a href="{% url 'cves' %}?weakness={{ cwe_id }}">{{ cwe_id }}</a>
                             {% if name %}<p class="cwe-name">{{ name }}</p>{% endif %}
                         </li>
                         {% endfor %}

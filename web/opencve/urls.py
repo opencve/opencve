@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework_nested import routers
 
-from cves.resources import CveViewSet, CweViewSet, ProductViewSet, VendorViewSet
+from cves.resources import CveViewSet, ProductViewSet, VendorViewSet, WeaknessViewSet
 from projects.resources import ProjectViewSet
 from changes.resources import ChangeViewSet, ReportViewSet
 from users.views import CustomLoginView, register
@@ -22,8 +22,8 @@ from users.views import CustomLoginView, register
 # /vendors/<id>
 # /vendors/<id>/products
 # /vendors/<id>/products/<id>
-# /cwes/
-# /cwes/<id>
+# /weaknesses/
+# /weaknesses/<id>
 
 # API Router
 router = routers.SimpleRouter()
@@ -31,7 +31,7 @@ router.register(r'cve', CveViewSet, basename="cve")
 router.register(r'projects', ProjectViewSet, basename="project")
 router.register(r'changes', ChangeViewSet, basename="change")
 router.register(r'vendors', VendorViewSet, basename="vendor")
-router.register(r'cwe', CweViewSet, basename="cwe")
+router.register(r'weaknesses', WeaknessViewSet, basename="weakness")
 
 projects_router = routers.NestedSimpleRouter(router, r'projects', lookup='project')
 projects_router.register(r'reports', ReportViewSet, basename='project-reports')

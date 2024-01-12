@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets
 
-from cves.models import Cve, Cwe, Product, Vendor
+from cves.models import Cve, Product, Vendor, Weakness
 from cves.serializers import CveListSerializer, CveDetailSerializer, CweListSerializer, ProductListSerializer, VendorListSerializer
 from cves.views import list_filtered_cves
 
@@ -25,9 +25,9 @@ class CveViewSet(viewsets.ReadOnlyModelViewSet):
         return self.serializer_classes.get(self.action, self.serializer_class)
 
 
-class CweViewSet(viewsets.ReadOnlyModelViewSet):
+class WeaknessViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CweListSerializer
-    queryset = Cwe.objects.all().order_by("cwe_id")
+    queryset = Weakness.objects.all().order_by("cwe_id")
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = "cwe_id"
 

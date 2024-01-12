@@ -32,7 +32,7 @@ class Command(BaseCommand):
 
         nvd_data = {
             "vendors": vendors_conf_to_flat(cve_nvd_data.get("configurations")),
-            "cwes": weaknesses_to_flat(cve_nvd_data.get("weaknesses")),
+            "weaknesses": weaknesses_to_flat(cve_nvd_data.get("weaknesses")),
             "cvss": {"v20": None, "v30": None, "v31": None},
         }
 
@@ -103,7 +103,7 @@ class Command(BaseCommand):
                     "updated": cve_updated_utc,
                     "cvss": Json(nvd_data["cvss"]),
                     "vendors": Json(nvd_data["vendors"]),
-                    "cwes": Json(nvd_data["cwes"]),
+                    "weaknesses": Json(nvd_data["cweaknesses"]),
                     "path": Json({"nvd": nvd_path}),
                 }
             )

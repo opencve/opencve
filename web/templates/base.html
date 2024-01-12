@@ -87,7 +87,7 @@
                         {% endif %}
                         <li class="{% is_active_link 'cves' 'cve' 'change' %}"><a href="{% url 'cves' %}"><i class="fa fa-shield"></i> <span>Vulnerabilities</span></a></li>
                         <li class="{% is_active_link 'vendors' 'subscribe' %}"><a href="{% url 'vendors' %}"><i class="fa fa-th-list"></i> <span> Vendors & Products</span></a></li>
-                        <li class="{% is_active_link 'cwes' %}"><a href="{% url 'cwes' %}"><i class="fa fa-sitemap"></i> <span> Categories</span></a></li>
+                        <li class="{% is_active_link 'weaknesses' %}"><a href="{% url 'weaknesses' %}"><i class="fa fa-sitemap"></i> <span> Weaknesses</span></a></li>
                         {% if user.is_authenticated %}
                         <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}"><a href="{% url 'tags' %}"><i class="fa fa-tags"></i> <span> Tags</span></a></li>
                         <li class="header">SETTINGS</li>

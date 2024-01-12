@@ -6,7 +6,7 @@ from airflow.utils.task_group import TaskGroup
 
 from includes.operators.fetch_operator import GitPullOperator
 from includes.operators.insert_operator import ProcessKbOperator
-from includes.tasks import list_projects, populate_reports, send_notifications
+from includes.tasks.reports import list_changes, list_subscriptions, populate_reports
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,7 @@ def opencve():
         git_pull_tasks >> ProcessKbOperator(task_id="process_kb")
 
     with TaskGroup(group_id="reports") as reports_group:
-        _ = list_projects()
-        _ = populate_reports()
-        _ = send_notifications()
+        list_changes() >> list_subscriptions() >> populate_reports()
 
     cves_group >> reports_group
 

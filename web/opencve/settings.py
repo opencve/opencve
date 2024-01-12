@@ -200,6 +200,6 @@ CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
 CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379 /1"
 
 # Scheduler configuration
-KB_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-kb-development"
+KB_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-kb"
 MITRE_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/cvelistV5"
-NVD_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/nvd"
+NVD_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-nvd"

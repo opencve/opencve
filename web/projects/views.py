@@ -181,8 +181,12 @@ class ReportsView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
 class ReportView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
     model = Report
     template_name = "projects/report.html"
+    slug_field = "name"
+    slug_url_kwarg = "name"
+    context_object_name = "project"
 
-    def get_report_statistics(self, report):
+    @staticmethod
+    def get_report_statistics(report):
         changes = {}
 
         # A CVE can have several changes in 1 day,
@@ -190,19 +194,23 @@ class ReportView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
         for change in report.changes.all():
 
             if change.cve not in changes:
-                score = change.cve.cvss["v31"] if change.cve.cvss.get("v31") else 0
+                score = change.cve.metrics["v31"]["score"] if change.cve.metrics.get("v31") else 0
                 changes[change.cve] = {
                     "cve": change.cve,
                     "score": score,
                     "changes": []
                 }
 
-            changes[change.cve]["changes"].append([change.created_at, change.events.all()])
+            changes[change.cve]["changes"].append([change.created_at, change.events])
 
         return {"report": report, "changes": changes.values()}
 
     def get_object(self, queryset=None):
-        project = super(ReportView, self).get_object()
+        project = get_object_or_404(
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"]
+        )
 
         # Optimize the query to return the associated events and CVE
         changes_with_cve_prefetch = Prefetch(
@@ -226,7 +234,9 @@ class ReportView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
             **context,
             **{
                 "project": get_object_or_404(
-                    Project, user=self.request.user, name=self.kwargs["name"]
+                    Project,
+                    organization=self.request.user_organization,
+                    name=self.kwargs["name"]
                 )
             },
         }

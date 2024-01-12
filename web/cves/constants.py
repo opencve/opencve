@@ -13,25 +13,97 @@ CVSS_SCORES = [
     (9, 9),
 ]
 
-CVSS_METRICS = {
+CVSS_NAME_MAPPING = {
     "v3": {
-        "attackComplexity": {"low": 2, "high": 1},
-        "attackVector": {"network": 2, "adjacent": 1, "adjacent_network": 1, "local": 1, "physical": 0},
-        "availabilityImpact": {"high": 2, "low": 1, "none": 0},
-        "confidentialityImpact": {"high": 2, "low": 1, "none": 0},
-        "integrityImpact": {"high": 2, "low": 1, "none": 0},
-        "privilegesRequired": {"none": 2, "low": 1, "high": 0},
-        "scope": {"changed": 2, "unchanged": 0},
-        "userInteraction": {"none": 2, "required": 1},
+        "AC": "Attack Complexity",
+        "AV": "Attack Vector",
+        "A": "Availability Impact",
+        "C": "Confidentiality Impact",
+        "I": "Integrity Impact",
+        "PR": "Privileges Required",
+        "S": "Scope",
+        "UI": "User Interaction",
     },
     "v2": {
-        "accessComplexity": {"low": 2, "medium": 1, "high": 0},
-        "accessVector": {"network": 2, "adjacent_network": 1, "local": 0},
-        "authentication": {"none": 2, "single": 1, "multiple": 0},
-        "availabilityImpact": {"complete": 2, "partial": 1, "none": 0},
-        "confidentialityImpact": {"complete": 2, "partial": 1, "none": 0},
-        "integrityImpact": {"complete": 2, "partial": 1, "none": 0},
-    }
+        "AC": "Access Complexity",
+        "AV": "Access Vector",
+        "Au": "Authentication",
+        "A": "Availability Impact",
+        "C": "Confidentiality Impact",
+        "I": "Integrity Impact",
+    },
+}
+
+CVSS_VECTORS_MAPPING = {
+    "v3": {
+        "AC": {"L": {"weight": 2, "label": "Low"}, "H": {"weight": 1, "label": "High"}},
+        "AV": {
+            "N": {"weight": 2, "label": "Network"},
+            "A": {"weight": 1, "label": "Adjacent Network"},
+            "L": {"weight": 1, "label": "Local"},
+            "P": {"weight": 0, "label": "Physical"},
+        },
+        "A": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "C": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "I": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "PR": {
+            "N": {"weight": 2, "label": "None"},
+            "L": {"weight": 1, "label": "Low"},
+            "H": {"weight": 0, "label": "High"},
+        },
+        "S": {
+            "C": {"weight": 2, "label": "Changed"},
+            "U": {"weight": 0, "label": "Unchanged"},
+        },
+        "UI": {
+            "N": {"weight": 2, "label": "None"},
+            "R": {"weight": 1, "label": "Required"},
+        },
+    },
+    "v2": {
+        "AC": {
+            "L": {"weight": 2, "label": "Low"},
+            "M": {"weight": 1, "label": "Medium"},
+            "H": {"weight": 0, "label": "High"},
+        },
+        "AV": {
+            "N": {"weight": 2, "label": "Network"},
+            "A": {"weight": 1, "label": "Adjacent Network"},
+            "L": {"weight": 0, "label": "Local"},
+        },
+        "Au": {
+            "N": {"weight": 2, "label": "None"},
+            "S": {"weight": 1, "label": "Single"},
+            "M": {"weight": 0, "label": "Multiple"},
+        },
+        "A": {
+            "C": {"weight": 2, "label": "Complete"},
+            "P": {"weight": 1, "label": "Partial"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "C": {
+            "C": {"weight": 2, "label": "Complete"},
+            "P": {"weight": 1, "label": "Partial"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "I": {
+            "C": {"weight": 2, "label": "Complete"},
+            "P": {"weight": 1, "label": "Partial"},
+            "N": {"weight": 0, "label": "None"},
+        },
+    },
 }
 
 CVSS_CHART_BACKGROUNDS = {

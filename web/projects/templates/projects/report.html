@@ -17,7 +17,7 @@
                     <a aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" data-toggle="tab"  href="#{{change.cve.cve_id}}">
                         {{change.cve.cve_id}}
                         {% if change.cve.nvd_json.metrics.cvssMetricV31 %}
-                        <span class="label label-{{ change.cve.nvd_json.metrics.cvssMetricV31.0.cvssData.baseScore|cvss_level }}">{{ change.cve.nvd_json.metrics.cvssMetricV31.0.cvssData.baseScore }}</span>
+                        <span class="label label-{{ change.cve.cvss31.score|cvss_level }}">{{ change.cve.cvss31.score }}</span>
                         {% else %}
                         <span class="label label-default">N/A</span>
                         {% endif %}

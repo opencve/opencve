@@ -6,7 +6,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Access Vector
-                        <span class="pull-right label label-{% metric_label 'v2' 'accessVector' cvss.accessVector %}">{{ cvss.accessVector }}</span>
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'AV' %}">{% metric_text_from_vector cvss.vector 'AV' %}</span>
                     </h4>
                 </div>
             </div>
@@ -16,7 +16,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Access Complexity
-                        <span class="pull-right label label-{% metric_label 'v2' 'accessComplexity' cvss.accessComplexity %}">{{ cvss.accessComplexity }}</span>
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'AC' %}">{% metric_text_from_vector cvss.vector 'AC' %}</span>
                     </h4>
                 </div>
             </div>
@@ -26,7 +26,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Authentication
-                        <span class="pull-right label label-{% metric_label 'v2' 'authentication' cvss.authentication %}">{{ cvss.authentication }}</span>
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'Au' %}">{% metric_text_from_vector cvss.vector 'Au' %}</span>
                     </h4>
                 </div>
             </div>
@@ -38,7 +38,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Confidentiality Impact
-                        <span class="pull-right label label-{% metric_label 'v2' 'confidentialityImpact' cvss.confidentialityImpact %}">{{ cvss.confidentialityImpact }}</span>
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'C' %}">{% metric_text_from_vector cvss.vector 'C' %}</span>
                     </h4>
                 </div>
             </div>
@@ -48,7 +48,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Integrity Impact
-                        <span class="pull-right label label-{% metric_label 'v2' 'integrityImpact' cvss.integrityImpact %}">{{ cvss.integrityImpact }}</span>
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'I' %}">{% metric_text_from_vector cvss.vector 'I' %}</span>
                     </h4>
                 </div>
             </div>
@@ -58,13 +58,14 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Availability Impact
-                        <span class="pull-right label label-{% metric_label 'v2' 'availabilityImpact' cvss.availabilityImpact %}">{{ cvss.availabilityImpact }}</span>
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'A' %}">{% metric_text_from_vector cvss.vector 'A' %}</span>
                     </h4>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-md-5">
-        <canvas class="cvss-radar" data-chart="{{ cvss|cvss_chart_data }}"></canvas>
+        <canvas class="cvss-radar" data-chart="{% cvss_chart_data cvss.vector cvss.score %}"></canvas>
+        {{ cvss.vector }}
     </div>
 </div>

@@ -1,6 +1,6 @@
 from nested_lookup import nested_lookup
 
-from cves.constants import PRODUCT_SEPARATOR
+from cves.constants import PRODUCT_SEPARATOR, CVSS_VECTORS_MAPPING
 
 
 def convert_cpes(conf):
@@ -35,19 +35,19 @@ def flatten_vendors(vendors):
     return data
 
 
-def list_cwes(cwe_names):
+def list_weaknesses(cwe_names):
     """
     Takes a list of CWE names and return their objects.
     """
-    from cves.models import Cwe
+    from cves.models import Weakness
 
-    cwes = {}
+    weaknesses = {}
     for cwe_id in cwe_names:
-        cwes[cwe_id] = None
-        cwe = Cwe.objects.filter(cwe_id=cwe_id).first()
+        weaknesses[cwe_id] = None
+        cwe = Weakness.objects.filter(cwe_id=cwe_id).first()
         if cwe:
-            cwes[cwe_id] = cwe.name
-    return cwes
+            weaknesses[cwe_id] = cwe.name
+    return weaknesses
 
 
 def humanize(s):
@@ -102,3 +102,32 @@ def weaknesses_to_flat(weaknesses=None):
     if not weaknesses:
         return []
     return nested_lookup("value", weaknesses)
+
+
+def get_metric_from_vector(vector, metric=None):
+    metrics = vector.split("/")
+    if metrics[0] in ("CVSS:3.1", "CVSS:3.0",):
+        version = "v3"
+        metrics = metrics[1:]
+    else:
+        version = "v2"
+
+    # Transform ['AV:N', 'AC:H', 'PR:N', 'UI:N', 'S:U', 'C:L', 'I:L', 'A:L']
+    # into {'AV':'N', 'AC':'H', 'PR':'N', 'UI':'N', 'S':'U', 'C':'L', 'I':'L', 'A':'L'}
+    metrics = dict([item.split(":") for item in metrics])
+    data = {
+        "version": version,
+        "metrics": metrics,
+    }
+
+    if metric:
+        metric_value = metrics[metric]
+        weight = CVSS_VECTORS_MAPPING[version][metric][metric_value]["weight"]
+        text = CVSS_VECTORS_MAPPING[version][metric][metric_value]["label"]
+
+        data.update({
+            "weight": weight,
+            "text": text
+        })
+
+    return data

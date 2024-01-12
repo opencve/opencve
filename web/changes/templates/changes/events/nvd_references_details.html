@@ -1,9 +1,9 @@
 {% if event.details.removed or event.details.added %}
 <tr>
     {% if not hide_type %}
-    <td>Nvd References</td>
+    <td class="col-md-2">Nvd References</td>
     {% endif %}
-    <td>
+    <td class="col-md-5 td-break">
         {% if event.details.removed %}
         <ul>{% for ref in event.details.removed %}
             <li><s[{{ ref.source }}] <a href="{{ ref.url }}" target="_blank">{{ ref.url }}</a>{% if ref.tags %} - {{ ref.tags|join:', ' }}{% endif %}</s></li>
@@ -11,7 +11,7 @@
         </ul>
         {% endif %}
     </td>
-    <td>
+    <td class="col-md-5 td-break">
         {% if event.details.added %}
         <ul>
             {% for ref in event.details.added %}
@@ -26,9 +26,9 @@
 {% for ref in event.details.changed %}
 <tr>
     {% if not hide_type %}
-    <td>Nvd References</td>
+    <td class="col-md-2">Nvd References</td>
     {% endif %}
-    <td><s>[{{ ref.old.source }}] <a href="{{ ref.old.url }}" target="_blank">{{ ref.old.url }}</a>{% if ref.old.tags %} - {{ ref.old.tags|join:', ' }}{% endif %}</s></td>
-    <td>[{{ ref.new.source }}] <a href="{{ ref.new.url }}" target="_blank">{{ ref.new.url }}</a>{% if ref.new.tags %} - {{ ref.new.tags|join:', ' }}{% endif %}</td>
+    <td class="col-md-5 td-break"><s>[{{ ref.old.source }}] <a href="{{ ref.old.url }}" target="_blank">{{ ref.old.url }}</a>{% if ref.old.tags %} - {{ ref.old.tags|join:', ' }}{% endif %}</s></td>
+    <td class="col-md-5 td-break">[{{ ref.new.source }}] <a href="{{ ref.new.url }}" target="_blank">{{ ref.new.url }}</a>{% if ref.new.tags %} - {{ ref.new.tags|join:', ' }}{% endif %}</td>
 </tr>
 {% endfor %}

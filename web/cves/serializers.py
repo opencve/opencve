@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from cves.models import Cve, Cwe, Product, Vendor
+from cves.models import Cve, Product, Vendor, Weakness
 
 
 class CveListSerializer(serializers.ModelSerializer):
@@ -18,7 +18,7 @@ class CveDetailSerializer(serializers.ModelSerializer):
             "cve_id",
             "summary",
             "cvss",
-            "cwes",
+            "weaknesses",
             "vendors",
             "mitre_json",
             "nvd_json",
@@ -27,7 +27,7 @@ class CveDetailSerializer(serializers.ModelSerializer):
 
 class CweListSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Cwe
+        model = Weakness
         fields = ["created_at", "updated_at", "cwe_id",]
 
 

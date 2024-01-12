@@ -10,10 +10,11 @@ from django.views.generic import DetailView, ListView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from cves.constants import PRODUCT_SEPARATOR
-from cves.models import Cve, Cwe, Product, Vendor
-from cves.utils import convert_cpes, list_cwes
+from cves.models import Cve, Product, Vendor, Weakness
+from cves.utils import convert_cpes, list_weaknesses
 from opencve.utils import is_valid_uuid
 from projects.models import Project
+from changes.models import Change
 from users.models import CveTag, UserTag
 from organizations.mixins import OrganizationRequiredMixin
 
@@ -33,10 +34,10 @@ def list_filtered_cves(request):
             | Q(vendors__contains=search)
         )
 
-    # Filter by CWE
-    cwe = request.GET.get("cwe")
-    if cwe:
-        query = query.filter(cwes__contains=cwe)
+    # Filter by weakness
+    weakness = request.GET.get("weakness")
+    if weakness:
+        query = query.filter(weaknesses__contains=weakness)
 
     # Filter by CVSS score
     cvss = request.GET.get("cvss", "").lower()
@@ -48,15 +49,15 @@ def list_filtered_cves(request):
         "critical",
     ]:
         if cvss == "empty":
-            query = query.filter(cvss__v31__isnull=True)
+            query = query.filter(metrics__v31__isnull=True)
         if cvss == "low":
-            query = query.filter(Q(cvss__v31__gte=0) & Q(cvss__v31__lte=3.9))
+            query = query.filter(Q(metrics__v31__score__gte=0) & Q(metrics__v31__score__lte=3.9))
         if cvss == "medium":
-            query = query.filter(Q(cvss__v31__gte=4.0) & Q(cvss__v31__lte=6.9))
+            query = query.filter(Q(metrics__v31__score__gte=4.0) & Q(metrics__v31__score__lte=6.9))
         if cvss == "high":
-            query = query.filter(Q(cvss__v31__gte=7.0) & Q(cvss__v31__lte=8.9))
+            query = query.filter(Q(metrics__v31__score__gte=7.0) & Q(metrics__v31__score__lte=8.9))
         if cvss == "critical":
-            query = query.filter(Q(cvss__v31__gte=9.0) & Q(cvss__v31__lte=10.0))
+            query = query.filter(Q(metrics__v31__score__gte=9.0) & Q(metrics__v31__score__lte=10.0))
 
     # Filter by Vendor and Product
     vendor_param = request.GET.get("vendor", "").replace(" ", "").lower()
@@ -81,13 +82,13 @@ def list_filtered_cves(request):
     return query.all()
 
 
-class CweListView(ListView):
-    context_object_name = "cwes"
-    template_name = "cves/cwe_list.html"
+class WeaknessListView(ListView):
+    context_object_name = "weaknesses"
+    template_name = "cves/weakness_list.html"
     paginate_by = 20
 
     def get_queryset(self):
-        query = Cwe.objects
+        query = Weakness.objects
         if self.request.GET.get("search"):
             query = query.filter(name__icontains=self.request.GET.get("search"))
         return query.order_by("-name")
@@ -170,7 +171,8 @@ class CveDetailView(DetailView):
         context["nvd_json"] = json.dumps(context["cve"].nvd_json)
         context["mitre_json"] = json.dumps(context["cve"].mitre_json)
 
-        # Add the events history
+        context["changes"] = Change.objects.filter(cve_id=context["cve"].id).order_by("-created_at")
+
         """events = Event.objects.filter(cve_id=context["cve"].id).order_by("-created_at")
         context["events_by_time"] = [
             (time, list(evs))
@@ -180,9 +182,9 @@ class CveDetailView(DetailView):
         ]"""
         context["events_by_time"] = []
 
-        # Add the associated Vendors and CWEs
+        # Add the associated vendors and weaknesses
         context["vendors"] = convert_cpes(context["cve"].nvd_json.get("configurations", {}))
-        context["cwes"] = list_cwes(context["cve"].cwes)
+        context["weaknesses"] = list_weaknesses(context["cve"].weaknesses)
 
         # Get the CVE tags for the authenticated user
         user_tags = {}

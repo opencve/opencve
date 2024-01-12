@@ -28,7 +28,12 @@ class Cve(BaseModel):
         db_table = "opencve_cves"
         indexes = [
             GinIndex(name="ix_cves_vendors", fields=["vendors"]),
+            GinIndex(name="ix_cves_metrics", fields=["metrics"]),
             GinIndex(name="ix_cves_weaknesses", fields=["weaknesses"]),
+            GinIndex(
+                OpClass(Upper("title"), name="gin_trgm_ops"),
+                name="ix_cves_title",
+            ),
             GinIndex(
                 OpClass(Upper("description"), name="gin_trgm_ops"),
                 name="ix_cves_description",
@@ -77,27 +82,27 @@ class Cve(BaseModel):
 
     @property
     def cvss20(self):
-        return self.metrics.get("v20")
+        return self.metrics.get("v20", {})
 
     @property
     def cvss30(self):
-        return self.metrics.get("v30")
+        return self.metrics.get("v30", {})
 
     @property
     def cvss31(self):
-        return self.metrics.get("v31")
+        return self.metrics.get("v31", {})
 
     def __str__(self):
         return self.cve_id
 
 
-class Cwe(BaseModel):
+class Weakness(BaseModel):
     cwe_id = models.CharField(max_length=16, unique=True)
     name = models.CharField(max_length=256, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = "opencve_cwes"
+        db_table = "opencve_weaknesses"
 
     @property
     def short_id(self):

@@ -15,7 +15,7 @@
         <td class="col-md-3">{{ cve.vendors|products_excerpt }}</td>
         <td class="col-md-2 text-center">{{ cve.updated_at|date:"Y-m-d" }}</td>
         {% if cve.cvss31 %}
-        <td class="col-md-1 text-center"><span class="label label-{{ cve.cvss31|cvss_level }}">{{ cve.cvss31 }} {{ cve.cvss31|cvss_human_score|title }}</span></td>
+        <td class="col-md-1 text-center"><span class="label label-{{ cve.cvss31.score|cvss_level }}">{{ cve.cvss31.score }} {{ cve.cvss31.score|cvss_human_score|title }}</span></td>
         {% else %}
         <td class="col-md-1 text-center"><span class="label label-default">N/A</span></td>
         {% endif %}

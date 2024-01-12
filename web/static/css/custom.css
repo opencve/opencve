@@ -168,6 +168,11 @@
   white-space: nowrap;
 }
 
+.table .td-break {
+  max-width: 0;
+  word-wrap: break-word;
+}
+
 .table td.rowspaned {
   vertical-align : middle;
   text-align:center;

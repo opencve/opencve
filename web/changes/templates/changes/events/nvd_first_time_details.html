@@ -1,10 +1,10 @@
 {% load opencve_extras %}
 <tr>
     {% if not hide_type %}
-    <td>NVD First Time</td>
+    <td class="col-md-2">NVD First Time</td>
     {% endif %}
-    <td></td>
-    <td>
+    <td class="col-md-5"></td>
+    <td class="col-md-5">
         {% for item in event.details %}
         {{ item|remove_product_separator|humanize }}
         <br />

@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 
-from cves.models import Cve, Cwe, Product, Vendor
+from cves.models import Cve, Product, Vendor, Weakness
 
 
 class BaseReadOnlyAdminMixin:
@@ -51,8 +51,8 @@ class CveAdmin(BaseReadOnlyAdminMixin, admin.ModelAdmin):
         )
 
 
-@admin.register(Cwe)
-class CweAdmin(BaseReadOnlyAdminMixin, admin.ModelAdmin):
+@admin.register(Weakness)
+class WeaknessAdmin(BaseReadOnlyAdminMixin, admin.ModelAdmin):
     search_fields = ["cwe_id", "name", "description"]
     list_display = (
         "cwe_id",

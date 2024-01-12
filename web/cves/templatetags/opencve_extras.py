@@ -7,8 +7,8 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 
-from cves.constants import PRODUCT_SEPARATOR, CVSS_METRICS, CVSS_CHART_BACKGROUNDS, CVSS_HUMAN_SCORE
-from cves.utils import humanize as _humanize
+from cves.constants import PRODUCT_SEPARATOR, CVSS_CHART_BACKGROUNDS, CVSS_HUMAN_SCORE, CVSS_VECTORS_MAPPING, CVSS_NAME_MAPPING
+from cves.utils import humanize as _humanize, get_metric_from_vector
 
 register = template.Library()
 
@@ -107,15 +107,15 @@ def cvss_human_score(score):
     return CVSS_HUMAN_SCORE[level]
 
 
-@register.filter
-def cvss_chart_data(cvss_data):
-    version = "v3" if cvss_data["version"] in ["3.1", "3.0"] else "v2"
-    labels = {
-        k: CVSS_METRICS[version][k][v.lower()]
-        for k, v in cvss_data.items()
-        if k not in ["version", "vectorString", "baseScore", "baseSeverity"]
-    }
-    level = cvss_level(cvss_data["baseScore"])
+@register.simple_tag
+def cvss_chart_data(vector, score):
+    metric = get_metric_from_vector(vector)
+    version = metric["version"]
+    level = cvss_level(score)
+
+    labels = {}
+    for k, v in metric["metrics"].items():
+        labels[CVSS_NAME_MAPPING[version][k]] = CVSS_VECTORS_MAPPING[version][k][v]["weight"]
 
     return json.dumps(
         {
@@ -135,9 +135,15 @@ def cvss_chart_data(cvss_data):
 
 
 @register.simple_tag
-def metric_label(version, metric, value):
-    value = CVSS_METRICS[version][metric][value.lower()]
-    return ["default", "warning", "danger"][value]
+def metric_class_from_vector(vector, metric):
+    data = get_metric_from_vector(vector, metric)
+    return ["default", "warning", "danger"][data["weight"]]
+
+
+@register.simple_tag
+def metric_text_from_vector(vector, metric):
+    data = get_metric_from_vector(vector, metric)
+    return data["text"]
 
 
 @register.simple_tag(takes_context=True)

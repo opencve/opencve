@@ -1,10 +1,17 @@
-import arrow
+import pathlib
+from logging import Logger
+from typing import List
+
 import more_itertools
-from airflow.providers.postgres.hooks.postgres import PostgresHook
 from nested_lookup import nested_lookup
 from psycopg2.extras import Json
+from git.repo import Repo
+from git.objects.commit import Commit
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.exceptions import AirflowException
+from pendulum.datetime import DateTime
 
-from includes.constants import PRODUCT_SEPARATOR
+from includes.constants import PRODUCT_SEPARATOR, KB_LOCAL_REPO
 
 
 def vendors_conf_to_dict(conf):
@@ -204,3 +211,35 @@ def format_cve_payload(kb_data):
         "weaknesses": Json(data["weaknesses"]),
     }
     return payload
+
+
+def list_commits(logger: Logger, start: DateTime, end: DateTime) -> List[Commit]:
+    logger.info("Reading %s repository", KB_LOCAL_REPO)
+    repo_path = pathlib.Path(KB_LOCAL_REPO)
+
+    if not all([start, end]):
+        raise AirflowException("Start and end intervals must be set")
+
+    # Each DagRun only parses its associated commits (schedule is hourly).
+    # We'll use the interval dates to list commits during this period, but
+    # git log --before and --after options are both included, so we need to
+    # subtract 1 second to the end date in order to avoid duplicates commits.
+    end = end.subtract(seconds=1)
+
+    logger.info("Listing commits between %s and %s", start, end)
+    repo = Repo(repo_path)
+    commits = list(repo.iter_commits(after=start, before=end, reverse=True))
+
+    if not commits:
+        logger.info("No commit found, skip the task")
+        return []
+
+    # Iterate over all commits
+    logger.info(
+        "Found %s commit(s), from %s to %s",
+        str(len(commits)),
+        commits[0],
+        commits[-1],
+    )
+
+    return commits
