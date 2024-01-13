@@ -1,18 +1,16 @@
-import pathlib
 import time
 from contextlib import contextmanager
 
 from django.conf import settings
 from django.core.management.base import BaseCommand as DjangoBaseCommand
-from django.db import connection
 
 
 class BaseCommand(DjangoBaseCommand):
-    mitre_path = settings.MITRE_REPO_PATH
-    nvd_path = settings.NVD_REPO_PATH
+    kb_path = settings.KB_REPO_PATH
+
     procedures = {
         "mitre": "CALL mitre_upsert(%(cve)s, %(created)s, %(updated)s, %(summary)s, %(path)s);",
-        "nvd": "CALL nvd_upsert(%(cve)s, %(created)s, %(updated)s, %(cvss)s, %(vendors)s, %(cwes)s, %(path)s);"
+        "nvd": "CALL nvd_upsert(%(cve)s, %(created)s, %(updated)s, %(cvss)s, %(vendors)s, %(cwes)s, %(path)s);",
     }
 
     def error(self, message, ending=None):
@@ -38,17 +36,3 @@ class BaseCommand(DjangoBaseCommand):
 
         elapsed_time = f"{round(time.time() - start, 3)}s"
         self.info(f"{end_msg} in {self.style.MIGRATE_LABEL(elapsed_time)}")
-
-    def repos_exist(self, paths):
-        if not all(
-            [
-                pathlib.Path.exists(pathlib.Path(p) / ".git")
-                for p in paths
-            ]
-        ):
-            return False
-        return True
-
-    def call_procedure(self, procedure, params):
-        with connection.cursor() as cursor:
-            cursor.execute(self.procedures.get(procedure), params)
