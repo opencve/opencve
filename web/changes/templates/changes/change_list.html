@@ -52,12 +52,27 @@ Dashboard
                                     <p>{{ change.cve.description }}</p>
                                     {% if not change|is_new_cve %}
                                     <div class="box-group" id="{{ change.id }}">
-                                        {% for event in change.events.all %}
+                                        {% for event in change.events %}
                                         <div class="panel box box-changes">
-                                            <div class="box-header">
+                                            <div class="box-header  collapsed pointer change-collapsed" data-toggle="collapse" data-parent="#{{ change.id }}" href="#{{ change.id }}-{{ event.type }}" aria-expanded="false"">
                                                 <h4 class="box-title">{{ event|event_humanized_type }}
-                                                <span class="box-meta">{{ event.details|event_excerpt|safe }}</span>
+                                                <span class="box-meta">{{ event.details|event_excerpt|safe }}<i class="fa fa-arrow-circle-o-down"></i><i class="fa fa-arrow-circle-o-up"></i></span>
                                                 </h4>
+                                            </div>
+                                            <div id="{{ change.id }}-{{ event.type }}" class="panel-collapse collapse" aria-expanded="false">
+                                                <div class="box-body">
+                                                    <table class="table">
+                                                        <thead>
+                                                        <th>Values Removed</th>
+                                                        <th>Values Added</th>
+                                                        </thead>
+                                                        <tbody>
+                                                        {% with template_name="changes/events/"|add:event.type|add:"_details.html" %}
+                                                        {% include template_name with hide_type=1 %}
+                                                        {% endwith %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                         </div>
                                         {% endfor %}
@@ -132,6 +147,8 @@ Dashboard
                     <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
                         <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
                     </a>
+                    {% empty %}
+                    <p class="alert alert-info">You have no tag yet. <a href="{% url 'create_tag' %}">Create a new one?</a></p>
                     {% endfor %}
                 </div>
             </div>

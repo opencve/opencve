@@ -192,8 +192,8 @@ def event_excerpt(details):
 
 
 @register.filter
-def event_humanized_type(event_type):
-    return event_type
+def event_humanized_type(event):
+    return humanize(event["type"])
 
 
 @register.filter
