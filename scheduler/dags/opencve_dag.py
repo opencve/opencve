@@ -7,6 +7,7 @@ from airflow.utils.task_group import TaskGroup
 from includes.operators.fetch_operator import GitPullOperator
 from includes.operators.insert_operator import ProcessKbOperator
 from includes.tasks.reports import list_changes, list_subscriptions, populate_reports
+from includes.tasks.notifications import list_notifications
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,10 @@ def opencve():
     with TaskGroup(group_id="reports") as reports_group:
         list_changes() >> list_subscriptions() >> populate_reports()
 
-    cves_group >> reports_group
+    with TaskGroup(group_id="notifications") as notifications_group:
+        list_notifications()
+
+    cves_group >> reports_group >> notifications_group
 
 
 opencve()
