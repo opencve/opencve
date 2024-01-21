@@ -29,8 +29,12 @@ CALL report_upsert(
 
 SQL_CHANGE_WITH_VENDORS = """
 SELECT
-  changes.id,
-  cves.vendors
+  changes.id AS change_id,
+  changes.types AS change_types,
+  changes.path AS change_path,
+  cves.vendors AS cve_vendors,
+  cves.cve_id AS cve_id,
+  cves.metrics AS cve_metrics
 FROM
   opencve_cves AS cves
   JOIN opencve_changes AS changes ON cves.id = changes.cve_id

@@ -8,11 +8,6 @@ from django.core.management.base import BaseCommand as DjangoBaseCommand
 class BaseCommand(DjangoBaseCommand):
     kb_path = settings.KB_REPO_PATH
 
-    procedures = {
-        "mitre": "CALL mitre_upsert(%(cve)s, %(created)s, %(updated)s, %(summary)s, %(path)s);",
-        "nvd": "CALL nvd_upsert(%(cve)s, %(created)s, %(updated)s, %(cvss)s, %(vendors)s, %(cwes)s, %(path)s);",
-    }
-
     def error(self, message, ending=None):
         self.stdout.write(f"[error] {message}", ending=ending)
 

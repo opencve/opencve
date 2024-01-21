@@ -90,23 +90,13 @@ def run_sql(query, parameters):
 
 def get_vendor_changes(records):
     """
-    This function takes a list of changes and
-    associates them with their vendors.
-
-    Example:
-        >>> records = [
-            ('de7989bd-68c1-45b2-9fab-273df1bb53ef', ['foo', 'bar']),
-            ('2d8a382a-d43f-4601-b4b2-d55b49013b8b', ['bar'])
-        ]
-        >>> get_vendor_changes(records)
-        {
-            'foo': ['de7989bd-68c1-45b2-9fab-273df1bb53ef'],
-            'bar': ['de7989bd-68c1-45b2-9fab-273df1bb53ef', '2d8a382a-d43f-4601-b4b2-d55b49013b8b']
-        }
+    This function groups changes by vendors.
     """
     vendors_changes = {}
 
-    for change_id, vendors in records:
+    for record in records:
+        change_id = record[0]
+        vendors = record[3]
         for vendor in vendors:
             if vendor not in vendors_changes:
                 vendors_changes[vendor] = []
@@ -115,17 +105,25 @@ def get_vendor_changes(records):
     return vendors_changes
 
 
+def get_change_details(records):
+    """
+    This function transform a list of changes into a dictionary
+    """
+    return {
+        r[0]: {
+            "change_types": r[1],
+            "change_path": r[2],
+            "cve_vendors": r[3],
+            "cve_id": r[4],
+            "cve_metrics": r[5]
+        } for r in records
+    }
+
+
 def get_project_subscriptions(records):
     """
     This function returns a list of projects with their associated
     vendors and products.
-
-    Example:
-        >>> records = [(
-            '8d5d399c-1f3c-4e83-91ba-6f7cf057b70b', {'vendors': ['foo', 'bar'], 'products': ['vendor$PRODUCT$product']}
-        )]
-        >>> get_project_subscriptions(records)
-        >>> {'8d5d399c-1f3c-4e83-91ba-6f7cf057b70b': ['foo', 'bar', 'vendor$PRODUCT$product']}
     """
     projects_subscriptions = {}
     for project in records:
@@ -135,23 +133,23 @@ def get_project_subscriptions(records):
     return projects_subscriptions
 
 
-def get_reports(changes, subscriptions):
+def get_project_changes(changes, subscriptions):
     """
     This associates the project subscriptions with their changes.
 
     Example:
         >>> changes = {
-            'foo': ['de7989bd-68c1-45b2-9fab-273df1bb53ef'],
-            'bar': ['de7989bd-68c1-45b2-9fab-273df1bb53ef', '2d8a382a-d43f-4601-b4b2-d55b49013b8b']
+            'vendor1': ['change-uuid-1'],
+            'vendor2': ['change-uuid-1', 'change-uuid-2']
         }
         >>> subscriptions = {
-            '8d5d399c-1f3c-4e83-91ba-6f7cf057b70b': ['foo', 'bar', 'vendor$PRODUCT$product']
+            'project-uuid-1': ['vendor1', 'vendor2', 'vendor$PRODUCT$product']
         }
         >>> get_reports(subscriptions, changes)
         {
-            "8d5d399c-1f3c-4e83-91ba-6f7cf057b70b": [
-                "de7989bd-68c1-45b2-9fab-273df1bb53ef",
-                "2d8a382a-d43f-4601-b4b2-d55b49013b8b"
+            "project-uuid-1": [
+                "change-uuid-1",
+                "change-uuid-2"
             ]
         }
     """
@@ -167,9 +165,6 @@ def get_reports(changes, subscriptions):
 
 
 def get_project_notifications(records):
-    """
-    TO COMPLETE
-    """
     projects_notifications = {}
     for notification in records:
         project_id, notif_type, notif_conf = notification
@@ -231,7 +226,7 @@ def list_commits(logger: Logger, start: DateTime, end: DateTime) -> List[Commit]
     commits = list(repo.iter_commits(after=start, before=end, reverse=True))
 
     if not commits:
-        logger.info("No commit found, skip the task")
+        logger.info("No commit found")
         return []
 
     # Iterate over all commits
