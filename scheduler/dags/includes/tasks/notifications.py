@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @task
-def list_notifications(**context):
+def prepare_notifications(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     start, end = get_start_end_dates(context)
@@ -50,8 +50,12 @@ def list_notifications(**context):
     redis_hook.json().set(notifications_key, "$", notifications)
     redis_hook.expire(notifications_key, 60 * 60 * 24)
 
+
 @task
 def send_notifications(notifications):
+    logger.info("Sending %s notifications", str(len(notifications)))
+    logger.debug("Nofifications list: %s", notifications)
+
     for notification in notifications:
         print(notification)
     """send_email_smtp(
@@ -67,14 +71,18 @@ def make_notifications_chunks(**context):
     start, end = get_start_end_dates(context)
     logger.info("Checking notifications to send between %s and %s", start, end)
 
-    project_changes = redis_hook.json().get(f"project_changes_{start}_{end}")
-    logger.debug("project_changes: %s", project_changes)
+    project_changes_key = f"project_changes_{start}_{end}"
+    project_changes = redis_hook.json().get(project_changes_key)
+    logger.debug(f"{project_changes_key}: %s", project_changes)
     logger.info("Found %s projects with changes", str(len(project_changes)))
 
-    changes_details = redis_hook.json().get(f"changes_details_{start}_{end}")
-    logger.debug("changes_details: %s", changes_details)
-    notifications = redis_hook.json().get(f"notifications_{start}_{end}")
-    logger.debug("notifications: %s", notifications)
+    changes_details_key = f"changes_details_{start}_{end}"
+    changes_details = redis_hook.json().get(changes_details_key)
+    logger.debug(f"{changes_details_key}: %s", changes_details)
+
+    notifications_key = f"notifications_{start}_{end}"
+    notifications = redis_hook.json().get(notifications_key)
+    logger.debug(f"{notifications_key}: %s", notifications)
 
     # Iterate over all the projects and filter the changes to sent
     # based on notifications settings

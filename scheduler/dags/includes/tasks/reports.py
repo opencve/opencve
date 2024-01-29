@@ -51,20 +51,20 @@ def list_changes(**context):
     change_details = get_change_details(records)
     logger.debug("List of changes: %s", change_details)
 
-    key = f"changes_details_{start}_{end}"
-    logger.info(f"Saving %s changes in Redis (key: %s)", str(len(change_details)), key)
-    redis_hook.json().set(key, "$", change_details)
-    redis_hook.expire(key, 60 * 60 * 24)
-
     # Save the change by vendors in redis
     vendor_changes = get_vendor_changes(records)
     logger.debug("List of changes by vendor: %s", vendor_changes)
 
     if not vendor_changes:
-        raise AirflowSkipException("No vendor found")
+        raise AirflowSkipException("No change with vendor found")
+
+    key = f"changes_details_{start}_{end}"
+    logger.info(f"Saving %s changes in Redis (key: %s)", str(len(change_details)), key)
+    redis_hook.json().set(key, "$", change_details)
+    redis_hook.expire(key, 60 * 60 * 24)
 
     key = f"vendor_changes_{start}_{end}"
-    logger.info(f"Got %s vendors/products, saving it in Redis (key: %s)", str(len(vendor_changes)), key)
+    logger.info(f"Saving %s vendors/products in Redis (key: %s)", str(len(vendor_changes)), key)
     redis_hook.json().set(key, "$", vendor_changes)
     redis_hook.expire(key, 60 * 60 * 24)
 

@@ -96,7 +96,7 @@ class ProcessKbOperator(BaseOperator):
                         cve_data = json.load(f)
 
                     self.log.info(f"Inserting %s data", cve_id)
-                    self.hook.run(sql=CVE_UPSERT_PROCEDURE, parameters=format_cve_payload(format_cve_payload(cve_data)))
+                    self.hook.run(sql=CVE_UPSERT_PROCEDURE, parameters=format_cve_payload(cve_data))
 
                 # Create the change and its events
                 for payload in payloads:
