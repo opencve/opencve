@@ -1,0 +1,141 @@
+# OPENCVE DOCKER COMPOSE
+---
+version: '3.8'
+x-airflow-common:
+  &airflow-common
+  build:
+    context: ../scheduler
+    dockerfile: Dockerfile
+  env_file:
+    - .env
+  volumes:
+    - ${AIRFLOW_DAGS_DIR:-.}:/opt/airflow/dags
+    - ${AIRFLOW_DIR:-.}/airflow.cfg:/opt/airflow/airflow.cfg:ro
+    - ${AIRFLOW_DIR:-.}/logs/:/opt/airflow/logs
+    - ${AIRFLOW_DIR:-.}/repositories/:/home/airflow/repositories/
+  depends_on:
+    &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+
+services:
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: opencve-airflow-webserver
+    command: webserver
+    ports:
+      - "${AIRFLOW_WEBSERVER_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    restart: on-failure
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: opencve-airflow-scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    restart: on-failure
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-worker:
+    <<: *airflow-common
+    container_name: opencve-airflow-worker
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    environment:
+      # Required to handle warm shutdown of the celery workers properly
+      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
+      DUMB_INIT_SETSID: "0"
+    restart: on-failure
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    # yamllint disable rule:line-length
+    command:
+      - -c
+      - exec /entrypoint airflow version
+    environment:
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+    user: "0:0"
+
+  django-webserver:
+    container_name: opencve-webserver
+    build:
+      context: ../web/
+      args:
+        - OPENCVE_REPOSITORY=${OPENCVE_REPOSITORY}
+        - OPENCVE_VERSION=${OPENCVE_VERSION}
+      dockerfile: Dockerfile
+    ports:
+      - ${OPENCVE_PORT:-8000}:8000
+    volumes:
+      - ${AIRFLOW_DIR:-.}/repositories/:/app/repositories/
+      - ./settings.py:/app/opencve/web/opencve/settings.py:ro
+    restart: on-failure
+
+  redis:
+    container_name: opencve-redis
+    image: redis/redis-stack:latest
+    ports:
+       - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+       test: ["CMD", "redis-cli", "ping"]
+       interval: 60s
+       timeout: 30s
+       retries: 5
+       start_period: 30s
+    restart: on-failure
+
+  postgres:
+    container_name: opencve-postgres
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-opencve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opencve}
+      POSTGRES_DB: opencve
+      PGDATA: /var/lib/postgreqsql/data
+    expose:
+      - 5432
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "$POSTGRES_USER"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d
+      - postgres-db:/var/lib/postgreqsql/data
+
+volumes:
+    postgres-db:
+

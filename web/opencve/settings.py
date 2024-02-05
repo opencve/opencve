@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-8mjeblz2*z@_n&zn^xpo)(id8f90%@elj#t5dg)59hd69(553a
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -98,10 +98,10 @@ AUTHENTICATION_BACKENDS = (
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "opencve_web",
-        "USER": "",
-        "PASSWORD": "",
-        "HOST": "127.0.0.1",
+        "NAME": "opencve",
+        "USER": "opencve",
+        "PASSWORD": "opencve",
+        "HOST": "postgres",
         "PORT": "5432"
     }
 }
@@ -195,11 +195,8 @@ REST_FRAMEWORK = {
 
 COUNT_EXCERPT = 3
 
-# Celery Configuration
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379 /1"
-
 # Scheduler configuration
 KB_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-kb"
 MITRE_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/cvelistV5"
 NVD_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-nvd"
+ADVISORIES_REPO_PATH = "/app/repositories/opencve-advisories"
