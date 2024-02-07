@@ -49,9 +49,7 @@ class DiffHandler:
     def data(self):
         if not self._data:
             # We can use b_blob part of diff as the KB is an append-only repo
-            self._data = json.loads(
-                self.diff.b_blob.data_stream.read().decode("utf-8")
-            )
+            self._data = json.loads(self.diff.b_blob.data_stream.read().decode("utf-8"))
         return self._data
 
     def is_new_file(self):

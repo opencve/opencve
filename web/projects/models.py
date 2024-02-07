@@ -13,10 +13,7 @@ def get_default_subscriptions():
 
 
 def get_default_configuration():
-    return {
-        "cvss": 0,
-        "events": []
-    }
+    return {"cvss": 0, "events": []}
 
 
 class Project(BaseModel):
@@ -25,13 +22,16 @@ class Project(BaseModel):
     subscriptions = models.JSONField(default=get_default_subscriptions)
 
     # Relationships
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="projects")
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="projects"
+    )
 
     class Meta:
         db_table = "opencve_projects"
         constraints = [
             models.UniqueConstraint(
-                fields=["name", "organization_id"], name="ix_unique_organization_project_name"
+                fields=["name", "organization_id"],
+                name="ix_unique_organization_project_name",
             )
         ]
 
@@ -39,7 +39,9 @@ class Project(BaseModel):
         return self.name
 
     def get_absolute_url(self):
-        return reverse("project", kwargs={"name": self.name, "orgname": self.organization.name})
+        return reverse(
+            "project", kwargs={"name": self.name, "orgname": self.organization.name}
+        )
 
 
 class Notification(BaseModel):

@@ -9,7 +9,9 @@ from organizations.models import Membership, Organization
 class OrganizationForm(forms.ModelForm):
     class Meta:
         model = Organization
-        fields = ["name", ]
+        fields = [
+            "name",
+        ]
 
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop("request")
@@ -51,14 +53,16 @@ class MembershipForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(MembershipForm, self).__init__(*args, **kwargs)
-        self.fields['email'].widget.attrs['placeholder'] = self.fields['email'].label
+        self.fields["email"].widget.attrs["placeholder"] = self.fields["email"].label
         self.helper = FormHelper()
         self.helper.form_show_labels = False
         self.helper.layout = Layout(
-            Div(Field('email'), css_class='col-md-6'),
-            Div(Field('role'), css_class='col-md-4'),
-            Div(FormActions(
-                Submit("save", "Add"),
-            ), css_class='col-md-2'),
+            Div(Field("email"), css_class="col-md-6"),
+            Div(Field("role"), css_class="col-md-4"),
+            Div(
+                FormActions(
+                    Submit("save", "Add"),
+                ),
+                css_class="col-md-2",
+            ),
         )
-

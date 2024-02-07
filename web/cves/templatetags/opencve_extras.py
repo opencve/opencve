@@ -7,7 +7,13 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 
-from cves.constants import PRODUCT_SEPARATOR, CVSS_CHART_BACKGROUNDS, CVSS_HUMAN_SCORE, CVSS_VECTORS_MAPPING, CVSS_NAME_MAPPING
+from cves.constants import (
+    PRODUCT_SEPARATOR,
+    CVSS_CHART_BACKGROUNDS,
+    CVSS_HUMAN_SCORE,
+    CVSS_VECTORS_MAPPING,
+    CVSS_NAME_MAPPING,
+)
 from cves.utils import humanize as _humanize, get_metric_from_vector
 
 register = template.Library()
@@ -87,6 +93,7 @@ def gravatar_url(email, size=40):
 
 # Filters & Tags related to the CVSS scores
 
+
 @register.filter
 def cvss_level(score):
     score = float(score)
@@ -115,7 +122,9 @@ def cvss_chart_data(vector, score):
 
     labels = {}
     for k, v in metric["metrics"].items():
-        labels[CVSS_NAME_MAPPING[version][k]] = CVSS_VECTORS_MAPPING[version][k][v]["weight"]
+        labels[CVSS_NAME_MAPPING[version][k]] = CVSS_VECTORS_MAPPING[version][k][v][
+            "weight"
+        ]
 
     return json.dumps(
         {
@@ -198,7 +207,10 @@ def event_humanized_type(event):
 
 @register.filter
 def is_new_cve(change):
-    return len(change.types) == 1 and change.types[0] in ("mitre_new", "nvd_new",)
+    return len(change.types) == 1 and change.types[0] in (
+        "mitre_new",
+        "nvd_new",
+    )
 
 
 @register.simple_tag(takes_context=True)

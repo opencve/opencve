@@ -6,19 +6,31 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DetailView, ListView, UpdateView, DeleteView
+from django.views.generic import (
+    CreateView,
+    DetailView,
+    ListView,
+    UpdateView,
+    DeleteView,
+)
 
 from changes.models import Change, Report
 from cves.models import Cve
 from projects.forms import FORM_MAPPING, ProjectForm
 from projects.models import Notification, Project
-# TODO: bouger ça dans un opencve/mixins.py
-from users.views import RequestViewMixin
+from opencve.mixins import RequestViewMixin
 from organizations.mixins import OrganizationRequiredMixin
 
 EVENT_TYPES = [
-    "mitre_new", "mitre_summary",
-    "nvd_new", "nvd_summary", "nvd_first_time", "nvd_cvss", "nvd_cwes", "nvd_references", "nvd_cpes"
+    "mitre_new",
+    "mitre_summary",
+    "nvd_new",
+    "nvd_summary",
+    "nvd_first_time",
+    "nvd_cvss",
+    "nvd_cwes",
+    "nvd_references",
+    "nvd_cpes",
 ]
 
 
@@ -27,12 +39,18 @@ class ProjectsListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
     template_name = "projects/list_projects.html"
 
     def get_queryset(self):
-        query = Project.objects.filter(organization=self.request.user_organization).all()
+        query = Project.objects.filter(
+            organization=self.request.user_organization
+        ).all()
         return query.order_by("name")
 
 
 class ProjectCreateView(
-    LoginRequiredMixin, OrganizationRequiredMixin, SuccessMessageMixin, RequestViewMixin, CreateView
+    LoginRequiredMixin,
+    OrganizationRequiredMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    CreateView,
 ):
     model = Project
     form_class = ProjectForm
@@ -45,7 +63,11 @@ class ProjectCreateView(
 
 
 class ProjectEditView(
-    LoginRequiredMixin, OrganizationRequiredMixin, SuccessMessageMixin, RequestViewMixin, UpdateView
+    LoginRequiredMixin,
+    OrganizationRequiredMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    UpdateView,
 ):
     model = Project
     form_class = ProjectForm
@@ -57,7 +79,9 @@ class ProjectEditView(
 
     def get_object(self, queryset=None):
         return get_object_or_404(
-            Project, organization=self.request.user_organization, name=self.kwargs["name"]
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"],
         )
 
     def get_form(self, form_class=None):
@@ -66,10 +90,14 @@ class ProjectEditView(
         return form
 
     def get_success_url(self):
-        return reverse_lazy("list_projects", kwargs={"orgname": self.request.user_organization})
+        return reverse_lazy(
+            "list_projects", kwargs={"orgname": self.request.user_organization}
+        )
 
 
-class ProjectDeleteView(LoginRequiredMixin, OrganizationRequiredMixin, SuccessMessageMixin, DeleteView):
+class ProjectDeleteView(
+    LoginRequiredMixin, OrganizationRequiredMixin, SuccessMessageMixin, DeleteView
+):
     model = Project
     slug_field = "name"
     slug_url_kwarg = "name"
@@ -78,14 +106,20 @@ class ProjectDeleteView(LoginRequiredMixin, OrganizationRequiredMixin, SuccessMe
 
     def get_object(self, queryset=None):
         return get_object_or_404(
-            Project, organization=self.request.user_organization, name=self.kwargs["name"]
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"],
         )
 
     def get_success_url(self):
-        return reverse_lazy("projects", kwargs={"orgname": self.request.user_organization})
+        return reverse_lazy(
+            "projects", kwargs={"orgname": self.request.user_organization}
+        )
 
 
-class ProjectVulnerabilitiesView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
+class ProjectVulnerabilitiesView(
+    LoginRequiredMixin, OrganizationRequiredMixin, ListView
+):
     model = Cve
     context_object_name = "cves"
     template_name = "projects/vulnerabilities.html"
@@ -93,19 +127,22 @@ class ProjectVulnerabilitiesView(LoginRequiredMixin, OrganizationRequiredMixin, 
 
     def get_queryset(self):
         project = get_object_or_404(
-            Project, organization=self.request.user_organization, name=self.kwargs["name"]
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"],
         )
         vendors = project.subscriptions["vendors"] + project.subscriptions["products"]
         if not vendors:
             return self.model.objects.none()
 
-        return Cve.objects.filter(vendors__has_any_keys=vendors)
-
+        return Cve.objects.order_by("-updated_at").filter(vendors__has_any_keys=vendors)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         project = get_object_or_404(
-            Project, organization=self.request.user_organization, name=self.kwargs["name"]
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["name"],
         )
         context["project"] = project
         return context
@@ -119,7 +156,7 @@ class ProjectDetailView(LoginRequiredMixin, OrganizationRequiredMixin, DetailVie
         return get_object_or_404(
             Project,
             organization=self.request.user_organization,
-            name=self.kwargs["name"]
+            name=self.kwargs["name"],
         )
 
     def get_context_data(self, **kwargs):
@@ -169,7 +206,7 @@ class ReportsView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
         return get_object_or_404(
             Project,
             organization=self.request.user_organization,
-            name=self.kwargs["name"]
+            name=self.kwargs["name"],
         )
 
     def get_context_data(self, **kwargs):
@@ -192,14 +229,13 @@ class ReportView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
         # A CVE can have several changes in 1 day,
         # so we need to group them by date.
         for change in report.changes.all():
-
             if change.cve not in changes:
-                score = change.cve.metrics["v31"]["score"] if change.cve.metrics.get("v31") else 0
-                changes[change.cve] = {
-                    "cve": change.cve,
-                    "score": score,
-                    "changes": []
-                }
+                score = (
+                    change.cve.metrics["v31"]["score"]
+                    if change.cve.metrics.get("v31")
+                    else 0
+                )
+                changes[change.cve] = {"cve": change.cve, "score": score, "changes": []}
 
             changes[change.cve]["changes"].append([change.created_at, change.events])
 
@@ -209,7 +245,7 @@ class ReportView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
         project = get_object_or_404(
             Project,
             organization=self.request.user_organization,
-            name=self.kwargs["name"]
+            name=self.kwargs["name"],
         )
 
         # Optimize the query to return the associated events and CVE
@@ -236,7 +272,7 @@ class ReportView(LoginRequiredMixin, OrganizationRequiredMixin, DetailView):
                 "project": get_object_or_404(
                     Project,
                     organization=self.request.user_organization,
-                    name=self.kwargs["name"]
+                    name=self.kwargs["name"],
                 )
             },
         }
@@ -250,7 +286,7 @@ class SubscriptionsView(LoginRequiredMixin, OrganizationRequiredMixin, DetailVie
         return get_object_or_404(
             Project,
             organization=self.request.user_organization,
-            name=self.kwargs["name"]
+            name=self.kwargs["name"],
         )
 
     def get_context_data(self, **kwargs):
@@ -267,7 +303,7 @@ class NotificationsView(LoginRequiredMixin, OrganizationRequiredMixin, DetailVie
         return get_object_or_404(
             Project,
             organization=self.request.user_organization,
-            name=self.kwargs["name"]
+            name=self.kwargs["name"],
         )
 
     def get_context_data(self, **kwargs):
@@ -290,16 +326,13 @@ class NotificationViewMixin(LoginRequiredMixin, OrganizationRequiredMixin):
         return get_object_or_404(
             Project,
             organization=self.request.user_organization,
-            name=self.kwargs["name"]
+            name=self.kwargs["name"],
         )
 
     def get_context_data(self, **kwargs):
         return {
             **super(NotificationViewMixin, self).get_context_data(**kwargs),
-            **{
-                "type": self.request.GET.get("type"),
-                "project": self.get_object()
-            },
+            **{"type": self.request.GET.get("type"), "project": self.get_object()},
         }
 
     def get_form_class(self):
@@ -340,7 +373,9 @@ class NotificationCreateView(NotificationViewMixin, CreateView):
     def post(self, request, *args, **kwargs):
         form = self.get_form_class()(request.POST)
         project = get_object_or_404(
-            Project, name=self.kwargs["name"], organization=self.request.user_organization
+            Project,
+            name=self.kwargs["name"],
+            organization=self.request.user_organization,
         )
 
         if form.is_valid():
@@ -352,11 +387,7 @@ class NotificationCreateView(NotificationViewMixin, CreateView):
                 )
 
             # List of events
-            events = [
-                t
-                for t, b in form.cleaned_data.items()
-                if t in EVENT_TYPES and b
-            ]
+            events = [t for t, b in form.cleaned_data.items() if t in EVENT_TYPES and b]
 
             # Extra configuration
             extras = {}
@@ -378,7 +409,9 @@ class NotificationCreateView(NotificationViewMixin, CreateView):
             messages.success(
                 request, f"Notification {notification.name} successfully created"
             )
-            return redirect("notifications", orgname=request.user_organization, name=project.name)
+            return redirect(
+                "notifications", orgname=request.user_organization, name=project.name
+            )
 
         return render(
             request,
@@ -418,7 +451,9 @@ class NotificationUpdateView(NotificationViewMixin, UpdateView):
 
         form = self.get_form_class()(request.POST, instance=self.object)
         project = get_object_or_404(
-            Project, name=self.kwargs["name"], organization=self.request.user_organization
+            Project,
+            name=self.kwargs["name"],
+            organization=self.request.user_organization,
         )
 
         if form.is_valid():
@@ -430,11 +465,7 @@ class NotificationUpdateView(NotificationViewMixin, UpdateView):
                 )
 
             # List of events
-            events = [
-                t
-                for t, b in form.cleaned_data.items()
-                if t in EVENT_TYPES and b
-            ]
+            events = [t for t, b in form.cleaned_data.items() if t in EVENT_TYPES and b]
 
             # Extra configuration
             extras = {}
@@ -454,7 +485,9 @@ class NotificationUpdateView(NotificationViewMixin, UpdateView):
             messages.success(
                 request, f"Notification {notification.name} successfully updated"
             )
-            return redirect("notifications", orgname=request.user_organization, name=project.name)
+            return redirect(
+                "notifications", orgname=request.user_organization, name=project.name
+            )
 
         return render(
             request,

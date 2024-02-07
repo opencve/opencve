@@ -28,16 +28,30 @@ class CveDetailSerializer(serializers.ModelSerializer):
 class CweListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Weakness
-        fields = ["created_at", "updated_at", "cwe_id",]
+        fields = [
+            "created_at",
+            "updated_at",
+            "cwe_id",
+        ]
 
 
 class VendorListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vendor
-        fields = ["id", "created_at", "updated_at", "name",]
+        fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "name",
+        ]
 
 
 class ProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ["id", "created_at", "updated_at", "name",]
+        fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "name",
+        ]

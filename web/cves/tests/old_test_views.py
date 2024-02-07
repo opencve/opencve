@@ -28,7 +28,6 @@ class CveViewTest(TestCase):
         )
 
     def test_cvelistview(self):
-        #self.client.login(username="john", password="password")
+        # self.client.login(username="john", password="password")
         response = self.client.get("/", follow=True)
-        self.assertTrue(len(response.context['cves']) == 1)
-
+        self.assertTrue(len(response.context["cves"]) == 1)

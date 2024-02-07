@@ -8,7 +8,13 @@ from projects.models import Project
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ["id", "created_at", "updated_at", "name", "description",]
+        fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "name",
+            "description",
+        ]
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
@@ -16,7 +22,14 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ["id", "created_at", "updated_at", "name", "description", "subscriptions",]
+        fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "name",
+            "description",
+            "subscriptions",
+        ]
 
     @staticmethod
     def get_subscriptions(instance):

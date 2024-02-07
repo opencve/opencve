@@ -8,13 +8,26 @@ class ChangeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Change
-        fields = ["id", "created_at", "updated_at", "path", "commit", "cve",]
+        fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "path",
+            "commit",
+            "cve",
+        ]
 
 
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        fields = ["id", "created_at", "updated_at", "day", "seen",]
+        fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "day",
+            "seen",
+        ]
 
 
 class ReportDetailSerializer(serializers.ModelSerializer):

@@ -15,14 +15,21 @@ class OrganizationRequiredMixin:
 
 class OrganizationIsOwnerMixin:
     """Check if the user is owner of the organization"""
-    def dispatch(self, request, *args, **kwargs):
-        organization = self.get_object()
-        if not Membership.objects.filter(user=request.user, organization=organization, role=Membership.OWNER).exists():
-            raise Http404()
-        return super().dispatch(request, *args, **kwargs)
 
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            Organization, members=self.request.user, name=self.kwargs["name"]
+    def dispatch(self, request, *args, **kwargs):
+        # Check if organization exists
+        organization = get_object_or_404(
+            Organization, members=request.user, name=kwargs["name"]
         )
 
+        # Check if user is owner
+        membership = get_object_or_404(
+            Membership,
+            user=request.user, organization=organization, role=Membership.OWNER
+        )
+
+        # Check if user is not just invited
+        if membership.is_invited:
+            raise Http404()
+
+        return super().dispatch(request, *args, **kwargs)

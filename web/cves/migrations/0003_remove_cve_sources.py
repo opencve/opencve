@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('cves', '0002_add_cve_upsert_procedures'),
+        ("cves", "0002_add_cve_upsert_procedures"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='cve',
-            name='sources',
+            model_name="cve",
+            name="sources",
         ),
     ]

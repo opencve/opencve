@@ -13,9 +13,7 @@ class Organization(BaseModel):
 
     class Meta:
         db_table = "opencve_organizations"
-        permissions = (
-            ("add_member", "Add member"),
-        )
+        permissions = (("add_member", "Add member"),)
 
     def __str__(self):
         return self.name

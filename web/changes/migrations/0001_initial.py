@@ -6,39 +6,67 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Change',
+            name="Change",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('updated_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('path', models.TextField(default=None)),
-                ('commit', models.CharField(max_length=40)),
-                ('types', models.JSONField(default=list)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, primary_key=True, serialize=False
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
+                ),
+                ("path", models.TextField(default=None)),
+                ("commit", models.CharField(max_length=40)),
+                ("types", models.JSONField(default=list)),
             ],
             options={
-                'db_table': 'opencve_changes',
+                "db_table": "opencve_changes",
             },
         ),
         migrations.CreateModel(
-            name='Report',
+            name="Report",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('updated_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('seen', models.BooleanField(default=False)),
-                ('day', models.DateField(default=django.utils.timezone.now)),
-                ('changes', models.ManyToManyField(to='changes.change')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, primary_key=True, serialize=False
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
+                ),
+                ("seen", models.BooleanField(default=False)),
+                ("day", models.DateField(default=django.utils.timezone.now)),
+                ("changes", models.ManyToManyField(to="changes.change")),
             ],
             options={
-                'db_table': 'opencve_reports',
+                "db_table": "opencve_reports",
             },
         ),
     ]

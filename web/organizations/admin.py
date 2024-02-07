@@ -7,7 +7,10 @@ from organizations.models import Organization
 class OrganizationAdmin(admin.ModelAdmin):
     ordering = ("name",)
     search_fields = ["name"]
-    list_display = ("name", "created_at",)
+    list_display = (
+        "name",
+        "created_at",
+    )
     fields = (
         "name",
         "created_at",

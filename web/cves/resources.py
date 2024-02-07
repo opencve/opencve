@@ -1,7 +1,13 @@
 from rest_framework import permissions, viewsets
 
 from cves.models import Cve, Product, Vendor, Weakness
-from cves.serializers import CveListSerializer, CveDetailSerializer, CweListSerializer, ProductListSerializer, VendorListSerializer
+from cves.serializers import (
+    CveListSerializer,
+    CveDetailSerializer,
+    CweListSerializer,
+    ProductListSerializer,
+    VendorListSerializer,
+)
 from cves.views import list_filtered_cves
 
 
@@ -43,6 +49,8 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
-        return Product.objects.filter(
-            vendor_id=self.kwargs['vendor_pk']
-        ).order_by("name").all()
+        return (
+            Product.objects.filter(vendor_id=self.kwargs["vendor_pk"])
+            .order_by("name")
+            .all()
+        )

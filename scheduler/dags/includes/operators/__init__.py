@@ -21,6 +21,6 @@ class KindOperator(BaseOperator):
         repo_path = {
             "kb": KB_LOCAL_REPO,
             "mitre": MITRE_LOCAL_REPO,
-            "nvd": NVD_LOCAL_REPO
+            "nvd": NVD_LOCAL_REPO,
         }[self.kind]
         return pathlib.Path(repo_path)

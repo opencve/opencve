@@ -27,16 +27,18 @@
                         <tr>
                             <td>{{ membership.organization.name }}</td>
                             <td>{{ membership.role }}</td>
+                            {% if membership.is_owner %}
                             <td class="pull-right">
                                 <div class="btn-group" role="group">
-                                    {% if membership.is_owner %}
+                                    {% if membership.is_invited %}
+                                    <a href="{% url 'accept_organization_invitation' name=membership.organization.name key=membership.key %}" class="btn btn-primary btn-xs" type="button">Accept Invitation</a>
+                                    {% else %}
                                     <a href="{% url 'edit_organization' name=membership.organization.name %}" class="btn btn-default btn-xs">Edit</a>
                                     <a href="{% url 'delete_organization' name=membership.organization.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
-                                    {% elif membership.is_invited %}
-                                    <a href="{% url 'accept_organization_invitation' name=membership.organization.name key=membership.key %}" class="btn btn-primary btn-xs" type="button">Accept Invitation</a>
                                     {% endif %}
                                 </div>
                             </td>
+                            {% endif %}
                         </tr>
                         {% empty %}
                         <tr>

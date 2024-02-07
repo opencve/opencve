@@ -77,9 +77,8 @@ DROP PROCEDURE cve_upsert(
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('cves', '0001_initial'),
+        ("cves", "0001_initial"),
     ]
 
     operations = [

@@ -32,11 +32,14 @@ def list_changes(**context):
     start, end = get_start_end_dates(context)
 
     # Get the list of changes with their associated vendors
-    commits = [c.hexsha for c in list_commits(
-        logger=logger,
-        start=context.get("data_interval_start"),
-        end=context.get("data_interval_end")
-    )]
+    commits = [
+        c.hexsha
+        for c in list_commits(
+            logger=logger,
+            start=context.get("data_interval_start"),
+            end=context.get("data_interval_end"),
+        )
+    ]
     if not commits:
         raise AirflowSkipException("No commit found")
 
@@ -64,7 +67,9 @@ def list_changes(**context):
     redis_hook.expire(key, 60 * 60 * 24)
 
     key = f"vendor_changes_{start}_{end}"
-    logger.info(f"Saving %s vendors/products in Redis (key: %s)", str(len(vendor_changes)), key)
+    logger.info(
+        f"Saving %s vendors/products in Redis (key: %s)", str(len(vendor_changes)), key
+    )
     redis_hook.json().set(key, "$", vendor_changes)
     redis_hook.expire(key, 60 * 60 * 24)
 
@@ -77,16 +82,30 @@ def list_subscriptions(**context):
 
     # Get the list of changes
     changes_redis_key = f"vendor_changes_{start}_{end}"
-    logger.info("Fetching changes between %s and %s using Redis (key: %s)", start, end, changes_redis_key)
+    logger.info(
+        "Fetching changes between %s and %s using Redis (key: %s)",
+        start,
+        end,
+        changes_redis_key,
+    )
     changes = redis_hook.json().objkeys(changes_redis_key)
 
     # Extract vendors & products based on the separator
     vendors = [c for c in changes if PRODUCT_SEPARATOR not in c]
     products = [c for c in changes if PRODUCT_SEPARATOR in c]
-    logger.info(f"Found %s vendors (%s) and %s products (%s)", str(len(vendors)), ", ".join(vendors), str(len(products)), ", ".join(products))
+    logger.info(
+        f"Found %s vendors (%s) and %s products (%s)",
+        str(len(vendors)),
+        ", ".join(vendors),
+        str(len(products)),
+        ", ".join(products),
+    )
 
     # List the projects with subscriptions to these vendors & products
-    logger.info("Listing subscriptions in %s table for these vendors and products", "opencve_projects")
+    logger.info(
+        "Listing subscriptions in %s table for these vendors and products",
+        "opencve_projects",
+    )
     records = postgres_hook.get_records(
         sql=SQL_PROJECT_WITH_SUBSCRIPTIONS,
         parameters={"vendors": vendors, "products": products},
@@ -98,7 +117,11 @@ def list_subscriptions(**context):
 
     # Save the result in redis
     subscriptions_key = f"subscriptions_{start}_{end}"
-    logger.info("Found %s subscribed projects, saving it in Redis (key: %s)", str(len(subscriptions)), subscriptions_key)
+    logger.info(
+        "Found %s subscribed projects, saving it in Redis (key: %s)",
+        str(len(subscriptions)),
+        subscriptions_key,
+    )
     logger.debug("List of subscriptions: %s", subscriptions)
     redis_hook.json().set(subscriptions_key, "$", subscriptions)
     redis_hook.expire(subscriptions_key, 60 * 60 * 24)

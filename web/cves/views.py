@@ -51,13 +51,21 @@ def list_filtered_cves(request):
         if cvss == "empty":
             query = query.filter(metrics__v31__isnull=True)
         if cvss == "low":
-            query = query.filter(Q(metrics__v31__score__gte=0) & Q(metrics__v31__score__lte=3.9))
+            query = query.filter(
+                Q(metrics__v31__score__gte=0) & Q(metrics__v31__score__lte=3.9)
+            )
         if cvss == "medium":
-            query = query.filter(Q(metrics__v31__score__gte=4.0) & Q(metrics__v31__score__lte=6.9))
+            query = query.filter(
+                Q(metrics__v31__score__gte=4.0) & Q(metrics__v31__score__lte=6.9)
+            )
         if cvss == "high":
-            query = query.filter(Q(metrics__v31__score__gte=7.0) & Q(metrics__v31__score__lte=8.9))
+            query = query.filter(
+                Q(metrics__v31__score__gte=7.0) & Q(metrics__v31__score__lte=8.9)
+            )
         if cvss == "critical":
-            query = query.filter(Q(metrics__v31__score__gte=9.0) & Q(metrics__v31__score__lte=10.0))
+            query = query.filter(
+                Q(metrics__v31__score__gte=9.0) & Q(metrics__v31__score__lte=10.0)
+            )
 
     # Filter by Vendor and Product
     vendor_param = request.GET.get("vendor", "").replace(" ", "").lower()
@@ -171,7 +179,9 @@ class CveDetailView(DetailView):
         context["nvd_json"] = json.dumps(context["cve"].nvd_json)
         context["mitre_json"] = json.dumps(context["cve"].mitre_json)
 
-        context["changes"] = Change.objects.filter(cve_id=context["cve"].id).order_by("-created_at")
+        context["changes"] = Change.objects.filter(cve_id=context["cve"].id).order_by(
+            "-created_at"
+        )
 
         """events = Event.objects.filter(cve_id=context["cve"].id).order_by("-created_at")
         context["events_by_time"] = [
@@ -183,7 +193,9 @@ class CveDetailView(DetailView):
         context["events_by_time"] = []
 
         # Add the associated vendors and weaknesses
-        context["vendors"] = convert_cpes(context["cve"].nvd_json.get("configurations", {}))
+        context["vendors"] = convert_cpes(
+            context["cve"].nvd_json.get("configurations", {})
+        )
         context["weaknesses"] = list_weaknesses(context["cve"].weaknesses)
 
         # Get the CVE tags for the authenticated user
@@ -258,12 +270,18 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
             obj_name = f"{vendor.name}{PRODUCT_SEPARATOR}{product.name}"
 
         # Update the context
-        context.update(**{
-            "object": obj,
-            "object_type": obj_type,
-            "object_name": obj_name,
-            "projects": Project.objects.filter(organization=self.request.user_organization).order_by("name").all()
-        })
+        context.update(
+            **{
+                "object": obj,
+                "object_type": obj_type,
+                "object_name": obj_name,
+                "projects": Project.objects.filter(
+                    organization=self.request.user_organization
+                )
+                .order_by("name")
+                .all(),
+            }
+        )
 
         return context
 
@@ -283,7 +301,9 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
             raise Http404()
 
         # Check if the project belongs to the current organization
-        project = get_object_or_404(Project, id=project_id, organization=request.user_organization)
+        project = get_object_or_404(
+            Project, id=project_id, organization=request.user_organization
+        )
 
         # Vendor subscription
         if obj_type == "vendor":

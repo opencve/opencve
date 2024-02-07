@@ -6,46 +6,53 @@ import django.db.models.functions.text
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('cves', '0003_remove_cve_sources'),
+        ("cves", "0003_remove_cve_sources"),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name='cve',
-            name='ix_cves_cwes',
+            model_name="cve",
+            name="ix_cves_cwes",
         ),
         migrations.RemoveIndex(
-            model_name='cve',
-            name='ix_cves_summary',
+            model_name="cve",
+            name="ix_cves_summary",
         ),
         migrations.RenameField(
-            model_name='cve',
-            old_name='summary',
-            new_name='description',
+            model_name="cve",
+            old_name="summary",
+            new_name="description",
         ),
         migrations.RenameField(
-            model_name='cve',
-            old_name='cvss',
-            new_name='metrics',
+            model_name="cve",
+            old_name="cvss",
+            new_name="metrics",
         ),
         migrations.RenameField(
-            model_name='cve',
-            old_name='cwes',
-            new_name='weaknesses',
+            model_name="cve",
+            old_name="cwes",
+            new_name="weaknesses",
         ),
         migrations.AddField(
-            model_name='cve',
-            name='title',
+            model_name="cve",
+            name="title",
             field=models.TextField(default=None, null=True),
         ),
         migrations.AddIndex(
-            model_name='cve',
-            index=django.contrib.postgres.indexes.GinIndex(fields=['weaknesses'], name='ix_cves_weaknesses'),
+            model_name="cve",
+            index=django.contrib.postgres.indexes.GinIndex(
+                fields=["weaknesses"], name="ix_cves_weaknesses"
+            ),
         ),
         migrations.AddIndex(
-            model_name='cve',
-            index=django.contrib.postgres.indexes.GinIndex(django.contrib.postgres.indexes.OpClass(django.db.models.functions.text.Upper('description'), name='gin_trgm_ops'), name='ix_cves_description'),
+            model_name="cve",
+            index=django.contrib.postgres.indexes.GinIndex(
+                django.contrib.postgres.indexes.OpClass(
+                    django.db.models.functions.text.Upper("description"),
+                    name="gin_trgm_ops",
+                ),
+                name="ix_cves_description",
+            ),
         ),
     ]

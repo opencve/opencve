@@ -1,11 +1,13 @@
+import asyncio
 import logging
+import importlib
 
+import aiohttp
 from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.exceptions import AirflowSkipException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
-from airflow.utils.email import send_email_smtp
 
 from includes.constants import SQL_PROJECT_WITH_NOTIFICATIONS
 from includes.utils import get_project_notifications, get_start_end_dates, get_chunks
@@ -51,18 +53,56 @@ def prepare_notifications(**context):
     redis_hook.expire(notifications_key, 60 * 60 * 24)
 
 
-@task
-def send_notifications(notifications):
-    logger.info("Sending %s notifications", str(len(notifications)))
-    logger.debug("Nofifications list: %s", notifications)
+async def execute_coroutines(notifications, change_details, period):
+    max_notifications_per_task = conf.getint("opencve", "max_notifications_per_task")
+    semaphore = asyncio.Semaphore(max_notifications_per_task)
 
-    for notification in notifications:
-        print(notification)
-    """send_email_smtp(
-        to="ncrocfer@gmail.com",
-        subject="Hello from Airflow dev",
-        html_content="<h1>Hello world</h1>",
-    )"""
+    tasks = []
+    async with aiohttp.ClientSession(raise_for_status=True) as session:
+        for notification in notifications:
+            logger.debug("Handling notification: %s", notification)
+            notif_type = notification.get("notification").get("type")
+            notif_conf = notification.get("notification").get("conf")
+
+            notif_cls = getattr(
+                importlib.import_module("includes.notifications"),
+                f"{notif_type.capitalize()}Notification",
+            )
+            logger.debug("Executing %s method of %s", "send", notif_cls)
+            tasks.append(
+                asyncio.ensure_future(
+                    notif_cls(
+                        semaphore=semaphore,
+                        session=session,
+                        config=notif_conf,
+                        changes=notification.get("changes"),
+                        changes_details=change_details,
+                        period=period,
+                    ).execute()
+                )
+            )
+
+        return await asyncio.gather(*tasks)
+
+
+@task
+def send_notifications(notifications, **context):
+    logger.info("Found %s notifications to send", str(len(notifications)))
+    logger.debug("Notifications list: %s", notifications)
+
+    # Retrieve the list of change details
+    start, end = get_start_end_dates(context)
+    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
+    changes_details_key = f"changes_details_{start}_{end}"
+    changes_details = redis_hook.json().get(changes_details_key)
+    logger.debug(f"{changes_details_key}: %s", changes_details)
+
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(
+        execute_coroutines(notifications, changes_details, {"start": start, "end": end})
+    )
+    logger.debug("Notifications results: %s", result)
+    return True
 
 
 @task
@@ -101,27 +141,40 @@ def make_notifications_chunks(**context):
         )
 
         for idx, notification in enumerate(project_notifications):
-            logger.info("[%s] Parsing %s change(s) for notification %s", project, str(len(changes)), str(idx+1))
+            logger.info(
+                "[%s] Parsing %s change(s) for notification %s",
+                project,
+                str(len(changes)),
+                str(idx + 1),
+            )
 
             # Check if notification rules keep changes or not
             filtered_changes = filter_changes(notification, changes, changes_details)
-            logger.info("[%s] Found %s change(s) matching the notification rules", project, str(len(filtered_changes)))
+            logger.info(
+                "[%s] Found %s change(s) matching the notification rules",
+                project,
+                str(len(filtered_changes)),
+            )
             if not filtered_changes:
                 continue
 
             # Changes have to be sent to the notification
-            sending_notifications.append({
-                "notification": notification,
-                "changes": filtered_changes
-            })
+            sending_notifications.append(
+                {"notification": notification, "changes": filtered_changes}
+            )
 
     logger.info("Found %s notifications to send", str(len(sending_notifications)))
 
-    # We can't create more than `max_map_length` mapped tasks,
-    # so we distribute the projects into chunks.
-    max_map_length = conf.getint("core", "max_map_length")
-    chunks = get_chunks(sending_notifications, max_map_length)
-    logger.debug("Built %s chunks with max_map_length of %s", str(len(chunks)), str(max_map_length))
+    # Distribute the notifications between mapped tasks
+    max_notifications_map_length = conf.getint(
+        "opencve", "max_notifications_map_length"
+    )
+    chunks = get_chunks(sending_notifications, max_notifications_map_length)
+    logger.debug(
+        "Built %s chunks with max_notifications_map_length of %s",
+        str(len(chunks)),
+        str(max_notifications_map_length),
+    )
     return chunks
 
 
@@ -154,4 +207,3 @@ def filter_changes(notification, changes, changes_details):
         reduced_changes.append(change)
 
     return reduced_changes
-

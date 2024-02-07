@@ -27,20 +27,20 @@ from users.views import CustomLoginView, register
 
 # API Router
 router = routers.SimpleRouter()
-router.register(r'cve', CveViewSet, basename="cve")
-router.register(r'projects', ProjectViewSet, basename="project")
-router.register(r'changes', ChangeViewSet, basename="change")
-router.register(r'vendors', VendorViewSet, basename="vendor")
-router.register(r'weaknesses', WeaknessViewSet, basename="weakness")
+router.register(r"cve", CveViewSet, basename="cve")
+router.register(r"projects", ProjectViewSet, basename="project")
+router.register(r"changes", ChangeViewSet, basename="change")
+router.register(r"vendors", VendorViewSet, basename="vendor")
+router.register(r"weaknesses", WeaknessViewSet, basename="weakness")
 
-projects_router = routers.NestedSimpleRouter(router, r'projects', lookup='project')
-projects_router.register(r'reports', ReportViewSet, basename='project-reports')
+projects_router = routers.NestedSimpleRouter(router, r"projects", lookup="project")
+projects_router.register(r"reports", ReportViewSet, basename="project-reports")
 
-changes_router = routers.NestedSimpleRouter(router, r'changes', lookup='change')
-#changes_router.register(r'events', EventViewSet, basename='change-events')
+changes_router = routers.NestedSimpleRouter(router, r"changes", lookup="change")
+# changes_router.register(r'events', EventViewSet, basename='change-events')
 
-vendors_router = routers.NestedSimpleRouter(router, r'vendors', lookup='vendor')
-vendors_router.register(r'products', ProductViewSet, basename='vendor-products')
+vendors_router = routers.NestedSimpleRouter(router, r"vendors", lookup="vendor")
+vendors_router.register(r"products", ProductViewSet, basename="vendor-products")
 
 
 urlpatterns = [
@@ -53,8 +53,7 @@ urlpatterns = [
     path("account/", include("users.urls")),
     path("login/", CustomLoginView.as_view(), name="login"),
     path("admin/", admin.site.urls),
-    path('hijack/', include('hijack.urls')),
-
+    path("hijack/", include("hijack.urls")),
     # API routes
     path("api/", include(router.urls)),
     path("api/", include(projects_router.urls)),

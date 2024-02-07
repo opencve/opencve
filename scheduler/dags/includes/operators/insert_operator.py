@@ -5,7 +5,11 @@ from airflow.exceptions import AirflowException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.models.baseoperator import BaseOperator
 
-from includes.constants import KB_LOCAL_REPO, CHANGE_UPSERT_PROCEDURE, CVE_UPSERT_PROCEDURE
+from includes.constants import (
+    KB_LOCAL_REPO,
+    CHANGE_UPSERT_PROCEDURE,
+    CVE_UPSERT_PROCEDURE,
+)
 from includes.handler import DiffHandler
 from includes.utils import format_cve_payload, list_commits
 
@@ -38,7 +42,9 @@ class ProcessKbOperator(BaseOperator):
 
         for diff in commit.parents[0].diff(commit):
             handler = DiffHandler(commit, diff)
-            self.log.info(f"Checking file %s (%s)", handler.path, handler.diff.change_type)
+            self.log.info(
+                f"Checking file %s (%s)", handler.path, handler.diff.change_type
+            )
 
             if handler.diff.change_type == "D":
                 continue
@@ -62,7 +68,7 @@ class ProcessKbOperator(BaseOperator):
         commits = list_commits(
             logger=self.log,
             start=context.get("data_interval_start"),
-            end=context.get("data_interval_end")
+            end=context.get("data_interval_end"),
         )
 
         for commit in commits:
@@ -91,12 +97,17 @@ class ProcessKbOperator(BaseOperator):
                 # Launch the CVE procedure before launching the Change one
                 if cve_id not in processed_cves:
 
-                    cve_kb = KB_LOCAL_REPO / cve_id.split("-")[1] / cve_id / f"{cve_id}.json"
+                    cve_kb = (
+                        KB_LOCAL_REPO / cve_id.split("-")[1] / cve_id / f"{cve_id}.json"
+                    )
                     with open(cve_kb) as f:
                         cve_data = json.load(f)
 
                     self.log.info(f"Inserting %s data", cve_id)
-                    self.hook.run(sql=CVE_UPSERT_PROCEDURE, parameters=format_cve_payload(cve_data))
+                    self.hook.run(
+                        sql=CVE_UPSERT_PROCEDURE,
+                        parameters=format_cve_payload(cve_data),
+                    )
 
                 # Create the change and its events
                 for payload in payloads:

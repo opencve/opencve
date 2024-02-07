@@ -44,7 +44,9 @@ class ProjectForm(forms.ModelForm):
 
         # Check if the project already exists for this user
         if self.instance.name != name:
-            if Project.objects.filter(organization=self.request.user_organization, name=name).exists():
+            if Project.objects.filter(
+                organization=self.request.user_organization, name=name
+            ).exists():
                 raise forms.ValidationError("This project already exists.")
 
         return name

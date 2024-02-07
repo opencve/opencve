@@ -22,7 +22,8 @@ class Change(BaseModel):
         db_table = "opencve_changes"
         constraints = [
             models.UniqueConstraint(
-                fields=["created_at", "cve_id", "commit"], name="ix_unique_cve_commit_created_at"
+                fields=["created_at", "cve_id", "commit"],
+                name="ix_unique_cve_commit_created_at",
             )
         ]
 
@@ -55,7 +56,9 @@ class Report(BaseModel):
     seen = models.BooleanField(default=False)
 
     day = models.DateField(default=timezone.now)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="reports")
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="reports"
+    )
     changes = models.ManyToManyField(Change)
 
     class Meta:

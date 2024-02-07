@@ -3,7 +3,14 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.shortcuts import get_object_or_404, redirect
-from django.views.generic import CreateView, ListView, UpdateView, DeleteView, FormView, View
+from django.views.generic import (
+    CreateView,
+    ListView,
+    UpdateView,
+    DeleteView,
+    FormView,
+    View,
+)
 from django.views.generic.detail import SingleObjectMixin
 from django.urls import reverse, reverse_lazy
 from django.utils.crypto import get_random_string
@@ -52,7 +59,11 @@ class OrganizationCreateView(
 
 
 class OrganizationEditView(
-    LoginRequiredMixin, OrganizationIsOwnerMixin, SuccessMessageMixin, RequestViewMixin, UpdateView
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    UpdateView,
 ):
     model = Organization
     form_class = OrganizationForm
@@ -77,7 +88,9 @@ class OrganizationEditView(
         return reverse("edit_organization", kwargs={"name": self.object.name})
 
 
-class OrganizationDeleteView(LoginRequiredMixin, OrganizationIsOwnerMixin, SuccessMessageMixin, DeleteView):
+class OrganizationDeleteView(
+    LoginRequiredMixin, OrganizationIsOwnerMixin, SuccessMessageMixin, DeleteView
+):
     model = Organization
     slug_field = "name"
     slug_url_kwarg = "name"
@@ -86,7 +99,13 @@ class OrganizationDeleteView(LoginRequiredMixin, OrganizationIsOwnerMixin, Succe
     success_url = reverse_lazy("list_organizations")
 
 
-class OrganizationMembersFormView(LoginRequiredMixin, OrganizationIsOwnerMixin, SingleObjectMixin, SuccessMessageMixin, FormView):
+class OrganizationMembersFormView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    SingleObjectMixin,
+    SuccessMessageMixin,
+    FormView,
+):
     http_method_names = ["post"]
     form_class = MembershipForm
     model = Organization
@@ -143,7 +162,9 @@ class OrganizationInvitationView(LoginRequiredMixin, SingleObjectMixin, View):
         return redirect("list_organizations")
 
     def get_object(self, queryset=None):
-        return get_object_or_404(self.model, user=self.request.user, key=self.kwargs["key"].lower())
+        return get_object_or_404(
+            self.model, user=self.request.user, key=self.kwargs["key"].lower()
+        )
 
 
 def change_organization(request):
@@ -160,7 +181,9 @@ def change_organization(request):
         return JsonResponse({"status": "error"})
 
     # Check if the user is member of the organization
-    organization = Organization.objects.filter(members=request.user, name=organization_name).first()
+    organization = Organization.objects.filter(
+        members=request.user, name=organization_name
+    ).first()
     if not organization:
         return JsonResponse({"status": "error"})
 

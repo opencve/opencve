@@ -115,8 +115,9 @@ def get_change_details(records):
             "change_path": r[2],
             "cve_vendors": r[3],
             "cve_id": r[4],
-            "cve_metrics": r[5]
-        } for r in records
+            "cve_metrics": r[5],
+        }
+        for r in records
     }
 
 
@@ -170,10 +171,9 @@ def get_project_notifications(records):
         project_id, notif_type, notif_conf = notification
         if project_id not in projects_notifications:
             projects_notifications[project_id] = []
-        projects_notifications[project_id].append({
-            "type": notif_type,
-            "conf": notif_conf
-        })
+        projects_notifications[project_id].append(
+            {"type": notif_type, "conf": notif_conf}
+        )
     return projects_notifications
 
 

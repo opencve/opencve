@@ -28,25 +28,14 @@ from users.forms import (
 )
 from users.models import CveTag, UserTag
 from opencve.utils import is_valid_uuid
+from opencve.mixins import RequestViewMixin
 
 
 def account(request):
     return redirect("projects")
 
 
-class RequestViewMixin:
-    def get_form_kwargs(self):
-        """
-        Inject the current request (useful to check the authenticated
-        user in the clean* functions for instance).
-        """
-        kwargs = super(RequestViewMixin, self).get_form_kwargs()
-        kwargs["request"] = self.request
-        return kwargs
-
-
 # TAGS views
-
 
 class TagsListView(LoginRequiredMixin, ListView):
     context_object_name = "tags"

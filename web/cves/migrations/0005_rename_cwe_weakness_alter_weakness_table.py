@@ -4,18 +4,17 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('cves', '0004_remove_cve_ix_cves_cwes_remove_cve_ix_cves_summary_and_more'),
+        ("cves", "0004_remove_cve_ix_cves_cwes_remove_cve_ix_cves_summary_and_more"),
     ]
 
     operations = [
         migrations.RenameModel(
-            old_name='Cwe',
-            new_name='Weakness',
+            old_name="Cwe",
+            new_name="Weakness",
         ),
         migrations.AlterModelTable(
-            name='weakness',
-            table='opencve_weaknesses',
+            name="weakness",
+            table="opencve_weaknesses",
         ),
     ]

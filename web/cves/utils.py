@@ -56,6 +56,7 @@ def humanize(s):
 
 # TODO: these utils are also in scheduler. Merge the code.
 
+
 def vendors_conf_to_dict(conf):
     """
     This function takes an object, extracts its CPE uris and transforms them into
@@ -106,7 +107,10 @@ def weaknesses_to_flat(weaknesses=None):
 
 def get_metric_from_vector(vector, metric=None):
     metrics = vector.split("/")
-    if metrics[0] in ("CVSS:3.1", "CVSS:3.0",):
+    if metrics[0] in (
+        "CVSS:3.1",
+        "CVSS:3.0",
+    ):
         version = "v3"
         metrics = metrics[1:]
     else:
@@ -125,9 +129,6 @@ def get_metric_from_vector(vector, metric=None):
         weight = CVSS_VECTORS_MAPPING[version][metric][metric_value]["weight"]
         text = CVSS_VECTORS_MAPPING[version][metric][metric_value]["label"]
 
-        data.update({
-            "weight": weight,
-            "text": text
-        })
+        data.update({"weight": weight, "text": text})
 
     return data

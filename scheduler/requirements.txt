@@ -6,3 +6,4 @@ gitpython==3.1.40
 more-itertools==10.1.0
 nested-lookup==0.2.25
 psycopg2-binary==2.9.9
+aiosmtplib==3.0.1

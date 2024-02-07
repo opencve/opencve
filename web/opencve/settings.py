@@ -40,14 +40,12 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.postgres",
     "django_extensions",
-
     "crispy_forms",
     "crispy_bootstrap3",
     "debug_toolbar",
     "hijack",
     "hijack.contrib.admin",
     "rest_framework",
-
     "changes",
     "cves",
     "organizations",
@@ -88,9 +86,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "opencve.wsgi.application"
 
-AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',
-)
+AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
 
 
 # Database
@@ -181,14 +177,12 @@ INTERNAL_IPS = ["127.0.0.1"]
 
 REST_FRAMEWORK = {
     # TODO: don't allow anonymous
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly"
     ],
-    "DEFAULT_RENDERER_CLASSES": [
-        "rest_framework.renderers.JSONRenderer"
-    ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
 }
 
 ### OpenCVE settings ###

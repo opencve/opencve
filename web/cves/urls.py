@@ -1,6 +1,12 @@
 from django.urls import path
 
-from cves.views import CveDetailView, CveListView, SubscriptionView, VendorListView, WeaknessListView
+from cves.views import (
+    CveDetailView,
+    CveListView,
+    SubscriptionView,
+    VendorListView,
+    WeaknessListView,
+)
 
 urlpatterns = [
     path("cve/", CveListView.as_view(), name="cves"),

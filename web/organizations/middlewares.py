@@ -10,11 +10,15 @@ class OrganizationMiddleware:
             return self.get_response(request)
 
         # List all memberships associated to the user
-        memberships = Membership.objects.filter(
-            user=request.user,
-            role__in=[Membership.OWNER, Membership.MEMBER],
-            date_joined__isnull=False,
-        ).order_by("organization__name").all()
+        memberships = (
+            Membership.objects.filter(
+                user=request.user,
+                role__in=[Membership.OWNER, Membership.MEMBER],
+                date_joined__isnull=False,
+            )
+            .order_by("organization__name")
+            .all()
+        )
         organizations = [m.organization for m in memberships]
 
         if not organizations:
@@ -26,7 +30,9 @@ class OrganizationMiddleware:
         organization = None
         organization_id = request.session.get("user_organization_id", None)
         if organization_id:
-            filtered_organizations = [o for o in organizations if str(o.id) == organization_id]
+            filtered_organizations = [
+                o for o in organizations if str(o.id) == organization_id
+            ]
             if filtered_organizations:
                 organization = filtered_organizations[0]
 

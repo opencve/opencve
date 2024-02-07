@@ -63,7 +63,10 @@ class Cve(BaseModel):
             if not mitre_data:
                 self._mitre_json = {}
             else:
-                mitre_path = pathlib.Path(settings.MITRE_REPO_PATH) / mitre_data["mitre_repo_path"]
+                mitre_path = (
+                    pathlib.Path(settings.MITRE_REPO_PATH)
+                    / mitre_data["mitre_repo_path"]
+                )
                 with open(mitre_path) as f:
                     self._mitre_json = json.load(f)
         return self._mitre_json
@@ -75,7 +78,9 @@ class Cve(BaseModel):
             if not nvd_data:
                 self._nvd_json = {}
             else:
-                nvd_path = pathlib.Path(settings.NVD_REPO_PATH) / nvd_data["nvd_repo_path"]
+                nvd_path = (
+                    pathlib.Path(settings.NVD_REPO_PATH) / nvd_data["nvd_repo_path"]
+                )
                 with open(nvd_path) as f:
                     self._nvd_json = json.load(f)
         return self._nvd_json
