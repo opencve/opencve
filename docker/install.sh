@@ -36,7 +36,6 @@ clone-repositories() {
     echo "--> Cloning OpenCVE needed repositories"
     su - airflow -c 'git clone https://github.com/opencve/opencve-kb.git ~/repositories/opencve-kb'
     su - airflow -c 'git clone https://github.com/opencve/opencve-nvd.git ~/repositories/opencve-nvd'
-    su - airflow -c 'git clone https://github.com/opencve/opencve-advisories.git ~/repositories/opencve-advisories'
     su - airflow -c 'git clone https://github.com/CVEProject/cvelistV5.git ~/repositories/cvelistV5'
 
 }
@@ -44,14 +43,14 @@ clone-repositories() {
 add-config-files() {
 
     echo "--> Adding airflow config file"
-    cp ./conf/airflow.cfg /home/airflow/airflow.cfg
+    cp ../scheduler/airflow.cfg /home/airflow/airflow.cfg
     chown airflow:airflow /home/airflow/airflow.cfg
 
     echo "--> Adding Django settings file"
     cp ../web/opencve/settings.py ./settings.py
 
     echo "--> Copying .env file for docker compose"
-    cp ./conf/env.sample ./.env
+    cp ./samples/env.sample ./.env
 
     echo "Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack"
 
@@ -63,29 +62,32 @@ start-docker-stack() {
     docker compose up -d
 
     echo "--> Adding Airflow connections"
-    docker exec -it opencve-pub-scheduler airflow connections add opencve_postgres --conn-uri postgres://opencve:opencve@postgres:5432/opencve
-    docker exec -it opencve-pub-scheduler airflow connections add opencve_redis --conn-uri redis://redis:6379 --conn-extra '{"db": 3}'
-    docker exec -it opencve-pub-scheduler airflow connections list
+    docker exec -it airflow-scheduler airflow connections add opencve_postgres --conn-uri postgres://opencve:opencve@postgres:5432/opencve
+    docker exec -it airflow-scheduler airflow connections add opencve_redis --conn-uri redis://redis:6379 --conn-extra '{"db": 3}'
+    docker exec -it airflow-scheduler airflow connections list
+
+    echo "--> Collecting static files from Django webserver"
+    docker exec -it opencve-webserver python manage.py collectstatic
 
     echo "--> Django webserver DB migrate"
-    docker exec -it webserver python manage.py migrate
+    docker exec -it opencve-webserver python manage.py migrate
 
     echo "--> Creating superuser on OpenCVE"
-    docker exec -it webserver python manage.py createsuperuser
+    docker exec -it opencve-webserver python manage.py createsuperuser
 
 }
 
 import-opencve-kb() {
 
     echo "--> Importing OpenCVE KB inside the database, this can take 15 to 30min."
-    docker exec -it webserver python manage.py importdb
+    docker exec -it opencve-webserver python manage.py importdb
 
 }
 
 start-opencve-dag() {
 
     echo "--> Unpausing the dag"
-    docker exec -it opencve-pub-scheduler airflow dags unpause opencve
+    docker exec -it airflow-scheduler airflow dags unpause opencve
 
 }
 

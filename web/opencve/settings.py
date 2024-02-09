@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-8mjeblz2*z@_n&zn^xpo)(id8f90%@elj#t5dg)59hd69(553a"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["*"]
 
@@ -152,6 +152,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = "/app/static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -190,7 +191,7 @@ REST_FRAMEWORK = {
 COUNT_EXCERPT = 3
 
 # Scheduler configuration
-KB_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-kb"
-MITRE_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/cvelistV5"
-NVD_REPO_PATH = "/Users/ncrocfer/Dev/opencve-project/opencve-nvd"
-ADVISORIES_REPO_PATH = "/app/repositories/opencve-advisories"
+KB_REPO_PATH = "/app/repositories/opencve-kb"
+MITRE_REPO_PATH = "/app/repositories/cvelistV5"
+NVD_REPO_PATH = "/app/repositories/opencve-nvd"
+

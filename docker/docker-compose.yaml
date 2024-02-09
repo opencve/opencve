@@ -1,8 +1,8 @@
 # OPENCVE DOCKER COMPOSE
 ---
 version: '3.8'
-x-airflow-common:
-  &airflow-common
+name: opencve
+x-airflow-common: &airflow-common
   build:
     context: ../scheduler
     dockerfile: Dockerfile
@@ -17,11 +17,13 @@ x-airflow-common:
     &airflow-common-depends-on
     redis:
       condition: service_healthy
+    postgres:
+      condition: service_healthy
 
 services:
   airflow-webserver:
     <<: *airflow-common
-    container_name: opencve-airflow-webserver
+    container_name: airflow-webserver
     command: webserver
     ports:
       - "${AIRFLOW_WEBSERVER_PORT:-8080}:8080"
@@ -38,7 +40,7 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
-    container_name: opencve-airflow-scheduler
+    container_name: airflow-scheduler
     command: scheduler
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
@@ -53,7 +55,7 @@ services:
 
   airflow-worker:
     <<: *airflow-common
-    container_name: opencve-airflow-worker
+    container_name: airflow-worker
     command: celery worker
     healthcheck:
       test:
@@ -74,6 +76,7 @@ services:
 
   airflow-init:
     <<: *airflow-common
+    container_name: airflow-init
     entrypoint: /bin/bash
     # yamllint disable rule:line-length
     command:
@@ -86,7 +89,7 @@ services:
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
     user: "0:0"
 
-  django-webserver:
+  opencve-webserver:
     container_name: opencve-webserver
     build:
       context: ../web/
@@ -94,18 +97,25 @@ services:
         - OPENCVE_REPOSITORY=${OPENCVE_REPOSITORY}
         - OPENCVE_VERSION=${OPENCVE_VERSION}
       dockerfile: Dockerfile
-    ports:
-      - ${OPENCVE_PORT:-8000}:8000
     volumes:
       - ${AIRFLOW_DIR:-.}/repositories/:/app/repositories/
       - ./settings.py:/app/opencve/web/opencve/settings.py:ro
+      - staticfiles:/app/static/
+    restart: on-failure
+
+  nginx:
+    container_name: nginx
+    image: nginx:bookworm
+    ports:
+       - "${OPENCVE_PORT:-80}:80"
+    volumes:
+      - ./opencve.conf.template:/etc/nginx/templates/opencve.conf.template:ro
+      - staticfiles:/var/www/opencve/static/:ro
     restart: on-failure
 
   redis:
-    container_name: opencve-redis
+    container_name: redis
     image: redis/redis-stack:latest
-    ports:
-       - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
        test: ["CMD", "redis-cli", "ping"]
        interval: 60s
@@ -115,17 +125,13 @@ services:
     restart: on-failure
 
   postgres:
-    container_name: opencve-postgres
-    image: postgres:15
+    container_name: postgres
+    image: postgres:${POSTGRES_VERSION:-15}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-opencve}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opencve}
       POSTGRES_DB: opencve
       PGDATA: /var/lib/postgreqsql/data
-    expose:
-      - 5432
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     restart: on-failure
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "$POSTGRES_USER"]
@@ -138,4 +144,5 @@ services:
 
 volumes:
     postgres-db:
+    staticfiles:
 
