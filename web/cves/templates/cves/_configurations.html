@@ -1,0 +1,75 @@
+{% load opencve_extras %}
+
+<div class="nav-tabs-custom nav-tabs-primary">
+    <ul class="nav nav-tabs">
+        <li class="active">
+            <a href="#vendors" data-toggle="tab">Vendors & Products</a>
+        </li>
+        <li>
+            <a href="#configuration" data-toggle="tab">CPE Configurations</a>
+        </li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane active" id="vendors">
+            {% if cve.nvd_json.configurations %}
+            <table class="table table-striped table-bordered">
+                <thead>
+                <th>Vendors</th>
+                <th>Products</th>
+                </thead>
+                <tbody>
+                {% for vendor, products in vendors.items %}
+                <tr>
+                    <td>{{ vendor | humanize }}</td>
+                    <td>
+                        <ul>
+                            {% for product in products %}
+                            <li>{{ product | humanize }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </table>
+            {% else %}
+            <p class="alert alert-info">No data.</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane" id="configuration">
+            {% if cve.nvd_json.configurations %}
+
+            {% for conf in cve.nvd_json.configurations %}
+            <p><strong>Configuration {{ forloop.counter }}</strong> <a class="pointer config-toggle"
+                                                                       id="config-{{ forloop.counter }}">[-]</a></p>
+            <table class="table table-configuration" id="config-{{ forloop.counter }}-table">
+                <tr>
+                    {% if conf.operator == "AND" %}
+                    <td class="col-md-1 rowspaned">AND</td>
+                    {% endif %}
+                    <td class="col-md-11 and">
+                        {% for node in conf.nodes %}
+                        <table class="table table-bordered no-margin-bottom">
+                            {% for cpe in node.cpeMatch %}
+                            <tr>
+                                {% if forloop.counter == 1 and node.cpeMatch|length > 1 %}
+                                <td class="col-md-1 rowspaned" rowspan="{{ node.cpeMatch|length }}">OR</td>
+                                {% endif %}
+                                <td>{{ cpe.criteria }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                        {% endfor %}
+                    </td>
+                </tr>
+            </table>
+            <hr/>
+            {% endfor %}
+
+            {% else %}
+            <p class="alert alert-info">No data.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

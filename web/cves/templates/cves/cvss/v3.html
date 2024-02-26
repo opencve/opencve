@@ -1,0 +1,90 @@
+{% load opencve_extras %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Attack Vector
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'AV' %}">{% metric_text_from_vector cvss.vector 'AV' %}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Attack Complexity
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'AC' %}">{% metric_text_from_vector cvss.vector 'AC' %}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Privileges Required
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'PR' %}">{% metric_text_from_vector cvss.vector 'PR' %}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Scope
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'S' %}">{% metric_text_from_vector cvss.vector 'S' %}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Confidentiality Impact
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'C' %}">{% metric_text_from_vector cvss.vector 'C' %}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Integrity Impact
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'I' %}">{% metric_text_from_vector cvss.vector 'I' %}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Availability Impact
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'A' %}">{% metric_text_from_vector cvss.vector 'A' %}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        User Interaction
+                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'UI' %}">{% metric_text_from_vector cvss.vector 'UI' %}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <canvas class="cvss-radar" data-chart="{% cvss_chart_data cvss.vector cvss.score %}"></canvas>
+    </div>
+</div>

@@ -1,0 +1,31 @@
+<div class="box box-primary">
+    <div class="box-header">
+        <div class="box-title">References</div>
+        <div class="box-tools pull-right">
+            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+        </div>
+    </div>
+    <div class="box-body">
+        {% if cve.nvd_json.references %}
+        <table class="table table-bordered">
+            <thead>
+                <th>Link</th>
+                <th>Resource</th>
+            </thead>
+            <tbody>
+            {% for ref in cve.nvd_json.references %}
+            <tr>
+                <td class="col-md-8 td-ellipsis"><a href="{{ ref.url }}" target="_blank">{{ ref.url }}</a>
+                </td>
+                <td class="col-md-4">{% for tag in ref.tags %}<span class="badge bg-info">{{ tag }}</span>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="alert alert-info">No reference.</p>
+        {% endif %}
+    </div>
+</div>

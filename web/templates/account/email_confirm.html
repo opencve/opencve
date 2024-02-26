@@ -1,0 +1,36 @@
+{% extends 'users/base.html' %}
+{% load crispy_forms_tags %}
+{% load account %}
+{% load allauth %}
+
+{% block title %}Confirm Email Address - {{ block.super }}{% endblock %}
+
+{% block header %}Confirm Email Address{% endblock %}
+
+{% block content%}
+
+{% if confirmation %}
+    {% user_display confirmation.email_address.user as user_display %}
+    {% if can_confirm %}
+        Click on this link to confirm the OpenCVE account of <strong>{{ user_display }}</strong> (<a href="mailto:{{ email }}">{{ email }}</a>).
+
+        {% url 'account_confirm_email' confirmation.key as action_url %}
+        {% element form method="post" action=action_url %}
+            {% slot actions %}
+                {% csrf_token %}
+                <hr />
+                <div class="text-center">
+                    <a href="{% url 'home' %}" class="btn btn-default">Cancel</a>
+                    <input type="submit" class="btn btn-primary" value="Confirm">
+                </div>
+            {% endslot %}
+        {% endelement %}
+    {% else %}
+        Unable to confirm {{ email }} because it is already confirmed by a different account.
+    {% endif %}
+
+{% else %}
+    This email confirmation link expired or is invalid.
+{% endif %}
+
+{% endblock %}

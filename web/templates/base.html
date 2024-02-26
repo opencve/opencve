@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}OpenCVE{% endblock %}</title>
+    <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/font-awesome.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/spectrum.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/select2.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/AdminLTE.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/skin-blue.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/custom.css' %}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
+    </head>
+    <body class="hold-transition skin-blue skin-opencve sidebar-mini">
+    {% load opencve_extras %}
+
+        <div class="wrapper">
+            <header class="main-header">
+
+                <a href="{% url 'home' %}" class="logo">
+                    <span class="logo-mini"><img src="{% static 'img/logo_white.png' %}" alt="Logo"/></span>
+                    <span class="logo-lg"><img src="{% static 'img/logo_white.svg' %}" alt="Logo"/></span>
+                </a>
+
+                <nav class="navbar navbar-static-top">
+                    <div class="navbar-title">{% block navbar_title %}{% endblock %}</div>
+
+                    <div class="navbar-custom-menu">
+                        <ul class="nav navbar-nav">
+                            {% if user.is_authenticated %}
+                            <li class="user user-menu">
+                                <a href="{% url 'settings_profile' %}">
+                                    <img src="{{ user.email | gravatar_url:30 }}" class="user-image" alt="User Image">
+                                    <span class="hidden-xs">{{ user.username }}</span>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="hidden-xs">
+                                <a href="{% url 'account_login' %}">Sign in</a>
+                            </li>
+                            <li class="hidden-xs">
+                                <a href="{% url 'account_signup' %}">Register</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </nav>
+            </header>
+
+            <aside class="main-sidebar">
+                <section class="sidebar">
+                    {% if user.is_authenticated and request.user_organization %}
+                    <form action="#" method="get" class="sidebar-form">
+                        <select class="form-control select2-organizations" name="organization">
+                            {% for orga in request.user_organizations %}
+                            <option {% if request.user_organization == orga %} selected="selected" {% endif %} value="{{ orga.name }}">{{ orga.name }}</option>
+                            {% endfor  %}
+                        </select>
+                    </form>
+                    {% endif %}
+                    <ul class="sidebar-menu" data-widget="tree">
+                        <li class="header">MAIN NAVIGATION</li>
+                        {% if user.is_authenticated %}
+                        <li class="{% is_active_link 'home' %}"><a href="{% url 'home' %}"><i class="fa fa-home"></i><span>Dashboard</span></a></li>
+                        {% if request.user_organization %}
+                        <li class="treeview {% is_active_link 'list_projects' 'create_project' 'edit_project' 'delete_project' 'project' 'notifications' 'create_notification' 'edit_notification' 'reports' 'report' 'subscriptions' 'project_vulnerabilities' %}">
+                            <a href="#">
+                                <i class="fa fa-rocket"></i>
+                                <span>Projects</span>
+                                <span class="pull-right-container">
+                                    <i class="fa fa-angle-left pull-right"></i>
+                                </span>
+                            </a>
+                            <ul class="treeview-menu">
+                                {% for project in request.user_organization.projects.all|dictsort:"name" %}
+                                <li class="{% is_active_project_link project.name %}"><a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}"><i class="fa fa-circle-o"></i> {{ project.name }}</a></li>
+                                {% endfor %}
+                                <li class="{% is_active_link 'list_projects' %}"><a href="{% url 'list_projects' org_name=request.user_organization.name %}"><i class="fa fa-edit"></i> Manage Projects</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                        {% endif %}
+                        <li class="{% is_active_link 'cves' 'cve' 'change' %}"><a href="{% url 'cves' %}"><i class="fa fa-shield"></i> <span>Vulnerabilities</span></a></li>
+                        <li class="{% is_active_link 'vendors' 'subscribe' %}"><a href="{% url 'vendors' %}"><i class="fa fa-th-list"></i> <span> Vendors & Products</span></a></li>
+                        <li class="{% is_active_link 'weaknesses' %}"><a href="{% url 'weaknesses' %}"><i class="fa fa-sitemap"></i> <span> Weaknesses</span></a></li>
+                        {% if user.is_authenticated %}
+                        <li class="header">SETTINGS</li>
+                        <li class="{% is_active_link 'list_organizations' 'create_organization' 'edit_organization' 'delete_organization' %}"><a href="{% url 'list_organizations' %}"><i class="fa fa-group"></i> <span> Organizations</span></a></li>
+                        <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}"><a href="{% url 'tags' %}"><i class="fa fa-tags"></i> <span> Tags</span></a></li>
+                        <li class="{% is_active_link 'settings_profile' 'settings_password' 'account_email' %}"><a href="{% url 'settings_profile' %}"><i class="fa fa-user"></i> <span> Profile</span></a></li>
+                        {% if user.is_superuser %}
+                        <li><a href="{% url 'admin:index' %}"><i class="fa fa-gear"></i> <span> Admin</span></a></li>
+                        {% endif %}
+                        <li><a href="{% url 'account_logout' %}"><i class="fa fa-sign-out"></i> <span> Logout</span></a></li>
+                        {% endif %}
+                    </ul>
+                </section>
+            </aside>
+
+            <div class="content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+
+            <footer class="main-footer">
+                <strong>Copyright &copy; 2023 OpenCVE.</strong>
+            </footer>
+        </div>
+
+        <script type="text/javascript">
+            const SUBSCRIBE_URL = "{% url 'subscribe' %}";
+            const CHANGE_ORGANIZATION_URL = "{% url 'change_organization' %}";
+        </script>
+        <script src="{% static 'js/jquery.min.js' %}" type="text/javascript"></script>
+        <script src="{% static 'js/bootstrap.min.js' %}" type="text/javascript"></script>
+        <script src="{% static 'js/adminlte.min.js' %}" type="text/javascript"></script>
+        <script src="{% static 'js/jquery.rainbowJSON.js' %}" type="text/javascript"></script>
+        <script src="{% static 'js/spectrum.min.js' %}" type="text/javascript"></script>
+        <script src="{% static 'js/select2.full.min.js' %}" type="text/javascript"></script>
+        <script src="{% static 'js/chart.min.js' %}" type="text/javascript"></script>
+        <script src="{% static 'js/custom.js' %}" type="text/javascript"></script>
+    </body>
+</html>

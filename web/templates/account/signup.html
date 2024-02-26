@@ -1,0 +1,17 @@
+{% extends 'account/base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}Join OpenCVE - {{ block.super }}{% endblock %}
+
+{% block header %}Register a new membership{% endblock %}
+
+{% block content%}
+{% crispy form %}
+{% endblock %}
+
+{% block links %}
+<hr />
+<span>Already have an account?</span>
+<a href="{% url 'account_login' %}">Sign in</a>
+{% endblock %}

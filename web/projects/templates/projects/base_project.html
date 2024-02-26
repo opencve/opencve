@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+{% load opencve_extras %}
+
+{% block navbar_title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-sm-12">
+        <div class="nav-tabs-custom nav-tabs-profile nav-tabs-primary">
+            <ul class="nav nav-tabs">
+                <li class="{% is_active_link 'project' %}">
+                    <a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}">Dashboard</a>
+                </li>
+                <li class="{% is_active_link 'project_vulnerabilities' %}">
+                    <a href="{% url 'project_vulnerabilities' org_name=request.user_organization.name project_name=project.name %}">Vulnerabilities</a>
+                </li>
+                <li class="{% is_active_link 'reports' 'report' %}">
+                    <a href="{% url 'reports' org_name=request.user_organization.name project_name=project.name %}">Reports</a>
+                </li>
+                <li class="{% is_active_link 'subscriptions' %}">
+                    <a href="{% url 'subscriptions' org_name=request.user_organization.name project_name=project.name %}">Subscriptions</a>
+                </li>
+                <li class="{% is_active_link 'notifications' 'create_notification' 'edit_notification' %}">
+                    <a href="{% url 'notifications' org_name=request.user_organization.name project_name=project.name %}">Notifications</a>
+                </li>
+                <li class="pull-right">
+                    <a href="{% url 'edit_project' org_name=request.user_organization.name project_name=project.name %}">
+                        <i class="fa fa-gear"></i>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="row">
+        <div class="col-md-12">
+            {% include "messages.html" %}
+            {% block content_project %}{% endblock %}
+        </div>
+    </div>
+</section>
+
+{% endblock %}
