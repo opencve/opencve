@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+
+{% block title %}{{ change.cve.cve_id }} - {{ block.super }}{% endblock %}
+
+{% block navbar_title%}{{ change.cve.cve_id }} - <small><i>Change {{ change.created_at|date:'d b Y, h:i' }}</i></small>{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">List of Events</div>
+                </div>
+                <div class="box-body">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <th class="col-md-1">Type</th>
+                            <th class="col-md-5">Values Removed</th>
+                            <th class="col-md-5">Values Added</th>
+                        </thead>
+                        <tbody>
+
+                        {% for event in change.events %}
+                            {% with template_name="changes/events/"|add:event.type|add:"_details.html" %}
+                            {% include template_name %}
+                            {% endwith %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">KB Diff</div>
+                </div>
+                <div class="box-body">
+                    {{ diff|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

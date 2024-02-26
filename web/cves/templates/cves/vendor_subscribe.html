@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+
+{% block title %}Vendors & Products subscriptions - {{ block.super }}{% endblock %}
+
+{% block navbar_title%}Vendors & Products{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+        <div class='col-md-8 col-md-offset-2'>
+            <div class="callout callout-info">
+                <p>Subscriptions are managed per <a href="{% url 'list_projects' org_name=request.user_organization.name %}">project</a>. Choose the ones you want to subscribe the {{ object_type }} <strong>{{ object.name | humanize }}</strong>.</p>
+            </div>
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Choose the subscribed projects</h3>
+                </div>
+                <div class="box-body subscribed-projects">
+                    {% if projects %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped">
+                            <tbody>
+                            {% for project in projects %}
+                            <tr>
+                                <td class="col-md-3">{{ project.name }} <a href="{% url 'subscriptions' org_name=request.user_organization.name project_name=project.name %}"><i class="fa fa-search"></i></a></td>
+                                <td class="col-md-8">{{ project.description|default:'' }}</td>
+                                <td class="col-md-1">
+                                    {% if object_type == 'vendor' and object_name in project.subscriptions.vendors %}
+                                        <button class="btn btn-danger btn-sm subscribe" id="unsubscribe_{{ object_type }}_{{ object.id }}_{{ project.id }}" type="button"><i class="fa fa-bell-o"></i> Unsubscribe</button>
+                                    {% elif object_type == 'product' and object_name in project.subscriptions.products %}
+                                        <button class="btn btn-danger btn-sm subscribe" id="unsubscribe_{{ object_type }}_{{ object.id }}_{{ project.id }}" type="button"><i class="fa fa-bell-o"></i> Unsubscribe</button>
+                                    {% else %}
+                                    <button class="btn btn-default btn-sm subscribe" id="subscribe_{{ object_type }}_{{ object.id }}_{{ project.id }}" type="button"><i class="fa fa-bell-o"></i> Subscribe</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="alert alert-info">You don't have any projects yet, do you want to <a href="{% url 'create_project' org_name=request.user_organization.name %}">create one</a>?</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'users/account/base_account.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_account %}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="callout callout-info">
+            <p>The tags provides a simple way to group the CVEs according your own rules. <a href="{% url 'create_tag' %}">Create a new tag?</a></p>
+        </div>
+        {% if tags %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped">
+                <tbody>
+                {% for tag in tags %}
+                <tr {% if request.resolver_match.kwargs.name == tag.name %}class="row-selected" {% endif %}>
+                    <td><span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span></td>
+                    <td>{{ tag.description|default:'' }}</td>
+                    <td class="pull-right">
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'cves' %}?tag={{ tag.name }}" class="btn btn-default btn-xs">View CVE</a>
+                            <a href="{% url 'edit_tag' name=tag.name %}" class="btn btn-default btn-xs">Edit</a>
+                            <a href="{% url 'delete_tag' name=tag.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

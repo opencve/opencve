@@ -1,7 +1,0 @@
-<tr>
-    {% if not hide_type %}
-    <td>CPE</td>
-    {% endif %}
-    <td><s>{{ event.details["removed"]|join('<br/>')|safe }}</s></td>
-    <td>{{ event.details["added"]|join('<br/>')|safe }}</td>
-</tr>

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+
+{% block title %}
+{% if vendor %}
+{{ vendor.name | humanize }}
+{% if product %}
+- {{ product.name | humanize }}
+{% endif %}
+CVE
+{% elif request.GET.weakness %}
+{{ request.GET.weakness }} Weakness
+{% else %}
+Vulnerabilities (CVE)
+{% endif %}
+- {{ block.super }}
+{% endblock %}
+
+{% block navbar_title %}Vulnerabilities{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    {% if request.GET.weakness %}
+    <div class="row">
+        <div class="col-xs-6">
+            <div class="box box-info">
+                <div class="box-header">
+                    <div class="box-title"><i class="fa fa-filter"></i> Filtered by {{ request.GET.weakness }}
+                    </div>
+                    <div class="box-tools pull-right">
+                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="{% url 'cves' %}"><i class="fa fa-times"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if vendor or product %}
+    <div class="row">
+        {% if vendor %}
+        <div class="col-sm-12 col-lg-6">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">
+                        Filtered by vendor <strong>{{ vendor.name | humanize }}</strong>
+                        <a href="{% url 'subscribe' %}?vendor={{ vendor.name }}" class="btn btn-default btn-sm"><i class="fa fa-rocket"></i> Subscriptions</a>
+                    </div>
+                    <div class="box-tools pull-right">
+                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="{% url 'cves' %}"><i class="fa fa-times"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if product %}
+        <div class="col-sm-12 col-lg-6">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">
+                        Filtered by product <strong>{{ product.name | humanize }}</strong>
+                        <a href="{% url 'subscribe' %}?vendor={{ product.vendor.name }}&product={{ product.name }}" class="btn btn-default btn-sm"><i class="fa fa-rocket"></i> Subscriptions</a>
+                    </div>
+                    <div class="box-tools pull-right">
+                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="{% url 'cves' %}?vendor={{ vendor.name }}"><i class="fa fa-times"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-9">
+            <div class="box box-primary">
+                <div class="box-header"></div>
+                <div class="box-body">
+                    <form method="GET">
+                        {% if request.GET.cwe %}
+                        <input type="hidden" name="cwe" value="{{ request.GET.cwe }}" />
+                        {% endif %}
+                        {% if request.GET.vendor %}
+                        <input type="hidden" name="vendor" value="{{ vendor.name }}" />
+                        {% endif %}
+                        {% if request.GET.product %}
+                        <input type="hidden" name="product" value="{{ product.name }}" />
+                        {% endif %}
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    {% if user.is_authenticated %}
+                                    <select class="form-control select2" name="tag" data-placeholder="Select a tag">
+                                        <option></option>
+                                        {% for t in user_tags %}
+                                        <option {% if request.GET.tag|lower == t %} selected="selected" {% endif %} value="{{ t }}">{{ t }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    {% else %}
+                                    <div data-toggle="tooltip" data-container="body" title="You must be signed in to filter the list of CVE by tag">
+                                        <select class="form-control select2" data-placeholder="Select a tag" disabled></select>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <select class="form-control select2" name="cvss" data-placeholder="Filter by CVSS v3.1">
+                                        <option></option>
+                                        <option {% if request.GET.cvss|lower == 'empty' %} selected="selected" {% endif %} value="empty">Empty</option>
+                                        <option {% if request.GET.cvss|lower == 'low' %} selected="selected" {% endif %} value="low">Low (0 - 3.9)</option>
+                                        <option {% if request.GET.cvss|lower == 'medium' %} selected="selected" {% endif %} value="medium">Medium (4.0 - 6.9)</option>
+                                        <option {% if request.GET.cvss|lower == 'high' %} selected="selected" {% endif %} value="high">High (7.0 - 8.9)</option>
+                                        <option {% if request.GET.cvss|lower == 'critical' %} selected="selected" {% endif %} value="critical">Critical (9.0 - 10.0)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" placeholder="Search in CVEs" class="form-control" name="search"
+                                       value="{% if request.GET.search %}{{ request.GET.search }}{% endif %}">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary">Search</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="info-box">
+                <span class="info-box-icon bg-primary"><i class="fa fa-shield"></i></span>
+
+                <div class="info-box-content">
+                    <span class="info-box-text">Total</span>
+                    <span class="info-box-number">{{ page_obj.paginator.count }} CVE</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class='col-md-12'>
+            {% if cves %}
+            <div class="box box-primary">
+                <div class="box-body table-responsive no-padding">
+                    {% include "cves/_cve_table.html" %}
+
+                    <div class="center">
+                        <div class="pagination">
+                            <span class="step-links">
+                                {% if page_obj.has_previous %}
+                                    <a href="{% url 'cves'%}?{% query_params_url 'page' 1 %}">&laquo; first</a>
+                                    <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.previous_page_number %}">previous</a>
+                                {% endif %}
+
+                                <span class="current">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                                </span>
+
+                                {% if page_obj.has_next %}
+                                    <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.next_page_number %}">next</a>
+                                    <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p class="alert alert-info">No CVE found.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+{% endblock %}

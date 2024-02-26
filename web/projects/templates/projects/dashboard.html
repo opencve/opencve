@@ -1,0 +1,161 @@
+{% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
+
+{% block title %}{{ project.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    <div class="col-md-8">
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Activity Feed</h3>
+            </div>
+            <div class="box-body">
+                {% if not changes %}
+                <p class="alert alert-info">No activity yet.</p>
+                {% else %}
+                <ul class="timeline timeline-inverse">
+                    {% for change in changes %}
+                    <li class="time-label">
+                        {% ifchanged change.created_at|date:"d b Y" %}
+                        <span class="bg-blue bg-opencve">
+                            {{ change.created_at|date:"d b Y" }}
+                        </span>
+                        {% endifchanged %}
+                    </li>
+
+                    <li>
+                        {% if change|is_new_cve %}
+                        <i class="fa fa-plus bg-red"></i>
+                        {% else %}
+                        <i class="fa fa-edit bg-blue"></i>
+                        {% endif %}
+                        <div class="timeline-item">
+                            <span class="time" title="{{ change.created_at|date:'d b Y, H:i' }}"><i class="fa fa-clock-o"></i> {{ change.created_at|date:"H:i" }}</span>
+                            <h3 class="timeline-header"><a href="{% url 'cve' cve_id=change.cve.cve_id %}">{{ change.cve.cve_id }}</a> <i>{% if change|is_new_cve %}is a new CVE{% else %}has changed{% endif %}</i> <a href="{% url 'change' cve_id=change.cve.cve_id id=change.id %}" class="btn-json-diff" data-toggle="tooltip" data-container="body" title="View the change details"><i class="fa fa-code"></i></a></h3>
+                            <div class="timeline-body">
+                                <p class="timeline-cve-summary">{{ change.cve.description }}</p>
+                                {% if not change|is_new_cve %}
+                                <div class="box-group" id="{{ change.id }}">
+                                    {% for event in change.events %}
+                                    <div class="panel box box-changes">
+                                        <div class="box-header  collapsed pointer change-collapsed" data-toggle="collapse" data-parent="#{{ change.id }}" href="#{{ change.id }}-{{ event.type }}" aria-expanded="false"">
+                                            <h4 class="box-title">{{ event|event_humanized_type }}
+                                            <span class="box-meta">{{ event.details|event_excerpt|safe }}<i class="fa fa-arrow-circle-o-down"></i><i class="fa fa-arrow-circle-o-up"></i></span>
+                                            </h4>
+                                        </div>
+                                        <div id="{{ change.id }}-{{ event.type }}" class="panel-collapse collapse" aria-expanded="false">
+                                            <div class="box-body">
+                                                <table class="table">
+                                                    <thead>
+                                                    <th>Values Removed</th>
+                                                    <th>Values Added</th>
+                                                    </thead>
+                                                    <tbody>
+                                                    {% with template_name="changes/events/"|add:event.type|add:"_details.html" %}
+                                                    {% include template_name with hide_type=1 %}
+                                                    {% endwith %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+
+                </ul>
+                {% endif %}
+
+                {% if changes %}
+                <div class="center">
+                    <ul class="pagination">
+                        {% if page_obj.has_previous %}
+                            <li class="previous"><a href="{% url 'project' %}?{% query_params_url 'page' page_obj.previous_page_number %}">« prev </a></li>
+                        {% endif %}
+                        {% if page_obj.has_next %}
+                            <li class="previous"><a href="{% url 'project' %}?{% query_params_url 'page' page_obj.next_page_number %}">next »</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+    <div class="col-md-4">
+        <div class="box box-primary">
+            <div class="box-header">
+                <div class="box-title">Subscriptions</div>
+                <div class="box-tools pull-right">
+                    <a class="btn btn-box-tool" href="{% url 'subscriptions' org_name=request.user_organization.name project_name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="Manage subscriptions"><i class="fa fa-gears"></i></a>
+                </div>
+            </div>
+            <div class="box-body box-subscriptions">
+                {% with vendors=project.subscriptions.vendors products=project.subscriptions.products %}
+                {% if vendors or products %}
+                    {% if vendors %}
+                    <h5><strong>Vendors <span>({{ vendors|length }})</span></strong></h5>
+                    {% for vendor in vendors %}
+                    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ vendor }}">{{ vendor| humanize }}</a>
+                    {% endfor %}
+
+                    {% if products %}
+                    <hr/>
+                    {% endif %}
+                    {% endif %}
+                    {% if products %}
+                    <h5><strong>Products <span>({{ products|length }})</span></strong></h5>
+                    {% for product in products %}
+                    {% with product|split:"$PRODUCT$" as p %}
+                    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ p.0 }}&product={{ p.1 }}">{{ product|remove_product_separator|humanize }}</a>
+                    {% endwith %}
+                    {% endfor %}
+                    {% endif %}
+                {% else %}
+                <p class="alert alert-info">You don't have any subscriptions yet, explore the list of <a href="{% url 'vendors' %}">Vendors & Products</a> to select some.</p>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Last Reports</h3>
+                <div class="box-tools pull-right">
+                    <a class="btn btn-box-tool" href="{% url 'reports' org_name=request.user_organization.name project_name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="See this project reports"><i class="fa fa-list-ul"></i></a>
+                </div>
+            </div>
+            <div class="box-body">
+                {% if reports %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="col-md-6">Date</th>
+                            <th class="text-center">Number of Changes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <td><a href="{% url 'report' org_name=request.user_organization.name project_name=project.name day=report.day %}">{{ report.day|date:"D d M Y" }}</a></td>
+                        <td class="text-center">{{ report.changes.count }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="alert alert-info">No report available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
