@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static %}
+{% load opencve_extras %}
+
+{% block title %}{{ cve.cve_id }} - {{ block.super }}{% endblock %}
+
+{% block navbar_title%}
+{{ cve.cve_id }}{% if cve.title %}<small><i> - {{ cve.title }}</i></small>{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+        <div class="col-md-9">
+            <div class="box box-primary">
+                <div class="box-body">
+                    <span class="dropcap">{{ cve.description|make_list|first }}</span>{{ cve.description|make_list|slice:'1:'|join:'' }}
+                </div>
+            </div>
+
+            {% include "cves/cvss/base.html" %}
+
+            {% include "cves/_configurations.html" %}
+
+            {% include "cves/_references.html" %}
+
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">History</div>
+                    <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><iclass="fa fa-minus"></i></button>
+                    </div>
+                </div>
+
+                {% if changes %}
+                <div class="box-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            {% for change in changes %}
+                            <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ change.created_at|date:"d b Y, P" }}</p>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <th>Type</th>
+                                        <th>Values Removed</th>
+                                        <th>Values Added</th>
+                                    </thead>
+                                    <tbody>
+
+                                    {% for event in change.events %}
+                                        {% with template_name="changes/events/"|add:event.type|add:"_details.html" %}
+                                        {% include template_name %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <hr />
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="box-body">
+                    <p class="alert alert-info">No history.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">
+                        <img src="{% static 'img/cve-icon.png' %}" class="cve-icon" alt="cve-icon" />
+                        MITRE Information
+                    </div>
+                </div>
+                {% if cve.mitre_json %}
+                <div class="box-body">
+                    <p><strong>Status:</strong> {{ cve.mitre_json.cveMetadata.state }}</p>
+                    <p><strong>Assigner:</strong> {{ cve.mitre_json.cveMetadata.assignerShortName }}</p>
+                    <p><strong>Published:</strong> {{ cve.mitre_json.cveMetadata.datePublished }}</p>
+                    <p><strong>Updated:</strong> {{ cve.mitre_json.cveMetadata.dateUpdated }}</p>
+                    <p><strong>Reserved:</strong> {{ cve.mitre_json.cveMetadata.dateReserved }}</p>
+                    <hr />
+                    <p><strong>Link:</strong> <a href="https://www.cve.org/CVERecord?id={{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a></p>
+                    <p><strong>JSON object:</strong> <a class="pointer" data-toggle="modal" data-target="#modal-mitre-json">View <i class="fa fa-code"></i></a></p>
+                </div>
+                {% else %}
+                <div class="box-body">
+                    <p class="alert alert-info">No data.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">
+                        <img src="{% static 'img/nvd-icon.png' %}" class="cve-icon" alt="cve-icon" />
+                        NVD Information
+                    </div>
+                </div>
+                {% if cve.nvd_json %}
+                <div class="box-body">
+                    <p><strong>Status :</strong> {{ cve.nvd_json.vulnStatus }}</p>
+                    <p><strong>Published:</strong> {{ cve.nvd_json.published }}</p>
+                    <p><strong>Modified:</strong> {{ cve.nvd_json.lastModified }}</p>
+                    <hr/>
+                    <p><strong>Link:</strong> <a href="https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a></p>
+                    <p><strong>JSON object:</strong> <a class="pointer" data-toggle="modal" data-target="#modal-nvd-json">View <i class="fa fa-code"></i></a></p>
+                </div>
+                {% else %}
+                <div class="box-body">
+                    <p class="alert alert-info">No data.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if user.is_authenticated %}
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Tags</h3>
+                    <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-toggle="modal" data-target="#modal-tags"><i class="fa fa-edit"></i></button>
+                    </div>
+                </div>
+                {% if tags %}
+                <div class="box-body">
+                    {% for tag in tags %}
+                    <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
+                        <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">CWE</div>
+                </div>
+                <div class="box-body">
+                    {% if weaknesses %}
+                        <ul>
+                        {% for cwe_id, name in weaknesses.items %}
+                        <li>
+                            <a href="{% url 'cves' %}?weakness={{ cwe_id }}">{{ cwe_id }}</a>
+                            {% if name %}<p class="cwe-name">{{ name }}</p>{% endif %}
+                        </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                    <p class="alert alert-info">No CWE.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+<div class="modal fade" id="modal-mitre-json">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">JSON object</h4>
+            </div>
+            <div class="modal-body codejson">
+                {{ mitre_json }}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-right" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-nvd-json">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">JSON object</h4>
+            </div>
+            <div class="modal-body codejson">
+                {{ nvd_json }}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-right" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% if user.is_authenticated %}
+<div class="modal fade" id="modal-tags">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form action="{% url 'cve' cve_id=cve.cve_id %}" method="POST">
+            {% csrf_token %}
+            <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Attach tags to <code>{{ cve.cve_id }}</code></h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select your tags</label>
+                    <select class="form-control select2" id="select2-tags" multiple="multiple" data-placeholder="Select a tag"
+                            style="width: 100%;" data-values='{{ cve_tags_encoded }}' name="tags">
+                        {% for tag in user_tags %}
+                        <option>{{ tag }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Close</button>
+                <a class="btn btn-default pull-left" href="{% url 'tags' %}">Manage your tags</a>
+                <button type="submit" class="btn btn-primary">Update associated tags</button>
+            </div>
+        </form>
+      </div>
+    </div>
+</div>
+{% endif %}
+
+
+{% endblock %}

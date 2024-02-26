@@ -1,0 +1,49 @@
+{% extends 'users/account/base_account.html' %}
+{% load i18n %}
+{% load allauth %}
+{% load crispy_forms_tags %}
+
+{% block content_account %}
+    {% url 'account_email' as action_url %}
+    {% element form method="post" action=action_url %}
+        {% slot body %}
+            {% csrf_token %}
+            {% if current_emailaddress %}
+            <div class="form-group">
+                <label for="current_email">Current email</label>
+                <input type="email" class="form-control" id="current_email" disabled="disabled" value="{{ current_emailaddress.email }}">
+            </div>
+            {% endif %}
+            {% if new_emailaddress %}
+                <div class="form-group">
+                    <label for="new_email">Changing to</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="email" class="form-control" id="new_email" disabled="disabled" value="{{ new_emailaddress.email }}">
+                            <p class="help-block">Your email address is still pending verification.</p>
+                        </div>
+                        <div class="col-md-3">
+                            <button form="pending-email" type="submit" name="action_send" class="btn btn-block btn-default">Re-send Verification</button>
+                        </div>
+                        <div class="col-md-3">
+                            <button form="pending-email" type="submit" name="action_remove" class="btn btn-block btn-default">Cancel Change</button>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            {{ form.email|as_crispy_field }}
+        {% endslot %}
+        {% slot actions %}
+            <button type="submit" class="btn btn-primary pull-right" name="action_add">Change Email</button>
+        {% endslot %}
+    {% endelement %}
+    {% if new_emailaddress %}
+        <form style="display: none"
+              id="pending-email"
+              method="post"
+              action="{% url 'account_email' %}">
+            {% csrf_token %}
+            <input type="hidden" name="email" value="{{ new_emailaddress.email }}">
+        </form>
+    {% endif %}
+{% endblock %}

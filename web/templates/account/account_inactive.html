@@ -1,0 +1,9 @@
+{% extends 'account/base.html' %}
+
+{% block header %}This account is inactive{% endblock %}
+
+{% block links %}
+<hr />
+<span>Go back to the login page?</span>
+<a href="{% url 'account_login' %}" class="text-center">Login</a>
+{% endblock %}

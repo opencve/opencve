@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+{% load opencve_extras %}
+
+{% block navbar_title%}Settings{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags}} alert-dismissible fade in">
+                <button aria-label="Close" data-dismiss="alert" class="close" type="button"><span
+                        aria-hidden="true">×</span></button>
+                <p>{{ message }}</p>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <div class="nav-tabs-custom nav-tabs-primary nav-tabs-account">
+                <ul class="nav nav-tabs">
+                    <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}">
+                        <a href="{% url 'tags' %}">Tags</a>
+                    </li>
+                    <li class="{% is_active_link 'settings_profile' %}">
+                        <a href="{% url 'settings_profile' %}">Profile</a>
+                    </li>
+                    <li class="{% is_active_link 'account_email' %}">
+                        <a href="{% url 'account_email' %}">Email</a>
+                    </li>
+                    <li class="{% is_active_link 'settings_password' %}">
+                        <a href="{% url 'settings_password' %}">Password</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    {% block content_account %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
