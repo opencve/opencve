@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "opencve.settings"
+python_files = ["test_*"]
+

@@ -1,0 +1,54 @@
+{% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
+
+{% block title %}{{ project.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    <div class="col-md-9">
+        {% if reports %}
+        <div class="box box-primary">
+            <div class="box-body table-responsive no-padding">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="col-md-2">Date</th>
+                            <th class="col-md-9">CVE changed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td><a href="{% url 'report' org_name=request.user_organization.name project_name=project.name day=report.day %}">{{ report.day|date:"D d M Y" }}</a></td>
+                            <td>
+                                {% for change in report.changes.all|dictsortreversed:'cve.cve_id' %}
+                                {% ifchanged %}
+                                <a class="label label-primary" href="{% url 'cve' cve_id=change.cve.cve_id%}" data-toggle="tooltip" data-placement="right" data-container="body" title="{{ change.cve.vendors|flat_vendors }}">{{ change.cve.cve_id }}</a>
+                                {% endifchanged %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <p class="alert alert-info">No report yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="col-md-3">
+        <div class="box box-primary">
+            <div class="box-header">
+                <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
+            </div>
+            <div class="box-body">
+                <p>The reports are used to group the changes of your subscriptions on a <strong>daily basis</strong>.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

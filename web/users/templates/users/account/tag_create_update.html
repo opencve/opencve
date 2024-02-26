@@ -1,0 +1,12 @@
+{% extends 'users/account/base_account.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_account %}
+
+<div class="row">
+  <div class="col-md-12">
+    {% crispy form %}
+  </div>
+</div>
+
+{% endblock %}

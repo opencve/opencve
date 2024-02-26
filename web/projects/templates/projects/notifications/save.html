@@ -1,0 +1,101 @@
+{% extends 'projects/base_project.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_project %}
+
+<form method="post">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-lg-6 col-md-6 col-sm-6">
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">General Settings</h3>
+                    <div class="box-tools pull-right">
+                        {{ form.is_enabled|as_crispy_field }}
+                    </div>
+                </div>
+                <div class="box-body">
+                    {{ form.name|as_crispy_field }}
+                    <div class="extras">
+                        {% with template_name="projects/notifications/_"|add:type|add:".html" %}
+                        {% include template_name %}
+                        {% endwith %}
+                    </div>
+                    <div class="pull-right">
+                        <a href="{% url 'notifications' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 col-md-6 col-sm-6">
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Alerts Settings</h3>
+                    <div class="box-tools pull-right">
+                        <i class="fa fa-info-circle" data-toggle="tooltip" data-container="body" data-placement="left" title="Use this notification to send alerts when your subscriptions change. Configure the following settings to filter your alerts and reduce the number of notifications."></i>
+                    </div>
+                </div>
+                <div class="box-body">
+                    <div class="form-group">
+                        <label>Receive a notification when:</label>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.nvd_new }}
+                                 a new CVE is created
+                            </label>
+                        </div>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.nvd_first_time }}
+                                one of your subscriptions appears for the first time in an existing CVE
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>When a CVE is updated, be alerted when :</label>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.nvd_cvss }}
+                                its CVSS score changes
+                            </label>
+                        </div>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.nvd_cpes }}
+                                its CPE list changes
+                            </label>
+                        </div>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.nvd_summary }}
+                                its summary changes
+                            </label>
+                        </div>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.nvd_cwes }}
+                                its weaknesses list changes
+                            </label>
+                        </div>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.nvd_references }}
+                                its references list changes
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        {{ form.cvss_score|as_crispy_field }}
+                        <span class="help-block"><small>Note that this setting does not affect CVE that do not have CVSS.</small></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'projects/base_project.html' %}
+{% load static %}
+
+{% block content_project %}
+
+<div class="row">
+    <div class="col-lg-9 col-md-9 col-sm-9">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Notifications list</h3>
+            </div>
+            <div class="box-body">
+                {% if notifications %}
+                <ul class="products-list product-list-in-box">
+                    {% for notification in notifications %}
+                        <li class="item">
+                            <div class="product-img">
+                                <img src="{% static 'img/'|add:notification.type|add:'.png' %}" alt="{{ notification.type }}" />
+                            </div>
+                            <div class="product-info">
+                                <a href="{% url 'edit_notification' org_name=request.user_organization.name project_name=project.name notification=notification.name %}" class="product-title">{{ notification.name }} ({{ notification.type }})
+                                    {% if notification.is_enabled %}
+                                    <span class="label label-success pull-right">Enabled</span>
+                                    {% else %}
+                                    <span class="label label-danger pull-right">Disabled</span>
+                                    {% endif %}
+                                </a>
+                                <span class="product-description">Last use 10 minutes ago</span>
+                          </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                    <p>You have no notification yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-3 col-sm-3">
+        <div class="box box-primary">
+            <div class="box-header">
+                <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
+            </div>
+            <div class="box-body">
+                <p>The notifications are used to immediately send a message for each change on your subscriptions. </p>
+            </div>
+        </div>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">New Notification</h3>
+            </div>
+            <div class="box-body">
+                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' org_name=request.user_organization.name project_name=project.name %}?type=email"><i class="fa fa-plus"></i> Email</a>
+                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' org_name=request.user_organization.name project_name=project.name %}?type=webhook"><i class="fa fa-plus"></i> Webhook</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

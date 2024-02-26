@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+
+{% block title %}Vendors & Products - {{ block.super }}{% endblock %}
+
+{% block navbar_title%}Vendors & Products{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+        <div class='col-md-6 col-md-offset-3'>
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">
+                        Search{% if request.GET.vendor %} in <strong>{{ request.GET.vendor | humanize }}</strong> vendor{% else %} in vendors and products{% endif %}
+                    </h3>
+                </div>
+                <div class="box-body">
+                    <form role="form" class="form-horizontal">
+                        <div class="form-group">
+                            <div class="col-md-12">
+                                <div class="input-group">
+                                    <span class="input-group-btn">
+                                    <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
+                                    </span>
+                                    <form method="GET">
+                                        {% if request.GET.vendor %}
+                                        <input type="hidden" name="vendor" value="{{ request.GET.vendor }}" />
+                                        {% endif %}
+                                        <input type="text" placeholder="Search" class="form-control" name="search" value="{% if request.GET.search %}{{ request.GET.search }}{% endif %}">
+                                    </form>
+                                </div>
+                                <p class="help-block">Try these examples: <a href="{% url 'vendors' %}?search=python">python</a>, <a href="{% url 'vendors' %}?search=cisco">cisco</a>, <a href="{% url 'vendors' %}?search=microsoft">microsoft</a>, <a href="{% url 'vendors' %}?search=android">android</a>, <a href="{% url 'vendors' %}?search=wordpress">wordpress</a></p>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class='col-md-5'>
+            {% if request.GET.vendor %}
+            <div class="box box-info">
+                <div class="box-header">
+                    <div class="box-title"><i class="fa fa-filter"></i> Vendor <strong>{{ request.GET.vendor | humanize }}</strong> selected
+                    </div>
+                    <div class="box-tools pull-right">
+                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="{% url 'vendors' %}"><i class="fa fa-times"></i></a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Vendors ({{ paginator.count }})</h3>
+                </div>
+                <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover table-striped">
+                        <tr>
+                            <th>Vendor</th>
+                            <th class="text-center">Products</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                        {% for vendor in vendors %}
+                        <tr>
+                            <td>{{ vendor.name | humanize }}</td>
+                            <td class="text-center"><a href="{% url 'vendors' %}?vendor={{ vendor.name }}">{{ vendor.products.count }}</a></td>
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <a href="{% url 'subscribe' %}?vendor={{ vendor.name }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
+                                    <a href="{% url 'cves' %}?vendor={{ vendor.name }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    <div class="center">
+                        <div class="pagination">
+                            <span class="step-links">
+                                {% if page_obj.has_previous %}
+                                    <a href="{% url 'vendors'%}?{% query_params_url 'page' 1 %}">&laquo; first</a>
+                                    <a href="{% url 'vendors'%}?{% query_params_url 'page' page_obj.previous_page_number %}">previous</a>
+                                {% endif %}
+
+                                <span class="current">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                                </span>
+
+                                {% if page_obj.has_next %}
+                                    <a href="{% url 'vendors'%}?{% query_params_url 'page' page_obj.next_page_number %}">next</a>
+                                    <a href="{% url 'vendors'%}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class='col-md-7'>
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Products ({{ paginator_products.count }})</h3>
+                </div>
+                <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover table-striped">
+                        <tr>
+                            <th>Product</th>
+                            <th>Vendor</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                        {% for product in products %}
+                        <tr>
+                            <td>{{ product.name | humanize }}</td>
+                            <td>{{ product.vendor.name | humanize }}</td>
+                            <td class="text-center">
+                                <div class="btn-group">
+                                    <a href="{% url 'subscribe' %}?vendor={{ product.vendor.name }}&product={{ product.name }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
+                                    <a href="{% url 'cves' %}?vendor={{ product.vendor.name }}&product={{ product.name }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                    <div class="center">
+                        <div class="pagination">
+                            <span class="step-links">
+                                {% if products.has_previous %}
+                                    <a href="{% url 'vendors'%}?{% query_params_url 'product_page' 1 %}">&laquo; first</a>
+                                    <a href="{% url 'vendors'%}?{% query_params_url 'product_page' products.previous_page_number %}">previous</a>
+                                {% endif %}
+
+                                <span class="current">
+                                    Page {{ products.number }} of {{ products.paginator.num_pages }}.
+                                </span>
+
+                                {% if products.has_next %}
+                                    <a href="{% url 'vendors'%}?{% query_params_url 'product_page' products.next_page_number %}">next</a>
+                                    <a href="{% url 'vendors'%}?{% query_params_url 'product_page' products.paginator.num_pages %}">last &raquo;</a>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

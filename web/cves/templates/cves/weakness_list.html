@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Weaknesses - {{ block.super }}{% endblock %}
+{% block navbar_title%}Weaknesses{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+
+        <div class="col-xs-8">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title">Weaknesses</h3>
+                </div>
+                <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover table-striped">
+                        {% if weaknesses %}
+                        {% for weakness in weaknesses %}
+                        <tr>
+                            <td>{{ weakness.cwe_id }}</td>
+                            <td>{{ weakness.name|default:'No name' }}</td>
+                            <td class="col-md-1 text-center"><a class="pointer" tabindex="0" data-original-title=""
+                                                                data-content="{{ weakness.description|default:'No description' }}"
+                                                                data-placement="top" data-toggle="popover"
+                                                                data-trigger="focus" title="" data-container="body"><i
+                                    class="ion-help-circled"></i></a></td>
+                            <td class="col-md-3 text-center">
+                                <div class="btn-group">
+                                    {% if weakness.cwe_id not in 'NVD-CWE-noinfo,NVD-CWE-Other' %}
+                                    <a href="http://cwe.mitre.org/data/definitions/{{ weakness.short_id }}.html"
+                                       target="_blank" class="btn btn-xs btn-default"><i
+                                            class="fa fa-external-link"></i> Mitre</a>
+                                    {% endif %}
+                                    <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}" class="btn btn-xs btn-default"><i class="fa fa-shield"></i> View CVE</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4">No CWE found.</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                    <div class="center">
+                        <div class="pagination">
+                            <span class="step-links">
+                                {% if page_obj.has_previous %}
+                                    <a href="?page=1">&laquo; first</a>
+                                    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+                                {% endif %}
+
+                                <span class="current">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                                </span>
+
+                                {% if page_obj.has_next %}
+                                    <a href="?page={{ page_obj.next_page_number }}">next</a>
+                                    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xs-4">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title">Search</h3>
+                </div>
+                <div class="box-body">
+                    <form role="form" class="form-horizontal">
+                        <div class="form-group">
+                            <div class="col-md-12">
+                                <div class="input-group">
+                                    <span class="input-group-btn">
+                                    <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
+                                    </span>
+                                    <form method="GET">
+                                        <input type="text" placeholder="Search" class="form-control" name="search" value="">
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+{% endblock %}

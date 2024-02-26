@@ -1,0 +1,88 @@
+{% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
+
+{% block title %}{{ project.name }} - Report for {{ object.report.day|date:'M, d Y' }} - {{ block.super }}{% endblock %}
+{% block navbar_title %}{{ project.name }} - Report for {{ object.report.day|date:'M, d Y' }}{% endblock %}
+
+{% block content_project %}
+
+
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="tabs-vertical-env tabs-report">
+            <ul class="nav tabs-vertical">
+                {% for change in object.changes|dictsortreversed:'score' %}
+                <li class="{% if forloop.first %}active{% endif %}">
+                    <a aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" data-toggle="tab"  href="#{{change.cve.cve_id}}">
+                        {{change.cve.cve_id}}
+                        {% if change.cve.nvd_json.metrics.cvssMetricV31 %}
+                        <span class="label label-{{ change.cve.cvss31.score|cvss_level }}">{{ change.cve.cvss31.score }}</span>
+                        {% else %}
+                        <span class="label label-default">N/A</span>
+                        {% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="tab-content" style="width: 100%;">
+                {% for change in object.changes|dictsortreversed:'score' %}
+                <div id="{{change.cve.cve_id}}" class="tab-pane {% if forloop.first %}active{% endif %}">
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="callout callout-info">
+                                <h4>
+                                    {{ change.cve.cve_id }}
+                                    <small><a href="{% url 'cve' cve_id=change.cve.cve_id%}" target="_blank"><i class="fa fa-external-link"></i></a></small>
+                                </h4>
+                                <p>{{ change.cve.description }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <h3>Vendors & Products impacted</h3>
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Vendors</th>
+                                        <th>Products</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="cve-header">
+                                        <td class="col-md-6">{{ change.cve.vendors|vendors_excerpt }}</td>
+                                        <td class="col-md-6">{{ change.cve.vendors|products_excerpt }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <h3>Changes</h3>
+                    {% for date, events in change.changes|dictsortreversed:0 %}
+                    <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ date|date:"P" }}</p>
+                    <table class="table table-bordered table-striped table-events">
+                        <thead>
+                            <th class="col-md-2">Type</th>
+                            <th class="col-md-5">Values Removed</th>
+                            <th class="col-md-5">Values Added</th>
+                        </thead>
+                        <tbody>
+
+                        {% for event in events %}
+                            {% with template_name="changes/events/"|add:event.type|add:"_details.html" %}
+                            {% include template_name %}
+                            {% endwith %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ request.resolver_match.url_name|humanize }} - {{ block.super }}{% endblock %}
+{% block navbar_title%}{{ request.resolver_match.url_name|humanize }}{% endblock %}
+
+{% block content %}
+
+<section class="content">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="col-md-8 col-md-offset-2">
+        <div class="box box-primary">
+          <div class="box-body">
+            {% crispy form %}
+          </div>
+        </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
