@@ -21,8 +21,9 @@
     <div class="login-box">
         <div class="login-box-body">
             <div class="login-logo">
-                <img src="{% static 'img/logo_full_48.png' %}" alt="Logo">
-                <a href="{% url 'home' %}">OpenCVE.io</a>
+                <a href="{% url 'home' %}">
+                    <img width="250px" src="{% static 'img/logo_opencve.svg' %}" alt="Logo">
+                </a>
             </div>
             {% if messages %}
                 {% for message in messages %}
