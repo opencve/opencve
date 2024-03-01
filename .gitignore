@@ -12,6 +12,7 @@ opencve.egg-info/
 .venv
 env/
 venv/
+docker/.env
 
 # Celery
 celerybeat-schedule.db
@@ -32,3 +33,4 @@ scheduler/airflow-webserver.pid
 web/.pytest_cache/
 web/opencve/settings.py
 web/emails/
+docker/config/opencve.conf.template
