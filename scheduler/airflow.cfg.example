@@ -1242,6 +1242,9 @@ worker_pods_pending_timeout_batch_size = 100
 default_timeout = 604800
 
 [opencve]
+# The base URL of the OpenCVE webserver
+web_base_url = https://www.opencve.io
+
 # The local folder where the repository `opencve-kb` is cloned
 kb_repo_path = /home/airflow/repositories/opencve-kb
 

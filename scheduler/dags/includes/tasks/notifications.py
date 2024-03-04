@@ -58,23 +58,23 @@ async def execute_coroutines(notifications, change_details, period):
 
     tasks = []
     async with aiohttp.ClientSession(raise_for_status=True) as session:
-        for notification in notifications:
-            logger.debug("Handling notification: %s", notification)
-            notif_type = notification.get("notification").get("type")
-            notif_conf = notification.get("notification").get("conf")
+        for notification_data in notifications:
+            logger.debug("Handling notification: %s", notification_data)
+            notification = notification_data["notification"]
 
             notif_cls = getattr(
                 importlib.import_module("includes.notifications"),
-                f"{notif_type.capitalize()}Notification",
+                f"{notification['notification_type'].capitalize()}Notification",
             )
+
             logger.debug("Executing %s method of %s", "send", notif_cls)
             tasks.append(
                 asyncio.ensure_future(
                     notif_cls(
                         semaphore=semaphore,
                         session=session,
-                        config=notif_conf,
-                        changes=notification.get("changes"),
+                        notification=notification,
+                        changes=notification_data["changes"],
                         changes_details=change_details,
                         period=period,
                     ).execute()
@@ -180,8 +180,8 @@ def make_notifications_chunks(**context):
 
 
 def filter_changes(notification, changes, changes_details):
-    notification_score = notification["conf"]["cvss"]
-    notification_events = notification["conf"]["events"]
+    notification_score = notification["notification_conf"]["cvss"]
+    notification_events = notification["notification_conf"]["events"]
     logger.debug(
         "Notification score: %s, events: %s", notification_score, notification_events
     )
