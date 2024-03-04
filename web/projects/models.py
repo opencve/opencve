@@ -17,7 +17,15 @@ def get_default_configuration():
 
 
 class Project(BaseModel):
-    name = models.CharField(max_length=256)  # TODO: add a regex constraint
+    name = models.CharField(
+        max_length=100,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-zA-Z0-9\-_ ]+$",
+                message="Special characters (except space, dash and underscore) are not accepted",
+            ),
+        ],
+    )
     description = models.TextField(blank=True, null=True)
     subscriptions = models.JSONField(default=get_default_subscriptions)
 
@@ -50,7 +58,7 @@ class Notification(BaseModel):
         max_length=256,
         validators=[
             RegexValidator(
-                regex="^[a-zA-Z0-9\-_ ]+$",
+                regex=r"^[a-zA-Z0-9\-_ ]+$",
                 message="Special characters (except dash and underscore) are not accepted",
             ),
         ],
