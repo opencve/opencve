@@ -1,0 +1,12 @@
+This email has been sent from the {{ notification }} notification of the {{ organization }}/{{ project }} project:
+{{ project_url }}
+
+{{ total }} vulnerabilities have been updated on {{ period.day }} between {{ period.from }} and {{ period.to }}.
+{% for severity, vulnerabilities in vulnerabilities.items() %}{% if vulnerabilities %}{{ severity|capitalize }} Vulnerabilities ({{ vulnerabilities|length }})
+{% for vulnerability in vulnerabilities %}
+- {{ vulnerability.cve_id }} ({{ vulnerability.score }}) - {{ web_url }}/cve/{{ vulnerability.cve_id }}
+{{ vulnerability.description }}
+Changes: {{ vulnerability.changes|join(', ') }}
+{% endfor %}{% endif %}
+{% endfor %}2024 OpenCVE, All rights reserved
+Update your notifications to unsubscribe this notification: {{ notification_url }}

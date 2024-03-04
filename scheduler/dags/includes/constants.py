@@ -55,11 +55,15 @@ WHERE
 SQL_PROJECT_WITH_NOTIFICATIONS = """
 SELECT
   projects.id,
+  projects.name,
+  organizations.name,
+  notifications.name,
   notifications.type,
   notifications.configuration
 FROM
   opencve_notifications AS notifications
   JOIN opencve_projects AS projects ON projects.id = notifications.project_id
+  JOIN opencve_organizations AS organizations ON organizations.id = projects.organization_id
 WHERE
   is_enabled = 't'
   AND projects.id IN %(projects)s;
