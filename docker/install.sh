@@ -61,11 +61,14 @@ add-config-files() {
 
 start-docker-stack() {
 
+    echo "--> Get ENV variable from docker compose env file"
+    export $(grep -v '^#' .env | xargs -d '\n')
+
     echo "--> Starting Docker compose stack"
     docker compose up -d
 
     echo "--> Adding Airflow connections"
-    docker exec -it airflow-scheduler airflow connections add opencve_postgres --conn-uri postgres://opencve:opencve@postgres:5432/opencve
+    docker exec -it airflow-scheduler airflow connections add opencve_postgres --conn-uri postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/opencve
     docker exec -it airflow-scheduler airflow connections add opencve_redis --conn-uri redis://redis:6379 --conn-extra '{"db": 3}'
     docker exec -it airflow-scheduler airflow connections list
 
@@ -75,8 +78,12 @@ start-docker-stack() {
     echo "--> Django webserver DB migrate"
     docker exec -it webserver python manage.py migrate
 
-    echo "--> Creating superuser on OpenCVE"
-    docker exec -it webserver python manage.py createsuperuser
+}
+
+create-superuser() {
+
+     echo "--> Creating superuser on OpenCVE"
+     docker exec -it webserver python manage.py createsuperuser
 
 }
 
@@ -102,7 +109,7 @@ display-usage() {
     echo "OPTIONS:"
     echo ""
     echo " prepare : Run set-user & clone-repositories & add-config-files"
-    echo " start   : Run start-docker-stack & import-opencve-kb & start-opencve-dag"
+    echo " start   : Run start-docker-stack & create-superuser & import-opencve-kb & start-opencve-dag"
     echo ""
     echo ""
     echo "Specific OPTIONS:"
@@ -111,6 +118,7 @@ display-usage() {
     echo " clone-repositories : Clone KB repositories"
     echo " add-config-files   : Add default configurations files"
     echo " start-docker-stack : Start docker compose stack"
+    echo " create-superuser   : Create OpenCVE super user with admin privileges"
     echo " import-opencve-kb  : Import OpenCVE KB inside local database"
     echo " start-opencve-dag  : Unpause OpenCVE Dag in Airflow"
     echo ""
@@ -128,6 +136,7 @@ case $_OPTIONS in
         ;;
     "start" )
         start-docker-stack
+        create-superuser
         import-opencve-kb
         start-opencve-dag
         ;;
@@ -142,6 +151,9 @@ case $_OPTIONS in
         ;;
      "start-docker-stack" )
         start-docker-stack
+        ;;
+     "create-superuser" )
+        create-superuser
         ;;
      "import-opencve-kb" )
         import-opencve-kb
