@@ -1,6 +1,7 @@
 import logging
 
 import pendulum
+from airflow.configuration import conf
 from airflow.decorators import dag
 from airflow.utils.task_group import TaskGroup
 from includes.operators.fetch_operator import GitPullOperator
@@ -15,10 +16,15 @@ from includes.tasks.reports import list_changes, list_subscriptions, populate_re
 logger = logging.getLogger(__name__)
 
 
+# The catchup is set to True, so we allow the user to update his start_date
+# value to match the installation date of his own OpenCVE instance.
+start_date = pendulum.from_format(conf.get("opencve", "start_date"), "YYYY-MM-DD")
+
+
 @dag(
     schedule="0 * * * *",
-    start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
-    catchup=False,
+    start_date=start_date,
+    catchup=True,
     max_active_runs=1,
 )
 def opencve():
