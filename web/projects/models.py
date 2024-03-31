@@ -28,6 +28,7 @@ class Project(BaseModel):
     )
     description = models.TextField(blank=True, null=True)
     subscriptions = models.JSONField(default=get_default_subscriptions)
+    active = models.BooleanField(default=True)
 
     # Relationships
     organization = models.ForeignKey(
