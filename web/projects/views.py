@@ -17,7 +17,7 @@ from organizations.mixins import (OrganizationIsMemberMixin,
                                   OrganizationIsOwnerMixin,
                                   OrganizationRequiredMixin)
 from projects.forms import FORM_MAPPING, ProjectForm
-from projects.mixins import ProjectObjectMixin
+from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
 from projects.models import Notification, Project
 
 EVENT_TYPES = [
@@ -45,7 +45,7 @@ class ProjectsListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
 
 
 class ProjectDetailView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, DetailView
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, ProjectIsActiveMixin, DetailView
 ):
     # TODO: change this view into a ListView based on Changes,
     #  so we'll have a pagination instead of [:10]
@@ -136,7 +136,7 @@ class ProjectDeleteView(
 
 
 class ProjectVulnerabilitiesView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ListView
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, ListView
 ):
     model = Cve
     context_object_name = "cves"
@@ -164,7 +164,7 @@ class ProjectVulnerabilitiesView(
         return context
 
 
-class ReportsView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
+class ReportsView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, ListView):
     model = Report
     context_object_name = "reports"
     template_name = "projects/reports.html"
@@ -196,7 +196,7 @@ class ReportsView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
         return context
 
 
-class ReportView(LoginRequiredMixin, OrganizationIsMemberMixin, DetailView):
+class ReportView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, DetailView):
     model = Report
     template_name = "projects/report.html"
 
@@ -250,7 +250,7 @@ class ReportView(LoginRequiredMixin, OrganizationIsMemberMixin, DetailView):
 
 
 class SubscriptionsView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, DetailView
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, ProjectIsActiveMixin, DetailView
 ):
     model = Project
     template_name = "projects/subscriptions.html"
@@ -262,7 +262,7 @@ class SubscriptionsView(
 
 
 class NotificationsView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, DetailView
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, ProjectIsActiveMixin, DetailView
 ):
     model = Project
     template_name = "projects/notifications/list.html"
@@ -279,6 +279,7 @@ class NotificationsView(
 class NotificationCreateView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
+    ProjectIsActiveMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     CreateView,
@@ -340,6 +341,7 @@ class NotificationCreateView(
 class NotificationUpdateView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
+    ProjectIsActiveMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     UpdateView,

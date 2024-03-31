@@ -48,8 +48,12 @@ SELECT
 FROM
   opencve_projects
 WHERE
-  subscriptions->'vendors' ?| %(vendors)s
-  OR subscriptions->'products' ?| %(products)s;
+  (active = 't')
+  AND
+  (
+    subscriptions->'vendors' ?| %(vendors)s
+    OR subscriptions->'products' ?| %(products)s
+  );
 """
 
 SQL_PROJECT_WITH_NOTIFICATIONS = """
