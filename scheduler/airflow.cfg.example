@@ -1254,6 +1254,11 @@ mitre_repo_path = /home/airflow/repositories/cvelistV5
 # The local folder where the repository `opencve-nvd` is cloned
 nvd_repo_path = /home/airflow/repositories/opencve-nvd
 
+# The starting date of the main OpenCVE workflow, used to update
+# the vulnerabilities data and send notifications to the users.
+# It has to be set once and only once during OpenCVE initialization.
+start_date = 2024-01-01
+
 # How many notifications to send in parallel per notification task
 max_notifications_per_task = 10
 
