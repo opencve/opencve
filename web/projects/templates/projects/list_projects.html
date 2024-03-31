@@ -6,7 +6,7 @@
 {% block content %}
 <section class="content">
     <div class="row">
-        <div class="col-md-8 col-md-offset-2">
+        <div class="col-md-9 col-md-offset-1">
             {% include "messages.html" %}
 
             <div class="callout callout-info">
@@ -20,6 +20,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Description</th>
+                            <th>Active</th>
                             <th></th>
                         </tr>
                         {% if projects %}
@@ -27,9 +28,10 @@
                         <tr>
                             <td>{{ project.name }}</td>
                             <td>{{ project.description|default:'' }}</td>
+                            <td>{{ project.active|yesno }}</td>
                             <td class="pull-right">
                                 <div class="btn-group" role="group">
-                                    <a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default btn-xs">View Project</a>
+                                    {% if project.active %}<a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default btn-xs">View Project</a>{% endif %}
                                     <a href="{% url 'edit_project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default btn-xs">Edit</a>
                                     <a href="{% url 'delete_project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
                                 </div>

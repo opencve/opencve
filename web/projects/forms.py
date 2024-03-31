@@ -12,7 +12,7 @@ FORM_MAPPING = {"email": ["email"], "webhook": ["url", "headers"]}
 class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
-        fields = ["name", "description"]
+        fields = ["name", "description", "active"]
 
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop("request")
@@ -22,6 +22,7 @@ class ProjectForm(forms.ModelForm):
         self.helper.layout = Layout(
             "name",
             "description",
+            "active",
             FormActions(
                 HTML(
                     """
