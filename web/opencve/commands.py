@@ -1,13 +1,10 @@
 import time
 from contextlib import contextmanager
 
-from django.conf import settings
 from django.core.management.base import BaseCommand as DjangoBaseCommand
 
 
 class BaseCommand(DjangoBaseCommand):
-    kb_path = settings.KB_REPO_PATH
-
     def error(self, message, ending=None):
         self.stdout.write(f"[error] {message}", ending=ending)
 
