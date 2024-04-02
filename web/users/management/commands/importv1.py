@@ -2,6 +2,7 @@ import psycopg2
 from urllib.parse import urlparse
 
 from allauth.account.models import EmailAddress
+from django.conf import settings
 from django.utils.timezone import now
 
 from cves.constants import PRODUCT_SEPARATOR
@@ -9,7 +10,7 @@ from opencve.commands import BaseCommand
 from users.models import User
 from organizations.models import Membership, Organization
 from projects.models import Notification, Project
-from users.management.commands.constants import (
+from users.management.constants import (
     V1_USERS_SQL,
     V1_VENDORS_SQL,
     V1_PRODUCTS_SQL,
@@ -19,7 +20,7 @@ from users.management.commands.constants import (
 class Command(BaseCommand):
     @staticmethod
     def get_cursor():
-        uri = urlparse("postgresql://localhost:5432/opencveprod")
+        uri = urlparse(settings.OPENCVE_V1_DATABASE_URI)
         connection = psycopg2.connect(
             database=uri.path[1:],
             user=uri.username,
@@ -58,7 +59,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def create_orga(user):
-        orga = Organization.objects.create(name="Default Org")
+        orga = Organization.objects.create(name=f"{user.username}-orga")
 
         date_now = now()
         Membership.objects.create(
