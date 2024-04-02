@@ -59,6 +59,12 @@ add-config-files() {
 
 }
 
+set-airflow-start-date() {
+    echo "--> Configuring start_start in Airflow configuration file for today"
+    sed -i "s/start_date = .*/start_date = $(date '+%Y-%m-%d')/g" /home/airflow/airflow.cfg
+    grep "start_date" /home/airflow/airflow.cfg
+}
+
 start-docker-stack() {
 
     echo "--> Get ENV variable from docker compose env file"
@@ -90,7 +96,7 @@ create-superuser() {
 import-opencve-kb() {
 
     echo "--> Importing OpenCVE KB inside the database, this can take 15 to 30min."
-    docker exec -it webserver python manage.py importdb
+    docker exec -it webserver python manage.py import_from_kb
 
 }
 
@@ -108,19 +114,20 @@ display-usage() {
     echo ""
     echo "OPTIONS:"
     echo ""
-    echo " prepare : Run set-user & clone-repositories & add-config-files"
+    echo " prepare : Run set-user & clone-repositories & add-config-files & set-airflow-start-date"
     echo " start   : Run start-docker-stack & create-superuser & import-opencve-kb & start-opencve-dag"
     echo ""
     echo ""
     echo "Specific OPTIONS:"
     echo ""
-    echo " set-user           : Install airflow user"
-    echo " clone-repositories : Clone KB repositories"
-    echo " add-config-files   : Add default configurations files"
-    echo " start-docker-stack : Start docker compose stack"
-    echo " create-superuser   : Create OpenCVE super user with admin privileges"
-    echo " import-opencve-kb  : Import OpenCVE KB inside local database"
-    echo " start-opencve-dag  : Unpause OpenCVE Dag in Airflow"
+    echo " set-user               : Install airflow user"
+    echo " clone-repositories     : Clone KB repositories"
+    echo " add-config-files       : Add default configurations files"
+    echo " set-airflow-start-date : Configure Airflow start date"
+    echo " start-docker-stack     : Start docker compose stack"
+    echo " create-superuser       : Create OpenCVE super user with admin privileges"
+    echo " import-opencve-kb      : Import OpenCVE KB inside local database"
+    echo " start-opencve-dag      : Unpause OpenCVE Dag in Airflow"
     echo ""
     echo ""
 }
@@ -133,6 +140,7 @@ case $_OPTIONS in
         set-user
         clone-repositories
         add-config-files
+        set-airflow-start-date
         ;;
     "start" )
         start-docker-stack
@@ -148,6 +156,9 @@ case $_OPTIONS in
         ;;
     "add-config-files" )
         add-config-files
+        ;;
+     "set-airflow-start-date" )
+        set-airflow-start-date
         ;;
      "start-docker-stack" )
         start-docker-stack
