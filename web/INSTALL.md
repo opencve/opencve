@@ -60,5 +60,5 @@ python manage.py createsuperuser
 Finally, you can populate the database:
 
 ```
-python manage.py import_cve
+python manage.py import_from_kb
 ```
