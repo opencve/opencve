@@ -160,6 +160,16 @@ notification_smtp_validate_certs = True
 notification_smtp_timeout = 30
 ```
 
+### Setup the start date for OpenCVE workflow
+
+You now setup the start day at today inside the Airflow configuration file, it needs to be done before starting the stack:
+
+```
+./install.sh set-airflow-start-date
+--> Configuring start_start in Airflow configuration file for today
+start_date = 2024-04-02
+```
+
 ### Start the OpenCVE stack
 
 Now you can run the command to bootstrap the entire stack:
