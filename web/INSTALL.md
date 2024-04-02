@@ -21,22 +21,13 @@ git clone https://github.com/opencve/opencve-nvd.git
 git clone https://github.com/CVEProject/cvelistV5.git
 ```
 
-The OpenCVE v2 webserver needs its own database with some extensions:
-
-```
-CREATE DATABASE opencve_web;
-\c opencve_web
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-```
-
 You can now copy the `settings.py.example` file:
 
 ```
 cp opencve/settings.py.example opencve/settings.py
 ```
 
-And customize it:
+And customize it (OpenCVE only supports the PostgreSQL DBMS):
 
 ```
 SECRET_KEY = "..."
