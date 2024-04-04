@@ -14,6 +14,8 @@ RUN apt-get update \
 
 USER airflow
 
+RUN mkdir -p /home/airflow/repositories
+
 COPY requirements.txt /
 
 RUN python3 -m pip install --upgrade pip
