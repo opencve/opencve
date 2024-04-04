@@ -5,46 +5,10 @@
 
 set -e
 
-set-user() {
-
-    echo "--> Creating airflow user"
-
-    if id airflow; then
-        # Check user id
-        if [ "$(id -u airflow)" -eq 50000 ]; then
-            echo "User airflow already setup"
-        else
-            echo "User airflow has not the correct id, expected: 50000"
-            exit 1
-        fi
-    else
-        # Add user airflow
-        useradd -m airflow -u 50000
-    fi
-
-    # Create airflow directories with airflow user
-    echo "--> Creating airflow directories"
-    su - airflow -c 'test -d ~/repositories' || su - airflow -c 'mkdir ~/repositories'
-    su - airflow -c 'test -d ~/logs' || su - airflow -c 'mkdir ~/logs'
-    su - airflow -c 'test -d ~/test' || su - airflow -c 'mkdir ~/test'
-    echo "Done"
-
-}
-
-clone-repositories() {
-
-    echo "--> Cloning OpenCVE needed repositories"
-    su - airflow -c 'git clone https://github.com/opencve/opencve-kb.git ~/repositories/opencve-kb'
-    su - airflow -c 'git clone https://github.com/opencve/opencve-nvd.git ~/repositories/opencve-nvd'
-    su - airflow -c 'git clone https://github.com/CVEProject/cvelistV5.git ~/repositories/cvelistV5'
-
-}
-
 add-config-files() {
 
     echo "--> Adding airflow config file"
-    cp ../scheduler/airflow.cfg.example /home/airflow/airflow.cfg
-    chown airflow:airflow /home/airflow/airflow.cfg
+    cp ../scheduler/airflow.cfg.example ../scheduler/airflow.cfg
 
     echo "--> Adding Django settings file"
     cp ../web/opencve/settings.py.example ../web/opencve/settings.py
@@ -86,6 +50,15 @@ start-docker-stack() {
 
 }
 
+clone-repositories() {
+
+    echo "--> Cloning OpenCVE needed repositories"
+    docker exec -it airflow-scheduler git clone https://github.com/opencve/opencve-kb.git /home/airflow/repositories/opencve-kb
+    docker exec -it airflow-scheduler git clone https://github.com/opencve/opencve-nvd.git /home/airflow/repositories/opencve-nvd
+    docker exec -it airflow-scheduler git clone https://github.com/CVEProject/cvelistV5.git /home/airflow/repositories/cvelistV5
+
+}
+
 create-superuser() {
 
      echo "--> Creating superuser on OpenCVE"
@@ -114,17 +87,16 @@ display-usage() {
     echo ""
     echo "OPTIONS:"
     echo ""
-    echo " prepare : Run set-user & clone-repositories & add-config-files & set-airflow-start-date"
-    echo " start   : Run start-docker-stack & create-superuser & import-opencve-kb & start-opencve-dag"
+    echo " prepare : add-config-files & set-airflow-start-date"
+    echo " start   : Run start-docker-stack & clone-repositories & create-superuser & import-opencve-kb & start-opencve-dag"
     echo ""
     echo ""
     echo "Specific OPTIONS:"
     echo ""
-    echo " set-user               : Install airflow user"
-    echo " clone-repositories     : Clone KB repositories"
     echo " add-config-files       : Add default configurations files"
     echo " set-airflow-start-date : Configure Airflow start date"
     echo " start-docker-stack     : Start docker compose stack"
+    echo " clone-repositories     : Clone KB repositories"
     echo " create-superuser       : Create OpenCVE super user with admin privileges"
     echo " import-opencve-kb      : Import OpenCVE KB inside local database"
     echo " start-opencve-dag      : Unpause OpenCVE Dag in Airflow"
@@ -137,19 +109,15 @@ _OPTIONS=$1
 
 case $_OPTIONS in
     "prepare" )
-        set-user
-        clone-repositories
         add-config-files
         set-airflow-start-date
         ;;
     "start" )
         start-docker-stack
+        clone-repositories
         create-superuser
         import-opencve-kb
         start-opencve-dag
-        ;;
-    "set-user" )
-        set-user
         ;;
     "clone-repositories" )
         clone-repositories

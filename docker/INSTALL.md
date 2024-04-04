@@ -29,38 +29,14 @@ There are 2 options that run all the commands for you:
 
 You can run dedicated commands if you want to proceed step by step:
 ```
- set-user           : Install airflow user
- clone-repositories : Clone KB repositories
  add-config-files   : Add default configurations files
  start-docker-stack : Start docker compose stack
+ clone-repositories : Clone KB repositories
  import-opencve-kb  : Import OpenCVE KB inside local database
  start-opencve-dag  : Unpause OpenCVE Dag in Airflow
 ```
 
 ##  Installation step by step
-
-### Setup airflow user
-
-```
-./install.sh set-user
---> Creating airflow user
-id: ‘airflow’: no such user
---> Creating airflow directories
-Done
-```
-
-### Clone repositories
-
-```
-./install.sh clone-repositories
---> Cloning OpenCVE needed repositories
-Cloning into '/home/airflow/repositories/opencve-kb'...
-[...]
-Cloning into '/home/airflow/repositories/opencve-nvd'...
-[...]
-Cloning into '/home/airflow/repositories/cvelistV5'...
-[...]
-```
 
 ### Add the configuration files
 
@@ -194,6 +170,19 @@ b91f0cda0c40   redis/redis-stack:latest    "/entrypoint.sh"         9 minutes ag
 2be9eeed7d6c   postgres:15                 "docker-entrypoint.s…"   9 minutes ago   Up 9 minutes (healthy)   5432/tcp                 postgres
 ```
 
+### Clone repositories
+
+```
+./install.sh clone-repositories
+--> Cloning OpenCVE needed repositories
+Cloning into '/home/airflow/repositories/opencve-kb'...
+[...]
+Cloning into '/home/airflow/repositories/opencve-nvd'...
+[...]
+Cloning into '/home/airflow/repositories/cvelistV5'...
+[...]
+```
+
 ### Create privileged user
 
 Create the super user for the OpenCVE web portal:
@@ -221,4 +210,12 @@ Done in 756.121s
 ```
 
 You can now reach OpenCVE web portal at your configured IP/FQDN on the port 80 and the Airflow webserver on the port 8080.
+
+And then, you can unpause the DAG inside Airflow web interface to let it executes the workflow or directly with this command line:
+
+```
+./install.sh start-opencve-dag
+--> Unpausing the dag
+Dag: opencve, paused: False
+```
 
