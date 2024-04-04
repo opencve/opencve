@@ -9,10 +9,9 @@ x-airflow-common: &airflow-common
   env_file:
     - .env
   volumes:
-    - ${AIRFLOW_DAGS_DIR:-.}:/opt/airflow/dags
-    - ${AIRFLOW_DIR:-.}/airflow.cfg:/opt/airflow/airflow.cfg:ro
-    - ${AIRFLOW_DIR:-.}/logs/:/opt/airflow/logs
-    - ${AIRFLOW_DIR:-.}/repositories/:/home/airflow/repositories/
+    - ../scheduler/dags/:/opt/airflow/dags
+    - ../scheduler/airflow.cfg:/opt/airflow/airflow.cfg:ro
+    - repositories:/home/airflow/repositories/
   depends_on:
     &airflow-common-depends-on
     redis:
@@ -100,8 +99,8 @@ services:
         - OPENCVE_VERSION=${OPENCVE_VERSION}
       dockerfile: Dockerfile
     volumes:
-      - ${AIRFLOW_DIR:-.}/repositories/:/app/repositories/
       - ../web/opencve/settings.py:/app/opencve/web/opencve/settings.py:ro
+      - repositories:/app/repositories/:ro
       - staticfiles:/app/static/
     restart: on-failure
 
@@ -147,4 +146,4 @@ services:
 volumes:
     postgres-db:
     staticfiles:
-
+    repositories:
