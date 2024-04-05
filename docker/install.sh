@@ -25,8 +25,8 @@ add-config-files() {
 
 set-airflow-start-date() {
     echo "--> Configuring start_start in Airflow configuration file for today"
-    sed -i "s/start_date = .*/start_date = $(date '+%Y-%m-%d')/g" /home/airflow/airflow.cfg
-    grep "start_date" /home/airflow/airflow.cfg
+    sed -i.bak "s/start_date = .*/start_date = $(date '+%Y-%m-%d')/g" ../scheduler/airflow.cfg && rm -f ../scheduler/airflow.cfg.bak
+    grep "start_date" ../scheduler/airflow.cfg
 }
 
 start-docker-stack() {
