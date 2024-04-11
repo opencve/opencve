@@ -7,8 +7,8 @@ FROM ${AIRFLOW_IMAGE}
 USER root
 
 RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y \
+    && ACCEPT_EULA=Y apt-get upgrade -y \
+    && ACCEPT_EULA=Y apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
