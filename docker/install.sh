@@ -7,7 +7,7 @@ set -e
 
 add-config-files() {
 
-    echo "--> Adding airflow config file"
+    echo "--> Adding Airflow configuration file"
     cp ../scheduler/airflow.cfg.example ../scheduler/airflow.cfg
 
     echo "--> Adding Django settings file"
@@ -19,7 +19,9 @@ add-config-files() {
     echo "--> Copying opencve.conf.template for Nginx"
     cp ./config/opencve.conf.template.example ./config/opencve.conf.template
 
-    echo "Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack"
+    echo ""
+    echo "/!\ Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack"
+    echo ""
 
 }
 

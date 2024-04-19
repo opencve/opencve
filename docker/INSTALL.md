@@ -10,8 +10,10 @@ The script regroups and follows the steps described in the web and scheduler ins
 
 ## Requirements
 
-You need to have your server installed with Debian or equivalent, with Docker v25.0.x and docker-compose plugin.
+You need to have your server installed with Debian OS or equivalent, with Docker v25.0.x and docker-compose plugin.
 The precedure is run as root.
+
+The minimum requirement for the host is 2 cores and 4 Go RAM, the disk usage will be around 25Go or 30Go. The instance [d2-4](https://www.ovhcloud.com/fr/public-cloud/sandbox/) from OVH is a good fit to start.
 
 ## Installation
 
@@ -46,7 +48,8 @@ You can run dedicated commands if you want to proceed step by step:
 --> Adding Django settings file
 --> Copying .env file for docker compose
 --> Copying opencve.conf.template for Nginx
-Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack
+
+/!\ Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack
 ```
 
 First, you need to verify and update your env file:
@@ -74,7 +77,6 @@ cat ../web/opencve/settings.py
 ```
 
 You may want to customize the following fields:
-
 
 ```
 SECRET_KEY = "..."
@@ -113,10 +115,16 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "OpenCVE.dev <no-reply@example.com>"
 ```
 
+If you keep the email backend as is (i.e "django.core.mail.backends.console.EmailBackend"), you can consult the emails that would be sent in the logs of the webserver container like this:
+
+```
+docker logs webserver
+```
+
 Then, check the airflow configuration file:
 
 ```
-cat /home/airflow/airflow.cfg
+cat ../scheduler/airflow.cfg
 ```
 
 You may want to customize:
