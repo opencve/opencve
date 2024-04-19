@@ -1,6 +1,5 @@
 # OPENCVE DOCKER COMPOSE
 ---
-version: '3.8'
 name: opencve
 x-airflow-common: &airflow-common
   build:

@@ -813,7 +813,7 @@ kubernetes_queue = kubernetes
 # This section only applies if you are using the CeleryExecutor in
 # ``[core]`` section above
 # The app name that will be used by celery
-celery_app_name = airflow.executors.celery_executor
+celery_app_name = airflow.providers.celery.executors.celery_executor
 
 # The concurrency that will be used when starting workers with the
 # ``airflow celery worker`` command. This defines the number of task instances that
@@ -881,7 +881,7 @@ flower_basic_auth =
 sync_parallelism = 0
 
 # Import path for celery configuration options
-celery_config_options = airflow.config_templates.default_celery.DEFAULT_CELERY_CONFIG
+celery_config_options = airflow.providers.celery.executors.default_celery.DEFAULT_CELERY_CONFIG
 ssl_active = False
 ssl_key =
 ssl_cert =
@@ -902,13 +902,6 @@ operation_timeout = 1.0
 # This is used in Airflow to keep track of the running tasks and if a Scheduler is restarted
 # or run in HA mode, it can adopt the orphan tasks launched by previous SchedulerJob.
 task_track_started = True
-
-# Time in seconds after which adopted tasks which are queued in celery are assumed to be stalled,
-# and are automatically rescheduled. This setting does the same thing as ``stalled_task_timeout`` but
-# applies specifically to adopted tasks only. When set to 0, the ``stalled_task_timeout`` setting
-# also applies to adopted tasks. To calculate adoption time, subtract the
-# :ref:`task duration<ui:task-duration>` from the task's :ref:`landing time<ui:landing-times>`.
-task_adoption_timeout = 600
 
 # Time in seconds after which tasks queued in celery are assumed to be stalled, and are automatically
 # rescheduled. Adopted tasks will instead use the ``task_adoption_timeout`` setting if specified.
@@ -1090,6 +1083,21 @@ allow_trigger_in_future = False
 # How often to check for expired trigger requests that have not run yet.
 trigger_timeout_check_interval = 15
 
+# Amount of time a task can be in the queued state before being retried or set to failed.
+#
+task_queued_timeout = 600
+
+# How often to check for tasks that have been in the queued state for
+# longer than `[scheduler] task_queued_timeout`.
+#
+task_queued_timeout_check_interval = 120
+
+# The run_id pattern used to verify the validity of user input to the run_id parameter when
+# triggering a DAG. This pattern cannot change the pattern used by scheduler to generate run_id
+# for scheduled DAG runs or DAG runs triggered without changing the run_id parameter.
+#
+allowed_run_id_pattern = ^[A-Za-z0-9_.~:+-]+$
+
 [triggerer]
 # How many triggers a single Triggerer will run at once, by default.
 default_capacity = 1000
@@ -1223,9 +1231,6 @@ tcp_keep_cnt = 6
 
 # Set this to false to skip verifying SSL certificate of Kubernetes python client.
 verify_ssl = True
-
-# How long in seconds a worker can be in Pending before it is considered a failure
-worker_pods_pending_timeout = 300
 
 # How often in seconds to check if Pending workers have exceeded their timeouts
 worker_pods_pending_timeout_check_interval = 120
