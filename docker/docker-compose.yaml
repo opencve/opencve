@@ -96,6 +96,7 @@ services:
       args:
         - OPENCVE_REPOSITORY=${OPENCVE_REPOSITORY}
         - OPENCVE_VERSION=${OPENCVE_VERSION}
+        - GUNICORN_CMD_ARGS=${GUNICORN_CMD_ARGS}
       dockerfile: Dockerfile
     volumes:
       - ../web/opencve/settings.py:/app/opencve/web/opencve/settings.py:ro
@@ -118,10 +119,9 @@ services:
     image: redis/redis-stack:latest
     healthcheck:
        test: ["CMD", "redis-cli", "ping"]
-       interval: 60s
-       timeout: 30s
+       interval: 10s
        retries: 5
-       start_period: 30s
+       start_period: 5s
     restart: on-failure
 
   postgres:

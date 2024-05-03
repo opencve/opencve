@@ -172,7 +172,7 @@ CONTAINER ID   IMAGE                       COMMAND                  CREATED     
 c05be1dcd8a5   opencve-airflow-webserver   "/usr/bin/dumb-init …"   9 minutes ago   Up 7 minutes (healthy)   0.0.0.0:8080->8080/tcp   airflow-webserver
 45dde77ffdd7   opencve-airflow-worker      "/usr/bin/dumb-init …"   9 minutes ago   Up 7 minutes (healthy)   8080/tcp                 airflow-worker
 08302ce6d0f7   opencve-airflow-scheduler   "/usr/bin/dumb-init …"   9 minutes ago   Up 7 minutes (healthy)   8080/tcp                 airflow-scheduler
-041ad3546c46   opencve-webserver           "python3 manage.py r…"   9 minutes ago   Up 9 minutes             8000/tcp                 webserver
+041ad3546c46   opencve-webserver           "gunicorn opencve.ws…"   9 minutes ago   Up 9 minutes             8000/tcp                 webserver
 5e0d20559b01   nginx:bookworm              "/docker-entrypoint.…"   9 minutes ago   Up 9 minutes             0.0.0.0:80->80/tcp       nginx
 b91f0cda0c40   redis/redis-stack:latest    "/entrypoint.sh"         9 minutes ago   Up 9 minutes (healthy)   6379/tcp, 8001/tcp       redis
 2be9eeed7d6c   postgres:15                 "docker-entrypoint.s…"   9 minutes ago   Up 9 minutes (healthy)   5432/tcp                 postgres
