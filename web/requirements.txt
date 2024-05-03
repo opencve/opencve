@@ -13,3 +13,4 @@ crispy-bootstrap3==2022.1
 gitpython==3.1.32
 nested-lookup==0.2.25
 psycopg2-binary==2.9.6
+gunicorn==22.0.0

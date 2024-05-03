@@ -33,8 +33,8 @@ set-airflow-start-date() {
 
 start-docker-stack() {
 
-    echo "--> Get ENV variable from docker compose env file"
-    export $(grep -v '^#' .env | xargs -d '\n')
+    echo "--> Get PG ENV variables from docker compose env file"
+    export $(grep -v '^#' .env | grep 'POSTGRES' | xargs -d '\n')
 
     echo "--> Starting Docker compose stack"
     docker compose up -d
