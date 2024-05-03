@@ -26,6 +26,7 @@ RUN python3 -m pip install -r opencve/web/requirements.txt
 FROM base
 
 ARG OPENCVE_REPOSITORY
+ARG GUNICORN_CMD_ARGS
 
 LABEL name="opencve"
 LABEL maintainer="dev@opencve.io"
@@ -39,11 +40,11 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y\
 COPY --from=builder /app/ /app/
 
 ENV PATH="/app/venv/bin:$PATH"
+ENV GUNICORN_CMD_ARGS="${GUNICORN_CMD_ARGS}"
 
 WORKDIR /app/opencve/web/
 
 EXPOSE 8000
 
-ENTRYPOINT ["python3"]
-CMD ["manage.py", "runserver", "0.0.0.0:8000"]
-
+ENTRYPOINT ["gunicorn", "opencve.wsgi"]
+CMD ["-b" ,"0.0.0.0:8000"]
