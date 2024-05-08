@@ -2,7 +2,12 @@ import pathlib
 
 from airflow.exceptions import AirflowException
 from airflow.models.baseoperator import BaseOperator
-from includes.constants import KB_LOCAL_REPO, MITRE_LOCAL_REPO, NVD_LOCAL_REPO
+from includes.constants import (
+    KB_LOCAL_REPO,
+    MITRE_LOCAL_REPO,
+    NVD_LOCAL_REPO,
+    REDHAT_LOCAL_REPO,
+)
 
 
 class KindOperator(BaseOperator):
@@ -12,6 +17,7 @@ class KindOperator(BaseOperator):
             "kb",
             "mitre",
             "nvd",
+            "redhat",
         ):
             raise AirflowException(f"Kind {kind} is not supported")
         self.kind = kind
@@ -21,5 +27,6 @@ class KindOperator(BaseOperator):
             "kb": KB_LOCAL_REPO,
             "mitre": MITRE_LOCAL_REPO,
             "nvd": NVD_LOCAL_REPO,
+            "redhat": REDHAT_LOCAL_REPO,
         }[self.kind]
         return pathlib.Path(repo_path)

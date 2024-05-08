@@ -118,6 +118,28 @@
                 {% endif %}
             </div>
 
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">
+                        <img src="{% static 'img/redhat-icon.png' %}" class="cve-icon" style="width: 28px;" alt="cve-icon" />
+                        Redhat Information
+                    </div>
+                </div>
+                {% if cve.redhat_json %}
+                <div class="box-body">
+                    <p><strong>Severity :</strong> {{ cve.redhat_json.threat_severity }}</p>
+                    <p><strong>Publid Date:</strong> {{ cve.redhat_json.public_date }}</p>
+                    <hr/>
+                    <p><strong>Links:</strong> <a href="https://access.redhat.com/security/cve/{{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a> - <a href="{{ cve.redhat_json.bugzilla.url }}" target="_blank" data-toggle="tooltip" data-container="body" title="{{ cve.redhat_json.bugzilla.description }}">Bugzilla <i class="fa fa-external-link"></i></a></p>
+                    <p><strong>JSON object:</strong> <a class="pointer" data-toggle="modal" data-target="#modal-redhat-json">View <i class="fa fa-code"></i></a></p>
+                </div>
+                {% else %}
+                <div class="box-body">
+                    <p class="alert alert-info">No data.</p>
+                </div>
+                {% endif %}
+            </div>
+
             {% if user.is_authenticated %}
             <div class="box box-primary">
                 <div class="box-header with-border">
@@ -190,6 +212,24 @@
             </div>
             <div class="modal-body codejson">
                 {{ nvd_json }}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-right" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-redhat-json">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">JSON object</h4>
+            </div>
+            <div class="modal-body codejson">
+                {{ redhat_json }}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default pull-right" data-dismiss="modal">Close</button>

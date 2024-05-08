@@ -17,6 +17,7 @@ from includes.operators.parser_operator import ParserOperator
 def test_kind_operator_unsupported_kind():
     KindOperator(task_id="test_operator", kind="mitre")
     KindOperator(task_id="test_operator", kind="nvd")
+    KindOperator(task_id="test_operator", kind="redhat")
 
     message = "Kind test is not supported"
     with pytest.raises(AirflowException, match=message):
@@ -31,6 +32,10 @@ def test_kind_operator_get_repo_path():
     operator = KindOperator(task_id="test_operator", kind="nvd")
     with patch.dict("os.environ", AIRFLOW_VAR_NVD_REPO_PATH="/path/to/nvd"):
         assert str(operator.get_repo_path()) == "/path/to/nvd"
+
+    operator = KindOperator(task_id="test_operator", kind="redhat")
+    with patch.dict("os.environ", AIRFLOW_VAR_REDHAT_REPO_PATH="/path/to/redhat"):
+        assert str(operator.get_repo_path()) == "/path/to/redhat"
 
     operator = KindOperator(task_id="test_operator", kind="mitre")
     message = "Variable mitre_repo_path not found"
