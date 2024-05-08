@@ -4,7 +4,7 @@ import pendulum
 from airflow.configuration import conf
 from airflow.decorators import dag
 from airflow.utils.task_group import TaskGroup
-from includes.operators.fetch_operator import GitPullOperator
+from includes.operators.fetch_operator import GitFetchOperator
 from includes.operators.insert_operator import ProcessKbOperator
 from includes.tasks.notifications import (
     make_notifications_chunks,
@@ -29,12 +29,12 @@ start_date = pendulum.from_format(conf.get("opencve", "start_date"), "YYYY-MM-DD
 )
 def opencve():
     with TaskGroup(group_id="cves") as cves_group:
-        git_pull_tasks = [
-            GitPullOperator(task_id="pull_kb", kind="kb"),
-            GitPullOperator(task_id="pull_mitre", kind="mitre"),
-            GitPullOperator(task_id="pull_nvd", kind="nvd"),
+        git_fetch_tasks = [
+            GitFetchOperator(task_id="fetch_kb", kind="kb"),
+            GitFetchOperator(task_id="fetch_mitre", kind="mitre"),
+            GitFetchOperator(task_id="fetch_nvd", kind="nvd"),
         ]
-        git_pull_tasks >> ProcessKbOperator(task_id="process_kb")
+        git_fetch_tasks >> ProcessKbOperator(task_id="process_kb")
 
     with TaskGroup(group_id="reports") as reports_group:
         (
