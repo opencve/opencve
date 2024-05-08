@@ -241,18 +241,26 @@ class EmailNotification(BaseNotification):
         message.attach(html_message)
 
         try:
-            response = await aiosmtplib.send(
-                message,
-                hostname=conf.get("opencve", "notification_smtp_host"),
-                username=conf.get("opencve", "notification_smtp_user"),
-                password=conf.get("opencve", "notification_smtp_password"),
-                port=conf.getint("opencve", "notification_smtp_port"),
-                use_tls=conf.getboolean("opencve", "notification_smtp_use_tls"),
-                validate_certs=conf.getboolean(
+            kwargs = {
+                "hostname": conf.get("opencve", "notification_smtp_host"),
+                "port": conf.getint("opencve", "notification_smtp_port"),
+                "use_tls": conf.getboolean("opencve", "notification_smtp_use_tls"),
+                "validate_certs": conf.getboolean(
                     "opencve", "notification_smtp_validate_certs"
                 ),
-                timeout=conf.getint("opencve", "notification_smtp_timeout"),
-            )
+                "timeout": conf.getint("opencve", "notification_smtp_timeout"),
+            }
+
+            # Support empty values for username and password
+            username = conf.get("opencve", "notification_smtp_user")
+            if username:
+                kwargs["username"] = username
+
+            password = conf.get("opencve", "notification_smtp_password")
+            if password:
+                kwargs["password"] = password
+
+            response = await aiosmtplib.send(message, **kwargs)
         except aiosmtplib.errors.SMTPException as e:
             logger.error("SMTPException(%s): %s", self.email, e)
         except Exception as e:
