@@ -176,6 +176,7 @@ class CveDetailView(DetailView):
         # Raw json files
         context["nvd_json"] = json.dumps(context["cve"].nvd_json)
         context["mitre_json"] = json.dumps(context["cve"].mitre_json)
+        context["redhat_json"] = json.dumps(context["cve"].redhat_json)
 
         context["changes"] = Change.objects.filter(cve_id=context["cve"].id).order_by(
             "-created_at"
