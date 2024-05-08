@@ -33,6 +33,7 @@ def opencve():
             GitFetchOperator(task_id="fetch_kb", kind="kb"),
             GitFetchOperator(task_id="fetch_mitre", kind="mitre"),
             GitFetchOperator(task_id="fetch_nvd", kind="nvd"),
+            GitFetchOperator(task_id="fetch_redhat", kind="redhat"),
         ]
         git_fetch_tasks >> ProcessKbOperator(task_id="process_kb")
 

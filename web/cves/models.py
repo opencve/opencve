@@ -23,6 +23,7 @@ class Cve(BaseModel):
     _kb_json = {}
     _mitre_json = {}
     _nvd_json = {}
+    _redhat_json = {}
 
     class Meta:
         db_table = "opencve_cves"
@@ -84,6 +85,20 @@ class Cve(BaseModel):
                 with open(nvd_path) as f:
                     self._nvd_json = json.load(f)
         return self._nvd_json
+
+    @property
+    def redhat_json(self):
+        if not self._redhat_json:
+            redhat_data = self.kb_json.get("redhat")
+            if not redhat_data:
+                self._redhat_json = {}
+            else:
+                redhat_path = (
+                        pathlib.Path(settings.REDHAT_REPO_PATH) / redhat_data["redhat_repo_path"]
+                )
+                with open(redhat_path) as f:
+                    self._redhat_json = json.load(f)
+        return self._redhat_json
 
     @property
     def cvss20(self):

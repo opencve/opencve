@@ -1259,6 +1259,9 @@ mitre_repo_path = /home/airflow/repositories/cvelistV5
 # The local folder where the repository `opencve-nvd` is cloned
 nvd_repo_path = /home/airflow/repositories/opencve-nvd
 
+# The local folder where the repository `opencve-redhat` is cloned
+redhat_repo_path = /home/airflow/repositories/opencve-redhat
+
 # The starting date of the main OpenCVE workflow, used to update
 # the vulnerabilities data and send notifications to the users.
 # It has to be set once and only once during OpenCVE initialization.

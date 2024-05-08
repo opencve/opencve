@@ -4,6 +4,7 @@ from airflow.configuration import conf
 
 NVD_LOCAL_REPO = pathlib.Path(conf.get("opencve", "nvd_repo_path"))
 MITRE_LOCAL_REPO = pathlib.Path(conf.get("opencve", "mitre_repo_path"))
+REDHAT_LOCAL_REPO = pathlib.Path(conf.get("opencve", "redhat_repo_path"))
 KB_LOCAL_REPO = pathlib.Path(conf.get("opencve", "kb_repo_path"))
 
 PRODUCT_SEPARATOR = "$PRODUCT$"
