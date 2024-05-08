@@ -5,7 +5,7 @@ from airflow.exceptions import AirflowException
 from includes.operators import KindOperator
 
 
-class GitPullOperator(KindOperator):
+class GitFetchOperator(KindOperator):
     def execute(self, context):
         repo_path = self.get_repo_path()
 
@@ -18,11 +18,14 @@ class GitPullOperator(KindOperator):
         if not remotes:
             raise AirflowException(f"Repository {repo_path} has no remote")
 
-        # Pull the last changes
+        # Fetch the last changes
         last_commit = repo.head.commit
         self.log.info(f"Local HEAD is {last_commit}")
-        self.log.info(f"Pulling last changes from {repo_path}...")
-        repo.remotes.origin.pull("main")
+
+        self.log.info(f"Fetching last changes from {repo_path}...")
+        tracking_branch = repo.active_branch.tracking_branch()
+        repo.remotes.origin.fetch()
+        repo.git.reset("--hard", tracking_branch.name)
 
         if last_commit == repo.head.commit:
             self.log.info("No change detected")
