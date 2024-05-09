@@ -19,7 +19,7 @@
             {% endfor %}
             {% endif %}
 
-            <div class="nav-tabs-custom nav-tabs-primary nav-tabs-account">
+            <div class="nav-tabs-custom nav-tabs-primary nav-tabs-settings">
                 <ul class="nav nav-tabs">
                     <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}">
                         <a href="{% url 'tags' %}">Tags</a>
@@ -35,7 +35,7 @@
                     </li>
                 </ul>
                 <div class="tab-content">
-                    {% block content_account %}{% endblock %}
+                    {% block content_settings %}{% endblock %}
                 </div>
             </div>
         </div>

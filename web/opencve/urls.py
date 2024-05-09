@@ -48,10 +48,10 @@ urlpatterns = [
     path("", include("cves.urls")),
     path("", include("organizations.urls")),
     path("", include("projects.urls")),
-    path("account/", include("allauth.urls")),
+    path("settings/", include("allauth.urls")),
     path(r"login/", LoginView.as_view(), name="account_login"),
     path(r"signup/", SignupView.as_view(), name="account_signup"),
-    path("account/", include("users.urls")),
+    path("settings/", include("users.urls")),
     path("admin/", admin.site.urls),
     path("hijack/", include("hijack.urls")),
     # API routes
