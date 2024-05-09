@@ -1,9 +1,9 @@
-{% extends 'users/account/base_account.html' %}
+{% extends 'users/settings/base_settings.html' %}
 {% load i18n %}
 {% load allauth %}
 {% load crispy_forms_tags %}
 
-{% block content_account %}
+{% block content_settings %}
     {% url 'account_email' as action_url %}
     {% element form method="post" action=action_url %}
         {% slot body %}
