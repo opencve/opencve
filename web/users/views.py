@@ -13,7 +13,7 @@ from users.models import CveTag, UserTag
 
 class TagsListView(LoginRequiredMixin, ListView):
     context_object_name = "tags"
-    template_name = "users/account/tags.html"
+    template_name = "users/settings/tags.html"
 
     def get_queryset(self):
         query = UserTag.objects.filter(user=self.request.user).all()
@@ -24,7 +24,7 @@ class TagCreateView(
     LoginRequiredMixin, SuccessMessageMixin, RequestViewMixin, CreateView
 ):
     form_class = UserTagForm
-    template_name = "users/account/tag_create_update.html"
+    template_name = "users/settings/tag_create_update.html"
     success_url = reverse_lazy("tags")
     success_message = "The tag has been successfully created."
 
@@ -38,7 +38,7 @@ class TagEditView(
 ):
     model = UserTag
     form_class = UserTagForm
-    template_name = "users/account/tag_create_update.html"
+    template_name = "users/settings/tag_create_update.html"
     success_url = reverse_lazy("tags")
     success_message = "The tag has been successfully updated."
     slug_field = "name"
@@ -59,7 +59,7 @@ class TagDeleteView(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
     model = UserTag
     slug_field = "name"
     slug_url_kwarg = "name"
-    template_name = "users/account/delete_tag.html"
+    template_name = "users/settings/delete_tag.html"
     success_message = "The tag has been deleted."
     success_url = reverse_lazy("tags")
 
@@ -87,7 +87,7 @@ class TagDeleteView(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
 
 class SettingsProfileView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     form_class = ProfileChangeForm
-    template_name = "users/account/settings_profile.html"
+    template_name = "users/settings/settings_profile.html"
     success_url = reverse_lazy("settings_profile")
     success_message = "Your profile has been updated."
 
@@ -97,6 +97,6 @@ class SettingsProfileView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
 
 class SettingsPasswordView(LoginRequiredMixin, SuccessMessageMixin, PasswordChangeView):
     form_class = PasswordChangeForm
-    template_name = "users/account/settings_password.html"
+    template_name = "users/settings/settings_password.html"
     success_url = reverse_lazy("settings_password")
     success_message = "Your password has been updated."
