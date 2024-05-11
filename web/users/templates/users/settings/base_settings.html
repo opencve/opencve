@@ -33,6 +33,9 @@
                     <li class="{% is_active_link 'settings_password' %}">
                         <a href="{% url 'settings_password' %}">Password</a>
                     </li>
+                    <li class="{% is_active_link 'settings_account' 'delete_account' %}">
+                        <a href="{% url 'settings_account' %}">Acccount</a>
+                    </li>
                 </ul>
                 <div class="tab-content">
                     {% block content_settings %}{% endblock %}
