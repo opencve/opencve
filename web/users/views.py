@@ -4,11 +4,12 @@ from django.contrib.auth.views import PasswordChangeView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django.views.generic import CreateView, DeleteView, ListView, UpdateView, TemplateView
 
 from opencve.mixins import RequestViewMixin
+from organizations.mixins import Membership
 from users.forms import PasswordChangeForm, ProfileChangeForm, UserTagForm
-from users.models import CveTag, UserTag
+from users.models import CveTag, UserTag, User
 
 
 class TagsListView(LoginRequiredMixin, ListView):
@@ -90,6 +91,36 @@ class SettingsProfileView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     template_name = "users/settings/settings_profile.html"
     success_url = reverse_lazy("settings_profile")
     success_message = "Your profile has been updated."
+
+    def get_object(self, queryset=None):
+        return self.request.user
+
+
+class SettingsAccountView(LoginRequiredMixin, TemplateView):
+    template_name = "users/settings/account.html"
+
+
+class SettingsDeleteAccountView(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
+    model = User
+    template_name = "users/settings/delete_account.html"
+    success_url = reverse_lazy("account_login")
+    success_message = "Your account has been deleted."
+
+    def get(self, request, *args, **kwargs):
+        memberships = Membership.objects.filter(
+            user=request.user,
+            role=Membership.OWNER
+        ).all()
+        if memberships:
+            orga_names = ", ".join([m.organization.name for m in memberships])
+            message = f"""
+            Your account is currently owner of the following organizations: {orga_names}.
+            You must remove yourself, transfer ownership or delete these organizations before removing your account.
+            """
+            messages.error(self.request, message)
+            return redirect("settings_account")
+
+        return super().get(request, *args, **kwargs)
 
     def get_object(self, queryset=None):
         return self.request.user
