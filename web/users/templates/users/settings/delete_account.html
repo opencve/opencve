@@ -1,0 +1,16 @@
+{% extends 'users/settings/base_settings.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_settings %}
+<div class="row">
+    <div class="col-lg-12 col-md-12 col-sm-12">
+        <h3>Delete account</h3>
+        <p>Do you really want to delete the <strong>{{ object }}</strong> account ?</p>
+        <form method="post">
+            {% csrf_token %}
+            <a href="{% url 'settings_account' %}" class="btn btn-default">Cancel</a>
+            <input type="submit" class="btn btn-danger" value="Confirm">
+        </form>
+    </div>
+</div>
+{% endblock %}
