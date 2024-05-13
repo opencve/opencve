@@ -211,3 +211,14 @@ REDHAT_REPO_PATH = "/app/repositories/opencve-redhat"
 
 # OpenCVE v1 database URI, used to migrate data from v1 to v2
 OPENCVE_V1_DATABASE_URI = "postgresql://user:secret@localhost:5432/dbname"
+
+# Sentry configuration (uncomment it to enable Sentry monitoring)
+# Basic options: https://docs.sentry.io/platforms/python/configuration/options/
+# Django options: https://docs.sentry.io/platforms/python/integrations/django/#options
+#
+#import sentry_sdk
+#sentry_sdk.init(
+#    dsn="https://public@sentry.example.com/1",
+#    enable_tracing=True,
+#    [...]
+#)
