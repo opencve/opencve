@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> The OpenCVE v1 development is freezed as the v2 will be released soon.
+
+Apart from using other technologies (Django & Airflow), this new version will provide new features like organizations & projects, advanced notifications or usage of multiple CVEs providers to cross the information (CVSS, CPEs, References...).
+
+For more information, included what will change and some ETAs, you can read [this blog post](https://blog.opencve.io/posts/opencve-v2-is-coming-soon/).
+
+----------------
+
 <p align="center">
   <img alt="OpenCVE" src="https://raw.githubusercontent.com/opencve/opencve/master/logo.png">
 </p>
