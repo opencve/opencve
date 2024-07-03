@@ -1,0 +1,7 @@
+Hello {{ user.username }},
+
+this message was sent for testing purposes to validate your user profile email settings.
+
+If you do not want to receive emails, you can unsubscribe here : {{ url_for('main.notifications', _external=True, _scheme='https') }}
+
+OpenCVE - https://opencve.io
