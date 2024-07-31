@@ -66,14 +66,20 @@ BEGIN
     END LOOP;
     
     -- add the changes
-    RAISE NOTICE 'changes are: %', changes;
     SELECT id INTO _cve_id FROM opencve_cves WHERE cve_id = cve;
     FOR _change IN SELECT * FROM json_array_elements(changes::json)
     LOOP
-      RAISE NOTICE 'change ID is: %', _change->'change';
       INSERT INTO opencve_changes (id, created_at, updated_at, cve_id, path, commit, types)
-      VALUES((_change->>'change')::uuid, (_change->>'created')::timestamp, (_change->>'updated')::timestamp, _cve_id::uuid, _change->>'file_path', _change->>'commit_hash', _change->'event_types')
-      ON CONFLICT (created_at, cve_id, commit) DO NOTHING;
+      VALUES
+        (
+          (_change ->> 'change'):: uuid,
+          (_change ->> 'created'):: timestamp,
+          (_change ->> 'updated'):: timestamp,
+          _cve_id :: uuid,
+          _change ->> 'file_path',
+          _change ->> 'commit_hash',
+          _change -> 'event_types'
+        ) ON CONFLICT (created_at, cve_id, commit) DO NOTHING;
     END LOOP;
 END;
 $$;

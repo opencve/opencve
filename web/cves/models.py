@@ -48,7 +48,7 @@ class Cve(BaseModel):
 
     @property
     def kb_path(self):
-        cve_path = f"{self.cve_id.split('-')[1]}/{self.cve_id}/{self.cve_id}.json"
+        cve_path = f"{self.cve_id.split('-')[1]}/{self.cve_id}.json"
         return pathlib.Path(settings.KB_REPO_PATH) / cve_path
 
     @property
@@ -116,16 +116,32 @@ class Cve(BaseModel):
         return self._redhat_json
 
     @property
-    def cvss20(self):
-        return self.metrics.get("v20", {})
+    def cvssV2_0(self):
+        return self.metrics.get("cvssV2_0", {}).get("data", {})
 
     @property
-    def cvss30(self):
-        return self.metrics.get("v30", {})
+    def cvssV3_0(self):
+        return self.metrics.get("cvssV3_0", {}).get("data", {})
 
     @property
-    def cvss31(self):
-        return self.metrics.get("v31", {})
+    def cvssV3_1(self):
+        return self.metrics.get("cvssV3_1", {}).get("data", {})
+
+    @property
+    def cvssV4_0(self):
+        return self.metrics.get("cvssV4_0", {}).get("data", {})
+
+    @property
+    def kev(self):
+        return self.metrics.get("kev")
+
+    @property
+    def ssvc(self):
+        return self.metrics.get("ssvc")
+
+    @property
+    def references(self):
+        return self.kb_json["opencve"]["references"]
 
     def __str__(self):
         return self.cve_id

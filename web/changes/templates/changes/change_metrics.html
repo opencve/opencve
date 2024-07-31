@@ -1,0 +1,27 @@
+<tr>
+    {% if not hide_type %}
+    <td class="col-md-2">Metrics</td>
+    {% endif %}
+    <td class="col-md-5">
+        {% for k, v in event.details.removed.items %}
+        <u>{{ k }}</u>
+        <p><code>{{ v }}</code></p>
+        {% endfor %}
+
+        {% for k, v in event.details.updated.items %}
+        <u>{{ k }}</u>
+        <p><code>{{ v.old }}</code></p>
+        {% endfor %}
+    </td>
+    <td class="col-md-5">
+        {% for k, v in event.details.added.items %}
+        <u>{{ k }}</u>
+        <p><code>{{ v }}</code></p>
+        {% endfor %}
+
+        {% for k, v in event.details.updated.items %}
+        <u>{{ k }}</u>
+        <p><code>{{ v.new }}</code></p>
+        {% endfor %}
+    </td>
+</tr>

@@ -10,7 +10,7 @@ from django.views.generic import DetailView, ListView, TemplateView
 from changes.models import Change
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Cve, Product, Vendor, Weakness
-from cves.utils import convert_cpes, list_weaknesses
+from cves.utils import convert_cpes, list_to_dict_vendors, list_weaknesses
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project
@@ -47,22 +47,22 @@ def list_filtered_cves(request):
         "critical",
     ]:
         if cvss == "empty":
-            query = query.filter(metrics__v31__isnull=True)
+            query = query.filter(metrics__cvssV3_1__data__score__isnull=True)
         if cvss == "low":
             query = query.filter(
-                Q(metrics__v31__score__gte=0) & Q(metrics__v31__score__lte=3.9)
+                Q(metrics__cvssV3_1__data__score__gte=0) & Q(metrics__cvssV3_1__data__score__lte=3.9)
             )
         if cvss == "medium":
             query = query.filter(
-                Q(metrics__v31__score__gte=4.0) & Q(metrics__v31__score__lte=6.9)
+                Q(metrics__cvssV3_1__data__score__gte=4.0) & Q(metrics__cvssV3_1__data__score__lte=6.9)
             )
         if cvss == "high":
             query = query.filter(
-                Q(metrics__v31__score__gte=7.0) & Q(metrics__v31__score__lte=8.9)
+                Q(metrics__cvssV3_1__data__score__gte=7.0) & Q(metrics__cvssV3_1__data__score__lte=8.9)
             )
         if cvss == "critical":
             query = query.filter(
-                Q(metrics__v31__score__gte=9.0) & Q(metrics__v31__score__lte=10.0)
+                Q(metrics__cvssV3_1__data__score__gte=9.0) & Q(metrics__cvssV3_1__data__score__lte=10.0)
             )
 
     # Filter by Vendor and Product
@@ -180,9 +180,7 @@ class CveDetailView(DetailView):
         context["vulnrichment_json"] = json.dumps(context["cve"].vulnrichment_json)
 
         # Add the associated vendors and weaknesses
-        context["vendors"] = convert_cpes(
-            context["cve"].nvd_json.get("configurations", {})
-        )
+        context["vendors"] = list_to_dict_vendors(context["cve"].kb_json["opencve"]["vendors"]["data"])
         context["weaknesses"] = list_weaknesses(context["cve"].weaknesses)
 
         # Get the CVE tags for the authenticated user
