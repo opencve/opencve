@@ -4,7 +4,7 @@ This email has been sent from the {{ notification }} notification of the {{ orga
 {{ total }} vulnerabilities have been updated on {{ period.day }} between {{ period.from }} and {{ period.to }}.
 {% for severity, vulnerabilities in vulnerabilities.items() %}{% if vulnerabilities %}{{ severity|capitalize }} Vulnerabilities ({{ vulnerabilities|length }})
 {% for vulnerability in vulnerabilities %}
-- {{ vulnerability.cve_id }} ({{ vulnerability.score }}) - {{ web_url }}/cve/{{ vulnerability.cve_id }}
+- {{ vulnerability.cve_id }} ({% if vulnerability.score %}{{ vulnerability.score }}{% else %}No CVSS v3.1{% endif %}) - {{ web_url }}/cve/{{ vulnerability.cve_id }}
 {{ vulnerability.description }}
 Changes: {{ vulnerability.changes|join(', ') }}
 {% endfor %}{% endif %}
