@@ -98,9 +98,41 @@
             <div class="box box-primary">
                 <div class="box-header">
                     <div class="box-title">
-                        <img src="{% static 'img/nvd-icon.png' %}" class="cve-icon" alt="cve-icon" />
-                        NVD Information
+                        <img src="{% static 'img/cisa2-icon.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
+                        Vulnrichment
                     </div>
+                    {% if cve.vulnrichment_json %}
+                    <div class="box-tools pull-right">
+                        <div class="btn-group" data-toggle="btn-toggle">
+                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-vulnrichment-json"><i class="fa fa-code"></i></button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if cve.vulnrichment_json %}
+                <div class="box-body">
+                    <p><strong>Updated:</strong> {{ cve.vulnrichment_json.containers.adp.0.providerMetadata.dateUpdated }}</p>
+                </div>
+                {% else %}
+                <div class="box-body">
+                    <p class="alert alert-info">No data.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">
+                        <img src="{% static 'img/nvd-icon.png' %}" class="provider-icon" alt="cve-icon" />
+                        NVD
+                    </div>
+                    {% if cve.nvd_json %}
+                    <div class="box-tools pull-right">
+                        <div class="btn-group" data-toggle="btn-toggle">
+                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-nvd-json"><i class="fa fa-code"></i></button>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% if cve.nvd_json %}
                 <div class="box-body">
@@ -194,6 +226,24 @@
             </div>
             <div class="modal-body codejson">
                 {{ mitre_json }}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-right" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-vulnrichment-json">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">JSON object</h4>
+            </div>
+            <div class="modal-body codejson">
+                {{ vulnrichment_json }}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default pull-right" data-dismiss="modal">Close</button>

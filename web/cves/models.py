@@ -22,6 +22,7 @@ class Cve(BaseModel):
     # Raw Json data
     _kb_json = {}
     _mitre_json = {}
+    _vulnrichment_json = {}
     _nvd_json = {}
     _redhat_json = {}
 
@@ -71,6 +72,20 @@ class Cve(BaseModel):
                 with open(mitre_path) as f:
                     self._mitre_json = json.load(f)
         return self._mitre_json
+
+    @property
+    def vulnrichment_json(self):
+        if not self._vulnrichment_json:
+            vulnrichment_data = self.kb_json.get("vulnrichment")
+            if not vulnrichment_data:
+                self._vulnrichment_json = {}
+            else:
+                vulnrichment_path = (
+                        pathlib.Path(settings.VULNRICHMENT_REPO_PATH) / vulnrichment_data["vulnrichment_repo_path"]
+                )
+                with open(vulnrichment_path) as f:
+                    self._vulnrichment_json = json.load(f)
+        return self._vulnrichment_json
 
     @property
     def nvd_json(self):
