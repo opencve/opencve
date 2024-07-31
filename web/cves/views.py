@@ -177,19 +177,7 @@ class CveDetailView(DetailView):
         context["nvd_json"] = json.dumps(context["cve"].nvd_json)
         context["mitre_json"] = json.dumps(context["cve"].mitre_json)
         context["redhat_json"] = json.dumps(context["cve"].redhat_json)
-
-        context["changes"] = Change.objects.filter(cve_id=context["cve"].id).order_by(
-            "-created_at"
-        )
-
-        """events = Event.objects.filter(cve_id=context["cve"].id).order_by("-created_at")
-        context["events_by_time"] = [
-            (time, list(evs))
-            for time, evs in (
-                itertools.groupby(events, operator.attrgetter("created_at"))
-            )
-        ]"""
-        context["events_by_time"] = []
+        context["vulnrichment_json"] = json.dumps(context["cve"].vulnrichment_json)
 
         # Add the associated vendors and weaknesses
         context["vendors"] = convert_cpes(

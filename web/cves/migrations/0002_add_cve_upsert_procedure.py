@@ -11,7 +11,8 @@ CREATE PROCEDURE cve_upsert(
     title       text,
     metrics     jsonb,
     vendors     jsonb,
-    weaknesses  jsonb
+    weaknesses  jsonb,
+    changes     jsonb
 )
 LANGUAGE plpgsql
 AS $$
@@ -21,6 +22,8 @@ DECLARE
    _vendor    text;
    _vendor_id text;
    _product   text;
+   _change    jsonb;
+   _cve_id    uuid;
 BEGIN
     -- add a new CVE or update an existing one
     INSERT INTO opencve_cves (id, created_at, updated_at, cve_id, description, title, vendors, weaknesses, metrics)
@@ -61,6 +64,17 @@ BEGIN
       VALUES(uuid_generate_v4(), NOW(), NOW(), _vendor_id::uuid, _product)
       ON CONFLICT (name, vendor_id) DO NOTHING;
     END LOOP;
+    
+    -- add the changes
+    RAISE NOTICE 'changes are: %', changes;
+    SELECT id INTO _cve_id FROM opencve_cves WHERE cve_id = cve;
+    FOR _change IN SELECT * FROM json_array_elements(changes::json)
+    LOOP
+      RAISE NOTICE 'change ID is: %', _change->'change';
+      INSERT INTO opencve_changes (id, created_at, updated_at, cve_id, path, commit, types)
+      VALUES((_change->>'change')::uuid, (_change->>'created')::timestamp, (_change->>'updated')::timestamp, _cve_id::uuid, _change->>'file_path', _change->>'commit_hash', _change->'event_types')
+      ON CONFLICT (created_at, cve_id, commit) DO NOTHING;
+    END LOOP;
 END;
 $$;
 """
@@ -73,7 +87,8 @@ DROP PROCEDURE cve_upsert(
     title       text,
     metrics     jsonb,
     vendors     jsonb,
-    weaknesses  jsonb
+    weaknesses  jsonb,
+    changes     jsonb
 );"""
 
 
