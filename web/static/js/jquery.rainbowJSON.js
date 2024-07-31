@@ -131,7 +131,8 @@
                     }
                     else{
                         html += ' <a href="javascript:void(0)" onclick="$(this).next(\'span\').toggle();" class="rainbowToggle">&raquo;</a> ';
-                        html += '<span class="rainbowArray" style="background-color: '+this.shadeColor(this.options.bgColor, this.depth)+'">';
+                        //html += '<span class="rainbowArray" style="background-color: '+this.shadeColor(this.options.bgColor, this.depth)+'">';
+                        html += '<span class="rainbowArray"">';
                         html += recursiveHtml;
                         html += '</span>';
                     }

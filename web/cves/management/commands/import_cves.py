@@ -39,9 +39,14 @@ class Command(BaseCommand):
         params = dict(
             cve_data,
             **{
+                "cve": cve["cve"],
+                "created": cve_data["created"]["data"],
+                "updated": cve_data["updated"]["data"],
+                "description": cve_data["description"]["data"],
+                "title": cve_data["title"]["data"],
                 "metrics": Json(cve_data["metrics"]),
-                "vendors": Json(cve_data["vendors"]),
-                "weaknesses": Json(cve_data["weaknesses"]),
+                "vendors": Json(cve_data["vendors"]["data"]),
+                "weaknesses": Json(cve_data["weaknesses"]["data"]),
             },
         )
         self.call_procedure(params)

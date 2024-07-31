@@ -1,0 +1,7 @@
+<tr>
+    {% if not hide_type %}
+    <td class="col-md-2">Title</td>
+    {% endif %}
+    <td class="col-md-5">{% if event.details.old %}{{ event.details.old }}{% endif %}</td>
+    <td class="col-md-5">{% if event.details.new %}{{ event.details.new }}{% endif %}</td>
+</tr>

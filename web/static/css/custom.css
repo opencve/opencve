@@ -192,6 +192,10 @@
   border-top: 0px;
 }
 
+.table .td-grouper {
+    background-color: #ddd;
+}
+
 .tabs-report {
   border-radius: 3px;
   border-top: 3px solid #090031!important;
@@ -443,7 +447,7 @@ pre.plainJSON{
     margin-right: 10px;
 }
 
-.cve-icon {
+.provider-icon {
     width: 40px;
     margin-right: 5px;
 }
@@ -537,4 +541,9 @@ pre.plainJSON{
 .form-new-member input.form-control,
 .form-new-member select.form-control {
   width: 100%
+}
+
+.page-header {
+    margin-top: 25px;
+    border-bottom: 1px solid #ddd;
 }

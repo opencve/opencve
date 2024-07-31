@@ -1,0 +1,40 @@
+{% load opencve_extras %}
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Exploitation
+                        <span class="pull-right label label-{% metric_class_from_ssvc ssvc.options.Exploitation 'Exploitation' %}">{{ ssvc.options.Exploitation }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Automatable
+                        <span class="pull-right label label-{% metric_class_from_ssvc ssvc.options.Automatable 'Automatable' %}">{{ ssvc.options.Automatable }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-group panel-group-cvss">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h4 class="panel-title">
+                        Technical Impact
+                        <span class="pull-right label label-{% metric_class_from_ssvc ssvc.options|get:'Technical Impact' 'Technical Impact' %}">{{ ssvc.options|get:"Technical Impact" }}</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

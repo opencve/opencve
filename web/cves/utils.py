@@ -23,6 +23,32 @@ def convert_cpes(conf):
     return cpes
 
 
+def list_to_dict_vendors(vendors):
+    """
+    Transform a flat list of vendors into a dictionary.
+
+    >>> list_to_dict_vendors([
+        "fedoraproject",
+        "fedoraproject$PRODUCT$fedora",
+        "linux",
+        "linux$PRODUCT$linux_kernel"
+    ])
+    >>> {
+        "fedoraproject": ["fedora"],
+        "linux": ["linux_kernel"]
+    }
+    """
+    data = {}
+    _vendors = [v for v in vendors if PRODUCT_SEPARATOR not in v]
+    _products = [v for v in vendors if PRODUCT_SEPARATOR in v]
+    for vendor_name in _vendors:
+        data[vendor_name] = []
+    for product in _products:
+        vendor_name, product_name = product.split(PRODUCT_SEPARATOR)
+        data[vendor_name].append(product_name)
+    return data
+
+
 def flatten_vendors(vendors):
     """
     Takes a list of nested vendors and products and flat them.
@@ -112,6 +138,9 @@ def get_metric_from_vector(vector, metric=None):
         "CVSS:3.0",
     ):
         version = "v3"
+        metrics = metrics[1:]
+    elif metrics[0] == "CVSS:4.0":
+        version = "v4"
         metrics = metrics[1:]
     else:
         version = "v2"

@@ -14,6 +14,19 @@ CVSS_SCORES = [
 ]
 
 CVSS_NAME_MAPPING = {
+    "v4": {
+        "AV": "Attack Vector",
+        "AC": "Attack Complexity",
+        "AT": "Attack Requirements",
+        "PR": "Privileges Required",
+        "UI": "User Interaction",
+        "VC": "VS Confidentiality",
+        "VI": "VS Integrity",
+        "VA": "VS Availability",
+        "SC": "SS Confidentiality",
+        "SI": "SS Integrity",
+        "SA": "SS Availability",
+    },
     "v3": {
         "AC": "Attack Complexity",
         "AV": "Attack Vector",
@@ -35,6 +48,56 @@ CVSS_NAME_MAPPING = {
 }
 
 CVSS_VECTORS_MAPPING = {
+    "v4": {
+        "AV": {
+            "N": {"weight": 2, "label": "Network"},
+            "A": {"weight": 1, "label": "Adjacent Network"},
+            "L": {"weight": 1, "label": "Local"},
+            "P": {"weight": 0, "label": "Physical"},
+        },
+        "AC": {"L": {"weight": 2, "label": "Low"}, "H": {"weight": 1, "label": "High"}},
+        "AT": {"N": {"weight": 2, "label": "None"}, "P": {"weight": 1, "label": "Present"}},
+        "PR": {
+            "N": {"weight": 2, "label": "None"},
+            "L": {"weight": 1, "label": "Low"},
+            "H": {"weight": 0, "label": "High"},
+        },
+        "UI": {
+            "N": {"weight": 2, "label": "None"},
+            "P": {"weight": 1, "label": "Passive"},
+            "A": {"weight": 0, "label": "Active"},
+        },
+        "VC": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "VI": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "VA": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "SC": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "SI": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+        "SA": {
+            "H": {"weight": 2, "label": "High"},
+            "L": {"weight": 1, "label": "Low"},
+            "N": {"weight": 0, "label": "None"},
+        },
+    },
     "v3": {
         "AC": {"L": {"weight": 2, "label": "Low"}, "H": {"weight": 1, "label": "High"}},
         "AV": {

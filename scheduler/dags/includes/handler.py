@@ -4,7 +4,6 @@ import re
 import uuid
 
 from includes.constants import KB_LOCAL_REPO
-from includes.utils import format_cve_payload
 from psycopg2.extras import Json
 
 
@@ -14,7 +13,6 @@ class DiffHandler:
         self.diff = diff
         self._path = None
         self._data = None
-        self._type = None
 
     @property
     def path(self):
@@ -35,16 +33,6 @@ class DiffHandler:
         return self.path.split("/")[1]
 
     @property
-    def diff_type(self):
-        if re.search(r"CVE-\d{4}-\d{4,7}", self.filename):
-            return "cve"
-
-        if self.path.split("/")[-2] == "changes":
-            return "change"
-
-        return None
-
-    @property
     def data(self):
         if not self._data:
             # We can use b_blob part of diff as the KB is an append-only repo
@@ -54,22 +42,29 @@ class DiffHandler:
     def is_new_file(self):
         return self.diff.change_type == "A"
 
-    def is_cve_file(self):
-        return self.diff_type == "cve"
-
-    def is_change_file(self):
-        return self.diff_type == "change"
-
     def format_cve(self):
-        data = format_cve_payload(self.data)
-        return data
+        data = self.data["opencve"]
+        payload = {
+            "cve": self.data["cve"],
+            "created": data["created"]["data"],
+            "updated": data["updated"]["data"],
+            "description": data["description"]["data"],
+            "title": data["title"]["data"],
+            "metrics": Json(data["metrics"]),
+            "vendors": Json(data["vendors"]["data"]),
+            "weaknesses": Json(data["weaknesses"]["data"])
+        }
 
-    def format_change(self):
-        data = self.data
-        data["updated"] = data["created"]
-        data["change"] = str(uuid.uuid4())
-        data["cve"] = self.cve_id
-        data["file_path"] = self.path
-        data["commit_hash"] = self.commit.hexsha
-        data["event_types"] = Json([e["type"] for e in data["events"]])
-        return data
+        changes = []
+        for change in data.get("changes", []):
+            changes.append({
+                "change": str(uuid.uuid4()),
+                "created": change["created"],
+                "updated": change["created"],
+                "file_path": self.path,
+                "commit_hash": self.commit.hexsha,
+                "event_types": [e["type"] for e in change["data"]]
+            })
+        payload["changes"] = Json(changes)
+
+        return payload

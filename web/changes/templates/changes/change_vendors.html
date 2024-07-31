@@ -1,18 +1,18 @@
+{% load opencve_extras %}
 <tr>
     {% if not hide_type %}
-    <td class="col-md-2">References</td>
+    <td class="col-md-2">Vendors & Products</td>
     {% endif %}
     <td class="col-md-5">
-        <ul>
         {% for item in event.details.removed %}
-            <li><a href="{{ item }}" target="_blank">{{ item }}</a></li>
+        {{ item|remove_product_separator|humanize }}
+        <br />
         {% endfor %}
-        </ul>
+    </td>
     <td class="col-md-5">
-        <ul>
         {% for item in event.details.added %}
-            <li><a href="{{ item }}" target="_blank">{{ item }}</a></li>
+        {{ item|remove_product_separator|humanize }}
+        <br />
         {% endfor %}
-        </ul>
     </td>
 </tr>

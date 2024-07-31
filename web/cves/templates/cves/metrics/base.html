@@ -1,4 +1,3 @@
-{% load humanize %}
 {% load opencve_extras %}
 
 <h2 class="page-header">Metrics</h2>
@@ -37,93 +36,56 @@
             {% if cve.kev.data %}
             <a href="#kev" data-toggle="tab">KEV <span class="label label-danger label-cvss">yes</span></a>
             {% else %}
-            <a href="#kev" data-toggle="tab">KEV <span class="label default label-cvss">no</span></a>
+            <a href="#kev" data-toggle="tab">KEV <span class="label label-default label-cvss">no</span></a>
             {% endif %}
         </li>
         <li>
             {% if cve.ssvc.data %}
             <a href="#ssvc" data-toggle="tab">SSVC <span class="label label-danger label-cvss">yes</span></a>
             {% else %}
-            <a href="#ssvc" data-toggle="tab">SSVC <span class="label default label-cvss">no</span></a>
+            <a href="#ssvc" data-toggle="tab">SSVC <span class="label label-default label-cvss">no</span></a>
             {% endif %}
         </li>
     </ul>
     <div class="tab-content">
         <div class="tab-pane active" id="cvss40">
             {% if cve.cvssV4_0 %}
-            {% include "cves/cvss/v4.html" with cvss=cve.cvssV4_0 %}
+            {% include "cves/metrics/cvssV4_0.html" with cvss=cve.cvssV4_0 %}
             {% else %}
             <p class="alert alert-info">No CVSS v4.0</p>
             {% endif %}
         </div>
         <div class="tab-pane" id="cvss31">
             {% if cve.cvssV3_1 %}
-            {% include "cves/cvss/v3.html" with cvss=cve.cvssV3_1 %}
+            {% include "cves/metrics/cvssV3_x.html" with cvss=cve.cvssV3_1 %}
             {% else %}
             <p class="alert alert-info">No CVSS v3.1</p>
             {% endif %}
         </div>
         <div class="tab-pane" id="cvss30">
             {% if cve.cvssV3_0 %}
-            {% include "cves/cvss/v3.html" with cvss=cve.cvssV3_0 %}
+            {% include "cves/metrics/cvssV3_x.html" with cvss=cve.cvssV3_0 %}
             {% else %}
             <p class="alert alert-info">No CVSS v3.0</p>
             {% endif %}
         </div>
         <div class="tab-pane" id="cvss2">
             {% if cve.cvssV2_0 %}
-            {% include "cves/cvss/v2.html" with cvss=cve.cvssV2_0 %}
+            {% include "cves/metrics/cvssV2_0.html" with cvss=cve.cvssV2_0 %}
             {% else %}
             <p class="alert alert-info">No CVSS v2</p>
             {% endif %}
         </div>
         <div class="tab-pane" id="kev">
             {% if cve.kev.data %}
-            <p>This CVE is in the <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext={{ cve.cve_id }}">KEV database</a> since <strong>{{ cve.kev.data.dateAdded|convert_str_date|naturalday }}</strong>.</p>
+            {% include "cves/metrics/kev.html" with kev=cve.kev.data %}
             {% else %}
             <p class="alert alert-info">This CVE is not in the KEV list.</p>
             {% endif %}
         </div>
         <div class="tab-pane" id="ssvc">
             {% if cve.ssvc.data %}
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="panel-group panel-group-cvss">
-                        <div class="panel panel-default">
-                            <div class="panel-heading">
-                                <h4 class="panel-title">
-                                    Exploitation
-                                    <span class="pull-right label label-{% metric_class_from_ssvc cve.ssvc.data.options.Exploitation 'Exploitation' %}">{{ cve.ssvc.data.options.Exploitation }}</span>
-                                </h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="panel-group panel-group-cvss">
-                        <div class="panel panel-default">
-                            <div class="panel-heading">
-                                <h4 class="panel-title">
-                                    Automatable
-                                    <span class="pull-right label label-{% metric_class_from_ssvc cve.ssvc.data.options.Automatable 'Automatable' %}">{{ cve.ssvc.data.options.Automatable }}</span>
-                                </h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="panel-group panel-group-cvss">
-                        <div class="panel panel-default">
-                            <div class="panel-heading">
-                                <h4 class="panel-title">
-                                    Technical Impact
-                                    <span class="pull-right label label-{% metric_class_from_ssvc cve.ssvc.data.options|get:'Technical Impact' 'Technical Impact' %}">{{ cve.ssvc.data.options|get:"Technical Impact" }}</span>
-                                </h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {% include "cves/metrics/ssvc.html" with ssvc=cve.ssvc.data %}
             {% else %}
             <p class="alert alert-info">Key SSVC decision points have not yet been added.</p>
             {% endif %}

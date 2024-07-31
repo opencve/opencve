@@ -1,0 +1,4 @@
+{% load humanize %}
+{% load opencve_extras %}
+
+<p>This CVE is in the <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext={{ cve.cve_id }}">KEV database</a> since <strong>{{ kev.dateAdded|convert_str_date|naturalday }}</strong>.</p>

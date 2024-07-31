@@ -201,21 +201,6 @@ def get_start_end_dates(context):
     return start, end
 
 
-def format_cve_payload(kb_data):
-    data = kb_data["opencve"]
-    payload = {
-        "cve": data["cve"],
-        "description": data["description"],
-        "title": data["title"],
-        "created": data["created"],
-        "updated": data["updated"],
-        "vendors": Json(data["vendors"]),
-        "metrics": Json(data["metrics"]),
-        "weaknesses": Json(data["weaknesses"]),
-    }
-    return payload
-
-
 def list_commits(logger: Logger, start: DateTime, end: DateTime) -> List[Commit]:
     logger.info("Reading %s repository", KB_LOCAL_REPO)
     repo_path = pathlib.Path(KB_LOCAL_REPO)
