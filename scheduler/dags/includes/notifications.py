@@ -85,7 +85,9 @@ class BaseNotification:
 
     @staticmethod
     def get_severity_str(score):
-        if 0.0 <= score <= 3.9:
+        if not score:
+            severity = "none"
+        elif 0.0 <= score <= 3.9:
             severity = "low"
         elif 4.0 <= score <= 6.9:
             severity = "medium"
@@ -190,7 +192,7 @@ class EmailNotification(BaseNotification):
         }
 
         for change in payload["changes"]:
-            score = float(change["cve"]["cvss31"])
+            score = float(change["cve"]["cvss31"]) if change["cve"]["cvss31"] else None
             cve = {
                 "cve_id": change["cve"]["cve_id"],
                 "description": change["cve"]["description"],

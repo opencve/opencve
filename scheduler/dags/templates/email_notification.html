@@ -202,7 +202,7 @@
                                       <td align="left" style="font-size:0px;padding:0px 25px;padding-left:15px;word-break:break-word;">
                                         <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:24px;font-weight:500;line-height:30px;text-align:left;color:#000000;">
                                           <h3 style="margin: 0; line-height: normal; font-size: 17px; font-weight: 300;">
-                                            <a href="{{ web_url }}/cve/{{ vulnerability.cve_id }}" style="color: #5842DF; text-decoration: none; font-weight:400;">{{ vulnerability.cve_id }}</a> - <span style="font-weight:400;color:{{ severity_colors[severity] }}">{{ vulnerability.score }}</span>
+                                            <a href="{{ web_url }}/cve/{{ vulnerability.cve_id }}" style="color: #5842DF; text-decoration: none; font-weight:400;">{{ vulnerability.cve_id }}</a> - <span style="font-weight:400;color:{{ severity_colors[severity] }}">{% if vulnerability.score %}{{ vulnerability.score }}{% else %}No CVSS v3.1{% endif %}</span>
                                           </h3>
                                         </div>
                                       </td>
