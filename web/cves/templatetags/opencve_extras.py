@@ -1,5 +1,7 @@
 import hashlib
 import json
+import logging
+from datetime import datetime
 
 from django import template
 from django.conf import settings
@@ -12,6 +14,8 @@ from cves.constants import (CVSS_CHART_BACKGROUNDS, CVSS_HUMAN_SCORE,
                             PRODUCT_SEPARATOR)
 from cves.utils import get_metric_from_vector
 from cves.utils import humanize as _humanize
+
+logger = logging.getLogger(__name__)
 
 register = template.Library()
 
@@ -119,9 +123,13 @@ def cvss_chart_data(vector, score):
 
     labels = {}
     for k, v in metric["metrics"].items():
-        labels[CVSS_NAME_MAPPING[version][k]] = CVSS_VECTORS_MAPPING[version][k][v][
-            "weight"
-        ]
+        try:
+            labels[CVSS_NAME_MAPPING[version][k]] = CVSS_VECTORS_MAPPING[version][k][v][
+                "weight"
+            ]
+        except KeyError:
+            # TODO: replace with a Sentry alert
+            logger.debug(f"Metric {k}:{v} not supported in vector {vector}")
 
     return json.dumps(
         {
@@ -150,6 +158,26 @@ def metric_class_from_vector(vector, metric):
 def metric_text_from_vector(vector, metric):
     data = get_metric_from_vector(vector, metric)
     return data["text"]
+
+
+@register.simple_tag
+def metric_class_from_ssvc(value, metric):
+    metrics = {
+        "Exploitation": {
+            "none": "default",
+            "poc": "warning",
+            "active": "danger",
+        },
+        "Automatable": {
+            "no": "default",
+            "yes": "danger",
+        },
+        "Technical Impact": {
+            "partial": "default",
+            "total": "danger",
+        }
+    }
+    return metrics[metric][value]
 
 
 @register.simple_tag(takes_context=True)
@@ -250,3 +278,16 @@ def flat_vendors(vendors):
             output.append(humanize(vendor))
     sorted(output)
     return ", ".join(output)
+
+
+@register.filter
+def convert_str_date(value):
+    return datetime.fromisoformat(value)
+
+
+@register.filter
+def get(mapping, key):
+    """
+    Used to return data when a space is contained in the key.
+    """
+    return mapping.get(key, "")

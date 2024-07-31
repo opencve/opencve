@@ -10,15 +10,9 @@ KB_LOCAL_REPO = pathlib.Path(conf.get("opencve", "kb_repo_path"))
 
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
-CHANGE_UPSERT_PROCEDURE = """
-CALL change_upsert(
-    %(cve)s, %(change)s, %(created)s, %(updated)s, %(commit_hash)s, %(file_path)s, %(event_types)s
-);
-"""
-
 CVE_UPSERT_PROCEDURE = """
 CALL cve_upsert(
-    %(cve)s, %(created)s, %(updated)s, %(description)s, %(title)s, %(metrics)s, %(vendors)s, %(weaknesses)s
+    %(cve)s, %(created)s, %(updated)s, %(description)s, %(title)s, %(metrics)s, %(vendors)s, %(weaknesses)s, %(changes)s
 );
 """
 

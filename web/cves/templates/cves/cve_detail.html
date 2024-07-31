@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 {% load opencve_extras %}
 
 {% block title %}{{ cve.cve_id }} - {{ block.super }}{% endblock %}
@@ -19,7 +20,7 @@
                 </div>
             </div>
 
-            {% include "cves/cvss/base.html" %}
+            {% include "cves/metrics/base.html" %}
 
             {% include "cves/_configurations.html" %}
 
@@ -33,12 +34,12 @@
                     </div>
                 </div>
 
-                {% if changes %}
+                {% if cve.kb_json.opencve.changes %}
                 <div class="box-body">
                     <div class="row">
                         <div class="col-md-12">
-                            {% for change in changes %}
-                            <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ change.created_at|date:"d b Y, P" }}</p>
+                            {% for change in cve.kb_json.opencve.changes reversed %}
+                            <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ change.created|convert_str_date|date:"r" }}</p>
                             <div class="table-responsive">
                                 <table class="table table-bordered table-striped">
                                     <thead>
@@ -48,8 +49,8 @@
                                     </thead>
                                     <tbody>
 
-                                    {% for event in change.events %}
-                                        {% with template_name="changes/events/"|add:event.type|add:"_details.html" %}
+                                    {% for event in change.data %}
+                                        {% with template_name="changes/change_"|add:event.type|add:".html" %}
                                         {% include template_name %}
                                         {% endwith %}
                                     {% endfor %}
@@ -73,9 +74,16 @@
             <div class="box box-primary">
                 <div class="box-header">
                     <div class="box-title">
-                        <img src="{% static 'img/cve-icon.png' %}" class="cve-icon" alt="cve-icon" />
-                        MITRE Information
+                        <img src="{% static 'img/cve-icon.png' %}" class="provider-icon" alt="cve-icon" />
+                        MITRE
                     </div>
+                    {% if cve.mitre_json %}
+                    <div class="box-tools pull-right">
+                        <div class="btn-group" data-toggle="btn-toggle">
+                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-mitre-json"><i class="fa fa-code"></i></button>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% if cve.mitre_json %}
                 <div class="box-body">
@@ -84,9 +92,7 @@
                     <p><strong>Published:</strong> {{ cve.mitre_json.cveMetadata.datePublished }}</p>
                     <p><strong>Updated:</strong> {{ cve.mitre_json.cveMetadata.dateUpdated }}</p>
                     <p><strong>Reserved:</strong> {{ cve.mitre_json.cveMetadata.dateReserved }}</p>
-                    <hr />
                     <p><strong>Link:</strong> <a href="https://www.cve.org/CVERecord?id={{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a></p>
-                    <p><strong>JSON object:</strong> <a class="pointer" data-toggle="modal" data-target="#modal-mitre-json">View <i class="fa fa-code"></i></a></p>
                 </div>
                 {% else %}
                 <div class="box-body">
@@ -98,7 +104,7 @@
             <div class="box box-primary">
                 <div class="box-header">
                     <div class="box-title">
-                        <img src="{% static 'img/cisa2-icon.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
+                        <img src="{% static 'img/cisa-icon.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
                         Vulnrichment
                     </div>
                     {% if cve.vulnrichment_json %}
@@ -139,9 +145,7 @@
                     <p><strong>Status :</strong> {{ cve.nvd_json.vulnStatus }}</p>
                     <p><strong>Published:</strong> {{ cve.nvd_json.published }}</p>
                     <p><strong>Modified:</strong> {{ cve.nvd_json.lastModified }}</p>
-                    <hr/>
                     <p><strong>Link:</strong> <a href="https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a></p>
-                    <p><strong>JSON object:</strong> <a class="pointer" data-toggle="modal" data-target="#modal-nvd-json">View <i class="fa fa-code"></i></a></p>
                 </div>
                 {% else %}
                 <div class="box-body">
@@ -153,17 +157,22 @@
             <div class="box box-primary">
                 <div class="box-header">
                     <div class="box-title">
-                        <img src="{% static 'img/redhat-icon.png' %}" class="cve-icon" style="width: 28px;" alt="cve-icon" />
-                        Redhat Information
+                        <img src="{% static 'img/redhat-icon.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
+                        Redhat
                     </div>
+                    {% if cve.redhat_json %}
+                    <div class="box-tools pull-right">
+                        <div class="btn-group" data-toggle="btn-toggle">
+                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-redhat-json"><i class="fa fa-code"></i></button>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% if cve.redhat_json %}
                 <div class="box-body">
                     <p><strong>Severity :</strong> {{ cve.redhat_json.threat_severity }}</p>
                     <p><strong>Publid Date:</strong> {{ cve.redhat_json.public_date }}</p>
-                    <hr/>
-                    <p><strong>Links:</strong> <a href="https://access.redhat.com/security/cve/{{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a> - <a href="{{ cve.redhat_json.bugzilla.url }}" target="_blank" data-toggle="tooltip" data-container="body" title="{{ cve.redhat_json.bugzilla.description }}">Bugzilla <i class="fa fa-external-link"></i></a></p>
-                    <p><strong>JSON object:</strong> <a class="pointer" data-toggle="modal" data-target="#modal-redhat-json">View <i class="fa fa-code"></i></a></p>
+                    <p><strong>Links:</strong> <a href="https://access.redhat.com/security/cve/{{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a> - <a href="{{ cve.redhat_json.bugzilla.url }}" target="_blank">Bugzilla <i class="fa fa-bug"></i></a></p>
                 </div>
                 {% else %}
                 <div class="box-body">
@@ -180,21 +189,22 @@
                         <button type="button" class="btn btn-box-tool" data-toggle="modal" data-target="#modal-tags"><i class="fa fa-edit"></i></button>
                     </div>
                 </div>
-                {% if tags %}
                 <div class="box-body">
+                    {% if tags %}
                     {% for tag in tags %}
                     <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
                         <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
                     </a>
                     {% endfor %}
+                    {% else %}
+                    <p class="alert alert-info">No tag.</p>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
-            {% endif %}
 
             <div class="box box-primary">
                 <div class="box-header">
-                    <div class="box-title">CWE</div>
+                    <div class="box-title">Weaknesses</div>
                 </div>
                 <div class="box-body">
                     {% if weaknesses %}
@@ -207,10 +217,12 @@
                         {% endfor %}
                         </ul>
                     {% else %}
-                    <p class="alert alert-info">No CWE.</p>
+                    <p class="alert alert-info">No weakness.</p>
                     {% endif %}
                 </div>
             </div>
+            {% endif %}
+
         </div>
     </div>
 

@@ -32,12 +32,6 @@ class Change(BaseModel):
         return pathlib.Path(settings.KB_REPO_PATH) / self.path
 
     @property
-    def events(self):
-        with open(self.full_path) as f:
-            change_data = json.load(f)
-        return change_data.get("events", {})
-
-    @property
     def kb_data(self):
         with open(self.full_path) as f:
             data = json.load(f)
