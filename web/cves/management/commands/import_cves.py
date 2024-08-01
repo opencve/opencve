@@ -20,7 +20,8 @@ class Command(BaseCommand):
         %(title)s,
         %(metrics)s,
         %(vendors)s,
-        %(weaknesses)s
+        %(weaknesses)s,
+        %(changes)s
     );
     """
 
@@ -47,6 +48,7 @@ class Command(BaseCommand):
                 "metrics": Json(cve_data["metrics"]),
                 "vendors": Json(cve_data["vendors"]["data"]),
                 "weaknesses": Json(cve_data["weaknesses"]["data"]),
+                "changes": Json([]),
             },
         )
         self.call_procedure(params)
