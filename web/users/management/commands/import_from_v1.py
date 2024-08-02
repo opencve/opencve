@@ -110,18 +110,18 @@ class Command(BaseCommand):
     @staticmethod
     def get_notification_configuration(notification, email):
         event_mapping = {
-            "summary": "nvd_summary",
-            "first_time": "nvd_first_time",
-            "new_cve": "nvd_new",
-            "cvss": "nvd_cvss",
-            "cpes": "nvd_cpes",
-            "cwes": "nvd_cwes",
-            "references": "nvd_references",
+            "summary": "description",
+            "first_time": "first_time",
+            "new_cve": "created",
+            "cvss": "metrics",
+            "cpes": "cpes",
+            "cwes": "weaknesses",
+            "references": "references",
         }
 
         configuration = {
-            "cvss": notification["cvss"],
-            "events": [event_mapping[e] for e in notification["event_types"]],
+            "types": [event_mapping[e] for e in notification["event_types"]],
+            "metrics": {"cvss31": notification["cvss"]},
             "extras": {"email": email},
         }
         return configuration
