@@ -211,19 +211,23 @@ class ReportView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveM
     def get_report_statistics(report):
         changes = {}
 
-        # A CVE can have several changes in 1 day,
-        # so we need to group them by date.
-        for change in report.changes.all():
-            if change.cve not in changes:
+        for db_change in report.changes.all():
+
+            # A CVE can have several changes in one day
+            if db_change.cve not in changes:
                 score = (
-                    change.cve.metrics["v31"]["score"]
-                    if change.cve.metrics.get("v31")
+                    db_change.cve.cvssV3_1["score"]
+                    if db_change.cve.cvssV3_1
                     else 0
                 )
-                changes[change.cve] = {"cve": change.cve, "score": score, "changes": []}
 
-            changes[change.cve]["changes"].append([change.created_at, change.events])
-
+                # We send all the changes to the view, and the template
+                # filters the ones related to the report day.
+                changes[db_change.cve] = {
+                    "cve": db_change.cve,
+                    "score": score,
+                    "kb_changes": db_change.cve.kb_json["opencve"]["changes"]
+                }
         return {"report": report, "changes": changes.values()}
 
     def get_object(self, queryset=None):
