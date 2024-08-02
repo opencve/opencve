@@ -42,54 +42,66 @@
                         <label>Receive a notification when:</label>
                         <div class="checkbox">
                             <label>
-                                {{ form.nvd_new }}
+                                {{ form.created }}
                                  a new CVE is created
                             </label>
                         </div>
                         <div class="checkbox">
                             <label>
-                                {{ form.nvd_first_time }}
-                                one of your subscriptions appears for the first time in an existing CVE
+                                {{ form.first_time }}
+                                one or more subscriptions first appeared in a CVE
                             </label>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>When a CVE is updated, be alerted when :</label>
+                        <label>When a CVE is updated, receive a notification when :</label>
                         <div class="checkbox">
                             <label>
-                                {{ form.nvd_cvss }}
-                                its CVSS score changes
+                                {{ form.metrics }}
+                                its metrics have changed
                             </label>
                         </div>
                         <div class="checkbox">
                             <label>
-                                {{ form.nvd_cpes }}
-                                its CPE list changes
+                                {{ form.cpes }}
+                                its CPEs have changed
                             </label>
                         </div>
                         <div class="checkbox">
                             <label>
-                                {{ form.nvd_summary }}
-                                its summary changes
+                                {{ form.vendors }}
+                                its vendors & products have changed
                             </label>
                         </div>
                         <div class="checkbox">
                             <label>
-                                {{ form.nvd_cwes }}
-                                its weaknesses list changes
+                                {{ form.weaknesses }}
+                                its weaknesses have changed
                             </label>
                         </div>
                         <div class="checkbox">
                             <label>
-                                {{ form.nvd_references }}
-                                its references list changes
+                                {{ form.references }}
+                                its references have changed
+                            </label>
+                        </div>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.description }}
+                                its description has changed
+                            </label>
+                        </div>
+                        <div class="checkbox">
+                            <label>
+                                {{ form.title }}
+                                its title has changed
                             </label>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        {{ form.cvss_score|as_crispy_field }}
+                        {{ form.cvss31_score|as_crispy_field }}
                         <span class="help-block"><small>Note that this setting does not affect CVE that do not have CVSS.</small></span>
                     </div>
                 </div>

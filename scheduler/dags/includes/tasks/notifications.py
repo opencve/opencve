@@ -180,28 +180,28 @@ def make_notifications_chunks(**context):
 
 
 def filter_changes(notification, changes, changes_details):
-    notification_score = notification["notification_conf"]["cvss"]
-    notification_events = notification["notification_conf"]["events"]
+    notification_score = notification["notification_conf"]["metrics"]["cvss31"]
+    notification_types = notification["notification_conf"]["types"]
     logger.debug(
-        "Notification score: %s, events: %s", notification_score, notification_events
+        "Notification score: %s, types: %s", notification_score, notification_types
     )
 
     reduced_changes = []
     for change in changes:
         change_details = changes_details[change]
-        change_score = change_details["cve_metrics"]["v31"]
-        change_events = change_details["change_types"]
+        change_score = change_details["cve_metrics"]["cvssV3_1"]
+        change_types = change_details["change_types"]
         logger.debug(
-            "Change %s: metrics: %s, events: %s", change, change_score, change_events
+            "Change %s: metrics: %s, types: %s", change, change_score, change_types
         )
 
-        # Exclude change if CVSS score is lower than notification one
+        # Exclude change if CVSS31 score is lower than notification one
         if change_score and float(change_score["score"]) < float(notification_score):
             continue
 
-        # Exclude change if events don't match notifications ones
-        if not notification_events or not any(
-            (True for x in notification_events if x in change_events)
+        # Exclude change if types don't match notifications ones
+        if not notification_types or not any(
+            (True for x in notification_types if x in change_types)
         ):
             continue
 

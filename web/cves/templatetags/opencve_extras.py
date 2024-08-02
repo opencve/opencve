@@ -232,10 +232,7 @@ def event_humanized_type(event):
 
 @register.filter
 def is_new_cve(change):
-    return len(change.types) == 1 and change.types[0] in (
-        "mitre_new",
-        "nvd_new",
-    )
+    return len(change.types) == 1 and change.types[0] == "created"
 
 
 @register.simple_tag(takes_context=True)

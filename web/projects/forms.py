@@ -67,21 +67,19 @@ class NotificationForm(forms.ModelForm):
         self.project = kwargs.pop("project")
         super(NotificationForm, self).__init__(*args, **kwargs)
 
-    # Custom fields used for the configuration
-    mitre_new = forms.BooleanField(required=False)
-    mitre_summary = forms.BooleanField(required=False)
+    created = forms.BooleanField(required=False)
+    description = forms.BooleanField(required=False)
+    title = forms.BooleanField(required=False)
+    first_time = forms.BooleanField(required=False)
+    weaknesses = forms.BooleanField(required=False)
+    cpes = forms.BooleanField(required=False)
+    vendors = forms.BooleanField(required=False)
+    references = forms.BooleanField(required=False)
+    metrics = forms.BooleanField(required=False)
 
-    nvd_new = forms.BooleanField(required=False)
-    nvd_summary = forms.BooleanField(required=False)
-    nvd_first_time = forms.BooleanField(required=False)
-    nvd_cvss = forms.BooleanField(required=False)
-    nvd_cwes = forms.BooleanField(required=False)
-    nvd_references = forms.BooleanField(required=False)
-    nvd_cpes = forms.BooleanField(required=False)
-
-    cvss_score = forms.ChoiceField(
+    cvss31_score = forms.ChoiceField(
         choices=CVSS_SCORES,
-        label="Be alerted when the CVSSv3 score is greater than or equal to :",
+        label="Be alerted when the CVSSv3.1 score is greater than or equal to :",
         initial=0,
     )
 
