@@ -20,16 +20,16 @@ from projects.forms import FORM_MAPPING, ProjectForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
 from projects.models import Notification, Project
 
-EVENT_TYPES = [
-    "mitre_new",
-    "mitre_summary",
-    "nvd_new",
-    "nvd_summary",
-    "nvd_first_time",
-    "nvd_cvss",
-    "nvd_cwes",
-    "nvd_references",
-    "nvd_cpes",
+NOTIFICATION_TYPES = [
+    "cpes",
+    "created",
+    "description",
+    "first_time",
+    "metrics",
+    "references",
+    "title",
+    "vendors",
+    "weaknesses",
 ]
 
 
@@ -301,7 +301,7 @@ class NotificationCreateView(
         return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
-        events = [k for k, v in form.cleaned_data.items() if k in EVENT_TYPES and v]
+        types = [k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v]
 
         # Extra configuration
         extras = {}
@@ -313,8 +313,8 @@ class NotificationCreateView(
         form.instance.project = self._get_project()
         form.instance.type = self.request.GET["type"]
         form.instance.configuration = {
-            "events": events,
-            "cvss": form.cleaned_data["cvss_score"],
+            "types": types,
+            "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
             "extras": extras,
         }
 
@@ -365,7 +365,7 @@ class NotificationUpdateView(
         )
 
     def form_valid(self, form):
-        events = [k for k, v in form.cleaned_data.items() if k in EVENT_TYPES and v]
+        types = [k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v]
 
         # Extra configuration
         extras = {}
@@ -376,8 +376,8 @@ class NotificationUpdateView(
         # Create the notification
         form.instance.project = self._get_project()
         form.instance.configuration = {
-            "events": events,
-            "cvss": form.cleaned_data["cvss_score"],
+            "types": types,
+            "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
             "extras": extras,
         }
 
@@ -400,9 +400,9 @@ class NotificationUpdateView(
         context["type"] = self.object.type
 
         # Transform JSON field into dedicated fields
-        context["form"].initial["cvss_score"] = self.object.configuration["cvss"]
-        for event in self.object.configuration["events"]:
-            context["form"].initial[event] = True
+        context["form"].initial["cvss31_score"] = self.object.configuration["metrics"]["cvss31"]
+        for _type in self.object.configuration["types"]:
+            context["form"].initial[_type] = True
 
         custom_fields = FORM_MAPPING.get(self.object.type, [])
         for field in custom_fields:
