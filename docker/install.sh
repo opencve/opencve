@@ -55,10 +55,11 @@ start-docker-stack() {
 clone-repositories() {
 
     echo "--> Cloning OpenCVE needed repositories"
-    docker exec -it airflow-scheduler git clone https://github.com/opencve/opencve-kb.git /home/airflow/repositories/opencve-kb
-    docker exec -it airflow-scheduler git clone https://github.com/opencve/opencve-nvd.git /home/airflow/repositories/opencve-nvd
-    docker exec -it airflow-scheduler git clone https://github.com/CVEProject/cvelistV5.git /home/airflow/repositories/cvelistV5
-    docker exec -it airflow-scheduler git clone https://github.com/opencve/opencve-redhat.git /home/airflow/repositories/opencve-redhat
+    docker exec -it airflow-scheduler git clone --depth 1 --single-branch https://github.com/opencve/opencve-kb.git /home/airflow/repositories/opencve-kb
+    docker exec -it airflow-scheduler git clone --depth 1 --single-branch https://github.com/opencve/opencve-nvd.git /home/airflow/repositories/opencve-nvd
+    docker exec -it airflow-scheduler git clone --depth 1 --single-branch https://github.com/opencve/opencve-redhat.git /home/airflow/repositories/opencve-redhat
+    docker exec -it airflow-scheduler git clone --depth 1 --single-branch https://github.com/CVEProject/cvelistV5.git /home/airflow/repositories/cvelistV5
+    docker exec -it airflow-scheduler git clone --depth 1 --single-branch https://github.com/cisagov/vulnrichment.git /home/airflow/repositories/vulnrichment
 
 }
 
@@ -72,7 +73,7 @@ create-superuser() {
 import-opencve-kb() {
 
     echo "--> Importing OpenCVE KB inside the database, this can take 15 to 30min."
-    docker exec -it webserver python manage.py import_from_kb
+    docker exec -it webserver python manage.py import_cves
 
 }
 
