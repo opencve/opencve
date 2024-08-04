@@ -73,13 +73,13 @@ BEGIN
       VALUES
         (
           (_change ->> 'change'):: uuid,
-          (_change ->> 'created'):: timestamp,
-          (_change ->> 'updated'):: timestamp,
+          (_change ->> 'created'):: timestamptz,
+          (_change ->> 'updated'):: timestamptz,
           _cve_id :: uuid,
           _change ->> 'file_path',
           _change ->> 'commit_hash',
           _change -> 'event_types'
-        ) ON CONFLICT (created_at, cve_id, commit) DO NOTHING;
+        ) ON CONFLICT (created_at, cve_id) DO NOTHING;
     END LOOP;
 END;
 $$;

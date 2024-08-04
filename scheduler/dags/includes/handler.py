@@ -1,16 +1,14 @@
 import json
 import os
-import re
-import uuid
 
 from includes.constants import KB_LOCAL_REPO
 from psycopg2.extras import Json
 
 
 class DiffHandler:
-    def __init__(self, commit, diff):
-        self.commit = commit
+    def __init__(self, diff, commit_hash):
         self.diff = diff
+        self.commit_hash = commit_hash
         self._path = None
         self._data = None
 
@@ -27,10 +25,6 @@ class DiffHandler:
     @property
     def filename(self):
         return os.path.basename(self.path)
-
-    @property
-    def cve_id(self):
-        return self.path.split("/")[1]
 
     @property
     def data(self):
@@ -62,7 +56,10 @@ class DiffHandler:
                 "created": change["created"],
                 "updated": change["created"],
                 "file_path": self.path,
-                "commit_hash": self.commit.hexsha,
+                # Add the commit hash in each change, the `cve_upsert`
+                # procedure will only add the new ones with this clause:
+                # `ON CONFLICT (created_at, cve_id) DO NOTHING`
+                "commit_hash": self.commit_hash,
                 "event_types": [e["type"] for e in change["data"]]
             })
         payload["changes"] = Json(changes)
