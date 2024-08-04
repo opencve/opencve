@@ -2,42 +2,6 @@
 
 from django.db import migrations
 
-CHANGE_SQL = """
-CREATE PROCEDURE change_upsert(
-    cve             text,
-    change          uuid,
-    created         timestamptz,
-    updated         timestamptz,
-    commit_hash     text,
-    file_path       text,
-    events_types    jsonb
-)
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    _cve_id     uuid;
-BEGIN
-    -- retrieve the cve ID
-    SELECT id INTO _cve_id FROM opencve_cves WHERE cve_id = cve;
-
-    -- create a new change
-    INSERT INTO opencve_changes (id, created_at, updated_at, cve_id, path, commit, types)
-    VALUES(change, created, updated, _cve_id, file_path, commit_hash, events_types)
-    ON CONFLICT (created_at, cve_id, commit) DO NOTHING;
-END;
-$$;
-"""
-CHANGE_REVERSE_SQL = """
-DROP PROCEDURE change_upsert(
-    cve             text,
-    change          uuid,
-    created         timestamptz,
-    updated         timestamptz,
-    commit_hash     text,
-    file_path       text,
-    events_types    jsonb
-);
-"""
 
 REPORT_SQL = """
 CREATE PROCEDURE report_upsert(
@@ -87,6 +51,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(sql=CHANGE_SQL, reverse_sql=CHANGE_REVERSE_SQL),
         migrations.RunSQL(sql=REPORT_SQL, reverse_sql=REPORT_REVERSE_SQL),
     ]
