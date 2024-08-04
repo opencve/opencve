@@ -189,7 +189,7 @@ def filter_changes(notification, changes, changes_details):
     reduced_changes = []
     for change in changes:
         change_details = changes_details[change]
-        change_score = change_details["cve_metrics"]["cvssV3_1"]
+        change_score = change_details["cve_metrics"]["cvssV3_1"]["data"]
         change_types = change_details["change_types"]
         logger.debug(
             "Change %s: metrics: %s, types: %s", change, change_score, change_types

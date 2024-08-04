@@ -1,0 +1,30 @@
+{
+  "d9edc06b-1d7b-43c7-8cf5-bfa6687cd9fd": [
+    {
+      "project_id": "d9edc06b-1d7b-43c7-8cf5-bfa6687cd9fd",
+      "project_name": "MyProject",
+      "organization_name": "my-orga",
+      "notification_name": "MyNotif",
+      "notification_type": "email",
+      "notification_conf": {
+        "types": [
+          "created",
+          "description",
+          "title",
+          "first_time",
+          "weaknesses",
+          "cpes",
+          "vendors",
+          "references",
+          "metrics"
+        ],
+        "extras": {
+          "email": "john@example.com"
+        },
+        "metrics": {
+          "cvss31": "0"
+        }
+      }
+    }
+  ]
+}
