@@ -1,0 +1,217 @@
+{
+  "3820f90d-c49e-4b83-aa13-1eb3520107e8": {
+    "change_types": [
+      "cpes",
+      "metrics"
+    ],
+    "change_path": "2020/CVE-2020-13965.json",
+    "cve_vendors": [
+      "debian",
+      "debian$PRODUCT$debian_linux",
+      "fedoraproject",
+      "fedoraproject$PRODUCT$fedora",
+      "roundcube",
+      "roundcube$PRODUCT$webmail"
+    ],
+    "cve_id": "CVE-2020-13965",
+    "cve_metrics": {
+      "kev": {
+        "data": {},
+        "provider": null
+      },
+      "ssvc": {
+        "data": {},
+        "provider": null
+      },
+      "cvssV2_0": {
+        "data": {
+          "score": 4.3,
+          "vector": "AV:N/AC:M/Au:N/C:N/I:P/A:N"
+        },
+        "provider": "nvd"
+      },
+      "cvssV3_0": {
+        "data": {},
+        "provider": null
+      },
+      "cvssV3_1": {
+        "data": {
+          "score": 6.1,
+          "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+        },
+        "provider": "nvd"
+      },
+      "cvssV4_0": {
+        "data": {},
+        "provider": null
+      },
+      "threat_severity": {
+        "data": "Moderate",
+        "provider": "redhat"
+      }
+    }
+  },
+  "cdfcc200-4cdb-42ba-98c1-42c800037f05": {
+    "change_types": [
+      "metrics"
+    ],
+    "change_path": "2020/CVE-2020-14323.json",
+    "cve_vendors": [
+      "debian",
+      "debian$PRODUCT$debian_linux",
+      "fedoraproject",
+      "fedoraproject$PRODUCT$fedora",
+      "opensuse",
+      "opensuse$PRODUCT$leap",
+      "redhat",
+      "redhat$PRODUCT$enterprise_linux",
+      "redhat$PRODUCT$storage",
+      "samba",
+      "samba$PRODUCT$samba"
+    ],
+    "cve_id": "CVE-2020-14323",
+    "cve_metrics": {
+      "kev": {
+        "data": {},
+        "provider": null
+      },
+      "ssvc": {
+        "data": {},
+        "provider": null
+      },
+      "cvssV2_0": {
+        "data": {
+          "score": 2.1,
+          "vector": "AV:L/AC:L/Au:N/C:N/I:N/A:P"
+        },
+        "provider": "nvd"
+      },
+      "cvssV3_0": {
+        "data": {},
+        "provider": null
+      },
+      "cvssV3_1": {
+        "data": {
+          "score": 5.5,
+          "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+        },
+        "provider": "nvd"
+      },
+      "cvssV4_0": {
+        "data": {},
+        "provider": null
+      },
+      "threat_severity": {
+        "data": "Moderate",
+        "provider": "redhat"
+      }
+    }
+  },
+  "38a4b8f0-bb77-485e-a864-00c8e232cdf6": {
+    "change_types": [
+      "cpes",
+      "vendors"
+    ],
+    "change_path": "2020/CVE-2020-16307.json",
+    "cve_vendors": [
+      "artifex",
+      "artifex$PRODUCT$ghostscript",
+      "canonical",
+      "canonical$PRODUCT$ubuntu_linux",
+      "debian",
+      "debian$PRODUCT$debian_linux"
+    ],
+    "cve_id": "CVE-2020-16307",
+    "cve_metrics": {
+      "kev": {
+        "data": {},
+        "provider": null
+      },
+      "ssvc": {
+        "data": {},
+        "provider": null
+      },
+      "cvssV2_0": {
+        "data": {
+          "score": 4.3,
+          "vector": "AV:N/AC:M/Au:N/C:N/I:N/A:P"
+        },
+        "provider": "nvd"
+      },
+      "cvssV3_0": {
+        "data": {},
+        "provider": null
+      },
+      "cvssV3_1": {
+        "data": {
+          "score": 5.5,
+          "vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H"
+        },
+        "provider": "nvd"
+      },
+      "cvssV4_0": {
+        "data": {},
+        "provider": null
+      },
+      "threat_severity": {
+        "data": "Moderate",
+        "provider": "redhat"
+      }
+    }
+  },
+  "df9fc70a-418d-49aa-b800-f54a7a2c1231": {
+    "change_types": [
+      "title"
+    ],
+    "change_path": "2020/CVE-2020-15305.json",
+    "cve_vendors": [
+      "canonical",
+      "canonical$PRODUCT$ubuntu_linux",
+      "debian",
+      "debian$PRODUCT$debian_linux",
+      "fedoraproject",
+      "fedoraproject$PRODUCT$fedora",
+      "openexr",
+      "openexr$PRODUCT$openexr",
+      "opensuse",
+      "opensuse$PRODUCT$leap"
+    ],
+    "cve_id": "CVE-2020-15305",
+    "cve_metrics": {
+      "kev": {
+        "data": {},
+        "provider": null
+      },
+      "ssvc": {
+        "data": {},
+        "provider": null
+      },
+      "cvssV2_0": {
+        "data": {
+          "score": 2.1,
+          "vector": "AV:L/AC:L/Au:N/C:N/I:N/A:P"
+        },
+        "provider": "nvd"
+      },
+      "cvssV3_0": {
+        "data": {},
+        "provider": null
+      },
+      "cvssV3_1": {
+        "data": {
+          "score": 5.5,
+          "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H"
+        },
+        "provider": "nvd"
+      },
+      "cvssV4_0": {
+        "data": {},
+        "provider": null
+      },
+      "threat_severity": {
+        "data": "Moderate",
+        "provider": "redhat"
+      }
+    }
+  }
+}
