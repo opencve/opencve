@@ -48,6 +48,8 @@ EMAIL_BACKEND = "..."
 KB_REPO_PATH = "/home/opencve/opencve-kb"
 NVD_REPO_PATH = "/home/opencve/opencve-nvd"
 MITRE_REPO_PATH = "/home/opencve/cvelistV5"
+REDHAT_REPO_PATH = "/home/opencve/opencve-redhat"
+VULNRICHMENT_REPO_PATH = "/home/opencve/vulnrichment"
 ```
 
 Create the tables and your first user:
