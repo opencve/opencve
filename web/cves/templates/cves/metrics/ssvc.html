@@ -7,7 +7,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Exploitation
-                        <span class="pull-right label label-{% metric_class_from_ssvc ssvc.options.Exploitation 'Exploitation' %}">{{ ssvc.options.Exploitation }}</span>
+                        <span class="pull-right label label-{% metric_class_from_ssvc 'Exploitation' ssvc.options.Exploitation %}">{{ ssvc.options.Exploitation }}</span>
                     </h4>
                 </div>
             </div>
@@ -19,7 +19,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Automatable
-                        <span class="pull-right label label-{% metric_class_from_ssvc ssvc.options.Automatable 'Automatable' %}">{{ ssvc.options.Automatable }}</span>
+                        <span class="pull-right label label-{% metric_class_from_ssvc 'Automatable' ssvc.options.Automatable %}">{{ ssvc.options.Automatable }}</span>
                     </h4>
                 </div>
             </div>
@@ -31,7 +31,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         Technical Impact
-                        <span class="pull-right label label-{% metric_class_from_ssvc ssvc.options|get:'Technical Impact' 'Technical Impact' %}">{{ ssvc.options|get:"Technical Impact" }}</span>
+                        <span class="pull-right label label-{% metric_class_from_ssvc 'Technical Impact' ssvc.options|get:'Technical Impact' %}">{{ ssvc.options|get:"Technical Impact" }}</span>
                     </h4>
                 </div>
             </div>

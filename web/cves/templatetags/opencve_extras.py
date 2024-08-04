@@ -161,22 +161,29 @@ def metric_text_from_vector(vector, metric):
 
 
 @register.simple_tag
-def metric_class_from_ssvc(value, metric):
+def metric_class_from_ssvc(metric, value):
+    metric = metric.lower()
+    value = value.lower()
+
     metrics = {
-        "Exploitation": {
+        "exploitation": {
             "none": "default",
             "poc": "warning",
             "active": "danger",
         },
-        "Automatable": {
+        "automatable": {
             "no": "default",
             "yes": "danger",
         },
-        "Technical Impact": {
+        "technical impact": {
             "partial": "default",
             "total": "danger",
-        }
+        },
     }
+
+    if metric not in metrics.keys() or value not in metrics[metric]:
+        return "default"
+
     return metrics[metric][value]
 
 
