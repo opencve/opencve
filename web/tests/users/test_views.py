@@ -1,5 +1,3 @@
-import pytest
-
 from django.urls import reverse
 
 from cves.models import Cve
