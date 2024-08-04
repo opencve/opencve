@@ -110,6 +110,7 @@ def get_change_details(records):
     """
     return {
         r[0]: {
+            "change_id": r[0],
             "change_types": r[1],
             "change_path": r[2],
             "cve_vendors": r[3],
