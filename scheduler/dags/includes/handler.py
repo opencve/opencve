@@ -58,7 +58,7 @@ class DiffHandler:
         changes = []
         for change in data.get("changes", []):
             changes.append({
-                "change": str(uuid.uuid4()),
+                "change": change["id"],
                 "created": change["created"],
                 "updated": change["created"],
                 "file_path": self.path,

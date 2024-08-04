@@ -57,27 +57,23 @@ class BaseNotification:
         }
 
         for change in self.changes:
-            cve_id = change.pop("cve_id")
 
             # Get the CVE data from KB
-            cve_kb = KB_LOCAL_REPO / cve_id.split("-")[1] / cve_id / f"{cve_id}.json"
-            with open(cve_kb) as f:
+            with open(KB_LOCAL_REPO / change["change_path"]) as f:
                 cve_data = json.load(f)
-            cve_opencve_data = cve_data.get("opencve")
 
-            # Get the change data from KB
-            change_kb = KB_LOCAL_REPO / change["change_path"]
-            with open(change_kb) as f:
-                change_data = json.load(f)
+            # Extract the wanted change
+            kb_changes = cve_data["opencve"]["changes"]
+            kb_change = [c for c in kb_changes if c["id"] == change["change_id"]]
 
             payload["changes"].append(
                 {
                     "cve": {
-                        "cve_id": cve_id,
-                        "description": cve_opencve_data["description"],
-                        "cvss31": cve_opencve_data["metrics"]["v31"].get("score"),
+                        "cve_id": change["cve_id"],
+                        "description": cve_data["opencve"]["description"],
+                        "cvss31": cve_data["metrics"]["v31"].get("score"),
                     },
-                    "events": change_data.get("events", []),
+                    "events": kb_change[0]["data"] if kb_change else [],
                 }
             )
 

@@ -59,9 +59,8 @@
                     </div>
 
                     <h3>Changes</h3>
-                    {% for kb_change in change.kb_changes %}
-                    {% if object.report.day|date:"Y-m-d" == kb_change.created|convert_str_date|date:'Y-m-d'  %}
-                    <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ kb_change.created|convert_str_date|date:"r" }}</p>
+                    {% for date, events in change.kb_changes|dictsortreversed:0 %}
+                    <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ date|date:"r" }}</p>
                     <table class="table table-bordered table-striped">
                         <thead>
                             <th>Type</th>
@@ -69,14 +68,13 @@
                             <th>Values Added</th>
                         </thead>
                         <tbody>
-                        {% for event in kb_change.data %}
+                        {% for event in events.data %}
                             {% with template_name="changes/change_"|add:event.type|add:".html" %}
                             {% include template_name %}
                             {% endwith %}
                         {% endfor %}
                         </tbody>
                     </table>
-                    {% endif %}
                     {% endfor %}
                 </div>
                 {% endfor %}
