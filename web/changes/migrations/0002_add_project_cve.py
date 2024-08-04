@@ -31,6 +31,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='change',
-            constraint=models.UniqueConstraint(fields=('created_at', 'cve_id', 'commit'), name='ix_unique_cve_commit_created_at'),
+            constraint=models.UniqueConstraint(fields=('created_at', 'cve_id'), name='ix_unique_cve_created_at'),
         ),
     ]
