@@ -1,17 +1,28 @@
 import json
 import os
 import pathlib
-import shutil
 
-import git
-import pendulum
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 import pytest
 
+AIRFLOW_HOME = os.path.dirname(os.path.dirname(__file__))
+
 # Override Airflow configuration during tests
-os.environ["AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS"] = "False"
+os.environ["AIRFLOW__DATABASE__LOAD_DEFAULT_CONNECTIONS"] = "False"
 os.environ["AIRFLOW__CORE__LOAD_EXAMPLES"] = "False"
 os.environ["AIRFLOW__CORE__UNIT_TEST_MODE"] = "True"
-os.environ["AIRFLOW_HOME"] = os.path.dirname(os.path.dirname(__file__))
+os.environ["AIRFLOW_HOME"] = AIRFLOW_HOME
+
+os.environ["AIRFLOW__OPENCVE__MITRE_REPO_PATH"] = AIRFLOW_HOME
+os.environ["AIRFLOW__OPENCVE__ADVISORIES_REPO_PATH"] = AIRFLOW_HOME
+os.environ["AIRFLOW__OPENCVE__KB_REPO_PATH"] = AIRFLOW_HOME
+os.environ["AIRFLOW__OPENCVE__NVD_REPO_PATH"] = AIRFLOW_HOME
+os.environ["AIRFLOW__OPENCVE__VULNRICHMENT_REPO_PATH"] = AIRFLOW_HOME
+os.environ["AIRFLOW__OPENCVE__REDHAT_REPO_PATH"] = AIRFLOW_HOME
+os.environ["AIRFLOW__OPENCVE__START_DATE"] = "2024-01-01"
+
+os.environ["AIRFLOW__OPENCVE__DEVELOPMENT_MODE"] = "False"
+os.environ["AIRFLOW_CONN_OPENCVE_POSTGRES"] = "postgresql://localhost:5432/opencve_web_tests"
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -21,9 +32,17 @@ def reset_db():
     db.resetdb()
     yield
 
-    # Cleanup temp files generated during tests
-    os.remove(os.path.join(os.environ["AIRFLOW_HOME"], "unittests.cfg"))
-    os.remove(os.path.join(os.environ["AIRFLOW_HOME"], "unittests.db"))
+
+@pytest.fixture(scope="function")
+def web_pg_hook():
+    """This fixture is used to truncate the web database
+    and return a PostgresHook object"""
+    sql_query = ("SELECT table_name FROM information_schema.tables "
+                 "WHERE table_schema='public' AND table_type='BASE TABLE';")
+    hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    tables = [r[0] for r in hook.get_records(sql_query)]
+    hook.run(f'TRUNCATE TABLE {",".join(tables)} RESTART IDENTITY CASCADE;')
+    yield hook
 
 
 @pytest.fixture(scope="session")
@@ -31,78 +50,10 @@ def tests_path():
     return pathlib.Path(__file__).parent.resolve()
 
 
-class TestRepo:
-    def __init__(self, kind, tests_path, tmp_path_factory):
-        self.kind = kind
-        self.data_path = tests_path / f"data/{self.kind}/repo"
-        self.repo_path = tmp_path_factory.mktemp(self.kind)
-        # self.repo_path = pathlib.Path("/tmp/foobar")
-        self.repo = git.Repo.init(self.repo_path)
-        self.author = git.Actor("opencve", "opencve@example.com")
-        self.initialize()
+@pytest.fixture(scope="function")
+def open_file():
+    def _open_file(name):
+        with open(pathlib.Path(__file__).parent.resolve() / "data" / name) as f:
+            return json.load(f)
 
-    def initialize(self):
-        open(self.repo_path / ".gitkeep", "w").close()
-        self.commit("initial", day=1, hour=0, minute=30)
-
-    def commit(self, folder, day, hour, minute):
-        if folder != "initial":
-            shutil.copytree(self.data_path / folder, self.repo_path, dirs_exist_ok=True)
-        date = pendulum.datetime(2023, 1, day, hour, minute, tz="UTC")
-        self.repo.git.add(A=True)
-        self.repo.index.commit(
-            folder,
-            author=self.author,
-            committer=self.author,
-            commit_date=date,
-            author_date=date,
-        )
-
-
-@pytest.fixture(scope="session")
-def mitre_repo(tests_path, tmp_path_factory):
-    repo = TestRepo("mitre", tests_path, tmp_path_factory)
-    repo.commit("a", day=1, hour=1, minute=30)
-    repo.commit("b", day=1, hour=1, minute=40)
-    repo.commit("c", day=1, hour=2, minute=10)
-    repo.commit("d", day=1, hour=3, minute=15)
-    return repo
-
-
-@pytest.fixture(scope="session")
-def nvd_repo(tests_path, tmp_path_factory):
-    repo = TestRepo("nvd", tests_path, tmp_path_factory)
-    repo.commit("a", day=1, hour=1, minute=30)
-    repo.commit("b", day=1, hour=1, minute=40)
-    repo.commit("c", day=1, hour=2, minute=10)
-    repo.commit("d", day=1, hour=3, minute=15)
-    return repo
-
-
-@pytest.fixture
-def get_commit(mitre_repo, nvd_repo):
-    def wrapper(kind, folder):
-        repos = {"mitre": mitre_repo.repo, "nvd": nvd_repo.repo}
-        repo = repos.get(kind)
-        return [c for c in repo.iter_commits() if c.message == folder][0]
-
-    return wrapper
-
-
-@pytest.fixture
-def get_diff(get_commit):
-    def wrapper(kind, folder, index):
-        commit = get_commit(kind, folder)
-        return commit.parents[0].diff(commit)[index]
-
-    return wrapper
-
-
-@pytest.fixture(scope="session")
-def open_file(tests_path):
-    def wrapper(path):
-        with open(tests_path / f"data/{path}", "r") as f:
-            data = json.load(f)
-        return data
-
-    return wrapper
+    return _open_file
