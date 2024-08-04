@@ -215,19 +215,24 @@ class ReportView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveM
 
             # A CVE can have several changes in one day
             if db_change.cve not in changes:
-                score = (
-                    db_change.cve.cvssV3_1["score"]
-                    if db_change.cve.cvssV3_1
-                    else 0
-                )
-
-                # We send all the changes to the view, and the template
-                # filters the ones related to the report day.
+                score = db_change.cve.cvssV3_1["score"] if db_change.cve.cvssV3_1 else 0
                 changes[db_change.cve] = {
                     "cve": db_change.cve,
                     "score": score,
-                    "kb_changes": db_change.cve.kb_json["opencve"]["changes"]
+                    "kb_changes": []
                 }
+
+            # Parse the KB changes and select the good one
+            kb_change = [
+                c
+                for c in db_change.cve.kb_json["opencve"]["changes"]
+                if c["id"] == str(db_change.id)
+            ]
+            if kb_change:
+                changes[db_change.cve]["kb_changes"].append(
+                    [db_change.created_at, kb_change[0]]
+                )
+
         return {"report": report, "changes": changes.values()}
 
     def get_object(self, queryset=None):
