@@ -5,7 +5,7 @@ from airflow.configuration import conf
 from airflow.decorators import dag
 from airflow.utils.task_group import TaskGroup
 from includes.operators.fetch_operator import GitFetchOperator
-from includes.operators.insert_operator import ProcessKbOperator
+from includes.operators.process_kb_operator import ProcessKbOperator
 from includes.tasks.notifications import (
     make_notifications_chunks,
     prepare_notifications,
