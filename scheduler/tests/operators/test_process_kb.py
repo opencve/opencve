@@ -156,9 +156,7 @@ def test_process_kb_operator_process_diff_call_count(
         assert mock_hook.call_count == count
 
 
-def test_process_kb_operator_create_cve(
-    tests_path, tmp_path_factory, web_pg_hook, open_file
-):
+def test_process_kb_operator_create_cve(tests_path, tmp_path_factory, web_pg_hook):
     repo = TestRepo("multiple-changes", tests_path, tmp_path_factory)
     repo.commit(["2024/CVE-2024-6962.v1.json"], hour=1, minute=00)
 
@@ -172,7 +170,6 @@ def test_process_kb_operator_create_cve(
         )
 
     # Compare the CVE data
-    kb_data = open_file("multiple-changes/2024/CVE-2024-6962.v1.json")
     db_data = web_pg_hook.get_records(
         "SELECT id, cve_id, created_at, updated_at, title,description, vendors, weaknesses, metrics "
         "FROM opencve_cves;"
@@ -214,9 +211,7 @@ def test_process_kb_operator_create_cve(
     }
 
 
-def test_process_kb_operator_create_changes(
-    tests_path, tmp_path_factory, web_pg_hook, open_file
-):
+def test_process_kb_operator_create_changes(tests_path, tmp_path_factory, web_pg_hook):
     repo = TestRepo("multiple-changes", tests_path, tmp_path_factory)
 
     # No change

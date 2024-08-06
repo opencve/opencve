@@ -9,7 +9,7 @@ from airflow.exceptions import AirflowSkipException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from includes.constants import SQL_PROJECT_WITH_NOTIFICATIONS
-from includes.utils import get_chunks, get_project_notifications, get_start_end_dates
+from includes.utils import divide_list, group_notifications_by_project, get_dates_from_context
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def prepare_notifications(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
-    start, end = get_start_end_dates(context)
+    start, end = get_dates_from_context(context)
 
     # Get the list of subscriptions
     subscriptions_redis_key = f"subscriptions_{start}_{end}"
@@ -37,7 +37,7 @@ def prepare_notifications(**context):
         sql=SQL_PROJECT_WITH_NOTIFICATIONS,
         parameters={"projects": tuple(subscriptions)},
     )
-    notifications = get_project_notifications(records)
+    notifications = group_notifications_by_project(records)
     if not notifications:
         raise AirflowSkipException("No notification found")
 
@@ -90,7 +90,7 @@ def send_notifications(notifications, **context):
     logger.debug("Notifications list: %s", notifications)
 
     # Retrieve the list of change details
-    start, end = get_start_end_dates(context)
+    start, end = get_dates_from_context(context)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     changes_details_key = f"changes_details_{start}_{end}"
     changes_details = redis_hook.json().get(changes_details_key)
@@ -107,7 +107,7 @@ def send_notifications(notifications, **context):
 @task
 def make_notifications_chunks(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    start, end = get_start_end_dates(context)
+    start, end = get_dates_from_context(context)
     logger.info("Checking notifications to send between %s and %s", start, end)
 
     project_changes_key = f"project_changes_{start}_{end}"
@@ -170,7 +170,7 @@ def make_notifications_chunks(**context):
     max_notifications_map_length = conf.getint(
         "opencve", "max_notifications_map_length"
     )
-    chunks = get_chunks(sending_notifications, max_notifications_map_length)
+    chunks = divide_list(sending_notifications, max_notifications_map_length)
     logger.debug(
         "Built %s chunks with max_notifications_map_length of %s",
         str(len(chunks)),
