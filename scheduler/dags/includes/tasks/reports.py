@@ -12,11 +12,11 @@ from includes.constants import (
     SQL_PROJECT_WITH_SUBSCRIPTIONS,
 )
 from includes.utils import (
-    get_change_details,
-    get_project_changes,
-    get_project_subscriptions,
-    get_start_end_dates,
-    get_vendor_changes,
+    format_change_details,
+    list_changes_by_project,
+    merge_project_subscriptions,
+    get_dates_from_context,
+    group_changes_by_vendor,
     list_commits,
 )
 from psycopg2.extras import Json
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 def list_changes(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
-    start, end = get_start_end_dates(context)
+    start, end = get_dates_from_context(context)
 
     # Get the list of changes with their associated vendors
     commits = [
@@ -50,11 +50,11 @@ def list_changes(**context):
         raise AirflowSkipException("No change found")
 
     # Save the change details in redis
-    change_details = get_change_details(records)
+    change_details = format_change_details(records)
     logger.debug("List of changes: %s", change_details)
 
     # Save the change by vendors in redis
-    vendor_changes = get_vendor_changes(records)
+    vendor_changes = group_changes_by_vendor(records)
     logger.debug("List of changes by vendor: %s", vendor_changes)
 
     if not vendor_changes:
@@ -77,7 +77,7 @@ def list_changes(**context):
 def list_subscriptions(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
-    start, end = get_start_end_dates(context)
+    start, end = get_dates_from_context(context)
 
     # Get the list of changes
     changes_redis_key = f"vendor_changes_{start}_{end}"
@@ -110,7 +110,7 @@ def list_subscriptions(**context):
         parameters={"vendors": vendors, "products": products},
     )
 
-    subscriptions = get_project_subscriptions(records)
+    subscriptions = merge_project_subscriptions(records)
     if not subscriptions:
         raise AirflowSkipException("No subscription found")
 
@@ -129,13 +129,13 @@ def list_subscriptions(**context):
 @task
 def populate_reports(**context):
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    start, end = get_start_end_dates(context)
+    start, end = get_dates_from_context(context)
 
     changes = redis_hook.json().get(f"vendor_changes_{start}_{end}")
     subscriptions = redis_hook.json().get(f"subscriptions_{start}_{end}")
 
     # Associate each project to its changes
-    project_changes = get_project_changes(changes, subscriptions)
+    project_changes = list_changes_by_project(changes, subscriptions)
     logger.info("Found %s reports to create", str(len(project_changes)))
 
     key = f"project_changes_{start}_{end}"

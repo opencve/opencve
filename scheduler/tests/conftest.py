@@ -22,7 +22,9 @@ os.environ["AIRFLOW__OPENCVE__REDHAT_REPO_PATH"] = AIRFLOW_HOME
 os.environ["AIRFLOW__OPENCVE__START_DATE"] = "2024-01-01"
 
 os.environ["AIRFLOW__OPENCVE__DEVELOPMENT_MODE"] = "False"
-os.environ["AIRFLOW_CONN_OPENCVE_POSTGRES"] = "postgresql://localhost:5432/opencve_web_tests"
+os.environ["AIRFLOW_CONN_OPENCVE_POSTGRES"] = (
+    "postgresql://localhost:5432/opencve_web_tests"
+)
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -37,8 +39,10 @@ def reset_db():
 def web_pg_hook():
     """This fixture is used to truncate the web database
     and return a PostgresHook object"""
-    sql_query = ("SELECT table_name FROM information_schema.tables "
-                 "WHERE table_schema='public' AND table_type='BASE TABLE';")
+    sql_query = (
+        "SELECT table_name FROM information_schema.tables "
+        "WHERE table_schema='public' AND table_type='BASE TABLE';"
+    )
     hook = PostgresHook(postgres_conn_id="opencve_postgres")
     tables = [r[0] for r in hook.get_records(sql_query)]
     hook.run(f'TRUNCATE TABLE {",".join(tables)} RESTART IDENTITY CASCADE;')
