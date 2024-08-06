@@ -36,7 +36,9 @@ class TestRepo:
             else:
                 if "/" in str(path):
                     folder = "/".join(path.split("/")[:-1])
-                    pathlib.Path(self.repo_path / pathlib.Path(folder)).mkdir(parents=True, exist_ok=True)
+                    pathlib.Path(self.repo_path / pathlib.Path(folder)).mkdir(
+                        parents=True, exist_ok=True
+                    )
                 shutil.copy(self.data_path / path, self.repo_path / path)
 
         date = pendulum.datetime(2024, 1, 1, hour, minute, tz="UTC")

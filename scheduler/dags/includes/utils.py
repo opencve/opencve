@@ -1,93 +1,36 @@
 import pathlib
 from logging import Logger
-from typing import List
+from typing import Dict, List, Tuple
 
 import more_itertools
 from airflow.exceptions import AirflowException
-from airflow.providers.postgres.hooks.postgres import PostgresHook
 from git.objects.commit import Commit
 from git.repo import Repo
-from includes.constants import KB_LOCAL_REPO, PRODUCT_SEPARATOR
-from nested_lookup import nested_lookup
+from includes.constants import KB_LOCAL_REPO
 from pendulum.datetime import DateTime
-from psycopg2.extras import Json
 
 
-def vendors_conf_to_dict(conf):
+def divide_list(iterable, n):
     """
-    This function takes an object, extracts its CPE uris and transforms them into
-    a dictionary representing the vendors with their associated products.
-    """
-    uris = nested_lookup("criteria", conf)
-
-    # Create a list of tuple (vendor, product)
-    cpes_t = list(set([tuple(uri.split(":")[3:5]) for uri in uris]))
-
-    # Transform it into nested dictionary
-    cpes = {}
-    for vendor, product in cpes_t:
-        if vendor not in cpes:
-            cpes[vendor] = []
-        cpes[vendor].append(product)
-
-    return cpes
-
-
-def vendors_dict_to_flat(vendors):
-    """
-    Takes a list of nested vendors and products and flat them.
-    """
-    data = []
-    for vendor, products in vendors.items():
-        data.append(vendor)
-        for product in products:
-            data.append(f"{vendor}{PRODUCT_SEPARATOR}{product}")
-    return data
-
-
-def vendors_conf_to_flat(conf=None):
-    """
-    Takes a list of CPEs configuration and returns it in a flat
-    array with a vendor/product separator in each item.
-    """
-    if not conf:
-        return []
-    return vendors_dict_to_flat(vendors_conf_to_dict(conf))
-
-
-def weaknesses_to_flat(weaknesses=None):
-    return nested_lookup("value", weaknesses)
-
-
-def get_chunks(projects, max_map_length):
-    """
-    Distribute the projects into X chunks.
+    Divide a list into n chunks.
 
     Examples:
-      >>> get_chunks(["a", "b", "c", "d"], 5)
+      >>> divide_list(["a", "b", "c", "d"], 5)
       >>> [["a"], ["b"], ["c"], ["d"]]
-      >>> get_chunks(["a", "b", "c", "d"], 3)
+      >>> divide_list(["a", "b", "c", "d"], 3)
       >>> [["a", "b"], ["c"], ["d"]]
     """
-    if len(projects) <= max_map_length:
-        return [[p] for p in projects]
+    if len(iterable) <= n:
+        return [[p] for p in iterable]
 
-    projects_lists = []
-    for chunk in more_itertools.divide(max_map_length, projects):
-        projects_lists.append(list(chunk))
+    new_list = []
+    for chunk in more_itertools.divide(n, iterable):
+        new_list.append(list(chunk))
 
-    return projects_lists
-
-
-def run_sql(query, parameters):
-    """
-    Execute a SQL query with parameters.
-    """
-    hook = PostgresHook(postgres_conn_id="opencve_postgres")
-    hook.run(sql=query, parameters=parameters)
+    return new_list
 
 
-def get_vendor_changes(records):
+def group_changes_by_vendor(records):
     """
     This function groups changes by vendors.
     """
@@ -104,7 +47,7 @@ def get_vendor_changes(records):
     return vendors_changes
 
 
-def get_change_details(records):
+def format_change_details(records):
     """
     This function transform a list of changes into a dictionary
     """
@@ -121,7 +64,7 @@ def get_change_details(records):
     }
 
 
-def get_project_subscriptions(records):
+def merge_project_subscriptions(records):
     """
     This function returns a list of projects with their associated
     vendors and products.
@@ -134,7 +77,7 @@ def get_project_subscriptions(records):
     return projects_subscriptions
 
 
-def get_project_changes(changes, subscriptions):
+def list_changes_by_project(changes, subscriptions):
     """
     This associates the project subscriptions with their changes.
 
@@ -146,7 +89,7 @@ def get_project_changes(changes, subscriptions):
         >>> subscriptions = {
             'project-uuid-1': ['vendor1', 'vendor2', 'vendor$PRODUCT$product']
         }
-        >>> get_reports(subscriptions, changes)
+        >>> list_changes_by_project(changes, subscriptions)
         {
             "project-uuid-1": [
                 "change-uuid-1",
@@ -156,6 +99,11 @@ def get_project_changes(changes, subscriptions):
     """
     projects_changes = {}
     for project, subscriptions in subscriptions.items():
+
+        # Skip the project if no subscription
+        if not subscriptions:
+            continue
+
         projects_changes[project] = set()
         for subscription in subscriptions:
             if subscription in changes.keys():
@@ -165,7 +113,7 @@ def get_project_changes(changes, subscriptions):
     return {k: v for k, v in projects_changes.items() if v}
 
 
-def get_project_notifications(records):
+def group_notifications_by_project(records):
     projects_notifications = {}
     for notification in records:
         p_id, p_name, o_name, n_name, n_type, n_conf = notification
@@ -186,17 +134,7 @@ def get_project_notifications(records):
     return projects_notifications
 
 
-def format_procedure_payload(data, raw_fields, json_fields):
-    payload = {}
-    for k, v in data.items():
-        if k in raw_fields:
-            payload[k] = v
-        if k in json_fields:
-            payload[k] = Json(v)
-    return payload
-
-
-def get_start_end_dates(context):
+def get_dates_from_context(context: Dict) -> Tuple[DateTime, DateTime]:
     start = context.get("data_interval_start")
     end = context.get("data_interval_end").subtract(seconds=1)
     return start, end
