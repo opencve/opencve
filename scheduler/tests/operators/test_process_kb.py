@@ -156,6 +156,7 @@ def test_process_kb_operator_process_diff_call_count(
         assert mock_hook.call_count == count
 
 
+@pytest.mark.web_db
 def test_process_kb_operator_create_cve(tests_path, tmp_path_factory, web_pg_hook):
     repo = TestRepo("multiple-changes", tests_path, tmp_path_factory)
     repo.commit(["2024/CVE-2024-6962.v1.json"], hour=1, minute=00)
@@ -211,6 +212,7 @@ def test_process_kb_operator_create_cve(tests_path, tmp_path_factory, web_pg_hoo
     }
 
 
+@pytest.mark.web_db
 def test_process_kb_operator_create_changes(tests_path, tmp_path_factory, web_pg_hook):
     repo = TestRepo("multiple-changes", tests_path, tmp_path_factory)
 
