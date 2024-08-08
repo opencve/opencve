@@ -26,8 +26,6 @@ logger = logging.getLogger(__name__)
 
 @task
 def list_changes(**context):
-    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     start, end = get_dates_from_context(context)
 
     # Get the list of changes with their associated vendors
@@ -43,6 +41,7 @@ def list_changes(**context):
         raise AirflowSkipException("No commit found")
 
     logger.info("Listing associated changes in %s table", "opencve_changes")
+    postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     records = postgres_hook.get_records(
         sql=SQL_CHANGE_WITH_VENDORS, parameters={"commits": tuple(commits)}
     )
@@ -58,10 +57,11 @@ def list_changes(**context):
     logger.debug("List of changes by vendor: %s", vendor_changes)
 
     if not vendor_changes:
-        raise AirflowSkipException("No change with vendor found")
+        raise AirflowSkipException("No vendor with change found")
 
     key = f"changes_details_{start}_{end}"
     logger.info("Saving %s changes in Redis (key: %s)", str(len(change_details)), key)
+    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     redis_hook.json().set(key, "$", change_details)
     redis_hook.expire(key, 60 * 60 * 24)
 
@@ -75,8 +75,6 @@ def list_changes(**context):
 
 @task
 def list_subscriptions(**context):
-    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     start, end = get_dates_from_context(context)
 
     # Get the list of changes
@@ -87,6 +85,7 @@ def list_subscriptions(**context):
         end,
         changes_redis_key,
     )
+    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     changes = redis_hook.json().objkeys(changes_redis_key)
 
     # Extract vendors & products based on the separator
@@ -105,6 +104,7 @@ def list_subscriptions(**context):
         "Listing subscriptions in %s table for these vendors and products",
         "opencve_projects",
     )
+    postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     records = postgres_hook.get_records(
         sql=SQL_PROJECT_WITH_SUBSCRIPTIONS,
         parameters={"vendors": vendors, "products": products},
@@ -128,9 +128,9 @@ def list_subscriptions(**context):
 
 @task
 def populate_reports(**context):
-    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     start, end = get_dates_from_context(context)
 
+    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     changes = redis_hook.json().get(f"vendor_changes_{start}_{end}")
     subscriptions = redis_hook.json().get(f"subscriptions_{start}_{end}")
 
