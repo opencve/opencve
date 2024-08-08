@@ -2,22 +2,24 @@ import json
 import os
 import pathlib
 
+import pendulum
+import pytest
+
+# AIRFLOW_HOME has to be defined before airflow imports
+AIRFLOW_HOME = os.path.dirname(os.path.dirname(__file__))
+os.environ["AIRFLOW_HOME"] = AIRFLOW_HOME
+
 from airflow import DAG
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from airflow.utils import db as airflow_db
 from airflow.utils.state import DagRunState
 from airflow.utils.types import DagRunType
-import pendulum
-import pytest
-
-AIRFLOW_HOME = os.path.dirname(os.path.dirname(__file__))
 
 # Override Airflow configuration during tests
 os.environ["AIRFLOW__DATABASE__LOAD_DEFAULT_CONNECTIONS"] = "False"
 os.environ["AIRFLOW__CORE__LOAD_EXAMPLES"] = "False"
 os.environ["AIRFLOW__CORE__UNIT_TEST_MODE"] = "True"
-os.environ["AIRFLOW_HOME"] = AIRFLOW_HOME
 
 os.environ["AIRFLOW__OPENCVE__MITRE_REPO_PATH"] = AIRFLOW_HOME
 os.environ["AIRFLOW__OPENCVE__ADVISORIES_REPO_PATH"] = AIRFLOW_HOME
