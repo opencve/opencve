@@ -10,25 +10,24 @@ jobs:
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.11
           architecture: x64
       - name: Install requirements
         run: |
           python -m pip install --upgrade pip
-          pip install ".[dev]"
+          pip install black==24.8.0
       - name: Display packages version
         run: |
           python -c "import sys; print(sys.version)"
           pip freeze
-          opencve --version
       - name: Run Black
-        run: black --diff --check {opencve,tests}
+        run: black --diff --check {web,scheduler}
 
-  tests:
+  tests-web:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-          python-version: [3.7, 3.8]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     services:
       postgres:
         image: postgres
@@ -52,20 +51,79 @@ jobs:
           architecture: x64
       - name: Install requirements
         run: |
+          cd web
           python -m pip install --upgrade pip
-          pip install ".[dev]"
+          pip install -r requirements.txt
+          pip install pytest==8.3.2
+          pip install pytest-django==4.8.0
       - name: Display packages version
         run: |
           python -c "import sys; print(sys.version)"
           pip freeze
-          opencve --version
-      - name: Enable pg_trgm extension
-        run: |
-          PGPASSWORD=opencve psql -h localhost -p 5432 -U opencve opencve -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
-      - name: Configure database URI
-        run: |
-          pwd
-          ls $GITHUB_WORKSPACE/tests/opencve.cfg
-          sed -i 's$postgresql://user:secret@localhost:5432/dbname$postgresql://opencve:opencve@localhost:5432/opencve$g' $GITHUB_WORKSPACE/tests/opencve.cfg
       - name: Execute tests
-        run: pytest tests/ -v
+        env:
+          DJANGO_SETTINGS_MODULE: opencve.settings
+          OPENCVE_DATABASE_URL: postgresql://opencve:opencve@localhost:5432/opencve
+        run: |
+          cd web
+          python manage.py check
+          pytest tests/ -v
+  tests-scheduler:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+    services:
+      postgres_web:
+        image: postgres
+        env:
+          POSTGRES_USER: opencve
+          POSTGRES_PASSWORD: opencve
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis_web:
+        image: redis/redis-stack
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Init web database
+        run: |
+          cd web
+          python -m venv venv_web
+          source venv_web/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python manage.py migrate
+          deactivate
+        env:
+          DJANGO_SETTINGS_MODULE: opencve.settings
+          OPENCVE_DATABASE_URL: postgresql://opencve:opencve@localhost:5432/opencve
+      - name: Install scheduler requirements
+        run: |
+          cd scheduler
+          python -m venv venv_scheduler
+          source venv_scheduler/bin/activate
+          pip install -r requirements.txt
+          pip install pytest==8.3.2
+      - name: Execute tests
+        run: |
+          cd scheduler
+          source venv_scheduler/bin/activate
+          pytest tests/ -v
