@@ -28,10 +28,11 @@ os.environ["AIRFLOW__OPENCVE__NVD_REPO_PATH"] = AIRFLOW_HOME
 os.environ["AIRFLOW__OPENCVE__VULNRICHMENT_REPO_PATH"] = AIRFLOW_HOME
 os.environ["AIRFLOW__OPENCVE__REDHAT_REPO_PATH"] = AIRFLOW_HOME
 os.environ["AIRFLOW__OPENCVE__START_DATE"] = "2024-01-01"
+os.environ["AIRFLOW__OPENCVE__NOTIFICATION_REQUEST_TIMEOUT"] = "5"
 
 os.environ["AIRFLOW__OPENCVE__DEVELOPMENT_MODE"] = "False"
 os.environ["AIRFLOW_CONN_OPENCVE_POSTGRES"] = (
-    "postgresql://localhost:5432/opencve_web_tests"
+    "postgresql://opencve:opencve@localhost:5432/opencve"
 )
 os.environ["AIRFLOW_CONN_OPENCVE_REDIS"] = "redis://localhost:6379"
 
