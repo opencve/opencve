@@ -1,17 +1,19 @@
+import environ
+
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
+env = environ.Env()
+env.prefix = "OPENCVE_"
+environ.Env.read_env(BASE_DIR / "opencve/.env")
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-8mjeblz2*z@_n&zn^xpo)(id8f90%@elj#t5dg)59hd69(553a"
+SECRET_KEY = env.str("SECRET_KEY", default="change_me")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = ["*"]
 
@@ -82,6 +84,7 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -92,28 +95,19 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console"],
-        "level": "INFO",
+        "level": "DEBUG",
     },
 }
 
-
 # Database
-# https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "opencve",
-        "USER": "opencve",
-        "PASSWORD": "opencve",
-        "HOST": "postgres",
-        "PORT": "5432"
-    }
+    "default": env.db(
+        "DATABASE_URL",
+        default="postgresql://username:password@example.com:5432/opencve_web",
+    )
 }
 
-
 # Password validation
-# https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -130,8 +124,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Password hashers
-# https://docs.djangoproject.com/en/4.0/ref/settings/#password-hashers
-
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
@@ -142,8 +134,6 @@ PASSWORD_HASHERS = [
 ]
 
 # Internationalization
-# https://docs.djangoproject.com/en/4.0/topics/i18n/
-
 LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "UTC"
@@ -154,15 +144,11 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.0/howto/static-files/
-
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = "/app/static/"
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Template used by Django-Crispy
@@ -188,15 +174,14 @@ ACCOUNT_FORMS = {
 }
 
 # Email backend
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = env.str(
+    "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+)
 
 # Internal IPs
 INTERNAL_IPS = ["127.0.0.1"]
-
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated"
-    ],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
@@ -212,30 +197,35 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
 COUNT_EXCERPT = 3
 
 # The local folder where the repository `opencve-kb` is cloned
-KB_REPO_PATH = "/app/repositories/opencve-kb"
+KB_REPO_PATH = env.str("KB_REPO_PATH", default="/path/to/kb")
 
 # The local folder where the repository `cvelistV5` is cloned
-MITRE_REPO_PATH = "/app/repositories/cvelistV5"
+MITRE_REPO_PATH = env.str("MITRE_REPO_PATH", default="/path/to/mitre")
 
 # The local folder where the repository `opencve-nvd` is cloned
-NVD_REPO_PATH = "/app/repositories/opencve-nvd"
+NVD_REPO_PATH = env.str("NVD_REPO_PATH", default="/path/to/nvd")
 
 # The local folder where the repository `opencve-redhat` is cloned
-REDHAT_REPO_PATH = "/app/repositories/opencve-redhat"
+REDHAT_REPO_PATH = env.str("REDHAT_REPO_PATH", default="/path/to/redhat")
 
 # The local folder where the repository `vulnrichment` is cloned
-VULNRICHMENT_REPO_PATH = "/app/repositories/vulnrichment"
+VULNRICHMENT_REPO_PATH = env.str(
+    "VULNRICHMENT_REPO_PATH", default="/path/to/vulnrichment"
+)
 
 # OpenCVE v1 database URI, used to migrate data from v1 to v2
-OPENCVE_V1_DATABASE_URI = "postgresql://user:secret@localhost:5432/dbname"
+OPENCVE_V1_DATABASE_URI = env.db(
+    "V1_DATABASE_URL",
+    default="postgresql://username:password@example.com:5432/opencve_v1",
+)
 
 # Sentry configuration (uncomment it to enable Sentry monitoring)
 # Basic options: https://docs.sentry.io/platforms/python/configuration/options/
 # Django options: https://docs.sentry.io/platforms/python/integrations/django/#options
 #
-#import sentry_sdk
-#sentry_sdk.init(
+# import sentry_sdk
+# sentry_sdk.init(
 #    dsn="https://public@sentry.example.com/1",
 #    enable_tracing=True,
 #    [...]
-#)
+# )
