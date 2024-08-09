@@ -75,7 +75,7 @@ class BaseNotifier:
                 {
                     "cve": {
                         "cve_id": change["cve_id"],
-                        "description": cve_data["opencve"]["description"],
+                        "description": cve_data["opencve"]["description"]["data"],
                         "cvss31": score,
                     },
                     "events": kb_change[0]["data"] if kb_change else [],
