@@ -31,6 +31,5 @@ scheduler/airflow.cfg
 scheduler/standalone_admin_password.txt
 scheduler/airflow-webserver.pid
 web/.pytest_cache/
-web/opencve/settings.py
 web/emails/
 docker/config/opencve.conf.template
