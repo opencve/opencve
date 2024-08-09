@@ -1,12 +1,20 @@
 from django.urls import path, register_converter
 
 from opencve.utils import DateConverter
-from projects.views import (NotificationCreateView, NotificationsView,
-                            NotificationUpdateView, ProjectCreateView,
-                            ProjectDeleteView, ProjectDetailView,
-                            ProjectEditView, ProjectsListView,
-                            ProjectVulnerabilitiesView, ReportsView,
-                            ReportView, SubscriptionsView)
+from projects.views import (
+    NotificationCreateView,
+    NotificationsView,
+    NotificationUpdateView,
+    ProjectCreateView,
+    ProjectDeleteView,
+    ProjectDetailView,
+    ProjectEditView,
+    ProjectsListView,
+    ProjectVulnerabilitiesView,
+    ReportsView,
+    ReportView,
+    SubscriptionsView,
+)
 
 register_converter(DateConverter, "date")
 

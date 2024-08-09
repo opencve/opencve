@@ -6,8 +6,14 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils.crypto import get_random_string
 from django.utils.timezone import now
-from django.views.generic import (CreateView, DeleteView, FormView, ListView,
-                                  UpdateView, View)
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    FormView,
+    ListView,
+    UpdateView,
+    View,
+)
 from django.views.generic.detail import SingleObjectMixin
 
 from opencve.mixins import RequestViewMixin

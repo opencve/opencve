@@ -81,7 +81,8 @@ class Cve(BaseModel):
                 self._vulnrichment_json = {}
             else:
                 vulnrichment_path = (
-                        pathlib.Path(settings.VULNRICHMENT_REPO_PATH) / vulnrichment_data["vulnrichment_repo_path"]
+                    pathlib.Path(settings.VULNRICHMENT_REPO_PATH)
+                    / vulnrichment_data["vulnrichment_repo_path"]
                 )
                 with open(vulnrichment_path) as f:
                     self._vulnrichment_json = json.load(f)
@@ -109,7 +110,8 @@ class Cve(BaseModel):
                 self._redhat_json = {}
             else:
                 redhat_path = (
-                        pathlib.Path(settings.REDHAT_REPO_PATH) / redhat_data["redhat_repo_path"]
+                    pathlib.Path(settings.REDHAT_REPO_PATH)
+                    / redhat_data["redhat_repo_path"]
                 )
                 with open(redhat_path) as f:
                     self._redhat_json = json.load(f)

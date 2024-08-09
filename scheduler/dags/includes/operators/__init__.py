@@ -7,7 +7,7 @@ from includes.constants import (
     MITRE_LOCAL_REPO,
     NVD_LOCAL_REPO,
     REDHAT_LOCAL_REPO,
-    VULNRICHMENT_LOCAL_REPO
+    VULNRICHMENT_LOCAL_REPO,
 )
 
 

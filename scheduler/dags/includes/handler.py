@@ -46,22 +46,24 @@ class DiffHandler:
             "title": data["title"]["data"],
             "metrics": Json(data["metrics"]),
             "vendors": Json(data["vendors"]["data"]),
-            "weaknesses": Json(data["weaknesses"]["data"])
+            "weaknesses": Json(data["weaknesses"]["data"]),
         }
 
         changes = []
         for change in data.get("changes", []):
-            changes.append({
-                "change": change["id"],
-                "created": change["created"],
-                "updated": change["created"],
-                "file_path": self.path,
-                # Add the commit hash in each change, the `cve_upsert`
-                # procedure will only add the new ones with this clause:
-                # `ON CONFLICT (created_at, cve_id) DO NOTHING`
-                "commit_hash": self.commit_hash,
-                "event_types": [e["type"] for e in change["data"]]
-            })
+            changes.append(
+                {
+                    "change": change["id"],
+                    "created": change["created"],
+                    "updated": change["created"],
+                    "file_path": self.path,
+                    # Add the commit hash in each change, the `cve_upsert`
+                    # procedure will only add the new ones with this clause:
+                    # `ON CONFLICT (created_at, cve_id) DO NOTHING`
+                    "commit_hash": self.commit_hash,
+                    "event_types": [e["type"] for e in change["data"]],
+                }
+            )
         payload["changes"] = Json(changes)
 
         return payload

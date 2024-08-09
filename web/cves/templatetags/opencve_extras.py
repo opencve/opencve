@@ -9,9 +9,13 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 
-from cves.constants import (CVSS_CHART_BACKGROUNDS, CVSS_HUMAN_SCORE,
-                            CVSS_NAME_MAPPING, CVSS_VECTORS_MAPPING,
-                            PRODUCT_SEPARATOR)
+from cves.constants import (
+    CVSS_CHART_BACKGROUNDS,
+    CVSS_HUMAN_SCORE,
+    CVSS_NAME_MAPPING,
+    CVSS_VECTORS_MAPPING,
+    PRODUCT_SEPARATOR,
+)
 from cves.utils import get_metric_from_vector
 from cves.utils import humanize as _humanize
 

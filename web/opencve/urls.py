@@ -3,9 +3,15 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework_nested import routers
 
-from cves.resources import (CveViewSet, ProductCveViewSet, ProductViewSet,
-                            VendorCveViewSet, VendorViewSet,
-                            WeaknessCveViewSet, WeaknessViewSet)
+from cves.resources import (
+    CveViewSet,
+    ProductCveViewSet,
+    ProductViewSet,
+    VendorCveViewSet,
+    VendorViewSet,
+    WeaknessCveViewSet,
+    WeaknessViewSet,
+)
 from organizations.resources import OrganizationViewSet
 from projects.resources import ProjectCveViewSet, ProjectViewSet
 
