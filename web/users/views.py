@@ -4,7 +4,13 @@ from django.contrib.auth.views import PasswordChangeView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, DeleteView, ListView, UpdateView, TemplateView
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    ListView,
+    UpdateView,
+    TemplateView,
+)
 
 from opencve.mixins import RequestViewMixin
 from organizations.mixins import Membership
@@ -108,8 +114,7 @@ class SettingsDeleteAccountView(LoginRequiredMixin, SuccessMessageMixin, DeleteV
 
     def get(self, request, *args, **kwargs):
         memberships = Membership.objects.filter(
-            user=request.user,
-            role=Membership.OWNER
+            user=request.user, role=Membership.OWNER
         ).all()
         if memberships:
             orga_names = ", ".join([m.organization.name for m in memberships])
