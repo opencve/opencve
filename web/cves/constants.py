@@ -56,7 +56,10 @@ CVSS_VECTORS_MAPPING = {
             "P": {"weight": 0, "label": "Physical"},
         },
         "AC": {"L": {"weight": 2, "label": "Low"}, "H": {"weight": 1, "label": "High"}},
-        "AT": {"N": {"weight": 2, "label": "None"}, "P": {"weight": 1, "label": "Present"}},
+        "AT": {
+            "N": {"weight": 2, "label": "None"},
+            "P": {"weight": 1, "label": "Present"},
+        },
         "PR": {
             "N": {"weight": 2, "label": "None"},
             "L": {"weight": 1, "label": "Low"},

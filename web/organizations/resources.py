@@ -2,8 +2,10 @@ from django.shortcuts import get_object_or_404
 from rest_framework import permissions, viewsets
 
 from organizations.models import Organization
-from organizations.serializers import (OrganizationDetailSerializer,
-                                       OrganizationSerializer)
+from organizations.serializers import (
+    OrganizationDetailSerializer,
+    OrganizationSerializer,
+)
 
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):

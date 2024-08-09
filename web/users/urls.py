@@ -1,9 +1,15 @@
 from django.urls import path
 
-from users.views import (SettingsPasswordView, SettingsProfileView,
-                         SettingsAccountView, SettingsDeleteAccountView,
-                         TagCreateView, TagDeleteView, TagEditView,
-                         TagsListView)
+from users.views import (
+    SettingsPasswordView,
+    SettingsProfileView,
+    SettingsAccountView,
+    SettingsDeleteAccountView,
+    TagCreateView,
+    TagDeleteView,
+    TagEditView,
+    TagsListView,
+)
 
 urlpatterns = [
     path("tags/", TagsListView.as_view(), name="tags"),

@@ -1,10 +1,14 @@
 from django.urls import path, re_path
 
-from organizations.views import (OrganizationCreateView,
-                                 OrganizationDeleteView, OrganizationEditView,
-                                 OrganizationInvitationView,
-                                 OrganizationMembersFormView,
-                                 OrganizationsListView, change_organization)
+from organizations.views import (
+    OrganizationCreateView,
+    OrganizationDeleteView,
+    OrganizationEditView,
+    OrganizationInvitationView,
+    OrganizationMembersFormView,
+    OrganizationsListView,
+    change_organization,
+)
 
 urlpatterns = [
     path("ajax/change_organization", change_organization, name="change_organization"),

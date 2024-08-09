@@ -9,7 +9,11 @@ from airflow.exceptions import AirflowSkipException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from includes.constants import SQL_PROJECT_WITH_NOTIFICATIONS
-from includes.utils import divide_list, group_notifications_by_project, get_dates_from_context
+from includes.utils import (
+    divide_list,
+    group_notifications_by_project,
+    get_dates_from_context,
+)
 
 logger = logging.getLogger(__name__)
 

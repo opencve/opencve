@@ -14,9 +14,7 @@ class ProcessKbOperator(BaseOperator):
 
     def process_diff(self, diff, commit_hash):
         handler = DiffHandler(diff, commit_hash)
-        self.log.info(
-            "Checking file %s (%s)", handler.path, handler.diff.change_type
-        )
+        self.log.info("Checking file %s (%s)", handler.path, handler.diff.change_type)
 
         # Do nothing if it's a deletion
         if handler.diff.change_type == "D":

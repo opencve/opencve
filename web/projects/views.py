@@ -7,15 +7,22 @@ from django.db.models import Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.views.generic import (CreateView, DeleteView, DetailView, ListView,
-                                  UpdateView)
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    UpdateView,
+)
 
 from changes.models import Change, Report
 from cves.models import Cve
 from opencve.mixins import RequestViewMixin
-from organizations.mixins import (OrganizationIsMemberMixin,
-                                  OrganizationIsOwnerMixin,
-                                  OrganizationRequiredMixin)
+from organizations.mixins import (
+    OrganizationIsMemberMixin,
+    OrganizationIsOwnerMixin,
+    OrganizationRequiredMixin,
+)
 from projects.forms import FORM_MAPPING, ProjectForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
 from projects.models import Notification, Project
@@ -45,7 +52,11 @@ class ProjectsListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
 
 
 class ProjectDetailView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, ProjectIsActiveMixin, DetailView
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
 ):
     # TODO: change this view into a ListView based on Changes,
     #  so we'll have a pagination instead of [:10]
@@ -164,7 +175,9 @@ class ProjectVulnerabilitiesView(
         return context
 
 
-class ReportsView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, ListView):
+class ReportsView(
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, ListView
+):
     model = Report
     context_object_name = "reports"
     template_name = "projects/reports.html"
@@ -196,7 +209,9 @@ class ReportsView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActive
         return context
 
 
-class ReportView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, DetailView):
+class ReportView(
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, DetailView
+):
     model = Report
     template_name = "projects/report.html"
 
@@ -219,7 +234,7 @@ class ReportView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveM
                 changes[db_change.cve] = {
                     "cve": db_change.cve,
                     "score": score,
-                    "kb_changes": []
+                    "kb_changes": [],
                 }
 
             # Parse the KB changes and select the good one
@@ -259,7 +274,11 @@ class ReportView(LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveM
 
 
 class SubscriptionsView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, ProjectIsActiveMixin, DetailView
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
 ):
     model = Project
     template_name = "projects/subscriptions.html"
@@ -271,7 +290,11 @@ class SubscriptionsView(
 
 
 class NotificationsView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, ProjectIsActiveMixin, DetailView
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
 ):
     model = Project
     template_name = "projects/notifications/list.html"
@@ -310,7 +333,9 @@ class NotificationCreateView(
         return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
-        types = [k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v]
+        types = [
+            k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v
+        ]
 
         # Extra configuration
         extras = {}
@@ -374,7 +399,9 @@ class NotificationUpdateView(
         )
 
     def form_valid(self, form):
-        types = [k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v]
+        types = [
+            k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v
+        ]
 
         # Extra configuration
         extras = {}
@@ -409,7 +436,9 @@ class NotificationUpdateView(
         context["type"] = self.object.type
 
         # Transform JSON field into dedicated fields
-        context["form"].initial["cvss31_score"] = self.object.configuration["metrics"]["cvss31"]
+        context["form"].initial["cvss31_score"] = self.object.configuration["metrics"][
+            "cvss31"
+        ]
         for _type in self.object.configuration["types"]:
             context["form"].initial[_type] = True
 
