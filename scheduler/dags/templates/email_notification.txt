@@ -5,7 +5,7 @@ This email has been sent from the {{ notification }} notification of the {{ orga
 {% for severity, vulnerabilities in vulnerabilities.items() %}{% if vulnerabilities %}{{ severity|capitalize }} Vulnerabilities ({{ vulnerabilities|length }})
 {% for vulnerability in vulnerabilities %}
 - {{ vulnerability.cve_id }} ({% if vulnerability.score %}{{ vulnerability.score }}{% else %}No CVSS v3.1{% endif %}) - {{ web_url }}/cve/{{ vulnerability.cve_id }}
-{{ vulnerability.description }}
+{{ vulnerability.description | truncate(220) }}
 Changes: {{ vulnerability.changes|join(', ') }}
 {% endfor %}{% endif %}
 {% endfor %}2024 OpenCVE, All rights reserved
