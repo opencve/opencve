@@ -18,7 +18,7 @@ from includes.constants import KB_LOCAL_REPO
 logger = logging.getLogger(__name__)
 
 
-class BaseNotification:
+class BaseNotifier:
     type = None
 
     SEVERITY_COLORS = {
@@ -66,12 +66,17 @@ class BaseNotification:
             kb_changes = cve_data["opencve"]["changes"]
             kb_change = [c for c in kb_changes if c["id"] == change["change_id"]]
 
+            # CVE score
+            score = None
+            if cve_data["opencve"]["metrics"]["cvssV3_1"]["data"]:
+                score = cve_data["opencve"]["metrics"]["cvssV3_1"]["data"]["score"]
+
             payload["changes"].append(
                 {
                     "cve": {
                         "cve_id": change["cve_id"],
                         "description": cve_data["opencve"]["description"],
-                        "cvss31": cve_data["metrics"]["v31"].get("score"),
+                        "cvss31": score,
                     },
                     "events": kb_change[0]["data"] if kb_change else [],
                 }
@@ -104,7 +109,7 @@ class BaseNotification:
         raise NotImplementedError()
 
 
-class WebhookNotification(BaseNotification):
+class WebhookNotifier(BaseNotifier):
     type = "webhook"
 
     def __init__(self, *args, **kwargs):
@@ -145,7 +150,7 @@ class WebhookNotification(BaseNotification):
         return {}
 
 
-class EmailNotification(BaseNotification):
+class EmailNotifier(BaseNotifier):
     type = "email"
 
     def __init__(self, *args, **kwargs):

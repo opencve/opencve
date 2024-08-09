@@ -16,8 +16,6 @@ logger = logging.getLogger(__name__)
 
 @task
 def prepare_notifications(**context):
-    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     start, end = get_dates_from_context(context)
 
     # Get the list of subscriptions
@@ -28,11 +26,13 @@ def prepare_notifications(**context):
         end,
         subscriptions_redis_key,
     )
+    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     subscriptions = redis_hook.json().objkeys(subscriptions_redis_key)
     logger.info("Found %s subscriptions", str(len(subscriptions)))
 
     # Get the notifications and group them by project
     logger.info("Listing notifications in %s table", "opencve_notifications")
+    postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     records = postgres_hook.get_records(
         sql=SQL_PROJECT_WITH_NOTIFICATIONS,
         parameters={"projects": tuple(subscriptions)},
@@ -63,8 +63,8 @@ async def execute_coroutines(notifications, change_details, period):
             notification = notification_data["notification"]
 
             notif_cls = getattr(
-                importlib.import_module("includes.notifications"),
-                f"{notification['notification_type'].capitalize()}Notification",
+                importlib.import_module("includes.notifiers"),
+                f"{notification['notification_type'].capitalize()}Notifier",
             )
 
             logger.debug("Executing %s method of %s", "send", notif_cls)
