@@ -1,12 +1,10 @@
 from allauth.account.forms import LoginForm as BaseLoginForm
-from allauth.account.forms import (ResetPasswordForm, ResetPasswordKeyForm,
-                                   SignupForm)
+from allauth.account.forms import ResetPasswordForm, ResetPasswordKeyForm, SignupForm
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Button, Field, Layout, Submit
 from django import forms
-from django.contrib.auth.forms import \
-    PasswordChangeForm as BasePasswordChangeForm
+from django.contrib.auth.forms import PasswordChangeForm as BasePasswordChangeForm
 
 from users.models import User, UserTag
 

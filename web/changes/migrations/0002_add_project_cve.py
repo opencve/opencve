@@ -9,28 +9,40 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('cves', '0001_initial'),
-        ('projects', '0001_initial'),
-        ('changes', '0001_initial'),
+        ("cves", "0001_initial"),
+        ("projects", "0001_initial"),
+        ("changes", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='report',
-            name='project',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='reports', to='projects.project'),
+            model_name="report",
+            name="project",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="reports",
+                to="projects.project",
+            ),
         ),
         migrations.AddField(
-            model_name='change',
-            name='cve',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='changes', to='cves.cve'),
+            model_name="change",
+            name="cve",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="changes",
+                to="cves.cve",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='report',
-            constraint=models.UniqueConstraint(fields=('day', 'project_id'), name='ix_unique_project_day'),
+            model_name="report",
+            constraint=models.UniqueConstraint(
+                fields=("day", "project_id"), name="ix_unique_project_day"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='change',
-            constraint=models.UniqueConstraint(fields=('created_at', 'cve_id'), name='ix_unique_cve_created_at'),
+            model_name="change",
+            constraint=models.UniqueConstraint(
+                fields=("created_at", "cve_id"), name="ix_unique_cve_created_at"
+            ),
         ),
     ]

@@ -7,13 +7,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0001_initial'),
+        ("projects", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='project',
-            name='name',
-            field=models.CharField(max_length=100, validators=[django.core.validators.RegexValidator(message='Special characters (except space, dash and underscore) are not accepted', regex='^[a-zA-Z0-9\\-_ ]+$')]),
+            model_name="project",
+            name="name",
+            field=models.CharField(
+                max_length=100,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        message="Special characters (except space, dash and underscore) are not accepted",
+                        regex="^[a-zA-Z0-9\\-_ ]+$",
+                    )
+                ],
+            ),
         ),
     ]

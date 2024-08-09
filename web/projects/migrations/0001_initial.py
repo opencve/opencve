@@ -13,43 +13,107 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('organizations', '0001_initial'),
+        ("organizations", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Project',
+            name="Project",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('updated_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('name', models.CharField(max_length=100)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('subscriptions', models.JSONField(default=projects.models.get_default_subscriptions)),
-                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='projects', to='organizations.organization')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, primary_key=True, serialize=False
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
+                ),
+                ("name", models.CharField(max_length=100)),
+                ("description", models.TextField(blank=True, null=True)),
+                (
+                    "subscriptions",
+                    models.JSONField(default=projects.models.get_default_subscriptions),
+                ),
+                (
+                    "organization",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="projects",
+                        to="organizations.organization",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'opencve_projects',
+                "db_table": "opencve_projects",
             },
         ),
         migrations.CreateModel(
-            name='Notification',
+            name="Notification",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('updated_at', models.DateTimeField(db_index=True, default=django.utils.timezone.now)),
-                ('name', models.CharField(max_length=256, validators=[django.core.validators.RegexValidator(message='Special characters (except dash and underscore) are not accepted', regex='^[a-zA-Z0-9\\-_ ]+$')])),
-                ('type', models.CharField(max_length=64)),
-                ('is_enabled', models.BooleanField(default=True)),
-                ('configuration', models.JSONField(default=projects.models.get_default_configuration)),
-                ('project', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to='projects.project')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4, primary_key=True, serialize=False
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        max_length=256,
+                        validators=[
+                            django.core.validators.RegexValidator(
+                                message="Special characters (except dash and underscore) are not accepted",
+                                regex="^[a-zA-Z0-9\\-_ ]+$",
+                            )
+                        ],
+                    ),
+                ),
+                ("type", models.CharField(max_length=64)),
+                ("is_enabled", models.BooleanField(default=True)),
+                (
+                    "configuration",
+                    models.JSONField(default=projects.models.get_default_configuration),
+                ),
+                (
+                    "project",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="notifications",
+                        to="projects.project",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'opencve_notifications',
+                "db_table": "opencve_notifications",
             },
         ),
         migrations.AddConstraint(
-            model_name='project',
-            constraint=models.UniqueConstraint(fields=('name', 'organization_id'), name='ix_unique_organization_project_name'),
+            model_name="project",
+            constraint=models.UniqueConstraint(
+                fields=("name", "organization_id"),
+                name="ix_unique_organization_project_name",
+            ),
         ),
     ]

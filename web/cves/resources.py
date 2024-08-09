@@ -3,9 +3,13 @@ from rest_framework import mixins, permissions, viewsets
 
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Cve, Product, Vendor, Weakness
-from cves.serializers import (CveDetailSerializer, CveListSerializer,
-                              ProductListSerializer, VendorListSerializer,
-                              WeaknessListSerializer)
+from cves.serializers import (
+    CveDetailSerializer,
+    CveListSerializer,
+    ProductListSerializer,
+    VendorListSerializer,
+    WeaknessListSerializer,
+)
 from cves.views import list_filtered_cves
 
 
