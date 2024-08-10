@@ -1,25 +1,26 @@
+"""
+Use the `opencve/conf/.env` file to customize the required settings
+and the `opencve/conf/settings.py` file to override the other ones.
+"""
+
 import environ
 
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
 env.prefix = "OPENCVE_"
-environ.Env.read_env(BASE_DIR / "opencve/.env")
+environ.Env.read_env(BASE_DIR / "opencve/conf/.env")
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env.str("SECRET_KEY", default="change_me")
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool("DEBUG", default=False)
+DEBUG = False
 
 ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -83,7 +84,6 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
-
 
 LOGGING = {
     "version": 1,
@@ -174,9 +174,7 @@ ACCOUNT_FORMS = {
 }
 
 # Email backend
-EMAIL_BACKEND = env.str(
-    "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
-)
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Internal IPs
 INTERNAL_IPS = ["127.0.0.1"]
@@ -218,14 +216,3 @@ OPENCVE_V1_DATABASE_URI = env.db(
     "V1_DATABASE_URL",
     default="postgresql://username:password@example.com:5432/opencve_v1",
 )
-
-# Sentry configuration (uncomment it to enable Sentry monitoring)
-# Basic options: https://docs.sentry.io/platforms/python/configuration/options/
-# Django options: https://docs.sentry.io/platforms/python/integrations/django/#options
-#
-# import sentry_sdk
-# sentry_sdk.init(
-#    dsn="https://public@sentry.example.com/1",
-#    enable_tracing=True,
-#    [...]
-# )
