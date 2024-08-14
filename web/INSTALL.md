@@ -49,7 +49,7 @@ python manage.py createsuperuser
 Finally, you can populate the database:
 
 ```
-python manage.py import_from_kb
+python manage.py import_cves
 ```
 
 If you have an OpenCVE v1 instance, you can migrate the users and their subscriptions:

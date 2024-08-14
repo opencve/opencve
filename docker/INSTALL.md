@@ -11,9 +11,9 @@ The script regroups and follows the steps described in the web and scheduler ins
 ## Requirements
 
 You need to have your server installed with Debian OS or equivalent, with Docker v25.0.x and docker-compose plugin.
-The precedure is run as root.
+The precedure is run as root. It has been tested with Debian 12.
 
-The minimum requirement for the host is 2 cores and 4 Go RAM, the disk usage will be around 25Go or 30Go. The instance [d2-4](https://www.ovhcloud.com/fr/public-cloud/sandbox/) from OVH is a good fit to start.
+The minimum requirement for the host is 4 cores and 4 Go RAM, the disk usage will be around 25Go or 30Go. The instance [d2-8](https://www.ovhcloud.com/en/public-cloud/sandbox/) from OVHcloud is a good fit to start.
 
 ## Installation
 
@@ -49,10 +49,17 @@ You can run dedicated commands if you want to proceed step by step:
 --> Copying .env file for docker compose
 --> Copying opencve.conf.template for Nginx
 
-/!\ Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack
+/!\ Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack:
+
+Docker .env: ./.env
+Webserver .env: ../web/opencve/conf/.env
+Django settings: ../web/opencve/conf/settings.py
+Airflow settings: ../scheduler/airflow.cfg
 ```
 
-First, you need to verify and update your env file:
+#### Docker `.env` file
+
+First, you need to verify and update your docker `. env` file:
 
 ```
 cat .env
@@ -70,37 +77,21 @@ AIRFLOW__CORE__FERNET_KEY
 
 To customize the fernet key: [how to generate a new fernet key](https://airflow.apache.org/docs/apache-airflow/stable/security/secrets/fernet.html#generating-fernet-key).
 
-Then, check your settings for the OpenCVE webserver:
+#### Webserver `.env` file
+
+Then, check the `.env` file dedicated to OpenCVE:
 
 ```
-cat ../web/opencve/settings.py
+cat ../web/opencve/conf/.env
 ```
 
-You may want to customize the following fields:
+`OPENCVE_DATABASE_URL`: you need to update it if you have changed some of the postgresql parameters in the docker compose env file. The postgresql connection parameters need to be the same in both web and docker compose `.env` files.
 
-```
-SECRET_KEY = "..."
+`OPENCVE_SECRET_KEY`: this variable has to be replaced with a new secret when the web server is up the first time, it's done later in this installation.
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "opencve",
-        "USER": "opencve",
-        "PASSWORD": "opencve",
-        "HOST": "postgres",
-        "PORT": "5432"
-    }
-}
-```
+#### Django `settings.py`
 
-You may need to change the email settings to use you own smtp relay, replace the lines:
-
-```
-# Email backend
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-```
-
-By the following configuration:
+You may need to change the email settings to use you own smtp relay, otherwise the emails are displayed in the webserver logs. To specify your smtp, add the following lines inside the `settings.py` file:
 
 ```
 # Email backend
@@ -115,11 +106,13 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "OpenCVE.dev <no-reply@example.com>"
 ```
 
-If you keep the email backend as is (i.e "django.core.mail.backends.console.EmailBackend"), you can consult the emails that would be sent in the logs of the webserver container like this:
+If you keep the default email backend (i.e `django.core.mail.backends.console.EmailBackend`), you can consult the emails that would be sent in the logs of the webserver container like this:
 
 ```
 docker logs webserver
 ```
+
+#### Airflow settings
 
 Then, check the airflow configuration file:
 
@@ -127,7 +120,7 @@ Then, check the airflow configuration file:
 cat ../scheduler/airflow.cfg
 ```
 
-You may want to customize:
+You may want to customize the following parameters:
 
 ```
 # The base URL of the OpenCVE webserver
@@ -156,11 +149,21 @@ start_date = 2024-04-02
 
 ### Start the OpenCVE stack
 
-Now you can run the command to bootstrap the entire stack:
+Now you can run the command to bootstrap the stack.
+It will create the containers, add the airflow connections, collect the web static files, update the `OPENCVE_SECRET_KEY` and create the needed database tables and procedures:
 
 ```
 ./install.sh start-docker-stack
+--> Get PG ENV variables from docker compose env file
 --> Starting Docker compose stack
+[...]
+--> Adding Airflow connections
+[...]
+--> Updating OpenCVE secret key
+[...]
+--> Restarting webserver
+[...]
+--> Collecting static files from Django webserver
 [...]
 ```
 
@@ -178,7 +181,7 @@ b91f0cda0c40   redis/redis-stack:latest    "/entrypoint.sh"         9 minutes ag
 2be9eeed7d6c   postgres:15                 "docker-entrypoint.s…"   9 minutes ago   Up 9 minutes (healthy)   5432/tcp                 postgres
 ```
 
-### Clone repositories
+### Clone the repositories
 
 ```
 ./install.sh clone-repositories
@@ -187,13 +190,17 @@ Cloning into '/home/airflow/repositories/opencve-kb'...
 [...]
 Cloning into '/home/airflow/repositories/opencve-nvd'...
 [...]
+Cloning into '/home/airflow/repositories/opencve-redhat'...
+[...]
 Cloning into '/home/airflow/repositories/cvelistV5'...
+[...]
+Cloning into '/home/airflow/repositories/vulnrichment'...
 [...]
 ```
 
 ### Create privileged user
 
-Create the super user for the OpenCVE web portal:
+Create the super user to have access to the admin part of your OpenCVE website:
 
 ```
 ./install.sh create-superuser
@@ -213,8 +220,8 @@ We are good to import the OpenCVE KB:
 ./install.sh import-opencve-kb
 --> Importing OpenCVE KB inside the database, this can take 15 to 30min.
 Parsing the OpenCVE KB repository (/app/repositories/opencve-kb)
-Found 240972 CVEs, adding them in database...
-Done in 756.121s
+Found 260248 CVEs, adding them in database...
+Done in 768.394s 
 ```
 
 You can now reach OpenCVE web portal at your configured IP/FQDN on the port 80 and the Airflow webserver on the port 8080.
