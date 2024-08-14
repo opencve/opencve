@@ -10,17 +10,23 @@ add-config-files() {
     echo "--> Adding Airflow configuration file"
     cp ../scheduler/airflow.cfg.example ../scheduler/airflow.cfg
 
-    echo "--> Adding Django settings file"
-    cp ../web/opencve/settings.py.example ../web/opencve/settings.py
+    echo "--> Adding Django settings and .env file"
+    cp ../web/opencve/conf/settings.py.example ../web/opencve/conf/settings.py
+    cp ../web/opencve/conf/.env.example ../web/opencve/conf/.env
 
     echo "--> Copying .env file for docker compose"
-    cp ./config/env.example ./.env
+    cp ./conf/.env.example ./.env
 
     echo "--> Copying opencve.conf.template for Nginx"
-    cp ./config/opencve.conf.template.example ./config/opencve.conf.template
+    cp ./conf/opencve.conf.template.example ./conf/opencve.conf.template
 
     echo ""
-    echo "/!\ Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack"
+    echo "/!\ Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack:"
+    echo ""
+    echo "Docker .env: ./.env"
+    echo "Webserver .env: ../web/opencve/conf/.env"
+    echo "Django settings: ../web/opencve/conf/settings.py"
+    echo "Airflow settings: ../scheduler/airflow.cfg"
     echo ""
 
 }
@@ -42,7 +48,17 @@ start-docker-stack() {
     echo "--> Adding Airflow connections"
     docker exec -it airflow-scheduler airflow connections add opencve_postgres --conn-uri postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/opencve
     docker exec -it airflow-scheduler airflow connections add opencve_redis --conn-uri redis://redis:6379 --conn-extra '{"db": 3}'
-    docker exec -it airflow-scheduler airflow connections list
+
+    echo "--> Updating OpenCVE secret key"
+    export OPENCVE_SECRET_KEY=$(docker exec -it webserver python manage.py generate_secret_key)
+    sed -i.bak "s/OPENCVE_SECRET_KEY=.*/OPENCVE_SECRET_KEY=$OPENCVE_SECRET_KEY/g" ../web/opencve/conf/.env && rm -f ../web/opencve/conf/.env.bak
+
+    unset POSTGRES_USER
+    unset POSTGRES_PASSWORD
+    unset OPENCVE_SECRET_KEY
+
+    echo "--> Restarting webserver"
+    docker restart webserver
 
     echo "--> Collecting static files from Django webserver"
     docker exec -it webserver python manage.py collectstatic
@@ -129,19 +145,19 @@ case $_OPTIONS in
     "add-config-files" )
         add-config-files
         ;;
-     "set-airflow-start-date" )
+    "set-airflow-start-date" )
         set-airflow-start-date
         ;;
-     "start-docker-stack" )
+    "start-docker-stack" )
         start-docker-stack
         ;;
-     "create-superuser" )
+    "create-superuser" )
         create-superuser
         ;;
-     "import-opencve-kb" )
+    "import-opencve-kb" )
         import-opencve-kb
         ;;
-     "start-opencve-dag" )
+    "start-opencve-dag" )
         start-opencve-dag
         ;;
     * )
