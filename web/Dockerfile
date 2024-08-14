@@ -1,7 +1,7 @@
-FROM python:3.11-slim-bookworm as base
+FROM python:3.11-slim-bookworm AS base
 
 # Builder
-FROM base as builder
+FROM base AS builder
 
 ARG OPENCVE_REPOSITORY="https://github.com/opencve/opencve.git"
 ARG OPENCVE_VERSION="master"
