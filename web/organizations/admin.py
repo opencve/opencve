@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from organizations.models import Organization
+from organizations.models import Membership, Organization
+
+
+class MembershipInline(admin.TabularInline):
+    model = Membership
+    fields = ["user", "role"]
+    extra = 0
 
 
 @admin.register(Organization)
@@ -16,3 +22,4 @@ class OrganizationAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+    inlines = [MembershipInline]
