@@ -15,7 +15,6 @@ from includes.tasks.reports import list_changes, list_subscriptions, populate_re
 
 logger = logging.getLogger(__name__)
 
-
 # The catchup is set to True, so we allow the user to update his start_date
 # value to match the installation date of his own OpenCVE instance.
 start_date = pendulum.from_format(conf.get("opencve", "start_date"), "YYYY-MM-DD")

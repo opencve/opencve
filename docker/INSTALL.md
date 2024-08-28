@@ -221,7 +221,7 @@ We are good to import the OpenCVE KB:
 --> Importing OpenCVE KB inside the database, this can take 15 to 30min.
 Parsing the OpenCVE KB repository (/app/repositories/opencve-kb)
 Found 260248 CVEs, adding them in database...
-Done in 768.394s 
+Done in 768.394s
 ```
 
 You can now reach OpenCVE web portal at your configured IP/FQDN on the port 80 and the Airflow webserver on the port 8080.
@@ -233,4 +233,3 @@ And then, you can unpause the DAG inside Airflow web interface to let it execute
 --> Unpausing the dag
 Dag: opencve, paused: False
 ```
-

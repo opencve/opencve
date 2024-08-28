@@ -64,7 +64,7 @@ BEGIN
       VALUES(uuid_generate_v4(), NOW(), NOW(), _vendor_id::uuid, _product)
       ON CONFLICT (name, vendor_id) DO NOTHING;
     END LOOP;
-    
+
     -- add the changes
     SELECT id INTO _cve_id FROM opencve_cves WHERE cve_id = cve;
     FOR _change IN SELECT * FROM json_array_elements(changes::json)

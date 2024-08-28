@@ -101,7 +101,7 @@ def test_diff_handler_format_cve(tests_path, tmp_path_factory):
             "created": "2024-01-01T00:00:00+00:00",
             "updated": "2024-01-01T00:00:00+00:00",
             "file_path": "2024/CVE-2024-6962.v1.json",
-            "commit_hash": "e04e53213530969894b116f161dc0d34779d867a",  # predictable
+            "commit_hash": "06243efa271b991fc5a9107c6ec7239dc73c08c4",  # predictable
             "event_types": [
                 "description",
                 "title",
