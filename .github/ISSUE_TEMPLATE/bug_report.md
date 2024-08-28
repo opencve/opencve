@@ -12,9 +12,9 @@ about: Problems you encountered with OpenCVE
 
 ## Steps to Reproduce the Problem
 
-  - 
-  - 
-  - 
+  -
+  -
+  -
 
 ## Specifications
 
@@ -23,4 +23,3 @@ about: Problems you encountered with OpenCVE
   - Platform:
 
 ## Screenshots (optional)
-

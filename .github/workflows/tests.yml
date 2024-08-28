@@ -2,7 +2,7 @@ name: Tests
 on: [push, pull_request]
 
 jobs:
-  lint:
+  pre-commit:
     runs-on: ubuntu-latest
     steps:
       - name: Git checkout
@@ -12,16 +12,8 @@ jobs:
         with:
           python-version: 3.11
           architecture: x64
-      - name: Install requirements
-        run: |
-          python -m pip install --upgrade pip
-          pip install black==24.8.0
-      - name: Display packages version
-        run: |
-          python -c "import sys; print(sys.version)"
-          pip freeze
-      - name: Run Black
-        run: black --diff --check {web,scheduler}
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
 
   tests-web:
     runs-on: ubuntu-latest
