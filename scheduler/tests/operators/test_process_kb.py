@@ -249,7 +249,7 @@ def test_process_kb_operator_create_changes(tests_path, tmp_path_factory, web_pg
     assert db_data[0][0] == datetime.fromisoformat("2024-01-01T00:00:00+00:00")
     assert db_data[0][1] == datetime.fromisoformat("2024-01-01T00:00:00+00:00")
     assert db_data[0][2] == "2024/CVE-2024-6962.v1.json"
-    assert db_data[0][3] == "e04e53213530969894b116f161dc0d34779d867a"  # predictable
+    assert db_data[0][3] == "06243efa271b991fc5a9107c6ec7239dc73c08c4"  # predictable
     assert db_data[0][4] == [
         "description",
         "title",
@@ -282,7 +282,7 @@ def test_process_kb_operator_create_changes(tests_path, tmp_path_factory, web_pg
     assert db_data[0][0] == datetime.fromisoformat("2024-01-01T01:00:00+00:00")
     assert db_data[0][1] == datetime.fromisoformat("2024-01-01T01:00:00+00:00")
     assert db_data[0][2] == "2024/CVE-2024-6962.v2.json"
-    assert db_data[0][3] == "1206e74395bdcff8f01d2e744072835cc07ff58d"  # predictable
+    assert db_data[0][3] == "6ab19ef6d05d16d71f0174befc836f7552949dfe"  # predictable
     assert db_data[0][4] == ["title"]
     assert db_data[0][5] == db_cve_id
 
@@ -291,7 +291,7 @@ def test_process_kb_operator_create_changes(tests_path, tmp_path_factory, web_pg
         "SELECT count(*) "
         "FROM opencve_changes "
         "WHERE "
-        "(id = '114e2218-49c5-43fe-bcd7-18a1adc17a25' AND commit = 'e04e53213530969894b116f161dc0d34779d867a') "
-        "OR (id = 'd70b3c8b-6f7a-4494-bd01-a2f19f546023' AND commit = '1206e74395bdcff8f01d2e744072835cc07ff58d');"
+        "(id = '114e2218-49c5-43fe-bcd7-18a1adc17a25' AND commit = '06243efa271b991fc5a9107c6ec7239dc73c08c4') "
+        "OR (id = 'd70b3c8b-6f7a-4494-bd01-a2f19f546023' AND commit = '6ab19ef6d05d16d71f0174befc836f7552949dfe');"
     )
     assert db_data[0][0] == 2
