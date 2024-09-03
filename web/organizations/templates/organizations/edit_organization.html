@@ -56,7 +56,7 @@
 
                     <td class="pull-right">
                         <div class="btn-group" role="group">
-                            <a href="#" class="btn btn-danger btn-xs" type="button">Delete</a>
+                            <a href="{% url 'delete_organization_member' org_name=request.resolver_match.kwargs.org_name member_id=member.id %}" class="btn btn-danger btn-xs" type="button">Delete</a>
                         </div>
                     </td>
                 </tr>
