@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Remove Member - {{ block.super }}{% endblock %}
+{% block navbar_title%}Remove Member{% endblock %}
+
+{% block content %}
+<section class="content">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="col-md-8 col-md-offset-2">
+        <div class="box box-primary">
+          <div class="box-body">
+
+            <p>Do you really want to delete <strong>{{ object.user.username }}</strong> as a <strong>{{ object.role }}</strong> of this organization?</p>
+            <form method="post">
+                {% csrf_token %}
+                <a href="{% url 'edit_organization' org_name=request.resolver_match.kwargs.org_name %}" class="btn btn-default">Cancel</a>
+                <input type="submit" class="btn btn-danger" value="Confirm">
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
