@@ -25,7 +25,7 @@
           </div>
           <div class="box-body">
               <div class="row">
-              <form action="{% url 'list_organization_members' org_name=request.user_organization.name %}" method="post" class="form-inline form-new-member">
+              <form action="{% url 'list_organization_members' org_name=request.resolver_match.kwargs.org_name %}" method="post" class="form-inline form-new-member">
                   {% crispy members_form %}
               </form>
                   </div>
