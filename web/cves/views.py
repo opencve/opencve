@@ -112,7 +112,7 @@ class VendorListView(ListView):
     def get_queryset(self):
         vendors = Vendor.objects.order_by("name").prefetch_related("products")
         if self.request.GET.get("search"):
-            vendors = vendors.filter(name__contains=self.request.GET.get("search"))
+            vendors = vendors.filter(name__icontains=self.request.GET.get("search"))
         return vendors
 
     def get_context_data(self, **kwargs):
@@ -128,7 +128,7 @@ class VendorListView(ListView):
 
         # Filter by keyword
         if self.request.GET.get("search"):
-            products = products.filter(name__contains=self.request.GET.get("search"))
+            products = products.filter(name__icontains=self.request.GET.get("search"))
 
         # Add the pagination
         paginator = Paginator(products, 20)
@@ -147,7 +147,7 @@ class ProductListView(ListView):
     def get_queryset(self):
         products = Product.objects.order_by("name")
         if self.request.GET.get("search"):
-            products = products.filter(name__contains=self.request.GET.get("search"))
+            products = products.filter(name__icontains=self.request.GET.get("search"))
         return products
 
     def get_context_data(self, **kwargs):
