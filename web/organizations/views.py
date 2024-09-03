@@ -152,6 +152,51 @@ class OrganizationMembersFormView(
         return reverse("edit_organization", kwargs={"org_name": object.name})
 
 
+class OrganizationMemberDeleteView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    SuccessMessageMixin,
+    DeleteView,
+):
+    model = Membership
+    template_name = "organizations/delete_member.html"
+    success_message = "The member has been removed."
+    slug_url_kwarg = "member_id"
+
+    def dispatch(self, request, *args, **kwargs):
+        member = self.get_object()
+        organization = member.organization
+        owners = organization.membership_set.filter(role=Membership.OWNER).all()
+
+        if len(owners) == 1 and owners[0] == member:
+            messages.error(
+                request, "You cannot leave this organization as you are the only owner."
+            )
+            return redirect(
+                reverse("edit_organization", kwargs={"org_name": organization.name})
+            )
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            self.model,
+            organization__name=self.kwargs["org_name"],
+            id=self.kwargs["member_id"],
+        )
+
+    def get_success_url(self):
+        removed_user = self.get_object().user
+
+        # The current user can no longer access the organization if he removed himself
+        if removed_user == self.request.user:
+            return reverse_lazy("list_organizations")
+
+        return reverse_lazy(
+            "edit_organization", kwargs={"org_name": self.kwargs["org_name"]}
+        )
+
+
 class OrganizationInvitationView(LoginRequiredMixin, SingleObjectMixin, View):
     model = Membership
 
