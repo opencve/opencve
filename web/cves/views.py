@@ -139,6 +139,32 @@ class VendorListView(ListView):
         return context
 
 
+class ProductListView(ListView):
+    context_object_name = "vendors"
+    template_name = "cves/product_list.html"
+    paginate_by = 20
+
+    def get_queryset(self):
+        products = Product.objects.order_by("name")
+        if self.request.GET.get("search"):
+            products = products.filter(name__contains=self.request.GET.get("search"))
+        return products
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get filtered products
+        products = self.get_queryset()
+        
+        # Add the pagination
+        paginator = Paginator(products, 20)
+        page_number = self.request.GET.get("product_page")
+        context["products"] = paginator.get_page(page_number)
+        context["paginator_products"] = paginator
+
+        return context
+
+
 class CveListView(ListView):
     context_object_name = "cves"
     template_name = "cves/cve_list.html"
@@ -236,7 +262,7 @@ class CveDetailView(DetailView):
 
 
 class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateView):
-    template_name = "cves/vendor_subscribe.html"
+    template_name = "cves/subscription.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

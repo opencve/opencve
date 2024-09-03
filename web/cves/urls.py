@@ -6,6 +6,7 @@ from cves.views import (
     SubscriptionView,
     VendorListView,
     WeaknessListView,
+    ProductListView,
 )
 
 urlpatterns = [
@@ -13,5 +14,6 @@ urlpatterns = [
     path("cve/<cve_id>", CveDetailView.as_view(), name="cve"),
     path("weaknesses/", WeaknessListView.as_view(), name="weaknesses"),
     path("vendors/", VendorListView.as_view(), name="vendors"),
-    path("vendors/subscribe", SubscriptionView.as_view(), name="subscribe"),
+    path("products/", ProductListView.as_view(), name="products"),
+    path("subscribe/", SubscriptionView.as_view(), name="subscribe"),
 ]
