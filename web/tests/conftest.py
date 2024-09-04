@@ -26,32 +26,30 @@ def create_user(db, django_user_model):
 
 
 @pytest.fixture
-def user_client(db, client, create_user):
-    def _user_client(user=None):
+def auth_client(db, client, create_user):
+    def _auth_client(user=None):
         if user is None:
             user = create_user()
         client.login(username=user.username, password=TEST_PASSWORD)
-        return user, client
+        return client
 
-    return _user_client
+    return _auth_client
 
 
 @pytest.fixture
-def create_organization(db, client, create_user):
-    def _create_organization(name=None, user=None, owner=True):
-        if user is None:
-            user = create_user()
-        client.login(username=user.username, password=TEST_PASSWORD)
+def create_organization(create_user):
+    def _create_organization(name, user=None, owner=True):
+        organization = Organization.objects.create(name=name)
 
-        organization = Organization.objects.create(name=name if name else "Test Org")
-        Membership.objects.create(
-            user=user,
-            organization=organization,
-            role=Membership.OWNER if owner else Membership.MEMBER,
-            date_invited=now(),
-            date_joined=now(),
-        )
-        return user, organization
+        if user:
+            Membership.objects.create(
+                user=user,
+                organization=organization,
+                role=Membership.OWNER if owner else Membership.MEMBER,
+                date_invited=now(),
+                date_joined=now(),
+            )
+        return organization
 
     return _create_organization
 
