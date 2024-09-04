@@ -2,18 +2,18 @@ import pytest
 from django.urls import reverse
 
 
-def test_unauthenticated_user(client, user_client):
+def test_unauthenticated_user(client, auth_client):
     response = client.get(reverse("cve-list"))
     assert response.status_code == 403
 
-    user, auth_client = user_client()
-    response = auth_client.get(reverse("cve-list"))
+    client = auth_client()
+    response = client.get(reverse("cve-list"))
     assert response.status_code == 200
 
 
 @pytest.mark.django_db
-def test_list_cves(create_cve, user_client):
-    user, client = user_client()
+def test_list_cves(create_cve, auth_client):
+    client = auth_client()
     response = client.get(reverse("cve-list"))
     assert response.json()["results"] == []
 
@@ -64,8 +64,8 @@ def test_list_cves(create_cve, user_client):
         ("?vendor=veritas&product=flex_appliance", ["CVE-2022-22965"]),
     ],
 )
-def test_list_cves_with_filters(create_cve, user_client, params, result):
-    user, client = user_client()
+def test_list_cves_with_filters(create_cve, auth_client, params, result):
+    client = auth_client()
     response = client.get(reverse("cve-list"))
     assert response.json()["results"] == []
 
@@ -76,8 +76,8 @@ def test_list_cves_with_filters(create_cve, user_client, params, result):
     assert sorted(c["cve_id"] for c in response.json()["results"]) == result
 
 
-def test_list_cves_filtering_by_not_existing_vendors(create_cve, user_client):
-    user, client = user_client()
+def test_list_cves_filtering_by_not_existing_vendors(create_cve, auth_client):
+    client = auth_client()
     create_cve("CVE-2021-44228")
 
     response = client.get(f"{reverse('cve-list')}?vendor=siemens")
@@ -92,8 +92,8 @@ def test_list_cves_filtering_by_not_existing_vendors(create_cve, user_client):
 
 
 @pytest.mark.django_db
-def test_get_cve(create_cve, open_file, user_client):
-    user, client = user_client()
+def test_get_cve(create_cve, open_file, auth_client):
+    client = auth_client()
     response = client.get(reverse("cve-detail", kwargs={"cve_id": "CVE-2021-44228"}))
     assert response.status_code == 404
     assert response.json() == {"detail": "No Cve matches the given query."}

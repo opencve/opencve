@@ -4,23 +4,24 @@ from cves.models import Cve
 from users.models import User, UserTag, CveTag
 
 
-def test_delete_owner_account(user_client, create_organization):
-    user, organization = create_organization()
-    _, client = user_client(user)
+def test_delete_owner_account(auth_client, create_user, create_organization):
+    user = create_user(username="user1")
+    create_organization(name="orga1", user=user, owner=True)
+    client = auth_client(user)
 
     delete_url = reverse("delete_account")
     response = client.get(delete_url, follow=True)
     assert response.status_code == 200
     assert response.redirect_chain == [(reverse("settings_account"), 302)]
     assert (
-        b"Your account is currently owner of the following organizations: Test Org"
+        b"Your account is currently owner of the following organizations: orga1"
         in response.content
     )
 
 
-def test_delete_member_account(user_client, create_organization):
-    user, organization = create_organization(owner=False)
-    _, client = user_client(user)
+def test_delete_member_account(auth_client, create_user):
+    user = create_user(username="user1")
+    client = auth_client(user)
     delete_url = reverse("delete_account")
 
     response = client.get(delete_url)
@@ -35,8 +36,9 @@ def test_delete_member_account(user_client, create_organization):
     assert response.redirect_chain == [(reverse("account_login"), 302)]
 
 
-def test_delete_account_cascade_delete(user_client, create_organization):
-    user, organization = create_organization(owner=False)
+def test_delete_account_cascade_delete(auth_client, create_user, create_organization):
+    user = create_user(username="user1")
+    organization = create_organization(name="orga1", user=user, owner=False)
     user_tag = UserTag.objects.create(name="Test Tag", color="#000000", user=user)
     cve = Cve.objects.create(cve_id="CVE-2024-1234")
     CveTag.objects.create(user=user, cve=cve, tags=[user_tag.name])
@@ -46,7 +48,7 @@ def test_delete_account_cascade_delete(user_client, create_organization):
     assert UserTag.objects.filter(user_id=user_id).count() == 1
     assert CveTag.objects.filter(user_id=user_id).count() == 1
 
-    _, client = user_client(user)
+    client = auth_client(user)
     delete_url = reverse("delete_account")
     client.post(delete_url)
 
