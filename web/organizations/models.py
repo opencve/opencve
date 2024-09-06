@@ -11,8 +11,8 @@ class Organization(BaseModel):
         max_length=100,
         validators=[
             RegexValidator(
-                regex=r"^[a-zA-Z0-9\-_ ]+$",
-                message="Special characters (except space, dash and underscore) are not accepted",
+                regex=r"^[a-zA-Z0-9\-]+$",
+                message="Special characters (except dash) are not accepted",
             ),
         ],
     )
