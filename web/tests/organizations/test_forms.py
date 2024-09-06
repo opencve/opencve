@@ -10,9 +10,7 @@ def test_organization_form_valid(db):
 def test_organization_form_special_characters(db):
     form = OrganizationForm(data={"name": "foo|bar"}, request=None)
     assert form.errors == {
-        "name": [
-            "Special characters (except space, dash and underscore) are not accepted"
-        ]
+        "name": ["Special characters (except dash) are not accepted"]
     }
 
 
