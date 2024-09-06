@@ -47,8 +47,7 @@ jobs:
           cp opencve/conf/settings.py.example opencve/conf/settings.py
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest==8.3.2
-          pip install pytest-django==4.8.0
+          pip install -r tests/requirements.txt
       - name: Display packages version
         run: |
           python -c "import sys; print(sys.version)"
