@@ -58,7 +58,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def create_orga(user):
-        orga = Organization.objects.create(name=f"{user.username}-orga")
+        orga = Organization.objects.create(name=f"{user.username}-org")
 
         date_now = now()
         Membership.objects.create(
@@ -73,7 +73,7 @@ class Command(BaseCommand):
 
     def create_project(self, organization, vendors, products, notification, email):
         project = Project.objects.create(
-            name="OpenCVE v1",
+            name="OpenCVEv1",
             description="List of subscriptions imported from OpenCVE v1",
             organization=organization,
             subscriptions={
