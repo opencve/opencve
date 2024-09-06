@@ -212,7 +212,7 @@ VULNRICHMENT_REPO_PATH = env.str(
 )
 
 # OpenCVE v1 database URI, used to migrate data from v1 to v2
-OPENCVE_V1_DATABASE_URI = env.db(
-    "V1_DATABASE_URL",
+V1_DATABASE = env.db(
+    "V1_DATABASE",
     default="postgresql://username:password@example.com:5432/opencve_v1",
 )
