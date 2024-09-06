@@ -1,5 +1,4 @@
 import psycopg2
-from urllib.parse import urlparse
 
 from allauth.account.models import EmailAddress
 from django.conf import settings
@@ -20,13 +19,13 @@ from users.management.constants import (
 class Command(BaseCommand):
     @staticmethod
     def get_cursor():
-        uri = urlparse(settings.OPENCVE_V1_DATABASE_URI)
+        db_config = settings.V1_DATABASE
         connection = psycopg2.connect(
-            database=uri.path[1:],
-            user=uri.username,
-            password=uri.password,
-            host=uri.hostname,
-            port=uri.port,
+            database=db_config.get("NAME"),
+            user=db_config.get("USER"),
+            password=db_config.get("PASSWORD"),
+            host=db_config.get("HOST"),
+            port=db_config.get("PORT"),
         )
         return connection.cursor()
 
