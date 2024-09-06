@@ -112,7 +112,7 @@ class VendorListView(ListView):
     def get_queryset(self):
         vendors = Vendor.objects.order_by("name").prefetch_related("products")
         if self.request.GET.get("search"):
-            vendors = vendors.filter(name__contains=self.request.GET.get("search"))
+            vendors = vendors.filter(name__icontains=self.request.GET.get("search"))
         return vendors
 
     def get_context_data(self, **kwargs):
@@ -128,8 +128,34 @@ class VendorListView(ListView):
 
         # Filter by keyword
         if self.request.GET.get("search"):
-            products = products.filter(name__contains=self.request.GET.get("search"))
+            products = products.filter(name__icontains=self.request.GET.get("search"))
 
+        # Add the pagination
+        paginator = Paginator(products, 20)
+        page_number = self.request.GET.get("product_page")
+        context["products"] = paginator.get_page(page_number)
+        context["paginator_products"] = paginator
+
+        return context
+
+
+class ProductListView(ListView):
+    context_object_name = "vendors"
+    template_name = "cves/product_list.html"
+    paginate_by = 20
+
+    def get_queryset(self):
+        products = Product.objects.order_by("name")
+        if self.request.GET.get("search"):
+            products = products.filter(name__icontains=self.request.GET.get("search"))
+        return products
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get filtered products
+        products = self.get_queryset()
+        
         # Add the pagination
         paginator = Paginator(products, 20)
         page_number = self.request.GET.get("product_page")
@@ -236,7 +262,7 @@ class CveDetailView(DetailView):
 
 
 class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateView):
-    template_name = "cves/vendor_subscribe.html"
+    template_name = "cves/subscription.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

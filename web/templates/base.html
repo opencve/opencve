@@ -85,7 +85,8 @@
                         {% endif %}
                         {% endif %}
                         <li class="{% is_active_link 'cves' 'cve' 'change' %}"><a href="{% url 'cves' %}"><i class="fa fa-shield"></i> <span>Vulnerabilities</span></a></li>
-                        <li class="{% is_active_link 'vendors' 'subscribe' %}"><a href="{% url 'vendors' %}"><i class="fa fa-th-list"></i> <span> Vendors & Products</span></a></li>
+                        <li class="{% is_active_link 'vendors' %}"><a href="{% url 'vendors' %}"><i class="fa fa-th-list"></i> <span> Vendors</span></a></li>
+                        <li class="{% is_active_link 'products' %}"><a href="{% url 'products' %}"><i class="fa fa-th-list"></i> <span> Products</span></a></li>
                         <li class="{% is_active_link 'weaknesses' %}"><a href="{% url 'weaknesses' %}"><i class="fa fa-sitemap"></i> <span> Weaknesses</span></a></li>
                         {% if user.is_authenticated %}
                         <li class="header">SETTINGS</li>
