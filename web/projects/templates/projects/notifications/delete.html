@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<section class="content">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="col-md-8 col-md-offset-2">
+        <div class="box box-primary">
+          <div class="box-body">
+
+            <p>Do you really want to delete the <strong>{{ object }}</strong> notification?</p>
+            <form method="post">
+                {% csrf_token %}
+                <a href="{% url 'edit_notification' org_name=object.project.organization.name project_name=object.project.name notification=object.name%}" class="btn btn-default">Cancel</a>
+                <input type="submit" class="btn btn-danger" value="Confirm">
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

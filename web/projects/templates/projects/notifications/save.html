@@ -21,6 +21,9 @@
                         {% include template_name %}
                         {% endwith %}
                     </div>
+                    <div class="pull-left">
+                        <a href="{% url 'delete_notification' org_name=request.user_organization.name project_name=project.name notification=object.name %}" class="btn btn-danger">Delete</a>
+                    </div>
                     <div class="pull-right">
                         <a href="{% url 'notifications' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save</button>
