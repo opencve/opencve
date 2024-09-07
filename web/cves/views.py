@@ -149,8 +149,9 @@ class CveListView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        vendor = self.request.GET.get("vendor")
-        product = self.request.GET.get("product")
+        vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
+        product = self.request.GET.get("product", "").replace(" ", "_").lower()
+
         if vendor:
             context["vendor"] = Vendor.objects.get(name=vendor)
 
