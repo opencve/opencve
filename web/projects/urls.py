@@ -4,6 +4,7 @@ from opencve.utils import DateConverter
 from projects.views import (
     NotificationCreateView,
     NotificationsView,
+    NotificationDeleteView,
     NotificationUpdateView,
     ProjectCreateView,
     ProjectDeleteView,
@@ -54,6 +55,11 @@ urlpatterns = [
         "org/<org_name>/projects/<project_name>/notifications/<notification>",
         NotificationUpdateView.as_view(),
         name="edit_notification",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/notifications/<notification>/delete",
+        NotificationDeleteView.as_view(),
+        name="delete_notification",
     ),
     path(
         "org/<org_name>/projects/<project_name>/reports",
