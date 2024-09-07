@@ -6,7 +6,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import Prefetch, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -447,3 +447,38 @@ class NotificationUpdateView(
             context["form"].initial[field] = self.object.configuration["extras"][field]
 
         return {**context, **{"type": self.object.type}}
+
+
+class NotificationDeleteView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    DeleteView,
+):
+    model = Notification
+    template_name = "projects/notifications/delete.html"
+    success_message = "The notification has been successfully removed."
+
+    def _get_project(self):
+        return get_object_or_404(
+            Project,
+            organization=self.request.user_organization,
+            name=self.kwargs["project_name"],
+        )
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Notification,
+            project=self._get_project(),
+            name=self.kwargs["notification"],
+        )
+
+    def get_success_url(self):
+        return reverse(
+            "notifications",
+            kwargs={
+                "org_name": self.request.user_organization.name,
+                "project_name": self._get_project().name,
+            },
+        )
