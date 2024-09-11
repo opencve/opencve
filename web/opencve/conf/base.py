@@ -166,6 +166,7 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "[OpenCVE] "
 ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
+ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 ACCOUNT_FORMS = {
     "login": "users.forms.LoginForm",
     "signup": "users.forms.RegisterForm",
