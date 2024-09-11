@@ -13,7 +13,7 @@ class LoginForm(BaseLoginForm):
     def __init__(self, *args, **kwargs):
         super(LoginForm, self).__init__(*args, **kwargs)
 
-        self.fields["login"].widget.attrs.update({"placeholder": "Username"})
+        self.fields["login"].widget.attrs.update({"placeholder": "Username or Email"})
         self.fields["password"].widget.attrs.update({"placeholder": "Password"})
         self.helper = FormHelper()
         self.helper.form_show_labels = False

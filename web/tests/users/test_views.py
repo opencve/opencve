@@ -1,7 +1,42 @@
+import pytest
+from bs4 import BeautifulSoup
 from django.urls import reverse
 
 from cves.models import Cve
 from users.models import User, UserTag, CveTag
+
+
+def test_login_empty_form(client, create_user):
+    create_user(username="user1")
+    login_url = reverse("account_login")
+
+    response = client.post(login_url, data={}, follow=True)
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    content = soup.find("span", {"id": "error_1_id_login"}).text
+    assert content == "This field is required."
+    content = soup.find("span", {"id": "error_1_id_password"}).text
+    assert content == "This field is required."
+
+
+@pytest.mark.parametrize(
+    "payload,field",
+    [
+        ({"login": "john", "password": "pass"}, "username"),
+        ({"login": "john@doe.com", "password": "pass"}, "email address"),
+    ],
+)
+def test_login_invalid_credentials(client, create_user, payload, field):
+    create_user(username="user1")
+    login_url = reverse("account_login")
+
+    # With a bad username
+    response = client.post(login_url, data=payload, follow=True)
+    soup = BeautifulSoup(response.content, features="html.parser")
+    content = soup.find("div", {"class": "alert-danger"}).text
+    assert (
+        content.strip() == f"The {field} and/or password you specified are not correct."
+    )
 
 
 def test_delete_owner_account(auth_client, create_user, create_organization):
