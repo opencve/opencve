@@ -81,8 +81,17 @@ clone-repositories() {
 
 create-superuser() {
 
-     echo "--> Creating superuser on OpenCVE"
-     docker exec -it webserver python manage.py createsuperuser
+    echo "--> Creating superuser on OpenCVE"
+    docker exec -it webserver python manage.py createsuperuser
+
+    echo "--> Get PG ENV variables from docker compose env file"
+    export $(grep -v '^#' .env | grep 'POSTGRES' | xargs -d '\n')
+
+    echo "--> Confirm the new user"
+    docker exec -it postgres psql -U $POSTGRES_USER  -c 'INSERT INTO account_emailaddress(email, verified, "primary", user_id) SELECT email, 1::bool, 1::bool, id FROM opencve_users ON CONFLICT (user_id, email) DO NOTHING;';
+
+    unset POSTGRES_USER
+    unset POSTGRES_PASSWORD
 
 }
 
