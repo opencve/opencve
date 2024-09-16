@@ -112,7 +112,10 @@ start-opencve-dag() {
 display-usage() {
     echo "Usage: install.sh OPTIONS"
     echo ""
-    echo "Example: ./install.sh prepare"
+    echo "Examples:"
+    echo "  ./install.sh"
+    echo "  ./install.sh prepare"
+    echo "  ./install.sh start-docker-stack"
     echo ""
     echo "OPTIONS:"
     echo ""
@@ -137,6 +140,9 @@ display-usage() {
 _OPTIONS=$1
 
 case $_OPTIONS in
+    "help" )
+        display-usage
+        ;;
     "prepare" )
         add-config-files
         set-airflow-start-date
@@ -170,6 +176,12 @@ case $_OPTIONS in
         start-opencve-dag
         ;;
     * )
-        display-usage
+        add-config-files
+        set-airflow-start-date
+        start-docker-stack
+        clone-repositories
+        create-superuser
+        import-opencve-kb
+        start-opencve-dag
         ;;
 esac
