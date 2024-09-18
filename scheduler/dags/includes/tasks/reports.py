@@ -5,6 +5,7 @@ from airflow.decorators import task
 from airflow.exceptions import AirflowSkipException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
+from psycopg2.errors import ForeignKeyViolation
 from includes.constants import (
     PRODUCT_SEPARATOR,
     REPORT_UPSERT_PROCEDURE,
@@ -148,12 +149,22 @@ def populate_reports(**context):
 
     for project_id, changes_id in project_changes.items():
         report_id = str(uuid.uuid4())
-        hook.run(
-            sql=REPORT_UPSERT_PROCEDURE,
-            parameters={
-                "report": report_id,
-                "project": project_id,
-                "day": start,
-                "changes": Json(changes_id),
-            },
-        )
+
+        try:
+            hook.run(
+                sql=REPORT_UPSERT_PROCEDURE,
+                parameters={
+                    "report": report_id,
+                    "project": project_id,
+                    "day": start,
+                    "changes": Json(changes_id),
+                },
+            )
+
+        # It is possible that a user deletes a project before this task
+        # runs, but after the project_id has been saved in redis by the
+        # `list_subscriptions` task.
+        except ForeignKeyViolation as e:
+            error_msg = 'insert or update on table "opencve_reports" violates foreign key constraint'
+            if str(e).startswith(error_msg):
+                logger.info(f"Project {project_id} does not exist anymore")
