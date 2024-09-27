@@ -117,7 +117,7 @@ services:
 
   redis:
     container_name: redis
-    image: redis/redis-stack:alpine
+    image: redis/redis-stack:latest
     healthcheck:
        test: ["CMD", "redis-cli", "ping"]
        interval: 10s
