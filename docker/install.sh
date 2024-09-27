@@ -20,7 +20,7 @@ add-config-files() {
     cp ./conf/.env.example ./.env
 
     echo "INFO: Copying opencve.conf.template for Nginx"
-    cp ./conf/opencve.conf.template.example ./conf/opencve.conf.template
+    cp ./conf/opencve.conf.template.example ./conf/default.conf
 
     echo "INFO: Configuration files added successfully."
     echo "/!\\ Don't forget to update the .env and settings.py files with your inputs before starting the Docker Compose stack."

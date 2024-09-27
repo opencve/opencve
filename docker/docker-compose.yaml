@@ -120,7 +120,7 @@ services:
     ports:
        - "${OPENCVE_PORT:-80}:80"  # Expose port 80 for the web interface
     volumes:
-      - ./conf/opencve.conf.template:/etc/nginx/conf.d/default.conf:ro  # Nginx configuration file, mounted read-only
+      - ./conf/opencve.conf.template/:/etc/nginx/conf.d/:ro  # Nginx configuration file, mounted read-only
       - staticfiles:/var/www/opencve/static/:ro  # Static files, mounted read-only
     restart: on-failure  # Restart Nginx on failure
 
