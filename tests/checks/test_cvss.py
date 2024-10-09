@@ -30,8 +30,12 @@ def test_check_cvss(create_cve, handle_events, open_file):
     assert len(changes) == 1
     change = changes[0]
     assert change.task.id == task.id
-    assert change.json["impact"]["baseMetricV2"]["cvssV2"]["baseScore"] == new_cvss2
-    assert change.json["impact"]["baseMetricV3"]["cvssV3"]["baseScore"] == new_cvss3
+    assert (
+        change.json["metrics"]["cvssMetricV2"][0]["cvssData"]["baseScore"] == new_cvss2
+    )
+    assert (
+        change.json["metrics"]["cvssMetricV31"][0]["cvssData"]["baseScore"] == new_cvss3
+    )
 
     # Event has been created
     events = Event.query.all()

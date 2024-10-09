@@ -54,10 +54,10 @@ def test_list_product_cves(client, create_user, create_cve):
     assert len(response.json) == 1
 
     assert response.json[0] == {
-        "created_at": "2018-10-09T17:29:00Z",
+        "created_at": "2018-10-09T17:29:01Z",
         "id": "CVE-2018-18074",
         "summary": "The Requests package before 2.20.0 for Python sends an HTTP Authorization header to an http URI upon receiving a same-hostname https-to-http redirect, which makes it easier for remote attackers to discover credentials by sniffing the network.",
-        "updated_at": "2019-10-03T00:03:00Z",
+        "updated_at": "2022-07-25T18:15:14Z",
     }
 
 

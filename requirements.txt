@@ -25,7 +25,7 @@ celery==4.3.0
 cpe==1.2.1
 untangle==1.1.1
 cssmin==0.2.0
-jsmin==2.2.2
+jsmin==3.0.1
 requests==2.23.0
 nested-lookup==0.2.18
 deepdiff==4.0.7

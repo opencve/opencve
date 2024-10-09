@@ -22,7 +22,7 @@ def test_check_cpes(create_cve, handle_events, open_file):
     # The CVE creation already created vendors and products
     vendors = Vendor.query.all()
     assert len(vendors) == 2
-    assert sorted([v.name for v in vendors]) == sorted(["python-requests", "canonical"])
+    assert sorted([v.name for v in vendors]) == sorted(["canonical", "python-requests"])
 
     products = Product.query.all()
     assert len(products) == 2
@@ -44,14 +44,14 @@ def test_check_cpes(create_cve, handle_events, open_file):
     vendors = Vendor.query.all()
     assert len(vendors) == 3
     assert sorted([v.name for v in vendors]) == sorted(
-        ["python-requests", "canonical", "opencveio"]
+        ["canonical", "opencveio", "python-requests"]
     )
 
     # 1 new product
     products = Product.query.all()
     assert len(products) == 3
     assert sorted([p.name for p in products]) == sorted(
-        ["requests", "ubuntu_linux", "opencve"]
+        ["opencve", "requests", "ubuntu_linux"]
     )
 
     # Task has been created
@@ -64,10 +64,10 @@ def test_check_cpes(create_cve, handle_events, open_file):
     assert len(changes) == 1
     change = changes[0]
     assert change.task.id == task.id
-    assert convert_cpes(change.json["configurations"]) == {
-        "canonical": ["ubuntu_linux"],
-        "opencveio": ["opencve"],
-    }
+
+    configs = convert_cpes(change.json["configurations"])
+    assert configs["canonical"] == ["ubuntu_linux"]
+    assert configs["opencveio"] == ["opencve"]
 
     # Event has been created
     event = Event.query.filter_by(type="cpes").first()

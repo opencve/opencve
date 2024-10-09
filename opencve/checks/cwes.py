@@ -3,21 +3,18 @@ from opencve.commands import info
 from opencve.commands.utils import CveUtil
 from opencve.extensions import db
 from opencve.models.cwe import Cwe
+from opencve.utils import weaknesses_to_flat
 
 
 class Cwes(BaseCheck):
     def execute(self):
-        old = self.cve_obj.cwes
-        new = [
-            c["value"]
-            for c in self.cve_json["cve"]["problemtype"]["problemtype_data"][0][
-                "description"
-            ]
-        ]
+
+        new_weaknesses = weaknesses_to_flat(self.cve_json.get("weaknesses"))
+        old_weaknesses = weaknesses_to_flat(self.cve_obj.json.get("weaknesses"))
 
         payload = {
-            "added": list(set(new) - set(old)),
-            "removed": list(set(old) - set(new)),
+            "added": list(set(new_weaknesses) - set(old_weaknesses)),
+            "removed": list(set(old_weaknesses) - set(new_weaknesses)),
         }
 
         # It's possible that a CVE links a CWE not yet defined in database.
@@ -38,7 +35,7 @@ class Cwes(BaseCheck):
         if payload["added"] or payload["removed"]:
 
             # Save the new list
-            self.cve_obj.cwes = new
+            self.cve_obj.cwes = new_weaknesses
             db.session.commit()
 
             # Create the event

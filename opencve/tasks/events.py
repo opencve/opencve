@@ -1,7 +1,5 @@
-import gzip
-import json
-import re
-from io import BytesIO
+import time
+from datetime import datetime
 
 import arrow
 import requests
@@ -14,44 +12,28 @@ from opencve.models.cve import Cve
 from opencve.models.metas import Meta
 from opencve.models.tasks import Task
 
-NVD_MODIFIED_URL = "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-modified.json.gz"
-NVD_MODIFIED_META_URL = (
-    "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-modified.meta"
-)
+NVD_API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 logger = get_task_logger(__name__)
 
 
-def has_changed():
-    logger.info("Downloading {}...".format(NVD_MODIFIED_META_URL))
-    resp = requests.get(NVD_MODIFIED_META_URL)
-    buf = BytesIO(resp.content).read().decode("utf-8")
-
-    matches = re.match(r".*sha256:(\w{64}).*", buf, re.DOTALL)
-    nvd_sha256 = matches.group(1)
-    last_nvd256 = Meta.query.filter_by(name="nvd_last_sha256").first()
-
-    if nvd_sha256 != last_nvd256.value:
-        logger.info(
-            "Found different hashes (old:{}, new:{}).".format(
-                last_nvd256.value, nvd_sha256
-            )
-        )
-        return last_nvd256, nvd_sha256
-    else:
-        logger.info("DB is up to date.")
-        return last_nvd256, None
+def get_last_cve():
+    cve_id = Meta.query.filter_by(name="nvd_last_cve_id").first().value
+    updated_at = arrow.get(
+        Meta.query.filter_by(name="nvd_last_cve_updated_at").first().value
+    )
+    return cve_id, updated_at
 
 
-def download_modified_items():
-    logger.info("Downloading {}...".format(NVD_MODIFIED_URL))
-    resp = requests.get(NVD_MODIFIED_URL).content
-    raw = gzip.GzipFile(fileobj=BytesIO(resp)).read()
-    items = json.loads(raw.decode("utf-8"))["CVE_Items"]
-    return items
+def save_last_cve(cve_id, updated_at):
+    meta_last_cve = Meta.query.filter_by(name="nvd_last_cve_id").first()
+    meta_last_cve.value = cve_id
+    meta_last_cve = Meta.query.filter_by(name="nvd_last_cve_updated_at").first()
+    meta_last_cve.value = str(updated_at)
+    db.session.commit()
 
 
 def check_for_update(cve_json, task):
-    cve_id = cve_json["cve"]["CVE_data_meta"]["ID"]
+    cve_id = cve_json["id"]
     cve_obj = Cve.query.filter_by(cve_id=cve_id).first()
     events = []
 
@@ -77,7 +59,7 @@ def check_for_update(cve_json, task):
                 events.append(event)
 
         # Change the last updated date
-        cve_obj.updated_at = arrow.get(cve_json["lastModifiedDate"]).datetime
+        cve_obj.updated_at = arrow.get(cve_json["lastModified"]).datetime
         cve_obj.json = cve_json
         db.session.commit()
 
@@ -90,24 +72,54 @@ def check_for_update(cve_json, task):
 def handle_events():
     cel.app.app_context().push()
 
-    logger.info("Checking for new events...")
-    current_sum, new_sum = has_changed()
-    if not new_sum:
-        return
+    # Retrieve the last CVE to start the synchronization
+    last_cve_id, last_updated_at = get_last_cve()
 
-    # Retrieve the list of modified CVEs
-    logger.info("Download modified CVEs...")
-    items = download_modified_items()
+    logger.info(f"Parsing last events since {last_cve_id} (at {last_updated_at})")
+    start = last_updated_at.strftime("%Y-%m-%dT%H:%M:%S")
+    end = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    url_template = (
+        NVD_API_URL
+        + f"?lastModStartDate={start}Z&lastModEndDate={end}Z"
+        + "&startIndex={idx}"
+    )
 
     # Create the task containing the changes
     task = Task()
     db.session.add(task)
 
-    logger.info("Checking {} CVEs...".format(len(items)))
-    for item in items:
-        check_for_update(item, task)
+    # Iterate over all new CVEs
+    start_index = 0
+    total_results = 0
+    while start_index <= total_results:
+        url = url_template.format(idx=start_index)
+        logger.info(f"Fetching {url}")
+        resp = requests.get(url)
 
-    logger.info("CVEs checked, updating meta hash...")
-    current_sum.value = new_sum
-    db.session.commit()
-    logger.info("Done, new meta is {}.".format(new_sum))
+        # Continue if status != 200
+        if not resp.ok:
+            logger.info(
+                f"Bad response: {resp.status_code}, sleeping before retrying..."
+            )
+            time.sleep(10)
+            continue
+
+        data = resp.json()
+        total_results = data.get("totalResults")
+
+        for vulnerability in data.get("vulnerabilities"):
+            cve = vulnerability.get("cve")
+            check_for_update(cve, task)
+
+            # Store the last CVE info
+            cve_last_modified = arrow.get(cve["lastModified"])
+            if last_updated_at < cve_last_modified:
+                last_cve_id = cve["id"]
+                last_updated_at = cve_last_modified
+
+        # NVD requirement is 2000 CVE per page and 6s between requests
+        start_index += 2000
+        time.sleep(6)
+
+    # Save the last CVE information for the next handle_events tasks
+    save_last_cve(last_cve_id, last_updated_at)

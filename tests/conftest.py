@@ -3,7 +3,7 @@ import json
 import os
 from base64 import b64encode
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 tests_directory = os.path.dirname(os.path.realpath(__file__))
 os.environ["OPENCVE_CONFIG"] = str(Path(tests_directory) / "opencve.cfg")
@@ -11,6 +11,7 @@ os.environ["OPENCVE_WELCOME_FILES"] = str(
     Path(tests_directory).parent / "opencve/templates/_welcome"
 )
 
+import arrow
 import pytest
 from bs4 import BeautifulSoup
 from flask import url_for
@@ -116,7 +117,7 @@ def create_cves(create_cve):
 
 
 @pytest.fixture
-def handle_events(app, open_file):
+def handle_events_old(app, open_file):
     def _handle_events(name):
         def _has_changed():
             current = Mock()
@@ -132,6 +133,40 @@ def handle_events(app, open_file):
 
             with patch("opencve.tasks.events.download_modified_items") as mock:
                 mock.return_value = _download_modified()
+                handle_events_task()
+
+    return _handle_events
+
+
+@pytest.fixture
+def handle_events(app, open_file):
+    @patch("opencve.tasks.events.get_last_cve")
+    @patch("time.sleep", return_value=None)
+    def _handle_events(name, mock_sleep, mock_get):
+        mock_get.return_value = (
+            "CVE-2023-1234",
+            arrow.get("2023-12-01T00:00:00.000000+00:00"),
+        )
+
+        with patch("opencve.tasks.events.save_last_cve") as _:
+            with patch("opencve.tasks.events.requests") as mock_request:
+                mock_response = MagicMock()
+                mock_response.status_code = 200
+
+                data = {
+                    "resultsPerPage": 1,
+                    "startIndex": 0,
+                    "totalResults": 1,
+                    "format": "NVD_CVE",
+                    "version": "2.0",
+                    "timestamp": "2023-12-01T00:00:00.00",
+                    "vulnerabilities": [],
+                }
+                data["vulnerabilities"].append({"cve": open_file(name)})
+
+                mock_response.json.return_value = data
+                mock_request.get.return_value = mock_response
+
                 handle_events_task()
 
     return _handle_events

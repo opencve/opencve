@@ -144,8 +144,8 @@ def test_list_paginated(app, client, login, handle_events, make_soup):
     # Page 1
     soup = make_soup(response.data)
     dates = [s.find("span").text for s in soup.find_all(attrs={"class": "time-label"})]
-    assert "04 Jan 2021" in dates[0]
-    assert "19 Nov 2020" in dates[1]
+    assert "01 Jan 2024" in dates[0]
+    assert "07 Nov 2023" in dates[1]
     dates = [
         s.find("a").text for s in soup.find_all(attrs={"class": "timeline-header"})
     ]
@@ -156,7 +156,7 @@ def test_list_paginated(app, client, login, handle_events, make_soup):
     response = client.get("/?page=2")
     soup = make_soup(response.data)
     dates = [s.find("span").text for s in soup.find_all(attrs={"class": "time-label"})]
-    assert "03 Oct 2019" in dates[0]
+    assert "25 Jul 2022" in dates[0]
     dates = [
         s.find("a").text for s in soup.find_all(attrs={"class": "timeline-header"})
     ]
