@@ -115,6 +115,7 @@ class WebhookNotifier(BaseNotifier):
     def __init__(self, *args, **kwargs):
         super().__init__(self, *args, **kwargs)
         self.url = self.config.get("extras").get("url")
+        self.headers = self.config.get("extras").get("headers", {})
 
     async def send(self):
         logger.info(
@@ -126,7 +127,10 @@ class WebhookNotifier(BaseNotifier):
 
         try:
             async with self.session.post(
-                self.url, json=self.prepare_payload(), timeout=self.request_timeout
+                self.url,
+                json=self.prepare_payload(),
+                headers=self.headers,
+                timeout=self.request_timeout,
             ) as response:
                 json_response = await response.json()
                 status_code = response.status
