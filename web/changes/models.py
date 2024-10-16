@@ -12,6 +12,8 @@ from projects.models import Project
 
 class Change(BaseModel):
     path = models.TextField(default=None)
+    # This field is not useful anymore and will
+    # be removed in a future version.
     commit = models.CharField(max_length=40)
     types = models.JSONField(default=list)
 
