@@ -34,7 +34,9 @@ FROM
   opencve_cves AS cves
   JOIN opencve_changes AS changes ON cves.id = changes.cve_id
 WHERE
-  changes.commit IN %(commits)s;
+  changes.created_at >= %(start)s
+  AND
+  changes.created_at <= %(end)s;
 """
 
 SQL_PROJECT_WITH_SUBSCRIPTIONS = """
