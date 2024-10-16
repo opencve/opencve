@@ -79,6 +79,7 @@ def test_prepare_notifications(run_dag_task, web_pg_hook, web_redis_hook):
             {
                 "project_id": "0439aa01-62b3-465c-ba7b-bd07c961c778",
                 "project_name": "orga1-project1",
+                "project_subscriptions": ["foo"],
                 "organization_name": "orga1",
                 "notification_name": "notification1",
                 "notification_type": "webhook",
