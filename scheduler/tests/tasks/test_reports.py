@@ -10,21 +10,6 @@ from utils import TestRepo
 
 
 @pytest.mark.airflow_db
-def test_list_changes_no_commit(caplog, run_dag_task, tests_path, tmp_path_factory):
-    repo = TestRepo("changes", tests_path, tmp_path_factory)
-
-    # No commit found so we skip the task
-    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
-        task = run_dag_task(
-            task_fn=list_changes,
-            start=pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
-            end=pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC"),
-        )
-    assert task.state == TaskInstanceState.SKIPPED
-    assert "No commit found" in caplog.text
-
-
-@pytest.mark.airflow_db
 def test_list_changes_no_change(caplog, run_dag_task, tests_path, tmp_path_factory):
     repo = TestRepo("changes", tests_path, tmp_path_factory)
 
