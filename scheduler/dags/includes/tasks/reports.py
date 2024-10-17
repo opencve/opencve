@@ -18,7 +18,6 @@ from includes.utils import (
     merge_project_subscriptions,
     get_dates_from_context,
     group_changes_by_vendor,
-    list_commits,
 )
 from psycopg2.extras import Json
 
@@ -29,22 +28,12 @@ logger = logging.getLogger(__name__)
 def list_changes(**context):
     start, end = get_dates_from_context(context)
 
-    # Get the list of changes with their associated vendors
-    commits = [
-        c.hexsha
-        for c in list_commits(
-            logger=logger,
-            start=context.get("data_interval_start"),
-            end=context.get("data_interval_end"),
-        )
-    ]
-    if not commits:
-        raise AirflowSkipException("No commit found")
-
-    logger.info("Listing associated changes in %s table", "opencve_changes")
+    logger.info(
+        "Listing changes between %s and %s in %s table", start, end, "opencve_changes"
+    )
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     records = postgres_hook.get_records(
-        sql=SQL_CHANGE_WITH_VENDORS, parameters={"commits": tuple(commits)}
+        sql=SQL_CHANGE_WITH_VENDORS, parameters={"start": start, "end": end}
     )
     if not records:
         raise AirflowSkipException("No change found")

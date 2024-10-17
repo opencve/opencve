@@ -31,7 +31,7 @@ def prepare_notifications(**context):
         subscriptions_redis_key,
     )
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    subscriptions = redis_hook.json().objkeys(subscriptions_redis_key)
+    subscriptions = redis_hook.json().get(subscriptions_redis_key)
     logger.info("Found %s subscriptions", str(len(subscriptions)))
 
     # Get the notifications and group them by project
@@ -39,9 +39,9 @@ def prepare_notifications(**context):
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     records = postgres_hook.get_records(
         sql=SQL_PROJECT_WITH_NOTIFICATIONS,
-        parameters={"projects": tuple(subscriptions)},
+        parameters={"projects": tuple(subscriptions.keys())},
     )
-    notifications = group_notifications_by_project(records)
+    notifications = group_notifications_by_project(records, subscriptions)
     if not notifications:
         raise AirflowSkipException("No notification found")
 

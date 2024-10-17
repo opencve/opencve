@@ -42,13 +42,42 @@ class BaseNotifier:
         # Filter full list of changes details with the notification ones
         self.changes = [dict(changes_details[c]) for c in changes]
 
+    @staticmethod
+    def humanize_subscription(name):
+        if "$PRODUCT$" in name:
+            name = name.split("$PRODUCT$")[1]
+        return " ".join(map(lambda x: x.capitalize(), name.split("_")))
+
+    @staticmethod
+    def humanize_subscriptions(subscriptions):
+        return [BaseNotifier.humanize_subscription(s) for s in subscriptions]
+
+    @staticmethod
+    def get_title(payload):
+        total = len(payload["changes"])
+        change_str = "changes" if total > 1 else "change"
+        title = "{count} {change_str} on {subscriptions}".format(
+            count=total,
+            change_str=change_str,
+            subscriptions=", ".join(payload["matched_subscriptions"]["human"]),
+        )
+        return title
+
     def prepare_payload(self):
         start = arrow.get(self.period.get("start")).to("utc").datetime.isoformat()
         end = arrow.get(self.period.get("end")).to("utc").datetime.isoformat()
+        subscriptions = self.notification.get("project_subscriptions", [])
+
         payload = {
             "organization": self.notification["organization_name"],
             "project": self.notification["project_name"],
             "notification": self.notification["notification_name"],
+            "subscriptions": {
+                "raw": sorted(subscriptions),
+                "human": sorted(self.humanize_subscriptions(subscriptions)),
+            },
+            "matched_subscriptions": {"raw": set(), "human": []},
+            "title": None,
             "period": {
                 "start": start,
                 "end": end,
@@ -57,6 +86,11 @@ class BaseNotifier:
         }
 
         for change in self.changes:
+            # Compare the vendors between the CVE and the project subscriptions
+            matched_subscriptions = list(
+                set(subscriptions).intersection(change["cve_vendors"])
+            )
+            payload["matched_subscriptions"]["raw"].update(matched_subscriptions)
 
             # Get the CVE data from KB
             with open(KB_LOCAL_REPO / change["change_path"]) as f:
@@ -77,10 +111,27 @@ class BaseNotifier:
                         "cve_id": change["cve_id"],
                         "description": cve_data["opencve"]["description"]["data"],
                         "cvss31": score,
+                        "subscriptions": {
+                            "raw": sorted(matched_subscriptions),
+                            "human": sorted(
+                                self.humanize_subscriptions(matched_subscriptions)
+                            ),
+                        },
                     },
                     "events": kb_change[0]["data"] if kb_change else [],
                 }
             )
+
+        # Transform the matched_subscriptions set into a list
+        payload["matched_subscriptions"]["raw"] = sorted(
+            list(payload["matched_subscriptions"]["raw"])
+        )
+        payload["matched_subscriptions"]["human"] = sorted(
+            self.humanize_subscriptions(payload["matched_subscriptions"]["raw"])
+        )
+
+        # Prepare the title
+        payload["title"] = self.get_title(payload)
 
         return payload
 
@@ -177,6 +228,7 @@ class EmailNotifier(BaseNotifier):
             "web_url": web_url,
             "project_url": project_url,
             "notification_url": notification_url,
+            "title": payload["title"],
             "total": len(payload["changes"]),
             "organization": organization,
             "project": project,
@@ -201,6 +253,7 @@ class EmailNotifier(BaseNotifier):
             cve = {
                 "cve_id": change["cve"]["cve_id"],
                 "description": change["cve"]["description"],
+                "subscriptions": change["cve"]["subscriptions"]["human"],
                 "score": score,
                 "changes": [e["type"] for e in change["events"]],
             }
@@ -232,9 +285,7 @@ class EmailNotifier(BaseNotifier):
         message = MIMEMultipart("alternative")
         message["From"] = conf.get("opencve", "notification_smtp_mail_from")
         message["To"] = self.email
-        message["Subject"] = (
-            f"[{context['project']}] {context['total']} vulnerabilities found"
-        )
+        message["Subject"] = f"[{context['project']}] {context['title']}"
 
         plain_text_template = env.get_template("email_notification.txt")
         plain_text_rendered = await plain_text_template.render_async(**context)

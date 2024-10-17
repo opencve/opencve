@@ -164,11 +164,16 @@ def test_get_project_notifications():
             },
         ),
     ]
-    assert group_notifications_by_project(records) == {
+    subscriptions = {"project-id-1": ["foo", "foo$PRODUCT$bar"]}
+    assert group_notifications_by_project(records, subscriptions) == {
         "project-id-1": [
             {
                 "project_id": "project-id-1",
                 "project_name": "project-name-1",
+                "project_subscriptions": [
+                    "foo",
+                    "foo$PRODUCT$bar",
+                ],
                 "organization_name": "organization-1",
                 "notification_name": "notification-1",
                 "notification_type": "webhook",
@@ -184,6 +189,10 @@ def test_get_project_notifications():
             {
                 "project_id": "project-id-1",
                 "project_name": "project-name-1",
+                "project_subscriptions": [
+                    "foo",
+                    "foo$PRODUCT$bar",
+                ],
                 "organization_name": "organization-1",
                 "notification_name": "notification-2",
                 "notification_type": "email",
@@ -198,6 +207,7 @@ def test_get_project_notifications():
             {
                 "project_id": "project-id-2",
                 "project_name": "project-name-2",
+                "project_subscriptions": [],
                 "organization_name": "organization-2",
                 "notification_name": "notification-3",
                 "notification_type": "email",
