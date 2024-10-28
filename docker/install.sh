@@ -40,7 +40,7 @@ set-airflow-start-date() {
 start-docker-stack() {
 
     echo "--> Get PG ENV variables from docker compose env file"
-    export $(grep -v '^#' .env | grep 'POSTGRES' | xargs -d '\n')
+    export $(grep -v '^#' .env | grep -E '^POSTGRES' | tr '\n' ' ')
 
     echo "--> Starting Docker compose stack"
     docker compose up -d
@@ -85,7 +85,7 @@ create-superuser() {
     docker exec -it webserver python manage.py createsuperuser
 
     echo "--> Get PG ENV variables from docker compose env file"
-    export $(grep -v '^#' .env | grep 'POSTGRES' | xargs -d '\n')
+    export $(grep -v '^#' .env | grep -E '^POSTGRES' | tr '\n' ' ')
 
     echo "--> Confirm the new user"
     docker exec -it postgres psql -U $POSTGRES_USER  -c 'INSERT INTO account_emailaddress(email, verified, "primary", user_id) SELECT email, 1::bool, 1::bool, id FROM opencve_users ON CONFLICT (user_id, email) DO NOTHING;';

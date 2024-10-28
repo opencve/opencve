@@ -113,7 +113,7 @@ def list_changes_by_project(changes, subscriptions):
     return {k: v for k, v in projects_changes.items() if v}
 
 
-def group_notifications_by_project(records):
+def group_notifications_by_project(records, subscriptions):
     projects_notifications = {}
     for notification in records:
         p_id, p_name, o_name, n_name, n_type, n_conf = notification
@@ -121,10 +121,14 @@ def group_notifications_by_project(records):
         if p_id not in projects_notifications:
             projects_notifications[p_id] = []
 
+        # Extract project subscriptions
+        project_subscriptions = subscriptions.get(p_id, [])
+
         projects_notifications[p_id].append(
             {
                 "project_id": p_id,
                 "project_name": p_name,
+                "project_subscriptions": project_subscriptions,
                 "organization_name": o_name,
                 "notification_name": n_name,
                 "notification_type": n_type,
