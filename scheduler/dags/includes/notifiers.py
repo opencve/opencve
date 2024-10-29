@@ -321,7 +321,9 @@ class EmailNotifier(BaseNotifier):
             response = await aiosmtplib.send(message, **kwargs)
         except aiosmtplib.errors.SMTPException as e:
             logger.error("SMTPException(%s): %s", self.email, e)
+            raise
         except Exception as e:
             logger.error("Exception(%s): %s", self.email, e)
+            raise
         else:
             logger.info("Result(%s): %s", self.email, response[1])
