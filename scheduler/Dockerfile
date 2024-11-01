@@ -1,5 +1,5 @@
 # Define build arguments for Airflow and Python versions
-ARG AIRFLOW_VERSION="2.10.2"
+ARG AIRFLOW_VERSION="2.8.4"
 ARG PYTHON_VERSION="3.11"
 ARG AIRFLOW_IMAGE="apache/airflow:slim-${AIRFLOW_VERSION}-python${PYTHON_VERSION}"
 
