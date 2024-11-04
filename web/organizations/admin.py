@@ -6,6 +6,9 @@ from organizations.models import Membership, Organization
 class MembershipInline(admin.TabularInline):
     model = Membership
     fields = ["user", "role"]
+    readonly_fields = ["user"]
+    raw_id_fields = ["user"]
+    max_num = 0
     extra = 0
 
 
