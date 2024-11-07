@@ -76,7 +76,6 @@ services:
     <<: *airflow-common
     container_name: airflow-init
     entrypoint: /bin/bash
-    # yamllint disable rule:line-length
     command:
       - -c
       - exec /entrypoint airflow version
@@ -104,6 +103,9 @@ services:
       - repositories:/app/repositories/:ro
       - staticfiles:/app/static/
     restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   nginx:
     container_name: nginx
@@ -117,6 +119,8 @@ services:
       - ./certs/archive:/certs/archive:ro
       - ./certs/live:/certs/live:ro
     restart: on-failure
+    depends_on:
+      - webserver
 
   redis:
     container_name: redis
