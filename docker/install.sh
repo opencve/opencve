@@ -7,18 +7,27 @@ set -e
 
 add-config-files() {
 
-    echo "--> Adding Airflow configuration file"
-    cp ../scheduler/airflow.cfg.example ../scheduler/airflow.cfg
-
-    echo "--> Adding Django settings and .env file"
-    cp ../web/opencve/conf/settings.py.example ../web/opencve/conf/settings.py
-    cp ../web/opencve/conf/.env.example ../web/opencve/conf/.env
+    # Using copy -n, here to avoid overwriting the config files once they are created
 
     echo "--> Copying .env file for docker compose"
-    cp ./conf/.env.example ./.env
+    cp -n ./conf/.env.example ./.env
+    # Load the environment variables in current shell
+    source .env
+    SHELL_FORMAT="$(grep -o '^[^#]*' .env | grep -o '^[A-Za-z_][A-Za-z0-9_]*' | sed 's/^/$/' | tr '\n' ' ')"
 
-    echo "--> Copying opencve.conf.template for Nginx"
-    cp ./conf/opencve.conf.template.example ./conf/default.conf
+    echo "--> Adding Airflow configuration file"
+    cp -n ../scheduler/airflow.cfg.example ../scheduler/airflow.cfg
+
+    echo "--> Adding Django settings and .env file"
+    cp -n ../web/opencve/conf/settings.py.example ../web/opencve/conf/settings.py
+    cp -n ../web/opencve/conf/.env.example ../web/opencve/conf/.env
+
+    echo "--> Copying either SSL or NON-SSL template.example for Nginx"
+    if [ -d "./certs/live/$EXTERNAL_WEBSERVER_DOMAIN" ]; then
+        envsubst $SHELL_FORMAT < conf/template.example.nginx.ssl.default.conf > ./conf/default.conf
+    else
+        envsubst $SHELL_FORMAT < conf/opencve.conf.template > ./conf/default.conf
+    fi
 
     echo ""
     echo "/!\ Don't forget to update the .env and settings.py files with your inputs before starting the docker compose stack:"

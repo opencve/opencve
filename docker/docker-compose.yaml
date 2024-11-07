@@ -109,10 +109,13 @@ services:
     container_name: nginx
     image: nginx:alpine
     ports:
-       - "${OPENCVE_PORT:-80}:80"
+       - "${EXTERNAL_WEBSERVER_PORT:-80}:${EXTERNAL_WEBSERVER_PORT:-80}"
+       - "${EXTERNAL_AIRFLOW_PORT:-8080}:${EXTERNAL_AIRFLOW_PORT:-8080}"
     volumes:
-      - ./conf/default.conf:/etc/nginx/conf.d/default.conf:ro
       - staticfiles:/var/www/opencve/static/:ro
+      - ./conf/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs/archive:/certs/archive:ro
+      - ./certs/live:/certs/live:ro
     restart: on-failure
 
   redis:

@@ -1,7 +1,8 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-
+certs/
+docker/conf/default.conf
 # Distribution / packaging
 build/
 dist/

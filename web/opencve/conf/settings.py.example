@@ -3,3 +3,11 @@ This file is used to override the `opencve/conf/base.py` settings.
 """
 
 from opencve.conf.base import *  # noqa # pylint: disable=unused-import
+
+
+if domain:=env.str("EXTERNAL_WEBSERVER_DOMAIN", default=None):
+    CSRF_TRUSTED_ORIGINS = [
+        f'https://{domain}',
+        f'https://www.{domain}'
+    ]
+    CSRF_COOKIE_SECURE = True
