@@ -16,7 +16,7 @@ from organizations.resources import OrganizationViewSet
 from projects.resources import ProjectCveViewSet, ProjectViewSet
 
 # API Router
-router = routers.SimpleRouter()
+router = routers.SimpleRouter(trailing_slash=False)
 router.register(r"cve", CveViewSet, basename="cve")
 
 router.register(r"weaknesses", WeaknessViewSet, basename="weakness")
