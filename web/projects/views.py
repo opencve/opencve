@@ -238,14 +238,10 @@ class ReportView(
                 }
 
             # Parse the KB changes and select the good one
-            kb_change = [
-                c
-                for c in db_change.cve.kb_json["opencve"]["changes"]
-                if c["id"] == str(db_change.id)
-            ]
+            kb_change = db_change.change_data
             if kb_change:
                 changes[db_change.cve]["kb_changes"].append(
-                    [db_change.created_at, kb_change[0]]
+                    [db_change.created_at, kb_change]
                 )
 
         return {"report": report, "changes": changes.values()}
