@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -9,9 +10,16 @@ from psycopg2.extras import Json
 
 from cves.models import Cve
 from organizations.models import Membership, Organization
+from projects.models import Project
 
 
+TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_PASSWORD = "password"
+
+
+@pytest.fixture(autouse=True)
+def configure_kb_path(settings):
+    settings.KB_REPO_PATH = str(Path(TESTS_DIR) / "data/kb")
 
 
 @pytest.fixture
@@ -54,6 +62,20 @@ def create_organization(create_user):
     return _create_organization
 
 
+@pytest.fixture
+def create_project():
+    def _create_project(name, organization, vendors=None, products=None):
+        subscriptions = {
+            "vendors": vendors if vendors else [],
+            "products": products if products else [],
+        }
+        return Project.objects.create(
+            name=name, organization=organization, subscriptions=subscriptions
+        )
+
+    return _create_project
+
+
 @pytest.fixture(scope="function")
 def open_file():
     def _open_file(name):
@@ -76,7 +98,8 @@ def open_raw_file():
 def create_cve(open_file):
     def _create_cve(cve_id):
         year = cve_id.split("-")[1]
-        cve_data = open_file(f"kb/{year}/{cve_id}.json")
+        path = f"{year}/{cve_id}.json"
+        cve_data = open_file(f"kb/{path}")
 
         parameters = [
             cve_data["cve"],
@@ -87,8 +110,21 @@ def create_cve(open_file):
             Json(cve_data["opencve"]["metrics"]),
             Json(cve_data["opencve"]["vendors"]["data"]),
             Json(cve_data["opencve"]["weaknesses"]["data"]),
-            Json([]),
         ]
+
+        changes = []
+        for change in cve_data["opencve"]["changes"]:
+            changes.append(
+                {
+                    "change": change["id"],
+                    "created": change["created"],
+                    "updated": change["created"],
+                    "file_path": path,
+                    "commit_hash": "a" * 40,
+                    "event_types": [e["type"] for e in change["data"]],
+                }
+            )
+        parameters.append(Json(changes))
 
         with connection.cursor() as cursor:
             cursor.execute(
