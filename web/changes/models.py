@@ -39,6 +39,16 @@ class Change(BaseModel):
             data = json.load(f)
         return data
 
+    @property
+    def change_data(self):
+        kb_change = [
+            c
+            for c in self.kb_data["opencve"].get("changes", [])
+            if c["id"] == str(self.id)
+        ]
+
+        return kb_change[0] if kb_change else {}
+
     def get_previous_change(self):
         return (
             Change.objects.filter(created_at__lt=self.created_at)
