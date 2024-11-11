@@ -1,0 +1,28 @@
+{% load opencve_extras %}
+
+<div class="box-group" id="{{ change.id }}">
+    {% for event in change.change_data.data %}
+    <div class="panel box box-changes">
+        <div class="box-header  collapsed pointer change-collapsed" data-toggle="collapse" data-parent="#{{ change.id }}" href="#{{ change.id }}-{{ event.type }}" aria-expanded="false"">
+            <h4 class="box-title">{{ event|event_humanized_type }}
+            <span class="box-meta">{{ event.details|event_excerpt|safe }}<i class="fa fa-arrow-circle-o-down"></i><i class="fa fa-arrow-circle-o-up"></i></span>
+            </h4>
+        </div>
+        <div id="{{ change.id }}-{{ event.type }}" class="panel-collapse collapse" aria-expanded="false">
+            <div class="box-body">
+                <table class="table">
+                    <thead>
+                    <th>Values Removed</th>
+                    <th>Values Added</th>
+                    </thead>
+                    <tbody>
+                    {% with template_name="changes/change_"|add:event.type|add:".html" %}
+                    {% include template_name with hide_type=1 %}
+                    {% endwith %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
