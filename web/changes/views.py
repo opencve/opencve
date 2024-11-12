@@ -1,6 +1,7 @@
 import json
 
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import redirect
@@ -10,7 +11,6 @@ from django.views.generic import DetailView, ListView
 from changes.forms import ActivitiesViewForm
 from changes.models import Change, Report
 from changes.utils import CustomHtmlHTML
-from cves.constants import PRODUCT_SEPARATOR
 from organizations.mixins import OrganizationRequiredMixin
 
 
@@ -47,14 +47,8 @@ class ChangeListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
 
         # Filter on user subscriptions
         if self.request.user.settings["activities_view"] == "subscriptions":
-            vendors = [v["vendor_name"] for v in self.request.user.get_raw_vendors()]
-            vendors.extend(
-                [
-                    f"{product['vendor_name']}{PRODUCT_SEPARATOR}{product['product_name']}"
-                    for product in self.request.user.get_raw_products()
-                ]
-            )
 
+            vendors = self.request.user_organization.get_projects_vendors()
             if vendors:
                 query = query.filter(cve__vendors__has_any_keys=vendors)
 
@@ -92,6 +86,8 @@ class ChangeListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
                 **self.request.user.settings,
                 "activities_view": form.cleaned_data["view"],
             }
+
+            messages.success(self.request, "Your dashboard settings have been updated.")
             self.request.user.save()
         return redirect("home")
 

@@ -2,12 +2,7 @@
 {% load opencve_extras %}
 {% load crispy_forms_tags %}
 
-{% block navbar_title%}
-Dashboard
-{% if user.settings.activities_view == 'subscriptions' %}
-<small class="label label-default"><i class="fa fa-filter"></i> subscriptions</small>
-{% endif %}
-{% endblock %}
+{% block navbar_title%}Dashboard{% endblock %}
 
 {% block content %}
 
@@ -27,6 +22,11 @@ Dashboard
             <div class="box box-primary">
                 <div class="box-header with-border">
                     <h3 class="box-title">Vulnerabilities Activity</h3>
+                    {% if user.settings.activities_view == 'subscriptions' %}
+                    <div class="box-tools pull-right">
+                        <small class="label label-default"><i class="fa fa-filter"></i> subscriptions</small>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="box-body">
                     {% if not changes %}
@@ -79,6 +79,20 @@ Dashboard
         </div>
 
         <div class="col-md-4">
+             <div class="box box-primary">
+                <div class="box-header collapsed pointer change-collapsed" data-toggle="collapse" href="#dashboard-settings" aria-expanded="false">
+                    <h4 class=" box-title">Dashboard Settings
+                        <span class="box-meta">
+                            <i class="fa fa-plus"></i>
+                            <i class="fa fa-minus"></i>
+                        </span>
+                    </h4>
+                </div>
+                <div id="dashboard-settings" class="panel-collapse collapse" aria-expanded="false">
+                    <div class="box-body">{% crispy form %}</div>
+                </div>
+            </div>
+
             <div class="box box-primary">
                 <div class="box-header with-border">
                     <h3 class="box-title">Projects</h3>

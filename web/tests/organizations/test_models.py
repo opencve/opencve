@@ -16,6 +16,17 @@ def test_organization_model(create_user, create_organization):
     assert org.membership_set.first().role == Membership.OWNER
 
 
+def test_organization_get_projects_vendors(
+    create_user, create_organization, create_project
+):
+    user = create_user()
+    organization = create_organization("myorga", user)
+    create_project(name="project1", organization=organization, vendors=["foo", "bar"])
+    create_project(name="project2", organization=organization, vendors=["bar", "baz"])
+
+    assert organization.get_projects_vendors() == ["bar", "baz", "foo"]
+
+
 def test_membership_model(create_user):
     organization = Organization.objects.create(name="orga1")
 
