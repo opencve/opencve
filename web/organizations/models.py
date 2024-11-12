@@ -24,6 +24,16 @@ class Organization(BaseModel):
         db_table = "opencve_organizations"
         permissions = (("add_member", "Add member"),)
 
+    def get_projects_vendors(self):
+        projects_vendors = self.projects.values_list("subscriptions", flat=True)
+        unique_vendors = set()
+
+        for project_vendors in projects_vendors:
+            unique_vendors.update(project_vendors["vendors"])
+            unique_vendors.update(project_vendors["products"])
+
+        return list(sorted(unique_vendors))
+
     def __str__(self):
         return self.name
 
