@@ -2,8 +2,8 @@ from crispy_forms.helper import FormHelper
 from django import forms
 
 VIEW_CHOICES = (
-    ("all", "Display all activities"),
-    ("subscriptions", "Display subscriptions activities"),
+    ("all", "View All CVE Changes"),
+    ("subscriptions", "View Project Subscription Changes"),
 )
 
 

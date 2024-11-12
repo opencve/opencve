@@ -428,14 +428,23 @@ pre.plainJSON{
   margin-left: 20px;
 }
 
+.box-meta > i.fa {
+  padding-right: 5px;
+  font-size: 12px;
+  background: transparent;
+  color: #97a0b3;
+}
+
 .box-changes .box-title {
   font-size: 15px;
 }
 
-.change-collapsed[aria-expanded=true] .fa-arrow-circle-o-down {
+.change-collapsed[aria-expanded=true] .fa-arrow-circle-o-down,
+.change-collapsed[aria-expanded=true] .fa-plus {
   display: none;
 }
-.change-collapsed[aria-expanded=false] .fa-arrow-circle-o-up {
+.change-collapsed[aria-expanded=false] .fa-arrow-circle-o-up,
+.change-collapsed[aria-expanded=false] .fa-minus {
   display: none;
 }
 
