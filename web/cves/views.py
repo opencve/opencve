@@ -87,7 +87,9 @@ def list_filtered_cves(request):
     tag = request.GET.get("tag", "").lower()
     if tag and request.user.is_authenticated:
         tag = get_object_or_404(UserTag, name=tag, user=request.user)
-        query = query.filter(cve_tags__tags__contains=tag.name)
+        query = query.filter(
+            cve_tags__tags__contains=tag.name, cve_tags__user=request.user
+        )
 
     return query.all()
 
