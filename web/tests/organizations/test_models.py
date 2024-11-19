@@ -1,5 +1,7 @@
 from datetime import date
 
+import pytest
+from django.core.exceptions import ValidationError
 from django.utils.timezone import now
 from freezegun import freeze_time
 
@@ -25,6 +27,12 @@ def test_organization_get_projects_vendors(
     create_project(name="project2", organization=organization, vendors=["bar", "baz"])
 
     assert organization.get_projects_vendors() == ["bar", "baz", "foo"]
+
+
+def test_organization_name_validator(create_organization):
+    orga = Organization.objects.create(name="with'quote")
+    with pytest.raises(ValidationError):
+        assert orga.full_clean()
 
 
 def test_membership_model(create_user):
