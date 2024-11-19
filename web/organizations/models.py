@@ -1,20 +1,15 @@
 from django.db import models
 from django.utils import timezone
-from django.core.validators import RegexValidator
 
 from opencve.models import BaseModel
+from opencve.validators import slug_regex_validator
 from users.models import User
 
 
 class Organization(BaseModel):
     name = models.CharField(
         max_length=100,
-        validators=[
-            RegexValidator(
-                regex=r"^[a-zA-Z0-9\-]+$",
-                message="Special characters (except dash) are not accepted",
-            ),
-        ],
+        validators=[slug_regex_validator],
     )
 
     # Relationships
