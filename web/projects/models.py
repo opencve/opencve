@@ -5,6 +5,7 @@ from django.db import models
 from django.urls import reverse
 
 from opencve.models import BaseModel
+from opencve.validators import slug_regex_validator
 from organizations.models import Organization
 
 
@@ -19,12 +20,7 @@ def get_default_configuration():
 class Project(BaseModel):
     name = models.CharField(
         max_length=100,
-        validators=[
-            RegexValidator(
-                regex=r"^[a-zA-Z0-9\-]+$",
-                message="Special characters (except dash) are not accepted",
-            ),
-        ],
+        validators=[slug_regex_validator],
     )
     description = models.TextField(blank=True, null=True)
     subscriptions = models.JSONField(default=get_default_subscriptions)
