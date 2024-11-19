@@ -21,6 +21,20 @@ class User(BaseModel, AbstractUser):
     def __str__(self):
         return self.username
 
+    def list_organizations(self):
+        from organizations.models import Membership
+
+        memberships = (
+            Membership.objects.filter(
+                user=self,
+                role__in=[Membership.OWNER, Membership.MEMBER],
+                date_joined__isnull=False,
+            )
+            .order_by("organization__name")
+            .all()
+        )
+        return [m.organization for m in memberships]
+
 
 class UserTag(BaseModel):
     name = models.CharField(
