@@ -1,0 +1,29 @@
+{% extends "base_empty.html" %}
+
+{% load static %}
+{% load opencve_extras %}
+{% load crispy_forms_tags %}
+
+{% block title %}Onboarding - {{ block.super }}{% endblock %}
+{% block navbar_title%}Onboarding{% endblock %}
+
+{% block content %}
+
+<div class="onboarding-wrapper">
+    <div class="onboarding-content">
+      {% include "messages.html" %}
+      <div class="onboarding-logo">
+        <img width="250px" src="{% static 'img/logo_opencve.svg' %}" alt="Logo">
+      </div>
+
+      <div class="onboarding-description help-block text-center">
+        <p><strong>Welcome to OpenCVE {{ request.user.username }}!</strong></p>
+        <p>Complete your setup by entering the information below.</p>
+      </div>
+
+      {% crispy form %}
+
+    </div>
+  </div>
+
+{% endblock %}

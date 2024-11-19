@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "changes",
     "cves",
+    "onboarding",
     "organizations",
     "projects",
     "users",
@@ -57,6 +58,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "hijack.middleware.HijackUserMiddleware",
+    "onboarding.middlewares.OnboardingMiddleware",
     "organizations.middlewares.OrganizationMiddleware",
 ]
 
@@ -217,3 +219,6 @@ V1_DATABASE = env.db(
     "V1_DATABASE",
     default="postgresql://username:password@example.com:5432/opencve_v1",
 )
+
+# Redirect user to onboarding view if they do not belong to an organization
+ENABLE_ONBOARDING = True

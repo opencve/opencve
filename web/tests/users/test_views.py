@@ -1,5 +1,6 @@
 import pytest
 from bs4 import BeautifulSoup
+from django.test import override_settings
 from django.urls import reverse
 
 from cves.models import Cve
@@ -54,6 +55,7 @@ def test_delete_owner_account(auth_client, create_user, create_organization):
     )
 
 
+@override_settings(ENABLE_ONBOARDING=False)
 def test_delete_member_account(auth_client, create_user):
     user = create_user(username="user1")
     client = auth_client(user)

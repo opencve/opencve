@@ -11,7 +11,6 @@ from django.views.generic import DetailView, ListView
 from changes.forms import ActivitiesViewForm
 from changes.models import Change, Report
 from changes.utils import CustomHtmlHTML
-from organizations.mixins import OrganizationRequiredMixin
 
 
 class ActivityPaginator(Paginator):
@@ -27,7 +26,7 @@ class ActivityPaginator(Paginator):
         return 9999999999
 
 
-class ChangeListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
+class ChangeListView(LoginRequiredMixin, ListView):
     model = Change
     context_object_name = "changes"
     template_name = "changes/change_list.html"
@@ -92,7 +91,7 @@ class ChangeListView(LoginRequiredMixin, OrganizationRequiredMixin, ListView):
         return redirect("home")
 
 
-class ChangeDetailView(DetailView, OrganizationRequiredMixin):
+class ChangeDetailView(DetailView):
     model = Change
     template_name = "changes/change_detail.html"
 

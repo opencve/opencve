@@ -1,7 +1,9 @@
+from django.test import override_settings
 from django.urls import reverse
 from bs4 import BeautifulSoup
 
 
+@override_settings(ENABLE_ONBOARDING=False)
 def test_list_cves_by_case_insensitive_vendors(db, create_cve, auth_client):
     create_cve("CVE-2022-22965")
     client = auth_client()
@@ -18,6 +20,7 @@ def test_list_cves_by_case_insensitive_vendors(db, create_cve, auth_client):
     assert response.status_code == 200
 
 
+@override_settings(ENABLE_ONBOARDING=False)
 def test_list_vendors_case_insensitive(db, create_cve, auth_client):
     create_cve("CVE-2023-22490")
     client = auth_client()

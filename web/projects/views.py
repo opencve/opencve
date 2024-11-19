@@ -21,7 +21,6 @@ from opencve.mixins import RequestViewMixin
 from organizations.mixins import (
     OrganizationIsMemberMixin,
     OrganizationIsOwnerMixin,
-    OrganizationRequiredMixin,
 )
 from projects.forms import FORM_MAPPING, ProjectForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
