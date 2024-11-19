@@ -556,3 +556,34 @@ pre.plainJSON{
     margin-top: 25px;
     border-bottom: 1px solid #ddd;
 }
+
+.onboarding {
+  background-size: 3em 3em;
+  background-color: #010123;
+  opacity: 1
+ }
+
+.onboarding-wrapper {
+  max-width: 550px;
+  margin: 0 auto;
+  margin-top: 10%;
+}
+
+.onboarding-content {
+  border: 0;
+  border-radius: 4px;
+  width: 100%;
+  box-shadow: 0 0 0 1px #00000014;
+  padding: 50px;
+  padding-top: 20px;
+  background-color: #fff;
+}
+
+.onboarding-logo {
+  text-align: center;
+  margin: 25px 0;
+}
+
+.onboarding-description {
+  margin: 25px 0;
+}
