@@ -55,6 +55,7 @@ urlpatterns = [
     path("", include("onboarding.urls")),
     path("", include("organizations.urls")),
     path("", include("projects.urls")),
+    path("", include("django_prometheus.urls")),
     path("settings/", include("allauth.urls")),
     path(r"login/", LoginView.as_view(), name="account_login"),
     path(r"signup/", SignupView.as_view(), name="account_signup"),
