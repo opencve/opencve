@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.postgres",
     "django_extensions",
+    "django_prometheus",
     "allauth",
     "allauth.account",
     "crispy_forms",
@@ -48,6 +49,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -60,6 +62,7 @@ MIDDLEWARE = [
     "hijack.middleware.HijackUserMiddleware",
     "onboarding.middlewares.OnboardingMiddleware",
     "organizations.middlewares.OrganizationMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "opencve.urls"
@@ -108,6 +111,7 @@ DATABASES = {
         default="postgresql://username:password@example.com:5432/opencve_web",
     )
 }
+DATABASES["default"]["ENGINE"] = "django_prometheus.db.backends.postgresql"
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
