@@ -11,11 +11,19 @@ from projects.models import Notification, Project
 from users.models import CveTag, UserTag
 
 
-def test_onboarding_dispatch(auth_client, create_user, create_organization):
+def test_onboarding_dispatch(client, auth_client, create_user, create_organization):
+    url = reverse("onboarding")
+
+    # Unauthenticated user can not access the onboarding
+    response = client.get(url, follow=True)
+    assert response.redirect_chain == [
+        (f"{reverse('account_login')}?next={reverse('onboarding')}", 302)
+    ]
+
+    # User without organization can access the onboarding
     user = create_user(username="john")
     client = auth_client(user)
 
-    # User without organization can access the onboarding
     response = client.get(reverse("onboarding"))
     assert response.status_code == 200
     assert b"Welcome to OpenCVE john!" in response.content
