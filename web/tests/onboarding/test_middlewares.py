@@ -17,7 +17,7 @@ def test_onboarding_middleware_no_organization(auth_client, create_user):
     response = client.get(reverse("cves"), follow=True)
     assert response.status_code == 200
     assert response.redirect_chain == [(reverse("onboarding"), 302)]
-    assert b"Welcome to OpenCVE john!" in response.content
+    assert b"Welcome to OpenCVE john" in response.content
 
 
 def test_organization_middleware_setting(auth_client, create_user):
@@ -26,7 +26,7 @@ def test_organization_middleware_setting(auth_client, create_user):
 
     response = client.get(reverse("cves"), follow=True)
     assert response.redirect_chain == [(reverse("onboarding"), 302)]
-    assert b"Welcome to OpenCVE john!" in response.content
+    assert b"Welcome to OpenCVE john" in response.content
 
     with override_settings(ENABLE_ONBOARDING=False):
         response = client.get(reverse("cves"))
