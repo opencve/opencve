@@ -1,0 +1,13 @@
+{% extends 'users/base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}Third-Party Login Failure - {{ block.super }}{% endblock %}
+
+{% block header %}Third-Party Login Failure{% endblock %}
+
+{% block content%}
+<p>An error occurred while attempting to login via your third-party account.</p>
+
+<p>If this was a mistake, please proceed to <a href="{% url 'account_login' %}" class="text-center">sign in</a>.</p>
+{% endblock %}
