@@ -1,4 +1,3 @@
-from allauth.account.views import LoginView, SignupView
 from django.contrib import admin
 from django.urls import include, path
 from rest_framework_nested import routers
@@ -14,6 +13,7 @@ from cves.resources import (
 )
 from organizations.resources import OrganizationViewSet
 from projects.resources import ProjectCveViewSet, ProjectViewSet
+from users.views import CustomLoginView, CustomSignupView
 
 # API Router
 router = routers.SimpleRouter(trailing_slash=False)
@@ -57,8 +57,8 @@ urlpatterns = [
     path("", include("projects.urls")),
     path("", include("django_prometheus.urls")),
     path("settings/", include("allauth.urls")),
-    path(r"login/", LoginView.as_view(), name="account_login"),
-    path(r"signup/", SignupView.as_view(), name="account_signup"),
+    path(r"login/", CustomLoginView.as_view(), name="account_login"),
+    path(r"signup/", CustomSignupView.as_view(), name="account_signup"),
     path("settings/", include("users.urls")),
     path("admin/", admin.site.urls),
     path("hijack/", include("hijack.urls")),

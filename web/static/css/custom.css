@@ -69,6 +69,27 @@
     background-color: #090031 !important;
   }
 
+  .btn-social>:first-child {
+    line-height: inherit;
+  }
+
+  .btn-social {
+    border: 1px solid rgba(0,0,0,0.2);
+    color: #2e2e2e;
+  }
+
+  .social-auth-links p {
+    margin: 20px 0px;
+  }
+
+  .social-auth-links form {
+    margin-bottom: 10px;
+  }
+
+  .btn-social img {
+    width: 18px;
+  }
+
   .box-header button.subscribe {
     margin-left: 10px;
   }

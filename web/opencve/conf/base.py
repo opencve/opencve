@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "django_prometheus",
     "allauth",
     "allauth.account",
+    "allauth.socialaccount",
     "crispy_forms",
     "crispy_bootstrap3",
     "debug_toolbar",
@@ -179,6 +180,11 @@ ACCOUNT_FORMS = {
     "reset_password": "users.forms.PasswordResetForm",
     "reset_password_from_key": "users.forms.SetPasswordForm",
 }
+SOCIALACCOUNT_FORMS = {"signup": "users.forms.CustomSocialSignupForm"}
+SOCIALACCOUNT_AUTO_SIGNUP = False
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
 # Email backend
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

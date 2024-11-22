@@ -1,0 +1,50 @@
+{% extends 'users/settings/base_settings.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_settings %}
+
+{% if form.errors %}
+    <div class="alert alert-danger">
+        {% for v in form.errors.values %}
+        {{ v }}
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-7">
+        {% if form.accounts %}
+        <h3>Current Connections</h3>
+            <form method="post" action="{% url 'settings_social' %}">
+            {% csrf_token %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <tbody>
+                    {% for acc in form.fields.account.choices %}
+                    {% with account=acc.0.instance.get_provider_account %}
+                    <tr>
+                        <td>{{ account.get_brand.name }}</td>
+                        <td>{{ account }}</td>
+                        <td class="pull-right">
+                            <input type="radio" id="id_account_{{ account.account.pk }}" name="account" value="{{ account.account.pk }}" />
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="submit" class="btn btn-block btn-default">Remove</button>
+            </form>
+        {% else %}
+        <p>You currently have no third-party accounts connected to this account.</p>
+        {% endif %}
+    </div>
+    <div class="col-md-5">
+        <h3>Add a Third-Party Account</h3>
+        {% include 'social_buttons.html' with hide_or=1 %}
+    </div>
+</div>
+
+
+{% endblock content_settings %}

@@ -1,0 +1,21 @@
+{% extends 'users/base.html' %}
+
+{% load crispy_forms_tags %}
+{% load allauth %}
+
+{% block title %}Sign Up - {{ block.super }}{% endblock %}
+
+{% block header %}Sign Up{% endblock %}
+
+{% block content%}
+
+{% with provider_name=account.get_provider.name %}
+<p>You are about to use your {{provider_name}} account to login to OpenCVE</p>
+{% endwith %}
+<p>As a final step, please complete the following form.</p>
+
+<hr />
+
+{% crispy form %}
+
+{% endblock %}
