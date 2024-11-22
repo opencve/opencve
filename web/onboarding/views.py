@@ -15,7 +15,7 @@ from users.models import UserTag, CveTag
 
 
 class OnboardingFormView(LoginRequiredMixin, SuccessMessageMixin, FormView):
-    template_name = "organizations/onboarding.html"
+    template_name = "onboarding/index.html"
     form_class = OnboardingForm
     success_url = reverse_lazy("home")
     success_message = (
