@@ -26,12 +26,23 @@ def test_onboarding_dispatch(client, auth_client, create_user, create_organizati
 
     response = client.get(reverse("onboarding"))
     assert response.status_code == 200
-    assert b"Welcome to OpenCVE john!" in response.content
+    assert b"Welcome to OpenCVE john" in response.content
 
     # User with an organization is redirected to the homepage
     create_organization(name="orga", user=user)
     response = client.get(reverse("onboarding"), follow=True)
     assert response.redirect_chain == [(reverse("home"), 302)]
+
+
+def test_onboarding_access_settings(auth_client, create_user):
+    user = create_user(username="john")
+    client = auth_client(user)
+
+    response = client.get(reverse("cves"), follow=True)
+    assert response.redirect_chain == [(reverse("onboarding"), 302)]
+
+    response = client.get(reverse("account_logout"))
+    assert response.status_code == 200
 
 
 def test_onboarding_invalid_form(auth_client, create_user, create_organization):
