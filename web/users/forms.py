@@ -1,10 +1,13 @@
 from allauth.account.forms import LoginForm as BaseLoginForm
 from allauth.account.forms import ResetPasswordForm, ResetPasswordKeyForm, SignupForm
+from allauth.socialaccount.forms import SignupForm as SocialSignupForm
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Button, Field, Layout, Submit
+from django.db import transaction
 from django import forms
 from django.contrib.auth.forms import PasswordChangeForm as BasePasswordChangeForm
+from django.urls import reverse
 
 from users.models import User, UserTag
 
@@ -110,6 +113,24 @@ class SetPasswordForm(ResetPasswordKeyForm):
             "password2",
             Submit("submit", "Reset Password", css_class="btn-block btn-flat"),
         )
+
+
+class CustomSocialSignupForm(SocialSignupForm):
+    def __init__(self, *args, **kwargs):
+        super(CustomSocialSignupForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_action = reverse("socialaccount_signup")
+        self.helper.layout = Layout(
+            "username",
+            Submit("submit", "Save", css_class="btn-block btn-flat"),
+        )
+
+    @transaction.atomic
+    def save(self, request):
+        user = super(CustomSocialSignupForm, self).save(request)
+        user.email = self.initial["email"]
+        user.save()
+        return user
 
 
 class UserTagForm(forms.ModelForm):

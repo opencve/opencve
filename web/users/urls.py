@@ -9,6 +9,7 @@ from users.views import (
     TagDeleteView,
     TagEditView,
     TagsListView,
+    CustomConnectionView,
 )
 
 urlpatterns = [
@@ -18,6 +19,7 @@ urlpatterns = [
     path("tags/<name>/delete", TagDeleteView.as_view(), name="delete_tag"),
     path("password/", SettingsPasswordView.as_view(), name="settings_password"),
     path("profile/", SettingsProfileView.as_view(), name="settings_profile"),
+    path("social", CustomConnectionView.as_view(), name="settings_social"),
     path("account/", SettingsAccountView.as_view(), name="settings_account"),
     path("account/delete", SettingsDeleteAccountView.as_view(), name="delete_account"),
 ]
