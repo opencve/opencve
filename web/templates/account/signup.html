@@ -1,4 +1,4 @@
-{% extends 'account/base.html' %}
+{% extends 'users/base.html' %}
 
 {% load crispy_forms_tags %}
 
@@ -7,7 +7,11 @@
 {% block header %}Register a new membership{% endblock %}
 
 {% block content%}
+
+{% include 'social_buttons.html' %}
+
 {% crispy form %}
+
 {% endblock %}
 
 {% block links %}

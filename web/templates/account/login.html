@@ -6,7 +6,13 @@
 
 {% block header %}Sign in to your account{% endblock %}
 
-{% block content%}{% crispy form %}{% endblock %}
+{% block content%}
+
+{% include 'social_buttons.html' %}
+
+{% crispy form %}
+
+{% endblock %}
 
 {% block links %}
 <hr />

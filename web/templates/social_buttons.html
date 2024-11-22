@@ -1,0 +1,25 @@
+{% if social_providers %}
+
+{% load socialaccount %}
+{% load static %}
+
+
+<div class="social-auth-links text-center">
+    {% for provider in social_providers %}
+    <form method="post" action="{% provider_login_url provider process='login' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-block btn-default btn-social">
+        {% with "img/icons/"|add:provider|add:".png" as icon %}
+        <i><img src="{% static icon %}"></i> Sign in with {{ provider | capfirst }}
+        {% endwith %}
+        </button>
+    </form>
+    {% endfor %}
+
+    {% if not hide_or %}
+    <p>- OR -</p>
+    {% endif %}
+
+</div>
+
+{% endif %}
