@@ -15,9 +15,11 @@ class OnboardingMiddleware:
         if not organizations and settings.ENABLE_ONBOARDING:
 
             current_view_name = resolve(request.path).view_name
-            if not request.path.startswith("/api") and current_view_name not in [
-                "onboarding"
-            ]:
+            if (
+                not request.path.startswith("/api")
+                and not request.path.startswith("/settings")
+                and current_view_name not in ["onboarding"]
+            ):
                 return redirect("onboarding")
 
         return self.get_response(request)

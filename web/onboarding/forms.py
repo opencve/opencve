@@ -1,6 +1,6 @@
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit
+from crispy_forms.layout import HTML, Layout, Submit
 from django import forms
 
 from opencve.validators import slug_regex_validator
@@ -28,8 +28,10 @@ class OnboardingForm(forms.Form):
             "organization",
             "project",
             FormActions(
-                Submit("save", "Continue"),
-                css_class="pull-right",
+                HTML(
+                    """<a href="{% url 'settings_profile' %}" class="btn btn-default">Settings</a>"""
+                ),
+                Submit("save", "Continue", css_class="pull-right"),
             ),
         )
 
