@@ -92,3 +92,19 @@ def test_delete_account_cascade_delete(auth_client, create_user, create_organiza
     assert User.objects.filter(id=user_id).count() == 0
     assert UserTag.objects.filter(user_id=user_id).count() == 0
     assert CveTag.objects.filter(user_id=user_id).count() == 0
+
+
+def test_settings_social_access(client, auth_client, create_user):
+    url = reverse("settings_social")
+
+    response = client.get(url, data={}, follow=True)
+    assert response.redirect_chain == [(f"{reverse('account_login')}?next={url}", 302)]
+
+    user = create_user()
+    client = auth_client(user)
+
+    response = client.get(url)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.content, features="html.parser")
+    content = soup.find("li", {"class": "active"}).text
+    assert content.strip() == "Social Auth"
