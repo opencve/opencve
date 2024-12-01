@@ -1,0 +1,14 @@
+{% extends 'admin/change_form.html' %}
+{% load hijack %}
+
+{% block object-tools-items %}
+    <li>
+        <form action="{% url 'hijack:acquire' %}" method="POST" id="hijackForm">
+          {% csrf_token %}
+          <input type="hidden" name="user_pk" value="{{ object_id }}">
+          <a href="#" onclick="document.getElementById('hijackForm').submit()" class="historylink">Hijack</a>
+          <input type="hidden" name="next" value="{% url 'home' %}">
+        </form>
+    </li>
+    {{ block.super }}
+{% endblock %}
