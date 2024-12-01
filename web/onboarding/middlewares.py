@@ -18,7 +18,7 @@ class OnboardingMiddleware:
             if (
                 not request.path.startswith("/api")
                 and not request.path.startswith("/settings")
-                and current_view_name not in ["onboarding"]
+                and current_view_name not in ["onboarding", "hijack:release"]
             ):
                 return redirect("onboarding")
 
