@@ -1,0 +1,26 @@
+{% load opencve_extras %}
+
+{% with vendors=project.subscriptions.vendors products=project.subscriptions.products %}
+{% if vendors or products %}
+    {% if vendors %}
+    <h5><strong>Vendors <span>({{ vendors|length }})</span></strong></h5>
+    {% for vendor in vendors %}
+    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ vendor }}">{{ vendor| humanize }}</a>
+    {% endfor %}
+
+    {% if products %}
+    <hr/>
+    {% endif %}
+    {% endif %}
+    {% if products %}
+    <h5><strong>Products <span>({{ products|length }})</span></strong></h5>
+    {% for product in products %}
+    {% with product|split:"$PRODUCT$" as p %}
+    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ p.0 }}&product={{ p.1 }}">{{ product|remove_product_separator|humanize }}</a>
+    {% endwith %}
+    {% endfor %}
+    {% endif %}
+{% else %}
+<p class="alert alert-info">You don't have any subscriptions yet, explore the list of <a href="{% url 'vendors' %}">Vendors & Products</a> to select some.</p>
+{% endif %}
+{% endwith %}
