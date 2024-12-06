@@ -608,3 +608,18 @@ pre.plainJSON{
 .onboarding-description {
   margin: 25px 0;
 }
+
+.projects-list .product-info {
+  margin-left: 10px;
+}
+
+.products-list .product-vendors {
+    margin: 10px 0;
+    background-color: #f9f9f9;
+    padding: 8px;
+    border: 1px solid #e8e8e8;
+}
+
+.products-list .product-vendors-title {
+  font-size: 13px;
+}

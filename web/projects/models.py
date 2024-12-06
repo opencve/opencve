@@ -49,6 +49,10 @@ class Project(BaseModel):
             kwargs={"project_name": self.name, "org_name": self.organization.name},
         )
 
+    @property
+    def subscriptions_count(self):
+        return len(self.subscriptions["vendors"]) + len(self.subscriptions["products"])
+
 
 class Notification(BaseModel):
     name = models.CharField(
