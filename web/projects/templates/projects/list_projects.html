@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block title %}Projects - {{ block.super }}{% endblock %}
-{% block navbar_title%}Projects{% endblock %}
+{% block navbar_title%}Projects ({{ projects.count }}){% endblock %}
 
 {% block content %}
 <section class="content">
     <div class="row">
-        <div class="col-md-9 col-md-offset-1">
+        <div class="col-md-10 col-md-offset-1">
             {% include "messages.html" %}
 
             <div class="callout callout-info">
@@ -14,42 +14,56 @@
             </div>
 
             <div class="box box-primary">
-                <div class="box-body table-responsive no-padding">
-                    <table class="table table-hover table-striped">
-                        <tbody>
-                        <tr>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th>Active</th>
-                            <th></th>
-                        </tr>
+                <div class="box-body">
+                    <ul class="projects-list products-list product-list-in-box">
                         {% if projects %}
                         {% for project in projects %}
-                        <tr>
-                            <td>{{ project.name }}</td>
-                            <td>{{ project.description|default:'' }}</td>
-                            <td>{{ project.active|yesno }}</td>
-                            <td class="pull-right">
-                                <div class="btn-group" role="group">
-                                    {% if project.active %}<a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default btn-xs">View Project</a>{% endif %}
-                                    <a href="{% url 'edit_project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default btn-xs">Edit</a>
-                                    <a href="{% url 'delete_project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                        <li class="item">
+                            <div class="product-info">
+                                {% if project.active %}
+                                <a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}" class="product-title">{{ project.name }}</a>
+                                {% else %}
+                                <div class="product-title">{{ project.name }} <span class="label label-default">disabled</span></div>
+                                {% endif %}
+                                <div class="pull-right">
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'edit_project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default btn-xs">Edit</a>
+                                        <a href="{% url 'delete_project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                    </div>
                                 </div>
-                            </td>
-                        </tr>
+                                <span class="product-description">
+                                    {{ project.description }}
+                                </span>
+                                {% if project.subscriptions.vendors or project.subscriptions.products %}
+                                <div class="product-vendors">
+                                    <div class="pointer change-collapsed collapsed" data-toggle="collapse" href="#{{ project.id }}" aria-expanded="false">
+                                        <span class="product-vendors-title">Subscriptions (<strong>{{ project.subscriptions_count }}</strong>)
+                                            <span class="box-meta">
+                                                <i class="fa fa-plus"></i>
+                                                <i class="fa fa-minus"></i>
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div id="{{ project.id }}" class="panel-collapse collapse" aria-expanded="false" style="height: 0px;">
+                                        <div class="box-body">
+                                            {% include 'projects/includes/subscriptions.html' %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="product-vendors">
+                                    <span class="product-vendors-title"><i>No subscription yet</i></span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </li>
                         {% endfor %}
-                        {% else %}
-                        <tr>
-                            <td colspan="3">No project yet.</td>
-                        </tr>
                         {% endif %}
-                        </tbody>
-                    </table>
+                    </ul>
                 </div>
             </div>
 
         </div>
-
     </div>
 </section>
 
