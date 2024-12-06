@@ -10,7 +10,7 @@ from cves.serializers import (
     VendorListSerializer,
     WeaknessListSerializer,
 )
-from cves.views import list_filtered_cves
+from cves.utils import list_filtered_cves
 
 
 class CveViewSet(viewsets.ReadOnlyModelViewSet):
@@ -27,7 +27,7 @@ class CveViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         if self.action == "retrieve":
             return self.queryset
-        return list_filtered_cves(self.request)
+        return list_filtered_cves(self.request.GET, self.request.user)
 
     def get_serializer_class(self):
         return self.serializer_classes.get(self.action, self.serializer_class)
