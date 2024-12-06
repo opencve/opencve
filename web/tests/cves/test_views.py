@@ -2,6 +2,8 @@ from django.test import override_settings
 from django.urls import reverse
 from bs4 import BeautifulSoup
 
+from users.models import UserTag, CveTag
+
 
 @override_settings(ENABLE_ONBOARDING=False)
 def test_list_cves_by_case_insensitive_vendors(db, create_cve, auth_client):
@@ -37,3 +39,28 @@ def test_list_vendors_case_insensitive(db, create_cve, auth_client):
     content = soup.find("table", {"id": "table-products"}).find_all("td")
     assert content[0].text == "Git"
     assert content[1].text == "Git-scm"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_cves_with_sensitive_tags(create_cve, create_user, auth_client):
+    user = create_user()
+    client = auth_client(user)
+
+    # tag is in lower case
+    tag = UserTag.objects.create(name="foo", user=user)
+    cve = create_cve("CVE-2023-22490")
+    CveTag.objects.create(user=user, cve=cve, tags=[tag.name])
+
+    # tag starts with a capital letter
+    tag = UserTag.objects.create(name="BAR", user=user)
+    cve = create_cve("CVE-2024-31331")
+    CveTag.objects.create(user=user, cve=cve, tags=[tag.name])
+
+    def find_cves(url):
+        response = client.get(url, follow=True)
+        soup = BeautifulSoup(response.content, features="html.parser")
+        return [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
+
+    assert find_cves(reverse("cves")) == ["CVE-2024-31331", "CVE-2023-22490"]
+    assert find_cves(f"{reverse('cves')}?tag=foo") == ["CVE-2023-22490"]
+    assert find_cves(f"{reverse('cves')}?tag=BAR") == ["CVE-2024-31331"]

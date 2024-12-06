@@ -94,7 +94,7 @@ Vulnerabilities (CVE)
                                     <select class="form-control select2" name="tag" data-placeholder="Select a tag">
                                         <option></option>
                                         {% for t in user_tags %}
-                                        <option {% if request.GET.tag|lower == t %} selected="selected" {% endif %} value="{{ t }}">{{ t }}</option>
+                                        <option {% if request.GET.tag == t %} selected="selected" {% endif %} value="{{ t }}">{{ t }}</option>
                                         {% endfor %}
                                     </select>
                                     {% else %}
