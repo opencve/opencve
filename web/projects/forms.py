@@ -105,3 +105,21 @@ class EmailForm(NotificationForm):
 class WebhookForm(NotificationForm):
     url = forms.URLField()
     headers = forms.JSONField(required=False, initial={})
+
+    def clean_headers(self):
+        headers = self.cleaned_data["headers"]
+
+        if not headers:
+            headers = {}
+
+        else:
+            # Simple parsing to check if headers are valid key=value pairs
+            keys = [k for k in headers.keys() if not isinstance(k, str)]
+            values = [v for v in headers.values() if not isinstance(v, str)]
+
+            if keys or values:
+                raise forms.ValidationError(
+                    "HTTP headers must be in a simple key-value format"
+                )
+
+        return headers
