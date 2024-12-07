@@ -1,3 +1,4 @@
+from auditlog.context import disable_auditlog
 from allauth.account.views import LoginView, SignupView
 from allauth.socialaccount.views import ConnectionsView
 from django.contrib import messages
@@ -129,6 +130,10 @@ class SettingsDeleteAccountView(LoginRequiredMixin, SuccessMessageMixin, DeleteV
             return redirect("settings_account")
 
         return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        with disable_auditlog():
+            return super().post(request, *args, **kwargs)
 
     def get_object(self, queryset=None):
         return self.request.user
