@@ -10,7 +10,7 @@ from psycopg2.extras import Json
 
 from cves.models import Cve
 from organizations.models import Membership, Organization
-from projects.models import Project
+from projects.models import Notification, Project
 
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -80,6 +80,22 @@ def create_project():
         )
 
     return _create_project
+
+
+@pytest.fixture
+def create_notification():
+    def _create_notification(
+        name, project, type="email", configuration=None, is_enabled=True
+    ):
+        return Notification.objects.create(
+            name=name,
+            project=project,
+            type=type,
+            configuration=configuration if configuration else {},
+            is_enabled=is_enabled,
+        )
+
+    return _create_notification
 
 
 @pytest.fixture(scope="function")
