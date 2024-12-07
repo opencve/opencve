@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
+    "auditlog",
     "crispy_forms",
     "crispy_bootstrap3",
     "debug_toolbar",
@@ -63,6 +64,7 @@ MIDDLEWARE = [
     "hijack.middleware.HijackUserMiddleware",
     "onboarding.middlewares.OnboardingMiddleware",
     "organizations.middlewares.OrganizationMiddleware",
+    "auditlog.middleware.AuditlogMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
@@ -185,6 +187,17 @@ SOCIALACCOUNT_AUTO_SIGNUP = False
 SOCIALACCOUNT_EMAIL_REQUIRED = False
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+
+# Audit Logs
+AUDITLOG_INCLUDE_TRACKING_MODELS = (
+    "organizations.Organization",
+    "organizations.Membership",
+    "projects.Project",
+    "projects.Notification",
+    "users.UserTag",
+    "users.CveTag",
+    {"model": "users.User", "mask_fields": ["password"]},
+)
 
 # Email backend
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
