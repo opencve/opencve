@@ -35,3 +35,4 @@ scheduler/airflow-webserver.pid
 web/.pytest_cache/
 web/emails/
 docker/conf/opencve.conf.template
+docker/conf/default.conf.template

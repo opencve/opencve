@@ -13,10 +13,6 @@ add-config-files() {
     echo "--> Checking release to install"
     if [[ $_RELEASE == "latest" ]] ; then
         _RELEASE=`git describe --tags --abbrev=0`
-        # Tempory patch to force v2 branch before v2 release
-        if [[ $_RELEASE == "v1.5.0" ]]; then
-            _RELEASE=v2
-        fi
         echo "--> Checkout latest release: $_RELEASE"
         git checkout $_RELEASE
     elif [[ $_MAJOR_VERSION =~ ^[v0-1|0-1.]+$ ]] ; then
@@ -132,12 +128,12 @@ start-opencve-dag() {
 }
 
 display-usage() {
-    echo "Usage: install.sh OPTIONS [-r]"
+    echo "Usage: install.sh OPTIONS [-hr]"
     echo ""
     echo "Examples:"
+    echo "  ./install.sh help"
     echo "  ./install.sh"
     echo "  ./install.sh prepare"
-    echo "  ./install.sh start-docker-stack"
     echo ""
     echo "OPTIONS:"
     echo ""
@@ -158,20 +154,25 @@ display-usage() {
     echo ""
     echo "ARGUMENT:"
     echo ""
+    echo " -h : display help."
     echo " -r : release or branch to install. Default: latest"
     echo ""
     echo "Example:"
-    echo "  ./install.sh -r v2"
+    echo "  ./install.sh -r v2.0.0"
     echo ""
 }
 
 _RELEASE="latest"
-OPTSTRING=":r:"
+OPTSTRING=":r:h"
 
 while getopts ${OPTSTRING} opt; do
   case ${opt} in
     r)
       _RELEASE="${OPTARG}"
+      ;;
+    h)
+      display-usage
+      exit 1
       ;;
     :)
       echo "Option -${OPTARG} requires an argument."
