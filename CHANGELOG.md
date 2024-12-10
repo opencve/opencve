@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0 - 2024-12-10
+Welcome to OpenCVE v2!
+
+Check out the [release notes](https://github.com/opencve/opencve/releases/tag/v2.0.0) to discover all the new features and improvements in this major update.
+
 ## 1.5.0 - 2023-12-10
 ### Added
 - Support the new NVD API data feed
