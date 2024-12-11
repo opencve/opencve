@@ -1286,5 +1286,6 @@ notification_smtp_password = password
 notification_smtp_mail_from = john@example.com
 notification_smtp_port = 587
 notification_smtp_use_tls = True
+notification_smtp_start_tls = True
 notification_smtp_validate_certs = True
 notification_smtp_timeout = 30

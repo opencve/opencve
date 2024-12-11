@@ -11,6 +11,7 @@ import arrow
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from airflow.configuration import conf
+from airflow.exceptions import AirflowConfigException
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from includes.constants import KB_LOCAL_REPO
@@ -212,6 +213,35 @@ class EmailNotifier(BaseNotifier):
         super().__init__(self, *args, **kwargs)
         self.email = self.config.get("extras").get("email")
 
+    @staticmethod
+    def get_smtp_conf():
+        kwargs = {
+            "hostname": conf.get("opencve", "notification_smtp_host"),
+            "port": conf.getint("opencve", "notification_smtp_port"),
+            "use_tls": conf.getboolean("opencve", "notification_smtp_use_tls"),
+            "validate_certs": conf.getboolean(
+                "opencve", "notification_smtp_validate_certs"
+            ),
+            "timeout": conf.getint("opencve", "notification_smtp_timeout"),
+        }
+
+        # Support empty values for username and password
+        username = conf.get("opencve", "notification_smtp_user")
+        if username:
+            kwargs["username"] = username
+
+        password = conf.get("opencve", "notification_smtp_password")
+        if password:
+            kwargs["password"] = password
+
+        try:
+            start_tls = conf.getboolean("opencve", "notification_smtp_start_tls")
+            kwargs["start_tls"] = start_tls
+        except AirflowConfigException:
+            pass
+
+        return kwargs
+
     def get_template_context(self):
         payload = super().prepare_payload()
         organization = payload["organization"]
@@ -299,25 +329,7 @@ class EmailNotifier(BaseNotifier):
         message.attach(html_message)
 
         try:
-            kwargs = {
-                "hostname": conf.get("opencve", "notification_smtp_host"),
-                "port": conf.getint("opencve", "notification_smtp_port"),
-                "use_tls": conf.getboolean("opencve", "notification_smtp_use_tls"),
-                "validate_certs": conf.getboolean(
-                    "opencve", "notification_smtp_validate_certs"
-                ),
-                "timeout": conf.getint("opencve", "notification_smtp_timeout"),
-            }
-
-            # Support empty values for username and password
-            username = conf.get("opencve", "notification_smtp_user")
-            if username:
-                kwargs["username"] = username
-
-            password = conf.get("opencve", "notification_smtp_password")
-            if password:
-                kwargs["password"] = password
-
+            kwargs = self.get_smtp_conf()
             response = await aiosmtplib.send(message, **kwargs)
         except aiosmtplib.errors.SMTPException as e:
             logger.error("SMTPException(%s): %s", self.email, e)

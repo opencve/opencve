@@ -110,3 +110,21 @@ def run_dag_task():
         return ti
 
     return _run_dag_task
+
+
+@pytest.fixture(scope="function")
+def override_conf():
+    def _override_conf(section, key, value):
+        full_key = f"AIRFLOW__{section.upper()}__{key.upper()}"
+        os.environ[full_key] = value
+
+    return _override_conf
+
+
+@pytest.fixture(scope="function")
+def override_confs(override_conf):
+    def _override_confs(section, data):
+        for key, value in data.items():
+            override_conf(section, key, value)
+
+    return _override_confs
