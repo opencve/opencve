@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex
+	xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<sitemap>
+		<loc>https://testserver/sitemap-cves.xml</loc>
+		<lastmod>2024-10-25T18:35:04.490000+00:00</lastmod>
+	</sitemap>
+	<sitemap>
+		<loc>https://testserver/sitemap-vendors.xml</loc>
+	</sitemap>
+	<sitemap>
+		<loc>https://testserver/sitemap-products.xml</loc>
+	</sitemap>
+	<sitemap>
+		<loc>https://testserver/sitemap-weaknesses.xml</loc>
+	</sitemap>
+	<sitemap>
+		<loc>https://testserver/sitemap-static.xml</loc>
+	</sitemap>
+</sitemapindex>

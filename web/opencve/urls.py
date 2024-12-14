@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.sitemaps.views import index, sitemap
 from django.urls import include, path
 from rest_framework_nested import routers
 
@@ -11,6 +12,7 @@ from cves.resources import (
     WeaknessCveViewSet,
     WeaknessViewSet,
 )
+from opencve.sitemap import sitemaps
 from organizations.resources import OrganizationViewSet
 from projects.resources import ProjectCveViewSet, ProjectViewSet
 from users.views import CustomLoginView, CustomSignupView
@@ -62,6 +64,19 @@ urlpatterns = [
     path("settings/", include("users.urls")),
     path("admin/", admin.site.urls),
     path("hijack/", include("hijack.urls")),
+    # Sitemap
+    path(
+        "sitemap.xml",
+        index,
+        {"sitemaps": sitemaps},
+        name="django.contrib.sitemaps.views.index",
+    ),
+    path(
+        "sitemap-<section>.xml",
+        sitemap,
+        {"sitemaps": sitemaps},
+        name="django.contrib.sitemaps.views.sitemap",
+    ),
     # API routes
     path("api/", include(router.urls)),
     path("api/", include(organizations_router.urls)),
