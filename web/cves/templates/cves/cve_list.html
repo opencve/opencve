@@ -1,22 +1,11 @@
 {% extends "base.html" %}
 {% load opencve_extras %}
 
-{% block title %}
-{% if vendor %}
-{{ vendor.name | humanize }}
-{% if product %}
-- {{ product.name | humanize }}
-{% endif %}
-CVE
-{% elif request.GET.weakness %}
-{{ request.GET.weakness }} Weakness
-{% else %}
-Vulnerabilities (CVE)
-{% endif %}
-- {{ block.super }}
-{% endblock %}
+{% block title %}{% if title %}{{ title }} {% endif %}CVEs and Security Vulnerabilities - OpenCVE{% endblock %}
 
-{% block navbar_title %}Vulnerabilities{% endblock %}
+{% block meta_description %}Explore the latest vulnerabilities and security issues {% if title %}of {{ title }} {% endif %}in the CVE database{% endblock %}
+
+{% block navbar_title %}Vulnerabilities{% if title %} ({{ title }}){% endif %}{% endblock %}
 
 {% block content %}
 

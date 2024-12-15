@@ -21,8 +21,8 @@
 
   .skin-opencve .main-header .navbar .navbar-title {
     font-size: 24px;
-    padding: 8px 15px;
     float: left;
+    margin: 12px;
   }
 
   .skin-opencve .main-header .navbar .navbar-title i {

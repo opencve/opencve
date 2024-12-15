@@ -9,6 +9,7 @@ from django.views.generic import DetailView, ListView, TemplateView
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Cve, Product, Vendor, Weakness
 from cves.utils import list_to_dict_vendors, list_weaknesses, list_filtered_cves
+from cves.utils import humanize
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project
@@ -76,14 +77,20 @@ class CveListView(ListView):
         context = super().get_context_data(**kwargs)
         vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
         product = self.request.GET.get("product", "").replace(" ", "_").lower()
+        weakness = self.request.GET.get("weakness", "")
+
+        if weakness:
+            context["title"] = weakness
 
         if vendor:
             context["vendor"] = Vendor.objects.get(name=vendor)
+            context["title"] = humanize(vendor)
 
             if product:
                 context["product"] = Product.objects.get(
                     name=product, vendor=context["vendor"]
                 )
+                context["title"] = humanize(product)
 
         # List the user tags
         if self.request.user.is_authenticated:

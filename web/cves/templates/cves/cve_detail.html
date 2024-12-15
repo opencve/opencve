@@ -3,11 +3,11 @@
 {% load humanize %}
 {% load opencve_extras %}
 
-{% block title %}{{ cve.cve_id }} - {{ block.super }}{% endblock %}
+{% block title %}{{ cve.cve_id }} - Vulnerability Details - OpenCVE{% endblock %}
 
-{% block navbar_title%}
-{{ cve.cve_id }}{% if cve.title %}<small><i> - {{ cve.title }}</i></small>{% endif %}
-{% endblock %}
+{% block meta_description %}{{ cve.description }}{% endblock %}
+
+{% block navbar_title%}{{ cve.cve_id }}{% if cve.title %}<small><i> - {{ cve.title }}</i></small>{% endif %}{% endblock %}
 
 {% block content %}
 

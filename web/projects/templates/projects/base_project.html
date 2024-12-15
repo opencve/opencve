@@ -2,6 +2,8 @@
 {% load static %}
 {% load opencve_extras %}
 
+{% block title %}Project {{ project.name }} - {{ block.super }}{% endblock %}
+
 {% block navbar_title %}{{ project.name }}{% endblock %}
 
 {% block content %}
