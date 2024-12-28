@@ -205,3 +205,11 @@ class Product(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+class Variable(BaseModel):
+    name = models.CharField(max_length=256, unique=True)
+    value = models.JSONField(default=dict)
+
+    class Meta:
+        db_table = "opencve_variables"
