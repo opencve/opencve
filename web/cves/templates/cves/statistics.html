@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+
+{% block title %}OpenCVE Statistics: Explore Vulnerability Trends and CVE Insights{% endblock %}
+
+{% block meta_description %}Discover detailed OpenCVE statistics: track CVE trends, vulnerability distributions by year, vendors, and products. Stay informed with the latest cybersecurity insights{% endblock %}
+{% block navbar_title%}OpenCVE Statistics{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+        <div class='col-md-12'>
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h1 class="box-title">CVEs Statistics</h1>
+                </div>
+                <div class="box-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <canvas id="statistics_cves_yearly_counts"></canvas>
+                        </div>
+                        <div class="col-md-6">
+                            <canvas id="statistics_cves_cumulative_counts"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="box-footer">
+                    <div class="row">
+                        <div class="col-sm-3 col-xs-6">{% include 'cves/includes/statistics/cves_percentage.html' with statistics=cves_count_last_days.24_hours label='Last 24 hours' %}</div>
+                        <div class="col-sm-3 col-xs-6">{% include 'cves/includes/statistics/cves_percentage.html' with statistics=cves_count_last_days.7_days label='Last 7 days' %}</div>
+                        <div class="col-sm-3 col-xs-6">{% include 'cves/includes/statistics/cves_percentage.html' with statistics=cves_count_last_days.30_days label='Last 30 days' %}</div>
+                        <div class="col-sm-3 col-xs-6">{% include 'cves/includes/statistics/cves_percentage.html' with statistics=cves_count_last_days.90_days label='Last 90 days' %}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class='col-md-4'>
+            <div class="nav-tabs-custom nav-tabs-primary">
+                <ul class="nav nav-tabs pull-right">
+                    <li class="">
+                        <a href="#2_0" data-toggle="tab" aria-expanded="true">2.0</a>
+                    </li>
+                    <li class="">
+                        <a href="#3_0" data-toggle="tab" aria-expanded="true">3.0</a>
+                    </li>
+                    <li class="active">
+                        <a href="#3_1" data-toggle="tab" aria-expanded="true">3.1</a>
+                    </li>
+                    <li class="">
+                        <a href="#4_0" data-toggle="tab" aria-expanded="false">4.0</a>
+                    </li>
+                    <li class="pull-left header"> CVSS Scores </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="chart tab-pane" id="2_0">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <canvas id="cvss_rounded_scores_cvssV2_0"></canvas>
+                            </div>
+                            <div class="col-md-12">
+                                <hr />
+                            </div>
+                            <div class="col-md-8 col-md-offset-2">
+                                <canvas id="cvss_categorized_scores_cvssV2_0"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart tab-pane" id="3_0">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <canvas id="cvss_rounded_scores_cvssV3_0"></canvas>
+                            </div>
+                            <div class="col-md-12">
+                                <hr />
+                            </div>
+                            <div class="col-md-8 col-md-offset-2">
+                                <canvas id="cvss_categorized_scores_cvssV3_0"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart tab-pane active" id="3_1">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <canvas id="cvss_rounded_scores_cvssV3_1"></canvas>
+                            </div>
+                            <div class="col-md-12">
+                                <hr />
+                            </div>
+                            <div class="col-md-8 col-md-offset-2">
+                                <canvas id="cvss_categorized_scores_cvssV3_1"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart tab-pane" id="4_0">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <canvas id="cvss_rounded_scores_cvssV4_0"></canvas>
+                            </div>
+                            <div class="col-md-12">
+                                <hr />
+                            </div>
+                            <div class="col-md-8 col-md-offset-2">
+                                <canvas id="cvss_categorized_scores_cvssV4_0"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class='col-md-8'>
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Global CVSS Repartition</h3>
+                </div>
+                <div class="box-body">
+                    <div>
+                        <canvas id="cvss_repartition"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class='col-md-6'> {% include 'cves/includes/statistics/vendors_products.html' with item='vendors' %} </div>
+        <div class='col-md-6'> {% include 'cves/includes/statistics/vendors_products.html' with item='products' %} </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+{% for k, v in serialized_statistics.items %}
+const {{ k|upper }} = {{ v|safe }};
+{% endfor %}
+</script>
+
+{% endblock %}

@@ -1,0 +1,9 @@
+<div class="description-block border-right">
+    {% if statistics.ratio > 0 %}
+    <span class="description-percentage text-green"><i class="fa fa-caret-up"></i> {{ statistics.ratio }}%</span>
+    {% else %}
+    <span class="description-percentage text-red"><i class="fa fa-caret-down"></i> {{ statistics.ratio }}%</span>
+    {% endif %}
+    <h5 class="description-header">{{ statistics.last }}</h5>
+    <span class="description-text">{{ label }}</span>
+</div>

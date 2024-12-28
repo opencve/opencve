@@ -12,9 +12,10 @@ def test_dag_loaded(dagbag):
     dag = dagbag.get_dag(dag_id="opencve")
     assert dagbag.import_errors == {}
     assert dag is not None
-    assert len(dag.tasks) == 12
+    assert len(dag.tasks) == 13
     tasks = sorted([t.task_id for t in dag.tasks])
     assert tasks == [
+        "cves.compute_statistics",
         "cves.fetch_kb",
         "cves.fetch_mitre",
         "cves.fetch_nvd",
@@ -38,7 +39,8 @@ def test_dag_structure(dagbag):
         "cves.fetch_nvd": ["cves.process_kb"],
         "cves.fetch_redhat": ["cves.process_kb"],
         "cves.fetch_vulnrichment": ["cves.process_kb"],
-        "cves.process_kb": ["reports.list_changes"],
+        "cves.process_kb": ["cves.compute_statistics"],
+        "cves.compute_statistics": ["reports.list_changes"],
         "reports.list_changes": ["reports.list_subscriptions"],
         "reports.list_subscriptions": [
             "reports.populate_reports",
