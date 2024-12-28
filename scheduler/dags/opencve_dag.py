@@ -11,6 +11,7 @@ from includes.tasks.notifications import (
     prepare_notifications,
     send_notifications,
 )
+from includes.tasks.statistics import compute_statistics
 from includes.tasks.reports import list_changes, list_subscriptions, populate_reports
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,11 @@ def opencve():
             GitFetchOperator(task_id="fetch_redhat", kind="redhat"),
             GitFetchOperator(task_id="fetch_vulnrichment", kind="vulnrichment"),
         ]
-        git_fetch_tasks >> ProcessKbOperator(task_id="process_kb")
+        (
+            git_fetch_tasks
+            >> ProcessKbOperator(task_id="process_kb")
+            >> compute_statistics()
+        )
 
     with TaskGroup(group_id="reports") as reports_group:
         (

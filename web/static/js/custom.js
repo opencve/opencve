@@ -180,5 +180,310 @@ function getContrastedColor(str){
         });
     });
 
+  // Yearly CVEs count (bar)
+  if (typeof STATISTICS_CVES_YEARLY_COUNTS !== 'undefined') {
+    const ctx_cves_yearly_counts = document.getElementById('statistics_cves_yearly_counts');
+    new Chart(ctx_cves_yearly_counts, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(STATISTICS_CVES_YEARLY_COUNTS),
+        datasets: [{
+          label: 'Total CVEs',
+          data: Object.values(STATISTICS_CVES_YEARLY_COUNTS),
+          borderWidth: 1,
+          borderColor: '#090031',
+          backgroundColor: '#382ca3',
+        }]
+      },
+      options: {
+        plugins: {
+          title: {
+            display: true,
+            text: 'Yearly CVEs Count'
+          },
+          legend: {
+            display: false
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    // Cumulative CVEs count (line)
+    const ctx_cves_cumulative_counts = document.getElementById('statistics_cves_cumulative_counts').getContext('2d');
+
+    var gradient = ctx_cves_cumulative_counts.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgb(5, 3, 45)');
+    gradient.addColorStop(1, 'rgba(56, 44, 163, 0.7)');
+
+    new Chart(ctx_cves_cumulative_counts, {
+      type: 'line',
+      data: {
+        labels: Object.keys(STATISTICS_CVES_CUMULATIVE_COUNTS),
+        datasets: [{
+          label: 'Total CVEs',
+          data: Object.values(STATISTICS_CVES_CUMULATIVE_COUNTS),
+          borderWidth: 1,
+          backgroundColor: gradient,
+          fill: true,
+        }]
+      },
+      options: {
+        plugins: {
+          title: {
+            display: true,
+            text: 'Cumulative CVEs Count'
+          },
+          legend: {
+            display: false
+          },
+        },
+      }
+    });
+
+    // CVSS scores
+    const cvssCharts = {
+      "cvssV4_0": {
+        "rounded": null,
+        "categorized": null
+      },
+      "cvssV3_1": {
+        "rounded": null,
+        "categorized": null
+      },
+      "cvssV3_0": {
+        "rounded": null,
+        "categorized": null
+      },
+      "cvssV2_0": {
+        "rounded": null,
+        "categorized": null
+      }
+    }
+
+    for (metric of Object.keys(cvssCharts)) {
+
+      // CVSS rounded scores (bar)
+      let roundedChart = new Chart(document.getElementById('cvss_rounded_scores_' + metric), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(STATISTICS_CVSS_ROUNDED_SCORES[metric]),
+          datasets: [{
+            label: 'Total CVEs',
+            data: Object.values(STATISTICS_CVSS_ROUNDED_SCORES[metric]),
+            backgroundColor: [
+              'rgb(16, 202, 249)', // 0 (low)
+              'rgb(16, 202, 249)', // 1 (low)
+              'rgb(16, 202, 249)', // 2 (low)
+              'rgb(16, 202, 249)', // 3 (low)
+              'rgb(56, 117, 203)', // 4 (medium)
+              'rgb(56, 117, 203)', // 5 (medium)
+              'rgb(56, 117, 203)', // 6 (medium)
+              'rgb(50, 39, 151)', // 7 (hard)
+              'rgb(50, 39, 151)', // 8 (hard)
+              'rgb(5, 3, 45)', // 9 (critical)
+              'rgb(5, 3, 45)' // 10 (critical)
+            ],
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          plugins: {
+            legend: {
+              display: false
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+      cvssCharts[metric]["rounded"] = roundedChart;
+
+      // CVSS categorized scores (pie)
+      let categorizedChart = new Chart(document.getElementById('cvss_categorized_scores_' + metric), {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(STATISTICS_CVSS_CATEGORIZED_SCORES[metric]),
+          datasets: [{
+            data: Object.values(STATISTICS_CVSS_CATEGORIZED_SCORES[metric]),
+            backgroundColor: [
+              'rgb(16, 202, 249)',
+              'rgb(50, 39, 151)',
+              'rgb(56, 117, 203)',
+              'rgb(5, 3, 45)',
+            ],
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom'
+            },
+          },
+        }
+      });
+      cvssCharts[metric]["categorized"] = categorizedChart;
+    }
+
+    // Reload the chart when switching tab
+    $('a[data-toggle="tab"]').on('shown.bs.tab', (event) => {
+      function resize_chart(version) {
+        cvssCharts[version]["rounded"].options.animation = false;
+        cvssCharts[version]["categorized"].options.animation = false;
+        cvssCharts[version]["rounded"].resize()
+        cvssCharts[version]["categorized"].resize()
+      }
+
+      const target = $(event.target).attr('href');
+      if (['#4_0', '#3_0', '#3_1', '#2_0'].indexOf(target) >= 0) {
+        resize_chart('cvssV' + target.substring(1));
+      }
+    });
+
+    // CVSS Repartition
+    const ctx_cvss_repartition = document.getElementById('cvss_repartition');
+    const colors = {
+      "cvssV2_0": {
+        backgroundColor: 'rgba(16, 202, 249, 0.5)',
+        borderColor: 'rgb(16, 202, 249)'
+      },
+      "cvssV3_0": {
+        backgroundColor: 'rgba(56, 117, 203, 0.8)',
+        borderColor: 'rgb(56, 117, 203)'
+      },
+      "cvssV3_1": {
+        backgroundColor: 'rgba(50, 39, 151, 0.7)',
+        borderColor: 'rgb(50, 39, 151)'
+      },
+      "cvssV4_0": {
+        backgroundColor: 'rgba(5, 3, 45, 0.8)',
+        borderColor: 'rgb(5, 3, 45)'
+      }
+    };
+
+    const scatterData = Object.keys(STATISTICS_CVSS_ROUNDED_SCORES).map(version => {
+      return {
+        label: version.replace('_', '.').toUpperCase(),
+        data: Object.entries(STATISTICS_CVSS_ROUNDED_SCORES[version]).map(([x, y]) => ({
+          x: parseInt(x),
+          y
+        })),
+        backgroundColor: colors[version].backgroundColor,
+        borderColor: colors[version].borderColor
+      };
+    });
+
+    new Chart(ctx_cvss_repartition, {
+      type: 'scatter',
+      data: {
+        datasets: scatterData,
+      },
+      options: {
+        pointRadius: 4,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return `Score: ${context.raw.x}, CVEs: ${context.raw.y}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            position: 'bottom',
+            title: {
+              display: true,
+              text: 'CVSS Score'
+            },
+            ticks: {
+              stepSize: 1
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Number of CVEs'
+            }
+          }
+        },
+        responsive: true
+      }
+    });
+
+    // Top vendors (horizontal bar)
+    const sortedVendors = Object.fromEntries(
+      Object.entries(STATISTICS_CVES_TOP_VENDORS).sort(([, a], [, b]) => b - a)
+    );
+    const ctx_cves_top_vendors = document.getElementById('cves_top_vendors');
+    new Chart(ctx_cves_top_vendors, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(sortedVendors),
+        datasets: [{
+          label: 'Total CVEs',
+          data: Object.values(sortedVendors),
+          borderWidth: 1,
+          borderColor: '#090031',
+          backgroundColor: '#382ca3',
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: {
+          legend: {
+            display: false
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    // Top products (horizontal bar)
+    const sortedProducts = Object.fromEntries(
+      Object.entries(STATISTICS_CVES_TOP_PRODUCTS).sort(([, a], [, b]) => b - a)
+    );
+    const ctx_cves_top_products = document.getElementById('cves_top_products');
+    new Chart(ctx_cves_top_products, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(sortedProducts),
+        datasets: [{
+          label: 'Total CVEs',
+          data: Object.values(sortedProducts),
+          borderWidth: 1,
+          borderColor: '#090031',
+          backgroundColor: '#382ca3',
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: {
+          legend: {
+            display: false
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
 
   });

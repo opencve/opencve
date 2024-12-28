@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, TemplateView
 
 from cves.constants import PRODUCT_SEPARATOR
-from cves.models import Cve, Product, Vendor, Weakness
+from cves.models import Cve, Product, Variable, Vendor, Weakness
 from cves.utils import list_to_dict_vendors, list_weaknesses, list_filtered_cves
 from cves.utils import humanize
 from opencve.utils import is_valid_uuid
@@ -261,3 +261,29 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
             project.save()
 
         return JsonResponse({"status": "ok"})
+
+
+class StatisticsView(TemplateView):
+    template_name = "cves/statistics.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        variables = Variable.objects.filter(name__startswith="statistics").all()
+        unserialized_vars = ["statistics_cves_count_last_days"]
+
+        serialized_statistics = {
+            v.name: json.dumps(v.value)
+            for v in variables
+            if v.name not in unserialized_vars
+        }
+        unserialized_statistics = {
+            v.name: v.value for v in variables if v.name in unserialized_vars
+        }
+
+        context["serialized_statistics"] = serialized_statistics
+        context["cves_count_last_days"] = unserialized_statistics[
+            "statistics_cves_count_last_days"
+        ]
+
+        return context
