@@ -188,6 +188,10 @@
   margin-left: 10px;
 }
 
+.cvss-radar {
+    height: 200px;
+}
+
 .table .td-ellipsis {
   max-width: 0;
   overflow: hidden;

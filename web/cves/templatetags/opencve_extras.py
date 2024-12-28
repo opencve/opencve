@@ -145,7 +145,7 @@ def cvss_chart_data(vector, score):
                     "borderColor": CVSS_CHART_BACKGROUNDS[level]["color"],
                     "pointBackgroundColor": CVSS_CHART_BACKGROUNDS[level]["color"],
                     "borderWidth": 2,
-                    "pointRadius": 2,
+                    "pointRadius": 1,
                 }
             ],
         }
