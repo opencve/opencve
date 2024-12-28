@@ -8,7 +8,7 @@ from django.db import connection
 from django.utils.timezone import now
 from psycopg2.extras import Json
 
-from cves.models import Cve
+from cves.models import Cve, Variable
 from organizations.models import Membership, Organization
 from projects.models import Notification, Project
 
@@ -163,3 +163,11 @@ def create_cves(create_cve):
         return [create_cve(cve) for cve in cves]
 
     return _create_cves
+
+
+@pytest.fixture(scope="function")
+def create_variable(db):
+    def _create_variable(name, value):
+        return Variable.objects.create(name=name, value=value)
+
+    return _create_variable
