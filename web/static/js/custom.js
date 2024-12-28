@@ -121,26 +121,61 @@ function getContrastedColor(str){
     });
 
 
-    $('.cvss-radar').each(function() {
-        var cvssRadarChart = $(this);
-        var myRadarChart = new Chart(cvssRadarChart, {
-            type: 'radar',
-            data: cvssRadarChart.data("chart"),
-            options: {
-                legend: {
-                  display: false
-                },
-                scale: {
-                  ticks: {
-                    min: -1,
-                    stepSize: 1,
-                    display: false
-                  }
-                },
-                animation: {
-                  duration: 0
-                },
-                tooltips: { enabled: false },
+    $('.cvss-radar').each(function () {
+        const canvasElement = $(this);
+        let radarChartInstance = null;
+
+        const createRadarChart = () => {
+            const context = canvasElement[0].getContext("2d");
+            radarChartInstance = new Chart(context, {
+                type: 'radar',
+                data: canvasElement.data("chart"),
+                options: {
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    layout: {
+                        padding: {
+                            top: 0,
+                            bottom: 0
+                        }
+                    },
+                    scales: {
+                        r: {
+                            suggestedMin: -1,
+                            suggestedMax: 2,
+                            ticks: {
+                                display: false
+                            },
+                            pointLabels: {
+                                padding: 10
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 0
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        };
+
+        // Initial rendering
+        createRadarChart();
+
+        // Recreate the graph when tab is changed
+        $('a[data-toggle="tab"]').on('shown.bs.tab', (event) => {
+            if (canvasElement.is(':visible')) {
+                if (radarChartInstance) {
+                    radarChartInstance.destroy();
+                }
+                createRadarChart();
             }
         });
     });
