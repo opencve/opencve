@@ -7,8 +7,10 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, TemplateView
 
 from cves.constants import PRODUCT_SEPARATOR
+from cves.forms import SearchForm
 from cves.models import Cve, Product, Variable, Vendor, Weakness
-from cves.utils import list_to_dict_vendors, list_weaknesses, list_filtered_cves
+from cves.search import Search
+from cves.utils import list_to_dict_vendors, list_weaknesses
 from cves.utils import humanize
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
@@ -71,33 +73,18 @@ class CveListView(ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return list_filtered_cves(self.request.GET, self.request.user)
+        form = SearchForm(self.request.GET)
+
+        search_query = None
+        if form.is_valid():
+            search_query = form.cleaned_data["q"]
+
+        search = Search(search_query, self.request.user)
+        return search.query
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
-        product = self.request.GET.get("product", "").replace(" ", "_").lower()
-        weakness = self.request.GET.get("weakness", "")
-
-        if weakness:
-            context["title"] = weakness
-
-        if vendor:
-            context["vendor"] = Vendor.objects.get(name=vendor)
-            context["title"] = humanize(vendor)
-
-            if product:
-                context["product"] = Product.objects.get(
-                    name=product, vendor=context["vendor"]
-                )
-                context["title"] = humanize(product)
-
-        # List the user tags
-        if self.request.user.is_authenticated:
-            context["user_tags"] = [
-                t.name for t in UserTag.objects.filter(user=self.request.user).all()
-            ]
-
+        context["search_form"] = SearchForm(self.request.GET or None)
         return context
 
 

@@ -88,3 +88,39 @@ class CveTag(BaseModel):
         indexes = [
             GinIndex(name="ix_cves_tags", fields=["tags"]),
         ]
+
+
+class UserFilter(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    filters = models.JSONField()
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = "opencve_users_filters"
+
+    def get_query(self):
+        query = Cve.objects.all()
+
+        for field, value in self.filters.items():
+
+            if field in (
+                "title",
+                "description",
+                "cve_id",
+            ):
+                query = query.filter(**{f"{field}__icontains": value})
+
+            elif field in (
+                "vendors",
+                "tags",
+            ):
+                query = query.filter(**{f"{field}__contains": value})
+
+            elif field.startswith("metrics:"):
+                pass
+
+        return query

@@ -201,7 +201,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.has-search {
+    position: relative;
+}
 
+.form-control-feedback {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
 .table .td-break {
   max-width: 0;
   word-wrap: break-word;
