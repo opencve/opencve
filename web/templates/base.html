@@ -9,6 +9,7 @@
         <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
         <meta name="description" content="{% block meta_description %}OpenCVE is the platform for tracking and managing CVEs. Stay updated on vulnerabilities, monitor your vendors, and protect your systems with ease.{% endblock %}">
         <meta name="csrf-token" content="{{ csrf_token }}">
+        <link rel="canonical" href="{{ canonical_url }}" />
         {% include 'styles.html' %}
     </head>
     <body class="hold-transition skin-blue skin-opencve sidebar-mini">
