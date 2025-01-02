@@ -12,7 +12,7 @@ def is_valid_uuid(val):
 
 
 class DateConverter:
-    regex = "\d{4}-\d{1,2}-\d{1,2}"
+    regex = r"\d{4}-\d{1,2}-\d{1,2}"
     format = "%Y-%m-%d"
 
     def to_python(self, value):
