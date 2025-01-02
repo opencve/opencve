@@ -1,8 +1,8 @@
-apache-airflow-providers-postgres==5.10.0
-apache-airflow-providers-redis==3.5.0
-apache-airflow-providers-celery==3.5.1
-apache-airflow[statsd]==2.8.4
-apache-airflow[sentry]==2.8.4
+apache-airflow-providers-postgres==6.0.0
+apache-airflow-providers-redis==4.0.0
+apache-airflow-providers-celery==3.9.0
+apache-airflow[statsd]==2.10.4
+apache-airflow[sentry]==2.10.4
 arrow==1.3.0
 gitpython==3.1.40
 more-itertools==10.1.0
