@@ -2,6 +2,7 @@ from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Button, Div, Field, Layout, Submit
 from django import forms
+from django.conf import settings
 
 from cves.constants import CVSS_SCORES
 from projects.models import Notification, Project
@@ -103,7 +104,7 @@ class EmailForm(NotificationForm):
 
 
 class WebhookForm(NotificationForm):
-    url = forms.URLField()
+    url = forms.URLField(assume_scheme="http" if settings.DEBUG else "https")
     headers = forms.JSONField(required=False, initial={})
 
     def clean_headers(self):

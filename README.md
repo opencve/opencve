@@ -3,7 +3,7 @@
 </p>
 <p align="center">
   <a href="https://github.com/opencve/opencve/actions?query=workflow%3ATests"><img alt="Tests" src="https://github.com/opencve/opencve/workflows/Tests/badge.svg"></a>
-  <a href="https://www.python.org/"><img alt="Python versions" src="https://img.shields.io/badge/python-3.9%2B-blue.svg"></a>
+  <a href="https://www.python.org/"><img alt="Python versions" src="https://img.shields.io/badge/python-3.10%2B-blue.svg"></a>
   <a href="https://github.com/python/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 </p>
 
