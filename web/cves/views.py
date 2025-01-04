@@ -3,7 +3,7 @@ import json
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.http import Http404, JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, TemplateView
 
 from cves.constants import PRODUCT_SEPARATOR
@@ -287,3 +287,11 @@ class StatisticsView(TemplateView):
         ]
 
         return context
+
+
+def handle_page_not_found(request, exception):
+    return render(request, "404.html", status=404)
+
+
+def handle_server_error(request):
+    return render(request, "500.html", status=500)

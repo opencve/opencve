@@ -1,0 +1,34 @@
+{% extends 'base_empty.html' %}
+{% load static %}
+
+{% block content %}
+<div class="onboarding-wrapper">
+    <div class="onboarding-content">
+
+        <div class="onboarding-logo">
+            <img width="150px" src="{% static 'img/logo_opencve.svg' %}" alt="Logo">
+        </div>
+
+        <hr />
+
+        <div class="onboarding-description help-block text-center">
+            <h1>500 Internal Server Error</h1>
+            <p>Something went wrong on our end. Please try again later while we work on resolving the issue.</p>
+        </div>
+
+        <form action="{% url 'cves' %}" method="GET">
+            <div class="form-group has-feedback has-search">
+                <span class="fa fa-search form-control-feedback"></span>
+                <input type="text" class="form-control" name="search" placeholder="Search in CVEs list">
+            </div>
+        </form>
+
+        <br />
+
+        <div class="text-center">
+            <a href="{% url 'home' %}" class="btn btn-primary">Back to Homepage</a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
