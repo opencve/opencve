@@ -70,3 +70,7 @@ urlpatterns = [
     path("api/", include(products_cves_router.urls)),
     path("api/", include(weaknesses_router.urls)),
 ]
+
+# Custom errors
+handler404 = "cves.views.handle_page_not_found"
+handler500 = "cves.views.handle_server_error"

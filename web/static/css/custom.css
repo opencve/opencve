@@ -616,6 +616,11 @@ pre.plainJSON{
   margin: 25px 0;
 }
 
+.onboarding-description h1 {
+  font-weight: 600;
+  color: #1a1071;
+}
+
 .projects-list .product-info {
   margin-left: 10px;
 }
