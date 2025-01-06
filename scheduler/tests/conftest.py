@@ -21,6 +21,7 @@ os.environ["AIRFLOW__DATABASE__LOAD_DEFAULT_CONNECTIONS"] = "False"
 os.environ["AIRFLOW__CORE__LOAD_EXAMPLES"] = "False"
 os.environ["AIRFLOW__CORE__UNIT_TEST_MODE"] = "True"
 
+os.environ["AIRFLOW__OPENCVE__WEB_BASE_URL"] = "https://app.opencve.io"
 os.environ["AIRFLOW__OPENCVE__MITRE_REPO_PATH"] = AIRFLOW_HOME
 os.environ["AIRFLOW__OPENCVE__ADVISORIES_REPO_PATH"] = AIRFLOW_HOME
 os.environ["AIRFLOW__OPENCVE__KB_REPO_PATH"] = AIRFLOW_HOME
@@ -89,11 +90,12 @@ def open_file():
 
 @pytest.fixture(scope="function")
 def run_dag_task():
-    def _run_dag_task(task_fn, start, end):
+    def _run_dag_task(task_fn, start, end, params={}):
         with DAG(
             dag_id="opencve",
             schedule="@daily",
             start_date=pendulum.datetime(2024, 1, 1, tz="UTC"),
+            params=params,
         ) as dag:
             task_fn(task_name=task_fn.function.__name__)
 

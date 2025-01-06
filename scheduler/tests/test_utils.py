@@ -1,6 +1,8 @@
 import logging
 from unittest.mock import patch
 
+from email.mime.multipart import MIMEMultipart
+import pytest
 import pendulum
 
 from utils import TestRepo
@@ -13,6 +15,8 @@ from includes.utils import (
     group_notifications_by_project,
     get_dates_from_context,
     list_commits,
+    get_smtp_conf,
+    get_smtp_message,
 )
 
 
@@ -269,3 +273,70 @@ def test_list_commits(tests_path, tmp_path_factory):
             pendulum.datetime(2024, 1, 1, 1, tz="UTC"),
             pendulum.datetime(2024, 1, 1, 3, tz="UTC"),
         ) == [commit_a, commit_b, commit_c]
+
+
+def test_get_smtp_conf(override_confs):
+    override_confs(
+        "opencve",
+        {
+            "notification_smtp_host": "smtp.example.com",
+            "notification_smtp_mail_from": "john@example.com",
+            "notification_smtp_port": "587",
+            "notification_smtp_use_tls": "True",
+            "notification_smtp_validate_certs": "True",
+            "notification_smtp_timeout": "30",
+            "notification_smtp_user": "user",
+            "notification_smtp_password": "password",
+            "notification_smtp_start_tls": "True",
+        },
+    )
+
+    # All available settings
+    assert get_smtp_conf() == {
+        "hostname": "smtp.example.com",
+        "port": 587,
+        "use_tls": True,
+        "validate_certs": True,
+        "timeout": 30,
+        "username": "user",
+        "password": "password",
+        "start_tls": True,
+    }
+
+    # Remove optional settings (user, password, start_tls)
+    override_confs(
+        "opencve",
+        {
+            "notification_smtp_host": "smtp.example.com",
+            "notification_smtp_mail_from": "john@example.com",
+            "notification_smtp_port": "587",
+            "notification_smtp_use_tls": "True",
+            "notification_smtp_validate_certs": "True",
+            "notification_smtp_timeout": "30",
+            "notification_smtp_user": "",
+            "notification_smtp_password": "",
+            "notification_smtp_start_tls": "",
+        },
+    )
+    assert get_smtp_conf() == {
+        "hostname": "smtp.example.com",
+        "port": 587,
+        "use_tls": True,
+        "validate_certs": True,
+        "timeout": 30,
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_smtp_message(override_conf):
+    override_conf("opencve", "notification_smtp_mail_from", "from@example.com")
+    message = await get_smtp_message(
+        email_to="to@example.com",
+        subject="Test Subject",
+        template="email_test",
+        context={"web_url": "https://app.opencve.io"},
+    )
+    assert isinstance(message, MIMEMultipart)
+    assert "From: from@example.com" in message.as_string()
+    assert "To: to@example.com" in message.as_string()
+    assert "Subject: Test Subject" in message.as_string()

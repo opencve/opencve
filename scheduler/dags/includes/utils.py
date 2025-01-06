@@ -3,10 +3,14 @@ from logging import Logger
 from typing import Dict, List, Tuple
 
 import more_itertools
-from airflow.exceptions import AirflowException
+from airflow.configuration import conf
+from airflow.exceptions import AirflowException, AirflowConfigException
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from git.objects.commit import Commit
 from git.repo import Repo
 from includes.constants import KB_LOCAL_REPO
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pendulum.datetime import DateTime
 
 
@@ -174,3 +178,60 @@ def list_commits(logger: Logger, start: DateTime, end: DateTime) -> List[Commit]
     )
 
     return commits
+
+
+async def get_smtp_message(email_to, subject, template, context):
+    dags_folder = pathlib.Path(conf.get("core", "dags_folder"))
+    env = Environment(
+        loader=FileSystemLoader(dags_folder / "templates"),
+        autoescape=select_autoescape(),
+        enable_async=True,
+    )
+
+    # Generate the messages to send
+    message = MIMEMultipart("alternative")
+    message["From"] = conf.get("opencve", "notification_smtp_mail_from")
+    message["To"] = email_to
+    message["Subject"] = subject
+
+    plain_text_template = env.get_template(f"{template}.txt")
+    plain_text_rendered = await plain_text_template.render_async(**context)
+    plain_text_message = MIMEText(plain_text_rendered, "plain", "utf-8")
+
+    html_template = env.get_template(f"{template}.html")
+    html_rendered = await html_template.render_async(**context)
+    html_message = MIMEText(html_rendered, "html", "utf-8")
+
+    message.attach(plain_text_message)
+    message.attach(html_message)
+
+    return message
+
+
+def get_smtp_conf():
+    kwargs = {
+        "hostname": conf.get("opencve", "notification_smtp_host"),
+        "port": conf.getint("opencve", "notification_smtp_port"),
+        "use_tls": conf.getboolean("opencve", "notification_smtp_use_tls"),
+        "validate_certs": conf.getboolean(
+            "opencve", "notification_smtp_validate_certs"
+        ),
+        "timeout": conf.getint("opencve", "notification_smtp_timeout"),
+    }
+
+    # Support empty values for username and password
+    username = conf.get("opencve", "notification_smtp_user")
+    if username:
+        kwargs["username"] = username
+
+    password = conf.get("opencve", "notification_smtp_password")
+    if password:
+        kwargs["password"] = password
+
+    try:
+        start_tls = conf.getboolean("opencve", "notification_smtp_start_tls")
+        kwargs["start_tls"] = start_tls
+    except AirflowConfigException:
+        pass
+
+    return kwargs
