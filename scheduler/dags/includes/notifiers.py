@@ -11,10 +11,10 @@ import arrow
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from airflow.configuration import conf
-from airflow.exceptions import AirflowConfigException
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from includes.constants import KB_LOCAL_REPO
+from includes.utils import get_smtp_conf, get_smtp_message
 
 logger = logging.getLogger(__name__)
 
@@ -213,35 +213,6 @@ class EmailNotifier(BaseNotifier):
         super().__init__(self, *args, **kwargs)
         self.email = self.config.get("extras").get("email")
 
-    @staticmethod
-    def get_smtp_conf():
-        kwargs = {
-            "hostname": conf.get("opencve", "notification_smtp_host"),
-            "port": conf.getint("opencve", "notification_smtp_port"),
-            "use_tls": conf.getboolean("opencve", "notification_smtp_use_tls"),
-            "validate_certs": conf.getboolean(
-                "opencve", "notification_smtp_validate_certs"
-            ),
-            "timeout": conf.getint("opencve", "notification_smtp_timeout"),
-        }
-
-        # Support empty values for username and password
-        username = conf.get("opencve", "notification_smtp_user")
-        if username:
-            kwargs["username"] = username
-
-        password = conf.get("opencve", "notification_smtp_password")
-        if password:
-            kwargs["password"] = password
-
-        try:
-            start_tls = conf.getboolean("opencve", "notification_smtp_start_tls")
-            kwargs["start_tls"] = start_tls
-        except AirflowConfigException:
-            pass
-
-        return kwargs
-
     def get_template_context(self):
         payload = super().prepare_payload()
         organization = payload["organization"]
@@ -302,34 +273,16 @@ class EmailNotifier(BaseNotifier):
             str(len(self.changes)),
         )
 
-        # Prepare the Jinja2 templating used to send the mail
-        dags_folder = pathlib.Path(conf.get("core", "dags_folder"))
-        env = Environment(
-            loader=FileSystemLoader(dags_folder / "templates"),
-            autoescape=select_autoescape(),
-            enable_async=True,
+        context = self.get_template_context()
+        message = await get_smtp_message(
+            email_to=self.email,
+            subject=f"[{context['project']}] {context['title']}",
+            template="email_notification",
+            context=context,
         )
 
-        # Generate the messages to send
-        context = self.get_template_context()
-        message = MIMEMultipart("alternative")
-        message["From"] = conf.get("opencve", "notification_smtp_mail_from")
-        message["To"] = self.email
-        message["Subject"] = f"[{context['project']}] {context['title']}"
-
-        plain_text_template = env.get_template("email_notification.txt")
-        plain_text_rendered = await plain_text_template.render_async(**context)
-        plain_text_message = MIMEText(plain_text_rendered, "plain", "utf-8")
-
-        html_template = env.get_template("email_notification.html")
-        html_rendered = await html_template.render_async(**context)
-        html_message = MIMEText(html_rendered, "html", "utf-8")
-
-        message.attach(plain_text_message)
-        message.attach(html_message)
-
         try:
-            kwargs = self.get_smtp_conf()
+            kwargs = get_smtp_conf()
             response = await aiosmtplib.send(message, **kwargs)
         except aiosmtplib.errors.SMTPException as e:
             logger.error("SMTPException(%s): %s", self.email, e)

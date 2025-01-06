@@ -1,0 +1,2 @@
+This is a test email to verify the SMTP configuration of the OpenCVE scheduler.
+If you receive this message, the SMTP setup is correctly configured.
