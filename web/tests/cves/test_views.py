@@ -69,6 +69,23 @@ def test_list_cves_with_sensitive_tags(create_cve, create_user, auth_client):
     assert find_cves(f"{reverse('cves')}?tag=BAR") == ["CVE-2024-31331"]
 
 
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_cves_with_null_characters(db, create_cve, client):
+    create_cve("CVE-2022-22965")
+
+    response = client.get(f"{reverse('cves')}?vendor=oracle")
+    assert response.status_code == 200
+
+    response = client.get(f"{reverse('cves')}?vendor=oracle%00")
+    assert response.status_code == 404
+
+    response = client.get(f"{reverse('cves')}?search=foo%00bar")
+    assert response.status_code == 404
+
+    response = client.get(f"{reverse('cves')}?weakness%00=cwe-1234")
+    assert response.status_code == 404
+
+
 urls_to_check = {
     "cves": [
         reverse("cves"),

@@ -62,6 +62,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "hijack.middleware.HijackUserMiddleware",
+    "cves.middlewares.SanitizeInputMiddleware",
     "onboarding.middlewares.OnboardingMiddleware",
     "organizations.middlewares.OrganizationMiddleware",
     "auditlog.middleware.AuditlogMiddleware",
