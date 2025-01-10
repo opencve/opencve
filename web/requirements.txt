@@ -20,3 +20,4 @@ nested-lookup==0.2.25
 psycopg2-binary==2.9.10
 gunicorn==23.0.0
 sentry-sdk==2.19.2
+pyparsing==3.2.1

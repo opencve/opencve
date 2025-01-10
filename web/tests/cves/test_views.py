@@ -5,7 +5,7 @@ from django.test import override_settings
 from django.urls import reverse
 from bs4 import BeautifulSoup
 
-from users.models import UserTag, CveTag
+from users.models import User, UserTag, CveTag
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -156,3 +156,113 @@ def test_statistics(create_variable, client):
     assert b'STATISTICS_ONE = {"foo": 1000};' in response.content
     assert b'STATISTICS_TWO = {"bar": 2000};' in response.content
     assert b"STATISTICS_CVES_COUNT_LAST_DAYS" not in response.content
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_advanced_search_link_unauthenticated(client, auth_client):
+    def get_soup(c):
+        response = c.get(reverse("cves"))
+        return BeautifulSoup(response.content, features="html.parser")
+
+    # Unauthenticated user
+    soup = get_soup(client)
+    link = soup.find("a", {"class": "advanced-search-link"})
+    assert link["href"] == reverse("account_login")
+    assert (
+        link["title"] == "You must be authenticated to use the advanced search feature"
+    )
+
+    # Authenticated user
+    client = auth_client()
+    soup = get_soup(client)
+    link = soup.find("button", {"class": "advanced-search-link"})
+    assert link.text.strip() == "Switch to Advanced Search (Beta)"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_switch_search_mode(create_user, auth_client):
+    url = reverse("cves")
+    user = create_user()
+    client = auth_client(user)
+    assert user.settings == {"activities_view": "all"}
+
+    # Switch to advanced mode
+    client.post(url, data={}, follow=True)
+    user = User.objects.first()
+    assert user.settings == {"activities_view": "all", "search_mode": "advanced"}
+
+    # Back to basic mode
+    client.post(url, data={}, follow=True)
+    user = User.objects.first()
+    assert user.settings == {"activities_view": "all", "search_mode": "basic"}
+
+
+@pytest.mark.parametrize(
+    "query, results",
+    [
+        ("foobarbaz", []),
+        ("git", ["CVE-2023-22490"]),
+        ("CVE-2021-44228", ["CVE-2021-44228"]),
+        ("CVE-2021-44228 OR CVE-2023-22490", ["CVE-2021-44228", "CVE-2023-22490"]),
+        ("cve=CVE-2023-22490", ["CVE-2023-22490"]),
+        ("cve:CVE-2022", ["CVE-2022-20698", "CVE-2022-22965"]),
+        ("description:git", ["CVE-2023-22490"]),
+        ("title:ldap", ["CVE-2021-44228"]),
+        (
+            "title:ldap OR title:log4j OR title:git",
+            ["CVE-2021-44228", "CVE-2023-22490"],
+        ),
+        (
+            "title:LDAP OR title:Log4J OR title:Git",
+            ["CVE-2021-44228", "CVE-2023-22490"],
+        ),
+        ("title:LDAP AND title:Log4J AND title:Git", []),
+        ("vendor:cisco", ["CVE-2021-44228", "CVE-2022-22965"]),
+        ("vendor:cisco AND cvss31>=9", ["CVE-2021-44228", "CVE-2022-22965"]),
+        ("vendor:cisco AND cvss31=10", ["CVE-2021-44228"]),
+        (
+            "vendor:cisco AND (cvss31=10 OR cvss20>7)",
+            ["CVE-2021-44228", "CVE-2022-22965"],
+        ),
+        ("product:jboss_fuse", ["CVE-2021-44228", "CVE-2022-22965"]),
+        ("product:jboss_fuse AND cvss31=10", ["CVE-2021-44228"]),
+    ],
+)
+@override_settings(ENABLE_ONBOARDING=False)
+def test_advanced_search(create_cve, auth_client, query, results):
+    client = auth_client()
+    create_cve("CVE-2021-44228")
+    create_cve("CVE-2022-20698")
+    create_cve("CVE-2022-22965")
+    create_cve("CVE-2023-22490")
+    create_cve("CVE-2024-31331")
+
+    response = client.get(f"{reverse('cves')}?q={query}")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    cves = [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
+
+    assert response.status_code == 200
+    assert sorted(cves) == sorted(results)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_advanced_search_with_usertag(create_cve, create_user, auth_client):
+    user = create_user()
+    client = auth_client(user)
+
+    # UserTag not found
+    response = client.get(f"{reverse('cves')}?q=userTag:test")
+    assert response.status_code == 404
+
+    # Create a UserTag and assign it to 1 CVE
+    create_cve("CVE-2021-44228")
+    cve = create_cve("CVE-2022-22965")
+    tag = UserTag.objects.create(name="test", user=user)
+    CveTag.objects.create(user=user, cve=cve, tags=[tag.name])
+
+    response = client.get(f"{reverse('cves')}?q=userTag:test")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    cves = [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
+
+    assert response.status_code == 200
+    assert cves == ["CVE-2022-22965"]

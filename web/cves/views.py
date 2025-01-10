@@ -7,9 +7,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, TemplateView
 
 from cves.constants import PRODUCT_SEPARATOR
-from cves.models import Cve, Product, Variable, Vendor, Weakness
-from cves.utils import list_to_dict_vendors, list_weaknesses, list_filtered_cves
 from cves.utils import humanize
+from cves.forms import SearchForm
+from cves.models import Cve, Product, Variable, Vendor, Weakness
+from cves.search import Search, BadQueryException, MaxFieldsExceededException
+from cves.utils import list_to_dict_vendors, list_weaknesses, list_filtered_cves
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project
@@ -70,35 +72,83 @@ class CveListView(ListView):
     template_name = "cves/cve_list.html"
     paginate_by = 20
 
+    def get_search_mode(self):
+        if not self.request.user.is_authenticated:
+            return "basic"
+        elif self.request.GET.get("q"):
+            self.request.user.update_setting("search_mode", "advanced")
+            return "advanced"
+        elif (
+            self.request.GET.get("vendor")
+            or self.request.GET.get("product")
+            or self.request.GET.get("search")
+            or self.request.GET.get("weakness")
+        ):
+            self.request.user.update_setting("search_mode", "basic")
+            return "basic"
+
+        return self.request.user.get_setting("search_mode", "basic")
+
     def get_queryset(self):
+        # Advanced search
+        if self.get_search_mode() == "advanced":
+            self.form = SearchForm(self.request.GET)
+
+            search_query = None
+            if self.form.is_valid():
+                search_query = self.form.cleaned_data["q"]
+
+            try:
+                search = Search(search_query, self.request.user)
+                return search.query
+            except (BadQueryException, MaxFieldsExceededException) as e:
+                self.form.add_error("q", e)
+                return Cve.objects.order_by("-updated_at").all()
+
+        # Basic search
         return list_filtered_cves(self.request.GET, self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
-        product = self.request.GET.get("product", "").replace(" ", "_").lower()
-        weakness = self.request.GET.get("weakness", "")
+        context["search_mode"] = self.get_search_mode()
 
-        if weakness:
-            context["title"] = weakness
+        if context["search_mode"] == "basic":
+            vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
+            product = self.request.GET.get("product", "").replace(" ", "_").lower()
+            weakness = self.request.GET.get("weakness", "")
 
-        if vendor:
-            context["vendor"] = Vendor.objects.get(name=vendor)
-            context["title"] = humanize(vendor)
+            if weakness:
+                context["title"] = weakness
 
-            if product:
-                context["product"] = Product.objects.get(
-                    name=product, vendor=context["vendor"]
-                )
-                context["title"] = humanize(product)
+            if vendor:
+                context["vendor"] = Vendor.objects.get(name=vendor)
+                context["title"] = humanize(vendor)
 
-        # List the user tags
-        if self.request.user.is_authenticated:
-            context["user_tags"] = [
-                t.name for t in UserTag.objects.filter(user=self.request.user).all()
-            ]
+                if product:
+                    context["product"] = Product.objects.get(
+                        name=product, vendor=context["vendor"]
+                    )
+                    context["title"] = humanize(product)
+
+            # List the user tags
+            if self.request.user.is_authenticated:
+                context["user_tags"] = [
+                    t.name for t in UserTag.objects.filter(user=self.request.user).all()
+                ]
+
+        if context["search_mode"] == "advanced":
+            context["search_form"] = self.form
 
         return context
+
+    def post(self, request, *args, **kwargs):
+        current_mode = request.user.get_setting("search_mode", "basic")
+        new_mode = "advanced" if current_mode == "basic" else "basic"
+
+        request.user.update_setting("search_mode", new_mode)
+        request.user.save()
+
+        return redirect("cves")
 
 
 class CveDetailView(DetailView):
