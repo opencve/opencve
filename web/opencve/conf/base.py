@@ -247,3 +247,6 @@ V1_DATABASE = env.db(
 
 # Redirect user to onboarding view if they do not belong to an organization
 ENABLE_ONBOARDING = True
+
+# Maximum number of fields to allow in a CVE Advanced Search query
+CVES_ADVANCED_SEARCH_MAX_FIELDS = 5

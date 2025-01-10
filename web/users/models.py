@@ -35,6 +35,13 @@ class User(BaseModel, AbstractUser):
         )
         return [m.organization for m in memberships]
 
+    def get_setting(self, key, default=None):
+        return self.settings.get(key, default)
+
+    def update_setting(self, key, value):
+        self.settings[key] = value
+        self.save(update_fields=["settings"])
+
 
 class UserTag(BaseModel):
     name = models.CharField(

@@ -201,7 +201,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.has-search {
+    position: relative;
+}
 
+.form-control-feedback {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
 .table .td-break {
   max-width: 0;
   word-wrap: break-word;
@@ -634,4 +644,42 @@ pre.plainJSON{
 
 .products-list .product-vendors-title {
   font-size: 13px;
+}
+
+.advanced-search-link {
+    display: inline-block;
+    text-decoration: none;
+    line-height: 1.5;
+    font-size: 12px;
+    color: #5648D8;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #F4F3FF;
+    border: 1px solid #5648D8;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.advanced-search-link:hover,
+.advanced-search-link:focus {
+    background-color: #e3e0ff;
+    border: 1px solid #3225ac;
+    color: #5648D8;
+    outline: none;
+}
+
+.beta-label {
+    font-size: 10px;
+    font-weight: normal;
+    color: #0A0031;
+    margin-left: 4px;
+}
+
+.fa-bolt {
+    margin-left: 5px;
+    color: #0A0031;
+}
+
+.advanced-search-link:focus .beta-label,
+.advanced-search-link:focus .fa-bolt {
+    color: #0A0031;
 }
