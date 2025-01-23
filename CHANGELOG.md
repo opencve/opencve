@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.1.0 - 2025-01-23
+### Added
+- Add CVEs advanced search feature
+- Improve install.sh script
+- Add new DAG to check SMTP configuration
+- Add custom 404 and 500 pages
+- Upgrade web & scheduler dependencies
+- Add canonical urls in html
+- Add the statistics view
+- Add variables model
+- Update title and description of HTML pages
+- Add start_tls setting for SMTP configuration of scheduler
+
+### Fixed
+- Disallow null character in query params
+- Add Allauth socialaccount dependency
+- Remove syntax warning
+
+### Removed
+- Remove Python 3.9 support
+
 ## 2.0.0 - 2024-12-10
 Welcome to OpenCVE v2!
 
