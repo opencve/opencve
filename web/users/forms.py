@@ -16,7 +16,9 @@ class LoginForm(BaseLoginForm):
     def __init__(self, *args, **kwargs):
         super(LoginForm, self).__init__(*args, **kwargs)
 
-        self.fields["login"].widget.attrs.update({"placeholder": "Username or Email"})
+        self.fields["login"].widget.attrs.update(
+            {"placeholder": "Username or Email", "autofocus": True}
+        )
         self.fields["password"].widget.attrs.update({"placeholder": "Password"})
         self.helper = FormHelper()
         self.helper.form_show_labels = False
@@ -31,7 +33,9 @@ class RegisterForm(SignupForm):
     def __init__(self, *args, **kwargs):
         super(RegisterForm, self).__init__(*args, **kwargs)
 
-        self.fields["username"].widget.attrs.update({"placeholder": "Username"})
+        self.fields["username"].widget.attrs.update(
+            {"placeholder": "Username", "autofocus": True}
+        )
         self.fields["email"].widget.attrs.update({"placeholder": "Email"})
         self.fields["password1"].widget.attrs.update({"placeholder": "Password"})
         self.fields["password2"].widget.attrs.update(
