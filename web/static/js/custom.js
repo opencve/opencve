@@ -90,6 +90,28 @@ function getContrastedColor(str){
         });
     });
 
+    // To rephrase
+    /*$('#select2-projects').on('select2:selecting', function(e) {
+      console.log(e.params.args.data.text);
+      console.log($('.select2-organizations').val());
+      e.stopPropagation();
+    });*/
+    $("#foobar").click(function(e) {
+      e.preventDefault();
+      const organization = $('.select2-organizations').val();
+      const project = $('#select2-projects').val();
+      const url = "/org/" + organization + "/projects/" + project + "/views/add";
+
+      $("#prout").attr("action", url);
+      $("#prout").submit();
+    });
+
+    $("#foufou").click(function(e) {
+      const filter = $("#div_id_q input").val();
+      $("#id_query").val(filter);
+      $('#modal-views').modal('show');
+    });
+
     // Subscriptions handler
     $('.subscribe').click(function() {
         var button = $(this)

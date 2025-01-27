@@ -8,6 +8,7 @@ from organizations.views import (
     OrganizationMemberDeleteView,
     OrganizationMembersFormView,
     OrganizationsListView,
+    OrganizationViewListView,
     change_organization,
 )
 
@@ -38,4 +39,5 @@ urlpatterns = [
         OrganizationInvitationView.as_view(),
         name="accept_organization_invitation",
     ),
+    path("views/", OrganizationViewListView.as_view(), name="organization_views"),
 ]

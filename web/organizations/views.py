@@ -78,12 +78,12 @@ class OrganizationEditView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["members"] = Membership.objects.filter(organization=self.get_object())
+        context["members"] = Membership.objects.filter(organization=self.organization)
         context["members_form"] = MembershipForm(initial={"role": Membership.MEMBER})
         return context
 
     def get_success_url(self):
-        return reverse("edit_organization", kwargs={"org_name": self.object.name})
+        return reverse("edit_organization", kwargs={"org_name": self.organization.name})
 
 
 class OrganizationDeleteView(
@@ -112,14 +112,15 @@ class OrganizationMembersFormView(
     success_message = "The new member has been added."
 
     def post(self, request, *args, **kwargs):
-        object = self.get_object()
 
         # Check the form validity
         form = self.get_form_class()(request.POST)
         if not form.is_valid():
             messages.error(request, "Error in the form")
             return redirect(
-                reverse("edit_organization", kwargs={"org_name": object.name})
+                reverse(
+                    "edit_organization", kwargs={"org_name": self.organization.name}
+                )
             )
 
         # Check if the invited user exists
@@ -127,20 +128,26 @@ class OrganizationMembersFormView(
         if not user:
             messages.error(request, "User not found")
             return redirect(
-                reverse("edit_organization", kwargs={"org_name": object.name})
+                reverse(
+                    "edit_organization", kwargs={"org_name": self.organization.name}
+                )
             )
 
         # Check if the member already exists
-        if Membership.objects.filter(user=user, organization=object).exists():
+        if Membership.objects.filter(
+            user=user, organization=self.organization
+        ).exists():
             messages.error(request, "Member already exist")
             return redirect(
-                reverse("edit_organization", kwargs={"org_name": object.name})
+                reverse(
+                    "edit_organization", kwargs={"org_name": self.organization.name}
+                )
             )
 
         # Create the membership
         Membership.objects.create(
             user=user,
-            organization=object,
+            organization=self.organization,
             role=form.cleaned_data["role"],
             key=get_random_string(64).lower(),
         )
@@ -148,8 +155,7 @@ class OrganizationMembersFormView(
         return super().post(request, *args, **kwargs)
 
     def get_success_url(self):
-        object = self.get_object()
-        return reverse("edit_organization", kwargs={"org_name": object.name})
+        return reverse("edit_organization", kwargs={"org_name": self.organization.name})
 
 
 class OrganizationMemberDeleteView(
@@ -239,3 +245,17 @@ def change_organization(request):
     # Save this organization in session
     request.session["user_organization_id"] = str(organization.id)
     return JsonResponse({"status": "ok"})
+
+
+class OrganizationViewListView(LoginRequiredMixin, OrganizationIsOwnerMixin, ListView):
+    model = View
+    template_name = "organizations/views/list.html"
+    context_object_name = "views"
+
+    def get_queryset(self):
+        return View.objects.filter(organization=self.organization)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["organization"] = self.organization
+        return context

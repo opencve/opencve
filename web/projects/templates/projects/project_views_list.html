@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ project.name }} - Saved Views</h1>
+
+<a href="{% url 'project_view_create' project.id %}" class="btn btn-primary">Add New View</a>
+
+{% if views %}
+<table class="table mt-4">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Query</th>
+            <th>Created At</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for view in views %}
+        <tr>
+            <td>{{ view.name }}</td>
+            <td><code>{{ view.query }}</code></td>
+            <td>{{ view.created_at }}</td>
+            <td>
+                <a href="{% url 'project_view_delete' project.id view.id %}" class="btn btn-danger btn-sm">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No saved views yet.</p>
+{% endif %}
+
+{% endblock %}

@@ -21,6 +21,9 @@
                 <li class="{% is_active_link 'reports' 'report' %}">
                     <a href="{% url 'reports' org_name=request.user_organization.name project_name=project.name %}">Reports</a>
                 </li>
+                <li class="{% is_active_link 'project_views' %}">
+                    <a href="{% url 'project_views' org_name=request.user_organization.name project_name=project.name %}">Views</a>
+                </li>
                 <li class="{% is_active_link 'subscriptions' %}">
                     <a href="{% url 'subscriptions' org_name=request.user_organization.name project_name=project.name %}">Subscriptions</a>
                 </li>

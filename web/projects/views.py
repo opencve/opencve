@@ -22,9 +22,9 @@ from organizations.mixins import (
     OrganizationIsMemberMixin,
     OrganizationIsOwnerMixin,
 )
-from projects.forms import FORM_MAPPING, ProjectForm
+from projects.forms import FORM_MAPPING, ProjectForm, ProjectViewForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
-from projects.models import Notification, Project
+from projects.models import Notification, Project, ProjectView
 
 NOTIFICATION_TYPES = [
     "cpes",
@@ -61,6 +61,9 @@ class ProjectDetailView(
     #  so we'll have a pagination instead of [:10]
     model = Project
     template_name = "projects/dashboard.html"
+
+    def get_object(self, queryset=None):
+        return self.get_project()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -117,6 +120,9 @@ class ProjectEditView(
     template_name = "projects/create_update.html"
     success_message = "The project has been successfully updated."
 
+    def get_object(self, queryset=None):
+        return self.get_project()
+
     def get_form(self, form_class=None):
         form = super(ProjectEditView, self).get_form()
         form.fields["name"].disabled = True
@@ -138,6 +144,9 @@ class ProjectDeleteView(
     model = Project
     template_name = "projects/delete_project.html"
     success_message = "The project has been deleted."
+
+    def get_object(self, queryset=None):
+        return self.get_project()
 
     def get_success_url(self):
         return reverse_lazy(
@@ -278,9 +287,12 @@ class SubscriptionsView(
     model = Project
     template_name = "projects/subscriptions.html"
 
+    def get_object(self, queryset=None):
+        return self.get_project()
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self.get_object()
+        context["project"] = self.get_project()
         return context
 
 
@@ -293,6 +305,9 @@ class NotificationsView(
 ):
     model = Project
     template_name = "projects/notifications/list.html"
+
+    def get_object(self, queryset=None):
+        return self.get_project()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -307,6 +322,7 @@ class NotificationCreateView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
     ProjectIsActiveMixin,
+    ProjectObjectMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     CreateView,
@@ -314,13 +330,6 @@ class NotificationCreateView(
     model = Notification
     template_name = "projects/notifications/save.html"
     success_message = "The notification has been successfully created."
-
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.user_organization,
-            name=self.kwargs["project_name"],
-        )
 
     def get(self, request, *args, **kwargs):
         if request.GET.get("type") not in ["email", "webhook"]:
@@ -339,7 +348,7 @@ class NotificationCreateView(
             extras[field] = form.cleaned_data[field]
 
         # Create the notification
-        form.instance.project = self._get_project()
+        form.instance.project = self.get_project()
         form.instance.type = self.request.GET["type"]
         form.instance.configuration = {
             "types": types,
@@ -357,12 +366,12 @@ class NotificationCreateView(
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs["project"] = self._get_project()
+        kwargs["project"] = self.get_project()
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self._get_project()
+        context["project"] = self.get_project()
         context["type"] = self.request.GET["type"]
         return context
 
@@ -371,6 +380,7 @@ class NotificationUpdateView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
     ProjectIsActiveMixin,
+    ProjectObjectMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     UpdateView,
@@ -379,17 +389,10 @@ class NotificationUpdateView(
     template_name = "projects/notifications/save.html"
     success_message = "The notification has been successfully updated."
 
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.user_organization,
-            name=self.kwargs["project_name"],
-        )
-
     def get_object(self, queryset=None):
         return get_object_or_404(
             Notification,
-            project=self._get_project(),
+            project=self.get_project(),
             name=self.kwargs["notification"],
         )
 
@@ -405,7 +408,7 @@ class NotificationUpdateView(
             extras[field] = form.cleaned_data[field]
 
         # Create the notification
-        form.instance.project = self._get_project()
+        form.instance.project = self.get_project()
         form.instance.configuration = {
             "types": types,
             "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
@@ -422,12 +425,12 @@ class NotificationUpdateView(
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs["project"] = self._get_project()
+        kwargs["project"] = self.get_project()
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self._get_project()
+        context["project"] = self.get_project()
         context["type"] = self.object.type
 
         # Transform JSON field into dedicated fields
@@ -447,6 +450,7 @@ class NotificationUpdateView(
 class NotificationDeleteView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
     ProjectIsActiveMixin,
     SuccessMessageMixin,
     DeleteView,
@@ -455,17 +459,10 @@ class NotificationDeleteView(
     template_name = "projects/notifications/delete.html"
     success_message = "The notification has been successfully removed."
 
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.user_organization,
-            name=self.kwargs["project_name"],
-        )
-
     def get_object(self, queryset=None):
         return get_object_or_404(
             Notification,
-            project=self._get_project(),
+            project=self.get_project(),
             name=self.kwargs["notification"],
         )
 
@@ -474,6 +471,72 @@ class NotificationDeleteView(
             "notifications",
             kwargs={
                 "org_name": self.request.user_organization.name,
-                "project_name": self._get_project().name,
+                "project_name": self.get_project().name,
             },
+        )
+
+
+class ProjectViewListView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    ListView,
+):
+    model = Project
+    template_name = "projects/views/list.html"
+    context_object_name = "views"
+    paginate_by = 20
+
+    def get_queryset(self):
+        return ProjectView.objects.filter(project=self.get_project())
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.get_project()
+        return context
+
+
+class ProjectViewCreateView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectIsActiveMixin,
+    ProjectObjectMixin,
+    SuccessMessageMixin,
+    CreateView,
+):
+    model = ProjectView
+    form_class = ProjectViewForm
+    template_name = "projects/views/save.html"
+    success_message = "View successfully created!"
+
+    def form_valid(self, form):
+        project = self.get_project()
+        form.instance.project = project
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return f"{reverse('cves')}?q={self.object.query}"
+        return reverse_lazy(
+            "project_views",
+            kwargs={
+                "org_name": self.request.user_organization.name,
+                "project_name": self.get_object().name,
+            },
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.get_project()
+        return context
+
+
+class ProjectViewDeleteView(SuccessMessageMixin, DeleteView):
+    model = ProjectView
+    template_name = "projects/project_view_confirm_delete.html"
+    success_message = "View successfully deleted!"
+
+    def get_success_url(self):
+        return reverse_lazy(
+            "project_views_list", kwargs={"project_id": self.object.project.id}
         )

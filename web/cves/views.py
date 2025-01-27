@@ -14,6 +14,7 @@ from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from cves.utils import list_to_dict_vendors, list_weaknesses, list_filtered_cves
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
+from projects.forms import ProjectViewForm
 from projects.models import Project
 from users.models import CveTag, UserTag
 
@@ -138,6 +139,7 @@ class CveListView(ListView):
 
         if context["search_mode"] == "advanced":
             context["search_form"] = self.form
+            context["create_view_form"] = ProjectViewForm
 
         return context
 

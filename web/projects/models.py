@@ -97,3 +97,20 @@ class Notification(BaseModel):
                 "org_name": self.project.organization.name,
             },
         )
+
+
+class ProjectView(BaseModel):
+    name = models.CharField(
+        max_length=100,
+    )
+    query = models.TextField()
+
+    # Relationships
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="views")
+
+    class Meta:
+        unique_together = ("project", "name")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.project.name} - {self.name}"

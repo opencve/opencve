@@ -5,7 +5,7 @@ from django import forms
 from django.conf import settings
 
 from cves.constants import CVSS_SCORES
-from projects.models import Notification, Project
+from projects.models import Notification, Project, ProjectView
 
 FORM_MAPPING = {"email": ["email"], "webhook": ["url", "headers"]}
 
@@ -124,3 +124,18 @@ class WebhookForm(NotificationForm):
                 )
 
         return headers
+
+
+class ProjectViewForm(forms.ModelForm):
+    class Meta:
+        model = ProjectView
+        fields = ["name", "query"]
+        widgets = {"query": forms.TextInput()}
+
+    def __init__(self, *args, **kwargs):
+        super(ProjectViewForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_method = "post"
+        self.helper.add_input(
+            Submit("submit", "Save View", css_class="btn btn-success")
+        )

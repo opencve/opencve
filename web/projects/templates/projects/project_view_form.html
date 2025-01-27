@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Add New View to {{ project.name }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form|crispy }}
+    <a href="{% url 'project_views_list' project.id %}" class="btn btn-secondary">Cancel</a>
+</form>
+
+{% endblock %}

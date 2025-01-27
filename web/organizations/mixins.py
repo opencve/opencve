@@ -17,7 +17,7 @@ class OrganizationIsMemberMixin:
     """Check if the user is member of the organization"""
 
     def dispatch(self, request, *args, **kwargs):
-        _ = get_object_or_404(
+        self.organization = get_object_or_404(
             Organization, members=request.user, name=kwargs["org_name"]
         )
         return super().dispatch(request, *args, **kwargs)
@@ -28,7 +28,7 @@ class OrganizationIsOwnerMixin:
 
     def dispatch(self, request, *args, **kwargs):
         # Check if organization exists
-        organization = get_object_or_404(
+        self.organization = get_object_or_404(
             Organization, members=request.user, name=kwargs["org_name"]
         )
 
@@ -36,7 +36,7 @@ class OrganizationIsOwnerMixin:
         membership = get_object_or_404(
             Membership,
             user=request.user,
-            organization=organization,
+            organization=self.organization,
             role=Membership.OWNER,
         )
 

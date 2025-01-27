@@ -15,6 +15,9 @@ from projects.views import (
     ReportsView,
     ReportView,
     SubscriptionsView,
+    ProjectViewListView,
+    ProjectViewCreateView,
+    ProjectViewDeleteView,
 )
 
 register_converter(DateConverter, "date")
@@ -80,5 +83,15 @@ urlpatterns = [
         "org/<org_name>/projects/<project_name>/vulnerabilities",
         ProjectVulnerabilitiesView.as_view(),
         name="project_vulnerabilities",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/views",
+        ProjectViewListView.as_view(),
+        name="project_views",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/views/add",
+        ProjectViewCreateView.as_view(),
+        name="create_view",
     ),
 ]
