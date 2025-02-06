@@ -55,3 +55,44 @@ def test_organization_middleware_with_organizations(
     assert content.text == orga1.name
     assert request.user_organization == orga1
     assert request.user_organizations == [orga1, orga2]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_organization_middleware_load_from_url(
+    auth_client, create_user, create_organization, create_project
+):
+    user = create_user(username="john")
+    client = auth_client(user)
+    org_foo = create_organization(name="org_foo", user=user)
+    org_bar = create_organization(name="org_bar", user=user)
+    org_unknown = create_organization(name="org_unknown")
+
+    # Urls contains the org_foo organization
+    response = client.get(reverse("edit_organization", kwargs={"org_name": "org_foo"}))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    content = soup.find("select", {"class": "select2-organizations"}).find(
+        "option", selected=True
+    )
+    request = response.wsgi_request
+
+    assert content.text == "org_foo"
+    assert request.user_organization == org_foo
+    assert request.user_organizations == [org_bar, org_foo]
+
+    # Now we switch to the org_bar organization
+    response = client.get(reverse("edit_organization", kwargs={"org_name": "org_bar"}))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    content = soup.find("select", {"class": "select2-organizations"}).find(
+        "option", selected=True
+    )
+    request = response.wsgi_request
+
+    assert content.text == "org_bar"
+    assert request.user_organization == org_bar
+    assert request.user_organizations == [org_bar, org_foo]
+
+    # But user can't access org_unknown organization as he's not member of it
+    response = client.get(
+        reverse("edit_organization", kwargs={"org_name": "org_unknown"})
+    )
+    assert response.status_code == 404
