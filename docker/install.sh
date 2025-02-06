@@ -280,6 +280,7 @@ while getopts ${OPTSTRING} opt; do
   esac
 done
 
+shift $((OPTIND -1))
 _COMMAND=$1
 
 case $_COMMAND in
