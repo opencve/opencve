@@ -349,8 +349,8 @@ function getContrastedColor(str){
       }
     });
 
-    // CVSS Repartition
-    const ctx_cvss_repartition = document.getElementById('cvss_repartition');
+    // CVSS Distribution
+    const ctx_cvss_distribution = document.getElementById('cvss_distribution');
     const colors = {
       "cvssV2_0": {
         backgroundColor: 'rgba(16, 202, 249, 0.5)',
@@ -382,7 +382,7 @@ function getContrastedColor(str){
       };
     });
 
-    new Chart(ctx_cvss_repartition, {
+    new Chart(ctx_cvss_distribution, {
       type: 'scatter',
       data: {
         datasets: scatterData,
