@@ -8,7 +8,7 @@ class OrganizationRequiredMixin:
     """Verify that the current user is member of an organization."""
 
     def dispatch(self, request, *args, **kwargs):
-        if not request.user_organization:
+        if not request.current_organization:
             return redirect("list_organizations")
         return super().dispatch(request, *args, **kwargs)
 

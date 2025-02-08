@@ -47,7 +47,7 @@ class ChangeListView(LoginRequiredMixin, ListView):
         # Filter on user subscriptions
         if self.request.user.settings["activities_view"] == "subscriptions":
 
-            vendors = self.request.user_organization.get_projects_vendors()
+            vendors = self.request.current_organization.get_projects_vendors()
             if vendors:
                 query = query.filter(cve__vendors__has_any_keys=vendors)
 
@@ -60,7 +60,7 @@ class ChangeListView(LoginRequiredMixin, ListView):
         context["tags"] = self.request.user.tags.all()
 
         # Add the projects
-        organization = self.request.user_organization
+        organization = self.request.current_organization
         if organization:
             projects = organization.projects.all()
             context["projects"] = projects.order_by("name")

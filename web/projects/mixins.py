@@ -13,7 +13,7 @@ class ProjectObjectMixin:
     def get_object(self, queryset=None):
         return get_object_or_404(
             Project,
-            organization=self.request.user_organization,
+            organization=self.request.current_organization,
             name=self.kwargs["project_name"],
         )
 

@@ -7,7 +7,7 @@ from projects.forms import EmailForm, WebhookForm, NotificationForm, ProjectForm
 
 def test_project_form_valid(create_organization):
     org = create_organization(name="my-orga")
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
     form = ProjectForm(
         data={"name": "my-project", "description": "my description", "active": "on"},
         request=request,
@@ -17,7 +17,7 @@ def test_project_form_valid(create_organization):
 
 def test_project_form_special_characters(create_organization):
     org = create_organization(name="my-orga")
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
     form = ProjectForm(
         data={"name": "foo|bar", "description": "my description", "active": "on"},
         request=request,
@@ -29,7 +29,7 @@ def test_project_form_special_characters(create_organization):
 
 def test_project_form_reserved_names(create_organization):
     org = create_organization(name="my-orga")
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
     form = ProjectForm(
         data={"name": "add", "description": "my description", "active": "on"},
         request=request,
@@ -40,7 +40,7 @@ def test_project_form_reserved_names(create_organization):
 def test_project_form_update_instance(create_organization, create_project):
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
     form = ProjectForm(
         data={"name": "renamed", "description": "my description", "active": "on"},
         request=request,
@@ -52,7 +52,7 @@ def test_project_form_update_instance(create_organization, create_project):
 def test_project_form_name_already_exists(create_organization, create_project):
     org1 = create_organization(name="org1")
     create_project(name="foo", organization=org1)
-    request = Mock(user_organization=org1.id)
+    request = Mock(current_organization=org1.id)
     form = ProjectForm(
         data={"name": "foo", "description": "my description", "active": "on"},
         request=request,
@@ -61,7 +61,7 @@ def test_project_form_name_already_exists(create_organization, create_project):
 
     # Same name is valid for another organization
     org2 = create_organization(name="org2")
-    request = Mock(user_organization=org2.id)
+    request = Mock(current_organization=org2.id)
     form = ProjectForm(
         data={"name": "foo", "description": "my description", "active": "on"},
         request=request,
@@ -72,7 +72,7 @@ def test_project_form_name_already_exists(create_organization, create_project):
 def test_notification_form_valid(create_organization, create_project):
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
     form = NotificationForm(
         data={
             "name": "foo",
@@ -87,7 +87,7 @@ def test_notification_form_valid(create_organization, create_project):
 def test_notification_form_special_characters(create_organization, create_project):
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
     form = NotificationForm(
         data={
             "name": "foo|bar",
@@ -104,7 +104,7 @@ def test_notification_form_special_characters(create_organization, create_projec
 def test_notification_form_reserved_name(create_organization, create_project):
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
     form = NotificationForm(
         data={
             "name": "add",
@@ -123,7 +123,7 @@ def test_notification_form_already_exists(
     project1 = create_project(name="project1", organization=org)
     create_notification(name="foo", project=project1)
 
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
     form = NotificationForm(
         data={
             "name": "foo",
@@ -150,7 +150,7 @@ def test_notification_form_already_exists(
 def test_email_notification_form(create_organization, create_project):
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
 
     form = EmailForm(
         data={
@@ -188,7 +188,7 @@ def test_email_notification_form(create_organization, create_project):
 def test_webhook_notification_form(create_organization, create_project):
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
 
     form = WebhookForm(
         data={
@@ -255,7 +255,7 @@ def test_webhook_notification_valid_headers(
 ):
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
-    request = Mock(user_organization=org.id)
+    request = Mock(current_organization=org.id)
 
     form = WebhookForm(
         data={
