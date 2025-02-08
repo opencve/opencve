@@ -64,7 +64,7 @@ class ProjectDetailView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self.get_object()
+        context["project"] = self.project
 
         # Get the list of vendors and products
         vendors = (
@@ -78,7 +78,7 @@ class ProjectDetailView(
 
         # Last reports
         query = (
-            Report.objects.filter(project=self.get_object())
+            Report.objects.filter(project=self.project)
             .prefetch_related("changes")
             .all()
         )
@@ -146,23 +146,22 @@ class ProjectDeleteView(
 
 
 class ProjectVulnerabilitiesView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, ListView
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    ListView,
 ):
     model = Cve
     context_object_name = "cves"
     template_name = "projects/vulnerabilities.html"
     paginate_by = 20
 
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.current_organization,
-            name=self.kwargs["project_name"],
-        )
-
     def get_queryset(self):
-        project = self._get_project()
-        vendors = project.subscriptions["vendors"] + project.subscriptions["products"]
+        vendors = (
+            self.project.subscriptions["vendors"]
+            + self.project.subscriptions["products"]
+        )
         if not vendors:
             return self.model.objects.none()
 
@@ -170,33 +169,29 @@ class ProjectVulnerabilitiesView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self._get_project()
+        context["project"] = self.project
         return context
 
 
 class ReportsView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, ListView
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    ListView,
 ):
     model = Report
     context_object_name = "reports"
     template_name = "projects/reports.html"
     paginate_by = 20
 
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.current_organization,
-            name=self.kwargs["project_name"],
-        )
-
     def get_queryset(self):
-        project = self._get_project()
         changes_with_cve_prefetch = Prefetch(
             "changes",
             queryset=Change.objects.select_related("cve"),
         )
         query = (
-            Report.objects.filter(project=project)
+            Report.objects.filter(project=self.project)
             .prefetch_related(changes_with_cve_prefetch)
             .all()
         )
@@ -204,22 +199,19 @@ class ReportsView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self._get_project()
+        context["project"] = self.project
         return context
 
 
 class ReportView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectIsActiveMixin, DetailView
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
 ):
     model = Report
     template_name = "projects/report.html"
-
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.current_organization,
-            name=self.kwargs["project_name"],
-        )
 
     @staticmethod
     def get_report_statistics(report):
@@ -256,7 +248,7 @@ class ReportView(
         # Return the daily report
         report = get_object_or_404(
             queryset,
-            project=self._get_project(),
+            project=self.project,
             day=self.kwargs["day"],
         )
 
@@ -264,7 +256,7 @@ class ReportView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self._get_project()
+        context["project"] = self.project
         return context
 
 
@@ -280,7 +272,7 @@ class SubscriptionsView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self.get_object()
+        context["project"] = self.project
         return context
 
 
@@ -296,9 +288,9 @@ class NotificationsView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self.get_object()
+        context["project"] = self.project
         context["notifications"] = (
-            Notification.objects.filter(project=self.object).order_by("name").all()
+            Notification.objects.filter(project=self.project).order_by("name").all()
         )
         return context
 
@@ -306,6 +298,7 @@ class NotificationsView(
 class NotificationCreateView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
     ProjectIsActiveMixin,
     SuccessMessageMixin,
     RequestViewMixin,
@@ -314,13 +307,6 @@ class NotificationCreateView(
     model = Notification
     template_name = "projects/notifications/save.html"
     success_message = "The notification has been successfully created."
-
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.current_organization,
-            name=self.kwargs["project_name"],
-        )
 
     def get(self, request, *args, **kwargs):
         if request.GET.get("type") not in ["email", "webhook"]:
@@ -339,7 +325,7 @@ class NotificationCreateView(
             extras[field] = form.cleaned_data[field]
 
         # Create the notification
-        form.instance.project = self._get_project()
+        form.instance.project = self.project
         form.instance.type = self.request.GET["type"]
         form.instance.configuration = {
             "types": types,
@@ -357,12 +343,12 @@ class NotificationCreateView(
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs["project"] = self._get_project()
+        kwargs["project"] = self.project
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self._get_project()
+        context["project"] = self.project
         context["type"] = self.request.GET["type"]
         return context
 
@@ -370,6 +356,7 @@ class NotificationCreateView(
 class NotificationUpdateView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
     ProjectIsActiveMixin,
     SuccessMessageMixin,
     RequestViewMixin,
@@ -379,17 +366,10 @@ class NotificationUpdateView(
     template_name = "projects/notifications/save.html"
     success_message = "The notification has been successfully updated."
 
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.current_organization,
-            name=self.kwargs["project_name"],
-        )
-
     def get_object(self, queryset=None):
         return get_object_or_404(
             Notification,
-            project=self._get_project(),
+            project=self.project,
             name=self.kwargs["notification"],
         )
 
@@ -405,7 +385,7 @@ class NotificationUpdateView(
             extras[field] = form.cleaned_data[field]
 
         # Create the notification
-        form.instance.project = self._get_project()
+        form.instance.project = self.project
         form.instance.configuration = {
             "types": types,
             "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
@@ -422,12 +402,12 @@ class NotificationUpdateView(
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs["project"] = self._get_project()
+        kwargs["project"] = self.project
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["project"] = self._get_project()
+        context["project"] = self.project
         context["type"] = self.object.type
 
         # Transform JSON field into dedicated fields
@@ -447,6 +427,7 @@ class NotificationUpdateView(
 class NotificationDeleteView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
     ProjectIsActiveMixin,
     SuccessMessageMixin,
     DeleteView,
@@ -455,17 +436,10 @@ class NotificationDeleteView(
     template_name = "projects/notifications/delete.html"
     success_message = "The notification has been successfully removed."
 
-    def _get_project(self):
-        return get_object_or_404(
-            Project,
-            organization=self.request.current_organization,
-            name=self.kwargs["project_name"],
-        )
-
     def get_object(self, queryset=None):
         return get_object_or_404(
             Notification,
-            project=self._get_project(),
+            project=self.project,
             name=self.kwargs["notification"],
         )
 
@@ -474,6 +448,6 @@ class NotificationDeleteView(
             "notifications",
             kwargs={
                 "org_name": self.request.current_organization.name,
-                "project_name": self._get_project().name,
+                "project_name": self.project.name,
             },
         )
