@@ -237,5 +237,5 @@ def change_organization(request):
         return JsonResponse({"status": "error"})
 
     # Save this organization in session
-    request.session["user_organization_id"] = str(organization.id)
+    request.session["current_organization_id"] = str(organization.id)
     return JsonResponse({"status": "ok"})

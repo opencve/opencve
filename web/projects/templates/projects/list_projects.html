@@ -10,7 +10,7 @@
             {% include "messages.html" %}
 
             <div class="callout callout-info">
-                <p>Projects allow users to organize subscriptions and notifications. <a href="{% url 'create_project' org_name=request.user_organization.name %}">Create a new project?</a></p>
+                <p>Projects allow users to organize subscriptions and notifications. <a href="{% url 'create_project' org_name=request.current_organization.name %}">Create a new project?</a></p>
             </div>
 
             <div class="box box-primary">
@@ -21,14 +21,14 @@
                         <li class="item">
                             <div class="product-info">
                                 {% if project.active %}
-                                <a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}" class="product-title">{{ project.name }}</a>
+                                <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}" class="product-title">{{ project.name }}</a>
                                 {% else %}
                                 <div class="product-title">{{ project.name }} <span class="label label-default">disabled</span></div>
                                 {% endif %}
                                 <div class="pull-right">
                                     <div class="btn-group" role="group">
-                                        <a href="{% url 'edit_project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-default btn-xs">Edit</a>
-                                        <a href="{% url 'delete_project' org_name=request.user_organization.name project_name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                        <a href="{% url 'edit_project' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default btn-xs">Edit</a>
+                                        <a href="{% url 'delete_project' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
                                     </div>
                                 </div>
                                 <span class="product-description">

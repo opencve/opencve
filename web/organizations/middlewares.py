@@ -28,7 +28,7 @@ class OrganizationMiddleware:
         # Retrieve the user organizations
         organizations = request.user.list_organizations()
         if not organizations:
-            request.user_organization = None
+            request.current_organization = None
             request.user_organizations = []
             return
 
@@ -47,8 +47,8 @@ class OrganizationMiddleware:
                 raise Http404
 
             # Update the session if the organization changes
-            if str(organization.id) != request.session.get("user_organization_id"):
-                request.session["user_organization_id"] = str(organization.id)
+            if str(organization.id) != request.session.get("current_organization_id"):
+                request.session["current_organization_id"] = str(organization.id)
                 messages.info(
                     request,
                     f"You are now connected to the organization {organization.name}.",
@@ -56,7 +56,7 @@ class OrganizationMiddleware:
 
         # If no organization in the url, use the session one
         else:
-            organization_id = request.session.get("user_organization_id")
+            organization_id = request.session.get("current_organization_id")
             if organization_id:
                 organization = next(
                     (org for org in organizations if str(org.id) == organization_id),
@@ -66,8 +66,8 @@ class OrganizationMiddleware:
         # By default, use the first organization
         if not organization:
             organization = organizations[0]
-            request.session["user_organization_id"] = str(organization.id)
+            request.session["current_organization_id"] = str(organization.id)
 
         # Update the request context
-        request.user_organization = organization
+        request.current_organization = organization
         request.user_organizations = organizations

@@ -45,7 +45,7 @@ class ProjectsListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
 
     def get_queryset(self):
         query = Project.objects.filter(
-            organization=self.request.user_organization
+            organization=self.request.current_organization
         ).all()
         return query.order_by("name")
 
@@ -100,7 +100,7 @@ class ProjectCreateView(
     success_message = "The project has been successfully created."
 
     def form_valid(self, form):
-        form.instance.organization = self.request.user_organization
+        form.instance.organization = self.request.current_organization
         return super().form_valid(form)
 
 
@@ -124,7 +124,7 @@ class ProjectEditView(
 
     def get_success_url(self):
         return reverse_lazy(
-            "list_projects", kwargs={"org_name": self.request.user_organization}
+            "list_projects", kwargs={"org_name": self.request.current_organization}
         )
 
 
@@ -141,7 +141,7 @@ class ProjectDeleteView(
 
     def get_success_url(self):
         return reverse_lazy(
-            "list_projects", kwargs={"org_name": self.request.user_organization}
+            "list_projects", kwargs={"org_name": self.request.current_organization}
         )
 
 
@@ -156,7 +156,7 @@ class ProjectVulnerabilitiesView(
     def _get_project(self):
         return get_object_or_404(
             Project,
-            organization=self.request.user_organization,
+            organization=self.request.current_organization,
             name=self.kwargs["project_name"],
         )
 
@@ -185,7 +185,7 @@ class ReportsView(
     def _get_project(self):
         return get_object_or_404(
             Project,
-            organization=self.request.user_organization,
+            organization=self.request.current_organization,
             name=self.kwargs["project_name"],
         )
 
@@ -217,7 +217,7 @@ class ReportView(
     def _get_project(self):
         return get_object_or_404(
             Project,
-            organization=self.request.user_organization,
+            organization=self.request.current_organization,
             name=self.kwargs["project_name"],
         )
 
@@ -318,7 +318,7 @@ class NotificationCreateView(
     def _get_project(self):
         return get_object_or_404(
             Project,
-            organization=self.request.user_organization,
+            organization=self.request.current_organization,
             name=self.kwargs["project_name"],
         )
 
@@ -382,7 +382,7 @@ class NotificationUpdateView(
     def _get_project(self):
         return get_object_or_404(
             Project,
-            organization=self.request.user_organization,
+            organization=self.request.current_organization,
             name=self.kwargs["project_name"],
         )
 
@@ -458,7 +458,7 @@ class NotificationDeleteView(
     def _get_project(self):
         return get_object_or_404(
             Project,
-            organization=self.request.user_organization,
+            organization=self.request.current_organization,
             name=self.kwargs["project_name"],
         )
 
@@ -473,7 +473,7 @@ class NotificationDeleteView(
         return reverse(
             "notifications",
             kwargs={
-                "org_name": self.request.user_organization.name,
+                "org_name": self.request.current_organization.name,
                 "project_name": self._get_project().name,
             },
         )

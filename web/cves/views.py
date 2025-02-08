@@ -250,7 +250,7 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
                 "object_type": obj_type,
                 "object_name": obj_name,
                 "projects": Project.objects.filter(
-                    organization=self.request.user_organization
+                    organization=self.request.current_organization
                 )
                 .order_by("name")
                 .all(),
@@ -276,7 +276,7 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
 
         # Check if the project belongs to the current organization
         project = get_object_or_404(
-            Project, id=project_id, organization=request.user_organization
+            Project, id=project_id, organization=request.current_organization
         )
 
         # Vendor subscription

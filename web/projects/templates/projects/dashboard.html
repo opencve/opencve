@@ -67,7 +67,7 @@
             <div class="box-header">
                 <div class="box-title">Subscriptions</div>
                 <div class="box-tools pull-right">
-                    <a class="btn btn-box-tool" href="{% url 'subscriptions' org_name=request.user_organization.name project_name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="Manage subscriptions"><i class="fa fa-gears"></i></a>
+                    <a class="btn btn-box-tool" href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="Manage subscriptions"><i class="fa fa-gears"></i></a>
                 </div>
             </div>
             <div class="box-body box-subscriptions">
@@ -79,7 +79,7 @@
             <div class="box-header with-border">
                 <h3 class="box-title">Last Reports</h3>
                 <div class="box-tools pull-right">
-                    <a class="btn btn-box-tool" href="{% url 'reports' org_name=request.user_organization.name project_name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="See this project reports"><i class="fa fa-list-ul"></i></a>
+                    <a class="btn btn-box-tool" href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="See this project reports"><i class="fa fa-list-ul"></i></a>
                 </div>
             </div>
             <div class="box-body">
@@ -94,7 +94,7 @@
                     <tbody>
                     {% for report in reports %}
                     <tr>
-                        <td><a href="{% url 'report' org_name=request.user_organization.name project_name=project.name day=report.day %}">{{ report.day|date:"D d M Y" }}</a></td>
+                        <td><a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=report.day %}">{{ report.day|date:"D d M Y" }}</a></td>
                         <td class="text-center">{{ report.changes.count }}</td>
                     </tr>
                     {% endfor %}

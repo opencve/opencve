@@ -13,22 +13,22 @@
         <div class="nav-tabs-custom nav-tabs-profile nav-tabs-primary">
             <ul class="nav nav-tabs">
                 <li class="{% is_active_link 'project' %}">
-                    <a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}">Dashboard</a>
+                    <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}">Dashboard</a>
                 </li>
                 <li class="{% is_active_link 'project_vulnerabilities' %}">
-                    <a href="{% url 'project_vulnerabilities' org_name=request.user_organization.name project_name=project.name %}">Vulnerabilities</a>
+                    <a href="{% url 'project_vulnerabilities' org_name=request.current_organization.name project_name=project.name %}">Vulnerabilities</a>
                 </li>
                 <li class="{% is_active_link 'reports' 'report' %}">
-                    <a href="{% url 'reports' org_name=request.user_organization.name project_name=project.name %}">Reports</a>
+                    <a href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}">Reports</a>
                 </li>
                 <li class="{% is_active_link 'subscriptions' %}">
-                    <a href="{% url 'subscriptions' org_name=request.user_organization.name project_name=project.name %}">Subscriptions</a>
+                    <a href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}">Subscriptions</a>
                 </li>
                 <li class="{% is_active_link 'notifications' 'create_notification' 'edit_notification' %}">
-                    <a href="{% url 'notifications' org_name=request.user_organization.name project_name=project.name %}">Notifications</a>
+                    <a href="{% url 'notifications' org_name=request.current_organization.name project_name=project.name %}">Notifications</a>
                 </li>
                 <li class="pull-right">
-                    <a href="{% url 'edit_project' org_name=request.user_organization.name project_name=project.name %}">
+                    <a href="{% url 'edit_project' org_name=request.current_organization.name project_name=project.name %}">
                         <i class="fa fa-gear"></i>
                     </a>
                 </li>

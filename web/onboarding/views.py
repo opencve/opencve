@@ -28,7 +28,7 @@ class OnboardingFormView(LoginRequiredMixin, SuccessMessageMixin, FormView):
         """
         The onboarding process is only available for user without organization.
         """
-        if request.user.is_authenticated and request.user_organization:
+        if request.user.is_authenticated and request.current_organization:
             return redirect("home")
         return super().dispatch(request, *args, **kwargs)
 
