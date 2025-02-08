@@ -78,12 +78,17 @@ class OrganizationEditView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["members"] = Membership.objects.filter(organization=self.get_object())
+        context["members"] = Membership.objects.filter(
+            organization=self.request.current_organization
+        )
         context["members_form"] = MembershipForm(initial={"role": Membership.MEMBER})
         return context
 
     def get_success_url(self):
-        return reverse("edit_organization", kwargs={"org_name": self.object.name})
+        return reverse(
+            "edit_organization",
+            kwargs={"org_name": self.request.current_organization.name},
+        )
 
 
 class OrganizationDeleteView(
@@ -112,14 +117,14 @@ class OrganizationMembersFormView(
     success_message = "The new member has been added."
 
     def post(self, request, *args, **kwargs):
-        object = self.get_object()
+        organization = request.current_organization
 
         # Check the form validity
         form = self.get_form_class()(request.POST)
         if not form.is_valid():
             messages.error(request, "Error in the form")
             return redirect(
-                reverse("edit_organization", kwargs={"org_name": object.name})
+                reverse("edit_organization", kwargs={"org_name": organization.name})
             )
 
         # Check if the invited user exists
@@ -127,20 +132,20 @@ class OrganizationMembersFormView(
         if not user:
             messages.error(request, "User not found")
             return redirect(
-                reverse("edit_organization", kwargs={"org_name": object.name})
+                reverse("edit_organization", kwargs={"org_name": organization.name})
             )
 
         # Check if the member already exists
-        if Membership.objects.filter(user=user, organization=object).exists():
+        if Membership.objects.filter(user=user, organization=organization).exists():
             messages.error(request, "Member already exist")
             return redirect(
-                reverse("edit_organization", kwargs={"org_name": object.name})
+                reverse("edit_organization", kwargs={"org_name": organization.name})
             )
 
         # Create the membership
         Membership.objects.create(
             user=user,
-            organization=object,
+            organization=organization,
             role=form.cleaned_data["role"],
             key=get_random_string(64).lower(),
         )
@@ -148,8 +153,10 @@ class OrganizationMembersFormView(
         return super().post(request, *args, **kwargs)
 
     def get_success_url(self):
-        object = self.get_object()
-        return reverse("edit_organization", kwargs={"org_name": object.name})
+        return reverse(
+            "edit_organization",
+            kwargs={"org_name": self.request.current_organization.name},
+        )
 
 
 class OrganizationMemberDeleteView(
@@ -165,15 +172,19 @@ class OrganizationMemberDeleteView(
 
     def dispatch(self, request, *args, **kwargs):
         member = self.get_object()
-        organization = member.organization
-        owners = organization.membership_set.filter(role=Membership.OWNER).all()
+        owners = request.current_organization.membership_set.filter(
+            role=Membership.OWNER
+        ).all()
 
         if len(owners) == 1 and owners[0] == member:
             messages.error(
                 request, "You cannot leave this organization as you are the only owner."
             )
             return redirect(
-                reverse("edit_organization", kwargs={"org_name": organization.name})
+                reverse(
+                    "edit_organization",
+                    kwargs={"org_name": request.current_organization.name},
+                )
             )
 
         return super().dispatch(request, *args, **kwargs)
@@ -181,7 +192,7 @@ class OrganizationMemberDeleteView(
     def get_object(self, queryset=None):
         return get_object_or_404(
             self.model,
-            organization__name=self.kwargs["org_name"],
+            organization=self.request.current_organization,
             id=self.kwargs["member_id"],
         )
 
@@ -193,7 +204,8 @@ class OrganizationMemberDeleteView(
             return reverse_lazy("list_organizations")
 
         return reverse_lazy(
-            "edit_organization", kwargs={"org_name": self.kwargs["org_name"]}
+            "edit_organization",
+            kwargs={"org_name": self.request.current_organization.name},
         )
 
 
