@@ -20,15 +20,17 @@
                         {% for project in projects %}
                         <li class="item">
                             <div class="product-info">
-                                {% if project.active %}
-                                <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}" class="product-title">{{ project.name }}</a>
-                                {% else %}
-                                <div class="product-title">{{ project.name }} <span class="label label-default">disabled</span></div>
-                                {% endif %}
-                                <div class="pull-right">
-                                    <div class="btn-group" role="group">
-                                        <a href="{% url 'edit_project' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default btn-xs">Edit</a>
-                                        <a href="{% url 'delete_project' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                <div class="product-title">
+                                    {% if project.active %}
+                                    <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}" class="product-title">{{ project.name }}</a>
+                                    {% else %}
+                                    {{ project.name }} <span class="label label-default">disabled</span>
+                                    {% endif %}
+                                    <div class="pull-right">
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'edit_project' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default btn-xs">Edit</a>
+                                            <a href="{% url 'delete_project' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                        </div>
                                     </div>
                                 </div>
                                 <span class="product-description">
