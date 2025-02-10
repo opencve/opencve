@@ -90,6 +90,13 @@ function getContrastedColor(str){
         });
     });
 
+    // Fill the query input before opening the Save view modal in CVEs page
+    $("#save-view-button").click(function(e) {
+      const filter = $("#id_q").val();
+      $("#id_query").val(filter);
+      $('#modal-save-view').modal('show');
+    });
+
     // Subscriptions handler
     $('.subscribe').click(function() {
         var button = $(this)

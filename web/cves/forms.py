@@ -10,8 +10,7 @@ class SearchForm(forms.Form):
     q = forms.CharField(
         required=False,
         help_text=mark_safe(
-            "Use the syntax <code>description:python AND cvss31>=8</code>. "
-            'For more details, check the <a href="https://docs.opencve.io/guides/advanced_search/">Advanced Search</a> documentation.'
+            'Read the <a href="https://docs.opencve.io/guides/advanced_search/" target="_blank">Advanced Search</a> documentation to learn the syntax.'
         ),
     )
 
