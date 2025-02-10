@@ -22,14 +22,15 @@ class OrganizationMiddleware:
         return view_func.__name__
 
     def process_view(self, request, view_func, view_args, view_kwargs):
+        request.current_organization = None
+        request.user_organizations = []
+
         if not request.user.is_authenticated:
             return
 
         # Retrieve the user organizations
         organizations = request.user.list_organizations()
         if not organizations:
-            request.current_organization = None
-            request.user_organizations = []
             return
 
         # Check if the url contains an organization

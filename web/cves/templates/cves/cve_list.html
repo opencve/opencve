@@ -139,11 +139,15 @@
                 <div class="box-body" id="advanced-search">
                     <form method="GET">
                         <div class="row">
-                            <div class="col-md-10">
+                            <div class="col-md-8">
                                 {{ search_form.q|as_crispy_field }}
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-4">
                                 <button type="submit" class="btn btn-primary">Search</button>
+                                <div class="btn-group">
+                                  <button type="button" class="btn btn-default" id="save-view-button"><i class="fa fa-save"></i> Save</button>
+                                  <button type="button" class="btn btn-default" data-toggle="modal" data-target="#modal-load-views"><i class="fa fa-download"></i> Load</button>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -198,5 +202,60 @@
         </div>
     </div>
 </section>
+
+{% if request.current_organization %}
+<div class="modal fade" id="modal-save-view">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="POST" action="{% url 'create_view' org_name=request.current_organization.name %}">
+            {% csrf_token %}
+            <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Save the query</h4>
+            </div>
+            <div class="modal-body">
+                {{ view_form|crispy }}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Close</button>
+                <a class="btn btn-default pull-left" href="{% url 'list_views' org_name=request.current_organization.name %}">Manage the views</a>
+                <button type="submit" class="btn btn-primary" id="foobar">Save</button>
+            </div>
+        </form>
+      </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="modal-load-views">
+    <div class="modal-dialog modal-lg">
+      <div class="box box-solid">
+        <div class="box-header with-border">
+            <h3 class="box-title" style="font-size: 18px;">List of Views</h3>
+        </div>
+        <div class="box-body">
+            <div class="callout callout-info">
+                Select a view to directly execute its corresponding query. You can also manage your views on <a href="{% url 'list_views' org_name=request.current_organization.name %}">this page</a>.
+            </div>
+            <ul class="nav nav-pills nav-stacked no-padding">
+                {% for view in views %}
+                <li class="view-item no-padding">
+                    <a href="{% url 'cves' %}?q={{ view.query }}">
+                        <div>
+                            <span class="view-title"><i class="fa fa-terminal"></i> {{ view.name }}</span>
+                            <span class="label {% if view.privacy == 'public' %}label-primary{% else %}label-warning{% endif %} pull-right">{{ view.privacy }}</span>
+                        </div>
+                        <p class="view-description">{{ view.description }}</p>
+                        <code>{{ view.query }}</code>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+      </div>
+    </div>
+</div>
+{% endif %}
 
 {% endblock %}
