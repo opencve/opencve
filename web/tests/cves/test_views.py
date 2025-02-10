@@ -266,3 +266,29 @@ def test_advanced_search_with_usertag(create_cve, create_user, auth_client):
 
     assert response.status_code == 200
     assert cves == ["CVE-2022-22965"]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_with_views(create_organization, create_user, create_view, auth_client):
+    user = create_user()
+    org = create_organization(name="my-org", user=user)
+    create_view(
+        name="view1",
+        query="userTag:foobar",
+        organization=org,
+        privacy="private",
+        user=user,
+    )
+    create_view(
+        name="view2", query="description:python", organization=org, privacy="public"
+    )
+    client = auth_client(user)
+
+    response = client.get(reverse("cves"))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    codes = soup.find("div", {"id": "modal-load-views"}).find_all(
+        "span", {"class": "view-title"}
+    )
+    assert sorted([c.text.strip() for c in codes]) == ["view1", "view2"]
+    titles = soup.find("div", {"id": "modal-load-views"}).find_all("code")
+    assert sorted([t.text for t in titles]) == ["description:python", "userTag:foobar"]

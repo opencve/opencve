@@ -683,3 +683,32 @@ pre.plainJSON{
 .advanced-search-link:focus .fa-bolt {
     color: #0A0031;
 }
+
+.view-item {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.view-item .view-title {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.view-item .view-description {
+    font-size: 0.9em;
+    color: #777;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+.view-item code {
+    padding: 6px 8px;
+    font-size: 90%;
+    color: #f8f8f2;
+    background-color: #2d2d2d;
+    border-radius: 6px;
+    display: inline-block;
+    font-family: "Courier New", Courier, monospace;
+}

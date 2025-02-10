@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
+from django.db import models
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, TemplateView
@@ -16,6 +17,8 @@ from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project
 from users.models import CveTag, UserTag
+from views.forms import ViewForm
+from views.models import View
 
 
 class WeaknessListView(ListView):
@@ -138,6 +141,21 @@ class CveListView(ListView):
 
         if context["search_mode"] == "advanced":
             context["search_form"] = self.form
+
+        # Add organization views
+        if self.request.current_organization:
+            context["view_form"] = ViewForm
+
+            context["views"] = View.objects.filter(
+                models.Q(
+                    privacy="public", organization=self.request.current_organization
+                )
+                | models.Q(
+                    privacy="private",
+                    user=self.request.user,
+                    organization=self.request.current_organization,
+                )
+            ).order_by("-created_at")
 
         return context
 
