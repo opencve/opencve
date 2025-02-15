@@ -89,7 +89,11 @@
                 <div class="box-body">
                     <p><strong>Status:</strong> {{ cve.mitre_json.cveMetadata.state }}</p>
                     <p><strong>Assigner:</strong> {{ cve.mitre_json.cveMetadata.assignerShortName }}</p>
-                    <p><strong>Published:</strong> {{ cve.mitre_json.cveMetadata.datePublished }}</p>
+                    <p><strong>Published:</strong>
+                        <time datetime="{{ cve.mitre_json.cveMetadata.datePublished|convert_str_date|date:'Y-m-d\TH:i:s' }}">
+                            {{ cve.mitre_json.cveMetadata.datePublished }}
+                        </time>
+                    </p>
                     <p><strong>Updated:</strong> {{ cve.mitre_json.cveMetadata.dateUpdated }}</p>
                     <p><strong>Reserved:</strong> {{ cve.mitre_json.cveMetadata.dateReserved }}</p>
                     <p><strong>Link:</strong> <a href="https://www.cve.org/CVERecord?id={{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a></p>
