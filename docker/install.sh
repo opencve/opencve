@@ -331,7 +331,7 @@ display-usage() {
     log "%${_S2}sUnpause OpenCVE Dag in Airflow to start to update local repositories and send alerts."
     log "%${_S1}sstart-docker"
     log "%${_S2}sPerform docker compose up with OpenCVE stack from its docker-compose.yaml."
-    log "%${_S1}sbuild-docker"
+    log "%${_S1}sdocker-build"
     log "%${_S2}sBuild the docker images for OpenCVE stack from its docker-compose.yaml."
     log "%${_S1}sinit-secret-key"
     log "%${_S2}sGenerate OpenCVE Django secret key."
