@@ -1,6 +1,6 @@
-django==5.1.4
-django[argon2]==5.1.4
-django[bcrypt]==5.1.4
+django==5.1.6
+django[argon2]==5.1.6
+django[bcrypt]==5.1.6
 django-crispy-forms==2.3
 django-environ==0.11.2
 django-extensions==3.2.3
@@ -15,7 +15,6 @@ drf-nested-routers==0.94.1
 
 arrow==1.2.3
 crispy-bootstrap3==2022.1
-gitpython==3.1.32
 nested-lookup==0.2.25
 psycopg2-binary==2.9.10
 gunicorn==23.0.0
