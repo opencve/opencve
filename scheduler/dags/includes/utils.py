@@ -12,6 +12,7 @@ from git.repo import Repo
 from includes.constants import KB_LOCAL_REPO
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pendulum.datetime import DateTime
+from email.utils import formatdate
 
 
 def divide_list(iterable, n):
@@ -193,6 +194,7 @@ async def get_smtp_message(email_to, subject, template, context):
     message["From"] = conf.get("opencve", "notification_smtp_mail_from")
     message["To"] = email_to
     message["Subject"] = subject
+    message["Date"] = formatdate()
 
     plain_text_template = env.get_template(f"{template}.txt")
     plain_text_rendered = await plain_text_template.render_async(**context)
