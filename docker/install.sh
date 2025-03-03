@@ -190,10 +190,10 @@ docker-up() {
     display-and-exec "starting OpenCVE docker stack" docker compose up -d
 
     log "\n--------| Collect static files from Django webserver"
-    display-and-exec "collecting latest static files" -q docker exec webserver python manage.py collectstatic --no-input
+    display-and-exec "collecting latest static files" -q docker compose exec webserver python manage.py collectstatic --no-input
 
     log "\n--------| Apply Django webserver DB migration"
-    display-and-exec "migrating DB schema with latest changes" -q docker exec webserver python manage.py migrate
+    display-and-exec "migrating DB schema with latest changes" -q docker compose exec webserver python manage.py migrate
 }
 
 # Function to set Airflow connections
@@ -201,8 +201,8 @@ set-airflow-connections() {
     export $(grep -v '^#' .env | grep -E '^POSTGRES' | tr '\n' ' ')
 
     log "\n--------| Add Airflow connections"
-    display-and-exec "adding Postgresql Airflow connection" -q docker exec airflow-scheduler airflow connections add opencve_postgres --conn-uri "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/opencve"
-    display-and-exec "adding Redis Airflow connection" -q docker exec airflow-scheduler airflow connections add opencve_redis --conn-uri "redis://redis:6379" --conn-extra '{"db": 3}'
+    display-and-exec "adding Postgresql Airflow connection" -q docker compose exec airflow-scheduler airflow connections add opencve_postgres --conn-uri "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/opencve"
+    display-and-exec "adding Redis Airflow connection" -q docker compose exec airflow-scheduler airflow connections add opencve_redis --conn-uri "redis://redis:6379" --conn-extra '{"db": 3}'
 
     unset POSTGRES_USER
     unset POSTGRES_PASSWORD
@@ -212,7 +212,7 @@ set-airflow-connections() {
 init-secret-key() {
     log "\n--------| Generate OpenCVE secret key"
 
-    export _OPENCVE_SECRET_KEY=$(docker exec webserver python manage.py generate_secret_key | sed -e 's/[&!$]//g')
+    export _OPENCVE_SECRET_KEY=$(docker compose exec webserver python manage.py generate_secret_key | sed -e 's/[&!$]//g')
 
     display-and-exec "cleaning old OpenCVE secret key" sed -i.bak "s/^OPENCVE_SECRET_KEY=.*/OPENCVE_SECRET_KEY=/g" ../web/opencve/conf/.env
     display-and-exec "updating with new OpenCVE secret key" sed -i.bak "s,^OPENCVE_SECRET_KEY=.*,OPENCVE_SECRET_KEY='$_OPENCVE_SECRET_KEY',g" ../web/opencve/conf/.env && rm -f ../web/opencve/conf/.env.bak
@@ -227,40 +227,40 @@ init-docker-stack() {
     init-secret-key
 
     log "\n--------| Webserver restart"
-    display-and-exec "restarting webserver docker instance" -q docker restart webserver
+    display-and-exec "restarting webserver docker instance" -q docker compose restart webserver
 }
 
 # Function to clone necessary repositories
 clone-repositories() {
     log "\n--------| Initialize OpenCVE repositories"
-    display-and-exec "cloning opencve-kb" docker exec airflow-scheduler git clone https://github.com/opencve/opencve-kb.git /home/airflow/repositories/opencve-kb
-    display-and-exec "cloning opencve-nvd" docker exec airflow-scheduler git clone https://github.com/opencve/opencve-nvd.git /home/airflow/repositories/opencve-nvd
-    display-and-exec "cloning opencve-redhat" docker exec airflow-scheduler git clone https://github.com/opencve/opencve-redhat.git /home/airflow/repositories/opencve-redhat
-    display-and-exec "cloning cvelistV5" docker exec airflow-scheduler git clone https://github.com/CVEProject/cvelistV5.git /home/airflow/repositories/cvelistV5
-    display-and-exec "cloning vulnrichment" docker exec airflow-scheduler git clone https://github.com/cisagov/vulnrichment.git /home/airflow/repositories/vulnrichment
+    display-and-exec "cloning opencve-kb" docker compose exec airflow-scheduler git clone https://github.com/opencve/opencve-kb.git /home/airflow/repositories/opencve-kb
+    display-and-exec "cloning opencve-nvd" docker compose exec airflow-scheduler git clone https://github.com/opencve/opencve-nvd.git /home/airflow/repositories/opencve-nvd
+    display-and-exec "cloning opencve-redhat" docker compose exec airflow-scheduler git clone https://github.com/opencve/opencve-redhat.git /home/airflow/repositories/opencve-redhat
+    display-and-exec "cloning cvelistV5" docker compose exec airflow-scheduler git clone https://github.com/CVEProject/cvelistV5.git /home/airflow/repositories/cvelistV5
+    display-and-exec "cloning vulnrichment" docker compose exec airflow-scheduler git clone https://github.com/cisagov/vulnrichment.git /home/airflow/repositories/vulnrichment
 }
 
 # Function to import OpenCVE KB
 import-opencve-kb() {
     log "\n--------| Import OpenCVE KB inside the database, it can take 10 to 30 min"
-    display-and-exec "importing CVEs" docker exec webserver python manage.py import_cves
+    display-and-exec "importing CVEs" docker compose exec webserver python manage.py import_cves
 }
 
 # Function to start the OpenCVE DAG
 start-opencve-dag() {
     log "\n--------| Unpause Airflow OpenCVE dag to start to update local repositories and alerts"
-    display-and-exec "unpausing OpenCVE Airflow dag" -q docker exec airflow-scheduler airflow dags unpause opencve
+    display-and-exec "unpausing OpenCVE Airflow dag" -q docker compose exec airflow-scheduler airflow dags unpause opencve
 }
 
 # Function to create a superuser
 create-superuser() {
     log "\n--------| Create OpenCVE admin user"
-    display-and-exec "creating OpenCVE admin user" docker exec -it webserver python manage.py createsuperuser
+    display-and-exec "creating OpenCVE admin user" docker compose exec -it webserver python manage.py createsuperuser
 
     export $(grep -v '^#' .env | grep -E '^POSTGRES' | tr '\n' ' ')
 
     log "\n--------| Auto confirm the created user"
-    display-and-exec "confirming the created admin user" -q docker exec postgres psql -U "$POSTGRES_USER" -c "INSERT INTO account_emailaddress(email, verified, \"primary\", user_id) SELECT email, 1::bool, 1::bool, id FROM opencve_users ON CONFLICT (user_id, email) DO NOTHING;"
+    display-and-exec "confirming the created admin user" -q docker compose exec postgres psql -U "$POSTGRES_USER" -c "INSERT INTO account_emailaddress(email, verified, \"primary\", user_id) SELECT email, 1::bool, 1::bool, id FROM opencve_users ON CONFLICT (user_id, email) DO NOTHING;"
 
     unset POSTGRES_USER
     unset POSTGRES_PASSWORD
