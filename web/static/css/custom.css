@@ -712,3 +712,7 @@ pre.plainJSON{
     display: inline-block;
     font-family: "Courier New", Courier, monospace;
 }
+
+.controls {
+  margin-bottom: 20px;
+}

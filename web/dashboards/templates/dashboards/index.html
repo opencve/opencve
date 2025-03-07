@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title%}Dashboard - {{ block.super }}{% endblock %}
+{% block navbar_title%}Dashboard{% endblock %}
+
+{% block content %}
+
+<section class="content">
+
+    <div class="row">
+        <div class="col-md-12">
+
+            <div class="controls">
+                <button id="add-widget">Ajouter un widget</button>
+                <button id="save-dashboard">Sauvegarder</button>
+            </div>
+
+            <div class="grid-stack"></div>
+
+        </div>
+    </div>
+
+</section>
+
+{% endblock %}

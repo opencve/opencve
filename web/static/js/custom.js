@@ -493,4 +493,119 @@ function getContrastedColor(str){
     });
   }
 
+  /*
+   Homepage Grid
+  */
+  const grid = GridStack.init({
+    handle: '.drag-widget',
+    float: false,
+    animate: true,
+  });
+
+  $("#add-widget").on("click", function () {
+     const content = '<p>This is a <strong>bold</strong> and <em>italic</em> text example.</p>';
+
+     // Trouver la position la plus basse actuelle
+     let maxY = 0;
+     grid.engine.nodes.forEach(node => {
+      maxY = Math.max(maxY, node.y + node.h);
+     });
+
+     const widget = {
+        x: 0,
+        y: maxY,
+        w: 4,
+        h: 4,
+        content: content,
+      };
+
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <div class="grid-stack-item-content box box-primary">
+          <div class="box-header">
+              <div class="box-title"><i class="fa fa-arrows drag-widget"></i> Widget</div>
+              <div class="box-tools pull-right">
+                  <a class="btn btn-box-tool delete-btn"><i class="fa fa-remove"></i></a>
+              </div>
+          </div>
+          <div class="box-body">${content}</div>
+        </div>
+      `;
+
+      const gridItem = grid.makeWidget(element, widget);
+
+      // Add delete functionality
+      element.querySelector('.delete-btn').addEventListener('click', () => {
+        grid.removeWidget(element);
+      });
+  });
+
+  $("#save-dashboard").on("click", function () {
+      const widgets = [];
+      const gridItems = grid.engine.nodes;
+
+      gridItems.forEach(node => {
+        if (node.el) {
+          const contentEl = node.el.querySelector('.box-body');
+          if (contentEl) {
+            widgets.push({
+              x: node.x,
+              y: node.y,
+              w: node.w,
+              h: node.h,
+              content: contentEl.innerHTML
+            });
+          }
+        }
+      });
+      console.log(widgets);
+
+      $.ajax({
+          url: SAVE_DASHBOARD_URL,
+          type: "POST",
+          contentType: "application/json",
+          data: JSON.stringify({ dashboard: widgets }),
+          success: function (response) {
+              alert("Dashboard sauvegardé !");
+          },
+          error: function (error) {
+              console.error("Erreur lors de la sauvegarde", error);
+          }
+      });
+  });
+
+  function loadDashboard() {
+      $.getJSON(LOAD_DASHBOARD_URL, function (data) {
+          console.log(data);
+          if (!data.dashboard) return;
+
+          const widgets = data.dashboard;
+
+          widgets.forEach(widget => {
+            const element = document.createElement('div');
+            element.innerHTML = `
+              <div class="grid-stack-item-content box box-primary">
+                <div class="box-header">
+                    <div class="box-title"><i class="fa fa-arrows drag-widget" style="font-size: 0.80em;"></i> Widget</div>
+                    <div class="box-tools pull-right">
+                        <a class="btn btn-box-tool delete-btn"><i class="fa fa-remove"></i></a>
+                    </div>
+                </div>
+                <div class="box-body">${widget.content}</div>
+              </div>
+            `;
+
+            grid.makeWidget(element, widget);
+
+            element.querySelector('.delete-btn').addEventListener('click', () => {
+              grid.removeWidget(element);
+            });
+
+            grid.save(true);
+          });
+      });
+  }
+
+  loadDashboard();
+
   });

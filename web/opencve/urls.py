@@ -50,6 +50,7 @@ products_cves_router.register(f"cve", ProductCveViewSet, basename="product-cves"
 
 urlpatterns = [
     path("__debug__/", include("debug_toolbar.urls")),
+    path("", include("dashboards.urls")),
     path("", include("changes.urls")),
     path("", include("cves.urls")),
     path("", include("onboarding.urls")),
