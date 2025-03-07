@@ -90,9 +90,13 @@
                     <p><strong>Status:</strong> {{ cve.mitre_json.cveMetadata.state }}</p>
                     <p><strong>Assigner:</strong> {{ cve.mitre_json.cveMetadata.assignerShortName }}</p>
                     <p><strong>Published:</strong>
+                        {% if cve.mitre_json.cveMetadata.datePublished %}
                         <time datetime="{{ cve.mitre_json.cveMetadata.datePublished|convert_str_date|date:'Y-m-d\TH:i:s' }}">
                             {{ cve.mitre_json.cveMetadata.datePublished }}
                         </time>
+                        {% else %}
+                        No published date
+                        {% endif %}
                     </p>
                     <p><strong>Updated:</strong> {{ cve.mitre_json.cveMetadata.dateUpdated }}</p>
                     <p><strong>Reserved:</strong> {{ cve.mitre_json.cveMetadata.dateReserved }}</p>
