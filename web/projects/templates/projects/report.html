@@ -35,6 +35,7 @@
                                 <h4>
                                     {{ change.cve.cve_id }}
                                     <small><a href="{% url 'cve' cve_id=change.cve.cve_id%}" target="_blank"><i class="fa fa-external-link"></i></a></small>
+                                    {{ change.cve.title|default:"" }}
                                 </h4>
                                 <p>{{ change.cve.description }}</p>
                             </div>
