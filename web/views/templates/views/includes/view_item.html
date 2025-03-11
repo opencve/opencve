@@ -11,8 +11,8 @@
         <div class="col-md-4">
             <div class="btn-group pull-right">
                 <a type="button" href="{% url 'cves' %}?q={{ view.query }}" class="btn btn-default"><i class="fa fa-play"></i></a>
-                <a type="button" href="{% url 'update_view' org_name=request.current_organization view_name=view.name %}" class="btn btn-default"><i class="fa fa-edit"></i></a>
-                <a type="button" href="{% url 'delete_view' org_name=request.current_organization view_name=view.name %}" class="btn btn-default"><i class="fa fa-trash"></i></a>
+                <a type="button" href="{% url 'update_view' org_name=request.current_organization view_id=view.id %}" class="btn btn-default"><i class="fa fa-edit"></i></a>
+                <a type="button" href="{% url 'delete_view' org_name=request.current_organization view_id=view.id %}" class="btn btn-default"><i class="fa fa-trash"></i></a>
             </div>
         </div>
     </div>

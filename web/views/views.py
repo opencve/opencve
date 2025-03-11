@@ -66,7 +66,7 @@ class ViewUpdateView(OrganizationIsMemberMixin, SuccessMessageMixin, UpdateView)
     def get_object(self, queryset=None):
         view = get_object_or_404(
             View,
-            name=self.kwargs["view_name"],
+            id=self.kwargs["view_id"],
             organization=self.request.current_organization,
         )
 
@@ -105,7 +105,7 @@ class ViewDeleteView(OrganizationIsMemberMixin, SuccessMessageMixin, DeleteView)
     def get_object(self, queryset=None):
         view = get_object_or_404(
             View,
-            name=self.kwargs["view_name"],
+            id=self.kwargs["view_id"],
             organization=self.request.current_organization,
         )
 
