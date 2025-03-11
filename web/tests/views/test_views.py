@@ -1,3 +1,5 @@
+import uuid
+
 from django.test import override_settings
 from django.urls import reverse
 from django.utils.timezone import now
@@ -14,7 +16,7 @@ def test_views_is_org_members(
     org1 = create_organization(name="org1", user=user1)
     user2 = create_user()
     create_organization(name="org2", user=user2)
-    create_view(
+    view = create_view(
         name="view1",
         query="my-query",
         organization=org1,
@@ -28,11 +30,11 @@ def test_views_is_org_members(
     response = client.get(reverse("create_view", kwargs={"org_name": "org1"}))
     assert response.status_code == 200
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("update_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 200
     response = client.get(
-        reverse("delete_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("delete_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 200
 
@@ -43,11 +45,11 @@ def test_views_is_org_members(
     response = client.get(reverse("create_view", kwargs={"org_name": "org1"}))
     assert response.status_code == 404
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("update_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 404
     response = client.get(
-        reverse("delete_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("delete_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 404
 
@@ -68,19 +70,19 @@ def test_views_not_found(create_organization, create_user, create_view, auth_cli
     response = client.get(reverse("create_view", kwargs={"org_name": "404"}))
     assert response.status_code == 404
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "404", "view_name": "404"})
+        reverse("update_view", kwargs={"org_name": "404", "view_id": str(uuid.uuid4())})
     )
     assert response.status_code == 404
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "org", "view_name": "404"})
+        reverse("update_view", kwargs={"org_name": "org", "view_id": str(uuid.uuid4())})
     )
     assert response.status_code == 404
     response = client.get(
-        reverse("delete_view", kwargs={"org_name": "404", "view_name": "404"})
+        reverse("delete_view", kwargs={"org_name": "404", "view_id": str(uuid.uuid4())})
     )
     assert response.status_code == 404
     response = client.get(
-        reverse("delete_view", kwargs={"org_name": "org", "view_name": "404"})
+        reverse("delete_view", kwargs={"org_name": "org", "view_id": str(uuid.uuid4())})
     )
     assert response.status_code == 404
 
@@ -205,7 +207,7 @@ def test_create_view_invalid_form(create_organization, create_user, auth_client)
 def test_update_view(create_organization, create_user, create_view, auth_client):
     user = create_user()
     org = create_organization(name="org", user=user)
-    create_view(
+    view = create_view(
         name="my-view",
         query="my-query",
         organization=org,
@@ -215,12 +217,12 @@ def test_update_view(create_organization, create_user, create_view, auth_client)
 
     client = auth_client(user)
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "org", "view_name": "my-view"})
+        reverse("update_view", kwargs={"org_name": "org", "view_id": view.id})
     )
     assert response.status_code == 200
 
     response = client.post(
-        reverse("update_view", kwargs={"org_name": "org", "view_name": "my-view"}),
+        reverse("update_view", kwargs={"org_name": "org", "view_id": view.id}),
         data={"name": "edited-view", "query": "edited-query"},
         follow=True,
     )
@@ -246,7 +248,7 @@ def test_update_view_permissions(
         date_invited=now(),
         date_joined=now(),
     )
-    create_view(
+    view = create_view(
         name="view1",
         query="my-query",
         organization=org1,
@@ -257,26 +259,26 @@ def test_update_view_permissions(
     # User1 can update the view
     client = auth_client(user1)
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("update_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 200
 
     # User2 is not member of the org, so it can't update the view
     client = auth_client(user2)
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("update_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 404
 
     # User3 is member of the org, but the view is private, so he can't update it
     client = auth_client(user3)
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("update_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 404
 
     # A public view can be updated by another member of the org
-    create_view(
+    view = create_view(
         name="view2",
         query="my-query",
         organization=org1,
@@ -284,7 +286,7 @@ def test_update_view_permissions(
     )
     client = auth_client(user3)
     response = client.get(
-        reverse("update_view", kwargs={"org_name": "org1", "view_name": "view2"})
+        reverse("update_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 200
 
@@ -292,7 +294,7 @@ def test_update_view_permissions(
 def test_delete_view(create_organization, create_user, create_view, auth_client):
     user = create_user()
     org = create_organization(name="org", user=user)
-    create_view(
+    view = create_view(
         name="my-view",
         query="my-query",
         organization=org,
@@ -303,7 +305,7 @@ def test_delete_view(create_organization, create_user, create_view, auth_client)
 
     assert View.objects.count() == 1
     client.delete(
-        reverse("delete_view", kwargs={"org_name": "org", "view_name": "my-view"}),
+        reverse("delete_view", kwargs={"org_name": "org", "view_id": view.id}),
         follow=True,
     )
     assert View.objects.count() == 0
@@ -324,7 +326,7 @@ def test_delete_view_permissions(
         date_invited=now(),
         date_joined=now(),
     )
-    create_view(
+    view = create_view(
         name="view1",
         query="my-query",
         organization=org1,
@@ -335,26 +337,26 @@ def test_delete_view_permissions(
     # User1 can delete the view
     client = auth_client(user1)
     response = client.get(
-        reverse("delete_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("delete_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 200
 
     # User2 is not member of the org, so it can't delete the view
     client = auth_client(user2)
     response = client.get(
-        reverse("delete_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("delete_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 404
 
     # User3 is member of the org, but the view is private, so he can't delete it
     client = auth_client(user3)
     response = client.get(
-        reverse("delete_view", kwargs={"org_name": "org1", "view_name": "view1"})
+        reverse("delete_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 404
 
     # A public view can be updated by another member of the org
-    create_view(
+    view = create_view(
         name="view2",
         query="my-query",
         organization=org1,
@@ -362,6 +364,6 @@ def test_delete_view_permissions(
     )
     client = auth_client(user3)
     response = client.get(
-        reverse("delete_view", kwargs={"org_name": "org1", "view_name": "view2"})
+        reverse("delete_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
     assert response.status_code == 200
