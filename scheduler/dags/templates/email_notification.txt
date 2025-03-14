@@ -9,5 +9,5 @@ This email has been sent from the {{ notification }} notification of the {{ orga
 Changes: {{ vulnerability.changes|join(', ') }}
 Subscriptions: {{ vulnerability.subscriptions|join(', ') }}
 {% endfor %}{% endif %}
-{% endfor %}2024 OpenCVE, All rights reserved
+{% endfor %}&copy; {{ year }} OpenCVE, All rights reserved
 Update your notifications to unsubscribe this notification: {{ notification_url }}
