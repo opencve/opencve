@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import datetime
 
 import aiosmtplib
 from airflow.configuration import conf
@@ -18,7 +19,10 @@ async def send_email(smtp_conf, email):
         email_to=email,
         subject="SMTP Configuration Test for OpenCVE Scheduler",
         template="email_test",
-        context={"web_url": conf.get("opencve", "web_base_url")},
+        context={
+            "web_url": conf.get("opencve", "web_base_url"),
+            "year": datetime.datetime.now().year,
+        },
     )
 
     await aiosmtplib.send(message, **smtp_conf)
