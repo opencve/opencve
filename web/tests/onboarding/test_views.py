@@ -9,6 +9,7 @@ from cves.constants import PRODUCT_SEPARATOR
 from organizations.models import Membership, Organization
 from projects.models import Notification, Project
 from users.models import CveTag, UserTag
+from views.models import View
 
 
 def test_onboarding_dispatch(client, auth_client, create_user, create_organization):
@@ -113,6 +114,13 @@ def test_onboarding_valid_form(auth_client, create_user):
     assert user_tag.name == "log4j"
     assert user_tag.color == "#0A0031"
     assert user_tag.description == "This is an example tag"
+
+    view = View.objects.first()
+    assert view.name == "High Python Vulns"
+    assert view.query == "vendor:python AND cvss31>=7"
+    assert view.privacy == "private"
+    assert view.organization == orga
+    assert view.user == user
 
 
 @pytest.mark.parametrize(
