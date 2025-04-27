@@ -71,7 +71,9 @@
                             </a>
                             <ul class="treeview-menu">
                                 {% for project in request.current_organization.projects.all|dictsort:"name" %}
+                                {% if project.active %}
                                 <li class="{% is_active_project_link project.name %}"><a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}"><i class="fa fa-circle-o"></i> {{ project.name }}</a></li>
+                                {% endif %}
                                 {% endfor %}
                                 <li class="{% is_active_link 'list_projects' %}"><a href="{% url 'list_projects' org_name=request.current_organization.name %}"><i class="fa fa-edit"></i> Manage Projects</a></li>
                             </ul>
