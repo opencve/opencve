@@ -1,0 +1,19 @@
+<form id="widget-config-form">
+    <div class="form-group">
+        <label for="widget-title">Widget Title</label>
+        <input type="text" class="form-control" id="widget-title" name="title" value="{{ title|default:'CVEs by Project' }}">
+    </div>
+    <div class="form-group">
+        <label for="project-select">Select a Project</label>
+        <select class="form-control" id="project-select" name="project_id">
+            {% for project in projects %}
+            <option value="{{ project.id }}" {% if project.id|stringformat:"s" == config.project_id %}selected{% endif %}>{{ project.name }}</option>
+            {% endfor %}
+        </select>
+        <div class="checkbox">
+          <label>
+            <input name="show_project_info" type="checkbox" {% if config.show_project_info == 1 %}checked{% endif %}> Show project information
+          </label>
+        </div>
+    </div>
+</form>

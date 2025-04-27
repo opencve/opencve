@@ -14,7 +14,7 @@ def test_list_dashboard_changes_no_activity(
     client = auth_client(user)
     create_project(name="myproject", organization=organization, vendors=["google"])
 
-    response = client.get(reverse("home"), follow=True)
+    response = client.get(reverse("activity"), follow=True)
     assert b"No activity." in response.content
 
 
@@ -28,7 +28,7 @@ def test_list_dashboard_changes(
     create_project(name="myproject", organization=organization, vendors=["google"])
     create_cve("CVE-2024-31331")
 
-    response = client.get(reverse("home"), follow=True)
+    response = client.get(reverse("activity"), follow=True)
     soup = BeautifulSoup(response.content, features="html.parser")
 
     assert response.status_code == 200
@@ -67,7 +67,7 @@ def test_dashboard_settings(
     # The dashboard displays all changes by default
     assert user.settings.get("activities_view") == "all"
 
-    response = client.get(reverse("home"), follow=True)
+    response = client.get(reverse("activity"), follow=True)
     soup = BeautifulSoup(response.content, features="html.parser")
 
     headers = soup.find_all("h3", {"class": "timeline-header"})
@@ -78,8 +78,10 @@ def test_dashboard_settings(
     ]
 
     # We change the `activities_view` setting (from `all` to `subscriptions`)
-    response = client.post(reverse("home"), data={"view": "subscriptions"}, follow=True)
-    assert b"Your dashboard settings have been updated." in response.content
+    response = client.post(
+        reverse("activity"), data={"view": "subscriptions"}, follow=True
+    )
+    assert b"Your activity settings have been updated." in response.content
 
     # The user setting has been updated
     user = User.objects.first()

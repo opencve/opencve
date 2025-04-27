@@ -1,0 +1,13 @@
+<form id="widget-config-form">
+    <div class="form-group">
+        <label for="widget-title">Widget Title</label>
+        <input type="text" class="form-control" id="widget-title" name="title" value="{{ title|default:'CVEs Activity' }}">
+    </div>
+    <div class="form-group">
+        <label for="activities-view">Activities View</label>
+        <select class="form-control" id="activities-view" name="activities_view">
+            <option value="all" {% if config.activities_view == 'all' %}selected{% endif %}>All activities</option>
+            <option value="subscriptions" {% if config.activities_view == 'subscriptions' %}selected{% endif %}>Subscriptions only</option>
+        </select>
+    </div>
+</form>

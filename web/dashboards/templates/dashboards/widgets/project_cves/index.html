@@ -1,0 +1,65 @@
+{% load opencve_extras %}
+
+{% if config.show_project_info == 1 %}
+<div class="view-item view-item-no-border">
+    <div class="pointer change-collapsed collapsed" data-toggle="collapse" href="#{{ widget_id }}" aria-expanded="false">
+        <span class="product-vendors-title">
+            <strong>{{ project.name }}</strong>
+            <span class="box-meta">
+                <i class="fa fa-plus"></i>
+                <i class="fa fa-minus"></i>
+            </span>
+        </span>
+    </div>
+    <div id="{{ widget_id }}" class="panel-collapse collapse" aria-expanded="false" style="height: 0px;">
+        <div class="view-details">
+            <div class="row">
+                <div class="col-md-12">
+                    {% include 'projects/includes/subscriptions.html' %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if cves %}
+<div class="table-responsive">
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th>CVE</th>
+                <th class="text-center">CVSS</th>
+                <th class="text-center">Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cve in cves %}
+            <tr>
+                <td>
+                    <a href="{% url 'cve' cve_id=cve.cve_id %}">{{ cve.cve_id }}</a>
+                    <br>
+                    <small class="text-muted">{{ cve.description|truncatechars:100 }}</small>
+                </td>
+                <td class="text-center">
+                    {% if cve.cvssV3_1 %}
+                    <span class="label label-{{ cve.cvssV3_1.score|cvss_level }}">{{ cve.cvssV3_1.score }}</span>
+                    {% else %}
+                    <span class="label label-default">N/A</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <small>{{ cve.updated_at|date:"d/m" }}</small>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<p class="center">
+    <a class="btn btn-default btn-sm" href="{% url 'project_vulnerabilities' org_name=request.current_organization project_name=project.name %}">View All CVEs</a>
+</p>
+{% else %}
+<p class="alert alert-info">No CVEs found.</p>
+{% endif %}

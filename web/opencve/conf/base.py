@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "hijack",
     "hijack.contrib.admin",
     "rest_framework",
+    "dashboards",
     "changes",
     "cves",
     "onboarding",

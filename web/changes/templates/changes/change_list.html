@@ -2,8 +2,8 @@
 {% load opencve_extras %}
 {% load crispy_forms_tags %}
 
-{% block title%}Dashboard - {{ block.super }}{% endblock %}
-{% block navbar_title%}Dashboard{% endblock %}
+{% block title%}CVEs Activity - {{ block.super }}{% endblock %}
+{% block navbar_title%}CVEs Activity{% endblock %}
 
 {% block content %}
 
@@ -13,12 +13,6 @@
         <div class="col-md-12">
             {% include "messages.html" %}
         </div>
-        {% if not request.current_organization %}
-        <div class="col-md-8 col-md-offset-2">
-            <div class="callout callout-info">
-            <p>You must be part of at least one organization to use OpenCVE. <a href="{% url 'list_organizations' %}">Manage your organizations?</a></p>
-        </div>
-        {% else %}
         <div class="col-md-8">
             <div class="box box-primary">
                 <div class="box-header with-border">
@@ -67,10 +61,10 @@
                     <div class="center">
                         <ul class="pagination">
                             {% if page_obj.has_previous %}
-                                <li class="previous"><a href="{% url 'home'%}?{% query_params_url 'page' page_obj.previous_page_number %}">« prev </a></li>
+                                <li class="previous"><a href="{% url 'activity'%}?{% query_params_url 'page' page_obj.previous_page_number %}">« prev </a></li>
                             {% endif %}
                             {% if page_obj.has_next %}
-                                <li class="previous"><a href="{% url 'home'%}?{% query_params_url 'page' page_obj.next_page_number %}">next »</a></li>
+                                <li class="previous"><a href="{% url 'activity'%}?{% query_params_url 'page' page_obj.next_page_number %}">next »</a></li>
                             {% endif %}
                         </ul>
                     </div>
@@ -81,96 +75,14 @@
 
         <div class="col-md-4">
              <div class="box box-primary">
-                <div class="box-header collapsed pointer change-collapsed" data-toggle="collapse" href="#dashboard-settings" aria-expanded="false">
-                    <h4 class=" box-title">Dashboard Settings
-                        <span class="box-meta">
-                            <i class="fa fa-plus"></i>
-                            <i class="fa fa-minus"></i>
-                        </span>
-                    </h4>
+                <div class="box-header">
+                    <h4 class=" box-title">Dashboard Settings</h4>
                 </div>
-                <div id="dashboard-settings" class="panel-collapse collapse" aria-expanded="false">
+                <div id="dashboard-settings">
                     <div class="box-body">{% crispy form %}</div>
                 </div>
             </div>
-
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Projects</h3>
-                </div>
-                <div class="box-body">
-                    <div class="table-responsive">
-                        {% if projects %}
-                        <table class="table table-hover table-striped">
-                            <thead>
-                                <tr>
-                                    <th class="col-md-4">Name</th>
-                                    <th class="col-md-4 center">Vendors</th>
-                                    <th class="col-md-4 center">Products</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            {% for project in projects %}
-                            <tr>
-                                <td><a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}">{{ project.name }}</a></td>
-                                <td class="center">{{ project.subscriptions.vendors|length }}</td>
-                                <td class="center">{{ project.subscriptions.products|length }}</td>
-                            </a></tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                        {% else %}
-                        <p class="alert alert-info">You have no project yet. <a href="{% url 'create_project' org_name=request.current_organization.name %}">Create a new one?</a></p>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="box-footer text-center">
-                    <a href="{% url 'list_projects' org_name=request.current_organization.name %}" class="uppercase">View All Projects</a>
-                </div>
-            </div>
-
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Tags</h3>
-                </div>
-                <div class="box-body">
-                    {% for tag in tags %}
-                    <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
-                        <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
-                    </a>
-                    {% empty %}
-                    <p class="alert alert-info">You have no tag yet. <a href="{% url 'create_tag' %}">Create a new one?</a></p>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Last Reports</h3>
-                </div>
-                <div class="box-body">
-                    <table class="table table-hover table-striped">
-                        <thead>
-                            <tr>
-                                <th class="col-md-3">Date</th>
-                                <th class="col-md-6">Project</th>
-                                <th class="col-md-3 center">Changes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for report in reports %}
-                            <tr>
-                                <td><a href="{% url 'report' org_name=request.current_organization.name project_name=report.project.name day=report.day %}">{{ report.day|date:"M, d" }}</a></td>
-                                <td><a href="{% url 'project' org_name=request.current_organization.name project_name=report.project.name %}">{{ report.project.name }}</a></td>
-                                <td class="center">{{ report.changes.count }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
-        {% endif %}
     </div>
 </section>
 
