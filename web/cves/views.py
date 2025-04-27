@@ -86,6 +86,7 @@ class CveListView(ListView):
             or self.request.GET.get("product")
             or self.request.GET.get("search")
             or self.request.GET.get("weakness")
+            or self.request.GET.get("tag")
         ):
             self.request.user.update_setting("search_mode", "basic")
             return "basic"
