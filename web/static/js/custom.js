@@ -493,4 +493,249 @@ function getContrastedColor(str){
     });
   }
 
+  function sanitizeText(text) {
+      const div = document.createElement('div');
+      div.appendChild(document.createTextNode(text));
+      return div.innerHTML;
+  }
+
+  function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+  }
+
+
+  /*
+   Homepage Grid
+  */
+  const gridStackElement = document.querySelector('.grid-stack');
+
+  if (gridStackElement) {
+    const grid = GridStack.init({
+      handle: '.drag-widget',
+      float: false,
+      animate: true,
+      cellHeight: 100,
+    });
+
+    $(".add-widget").on("click", function () {
+      let widgetType = $(this).data("type");
+      const content = '<p class="center"><button class="btn btn-default center configure-widget">Configure the widget</button></p>';
+
+      // Find the lowest position
+      let maxY = 0;
+      grid.engine.nodes.forEach(node => {
+        maxY = Math.max(maxY, node.y + node.h);
+      });
+
+      const widget = {
+          x: 0,
+          y: maxY,
+          w: 6,
+          h: 5,
+          id: generateUUID(),
+          content: content,
+        };
+
+        const element = document.createElement('div');
+        element.dataset.type = widgetType;
+        element.innerHTML = `
+          <div class="grid-stack-item-content box box-primary">
+            <div class="box-header">
+                <div class="box-title"><i class="fa fa-arrows drag-widget"></i> <span class="box-title-text">New Widget</span></div>
+                <div class="box-tools pull-right">
+                    <a class="btn btn-box-tool configure-widget"><i class="fa fa-edit"></i></a>
+                    <a class="btn btn-box-tool delete-btn"><i class="fa fa-remove"></i></a>
+                </div>
+            </div>
+            <div class="box-body">${content}</div>
+          </div>
+        `;
+
+        const gridItem = grid.makeWidget(element, widget);
+
+        // Add delete functionality
+        element.querySelector('.delete-btn').addEventListener('click', () => {
+          grid.removeWidget(element);
+        });
+
+        $('#modal-add-widget').modal('hide');
+
+        // Scroll to the new element
+        $('html, body').animate({
+            scrollTop: $(element).offset().top - 100
+        }, 600);
+    });
+
+    $("#save-dashboard").on("click", function () {
+        const widgets = [];
+        const gridItems = grid.engine.nodes;
+
+        gridItems.forEach(node => {
+          if (node.el && node.el.dataset.config != undefined) {
+
+            widgets.push({
+              x: node.x,
+              y: node.y,
+              w: node.w,
+              h: node.h,
+              id: node.id,
+              type: node.el.dataset.type,
+              config: JSON.parse(node.el.dataset.config),
+              title: node.el.dataset.title,
+            });
+          }
+        });
+
+        $.ajax({
+            url: SAVE_DASHBOARD_URL,
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(widgets),
+            success: function (response) {
+                var $button = $('#save-dashboard');
+                var originalText = $button.html();
+
+                // Change button text and style
+                $button.html('<i class="fa fa-check"></i> Saved!')
+                      .removeClass('btn-default')
+                      .addClass('btn-primary');
+
+                // Reset button after 2 seconds
+                setTimeout(function() {
+                    $button.html(originalText)
+                          .removeClass('btn-primary')
+                          .addClass('btn-default');
+                }, 2000);
+            },
+            error: function (error) {
+                console.error("Error saving dashboard", error);
+                var $button = $('#save-dashboard');
+                var originalText = $button.html();
+
+                // Show error state
+                $button.html('<i class="fa fa-times"></i> Error')
+                      .removeClass('btn-default')
+                      .addClass('btn-danger');
+
+                // Reset button after 2 seconds
+                setTimeout(function() {
+                    $button.html(originalText)
+                          .removeClass('btn-danger')
+                          .addClass('btn-default');
+                }, 2000);
+            }
+        });
+    });
+
+    function loadWidgetData(element) {
+      var widgetElement = $(element);
+      var widgetId = widgetElement.attr("gs-id");
+
+      $.get(LOAD_WIDGET_DATA_URL.replace("$WIDGET_ID$", widgetId), function(data) {
+          if (data.html) {
+              widgetElement.find(".widget-content").html(data.html);
+          } else {
+              widgetElement.find(".widget-content").html("<p>An error occurred while loading the widget.</p>");
+          }
+          widgetElement.find(".widget-loader").hide();
+      }).fail(function() {
+          widgetElement.find(".widget-content").html("<p>An error occurred while loading the widget.</p>");
+          widgetElement.find(".widget-loader").hide();
+      });
+    }
+
+    function loadDashboard() {
+        $.getJSON(LOAD_DASHBOARD_URL, function (data) {
+            if (!data.widgets) return;
+            const widgets = data.widgets;
+
+            widgets.forEach(widget => {
+              const element = document.createElement('div');
+              element.dataset.config = JSON.stringify(widget.config);
+              element.dataset.type = widget.type;
+              element.dataset.title = widget.title;
+
+              element.innerHTML = `
+                <div class="grid-stack-item-content box box-primary">
+                  <div class="box-header">
+                      <div class="box-title"><i class="fa fa-arrows drag-widget" style="font-size: 0.80em;"></i> <span class="box-title-text">${sanitizeText(widget.title)}</span></div>
+                      <div class="box-tools pull-right">
+                          <a class="btn btn-box-tool configure-widget"><i class="fa fa-edit"></i></a>
+                          <a class="btn btn-box-tool delete-btn"><i class="fa fa-remove"></i></a>
+                      </div>
+                  </div>
+                  <div class="box-body">
+                    <div class="widget-content"></div>
+                    <div class="widget-loader center">
+                      <i class="fa fa-spinner fa-spin"></i> Loading...
+                    </div>
+                  </div>
+                </div>
+              `;
+
+              grid.makeWidget(element, widget);
+
+              element.querySelector('.delete-btn').addEventListener('click', () => {
+                grid.removeWidget(element);
+              });
+
+              grid.save(true);
+              loadWidgetData(element);
+            });
+        });
+    }
+    loadDashboard();
+
+    $(".grid-stack").on("click", ".configure-widget", function () {
+      let widgetElement = $(this).closest(".grid-stack-item");
+      let widgetConfig = JSON.parse(widgetElement.attr("data-config") || "{}");
+      let widgetType = widgetElement.attr("data-type");
+      let widgetTitle = widgetElement.attr("data-title");
+
+      $.post(LOAD_WIDGET_CONFIG_URL.replace("$WIDGET_TYPE$", widgetType), JSON.stringify({title: widgetTitle, config: widgetConfig}), function (data) {
+        let originalContent = widgetElement.find(".box-body").html();
+
+        // Replace the content with the new one
+        widgetElement.find(".box-body").html(`
+            <div class="widget-config-container">
+                ${data.html}
+                <div class="config-buttons text-right mt-2">
+                    <button class="btn btn-secondary btn-sm cancel-config">Cancel</button>
+                    <button class="btn btn-primary btn-sm save-config">Save</button>
+                </div>
+            </div>
+        `);
+
+        // Cancel button
+        widgetElement.find(".cancel-config").on("click", function () {
+          widgetElement.find(".box-body").html(originalContent);
+        });
+
+        // Confirm button
+        widgetElement.find(".save-config").on("click", function () {
+          let formData = widgetElement.find("form").serializeArray();
+          let config = {};
+          formData.forEach(item => config[item.name] = item.value);
+
+          widgetElement.attr("data-title", config.title);
+          widgetElement.find(".box-title-text").text(config.title);
+          delete config.title;
+
+          // Render the type with the config
+          var widgetId = widgetElement.attr("gs-id");
+          $.post(RENDER_WIDGET_DATA_URL.replace("$WIDGET_TYPE$", widgetType), {id: widgetId, config: JSON.stringify(config)}, function (renderData) {
+            widgetElement.find(".box-body").html(renderData.html);
+            widgetElement.attr("data-config", JSON.stringify(renderData.config));
+          });
+
+        });
+
+      });
+    });
+  }
+
   });

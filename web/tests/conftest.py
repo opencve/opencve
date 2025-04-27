@@ -9,6 +9,7 @@ from django.utils.timezone import now
 from psycopg2.extras import Json
 
 from cves.models import Cve, Variable
+from dashboards.models import Dashboard
 from organizations.models import Membership, Organization
 from projects.models import Notification, Project
 from views.models import View
@@ -186,3 +187,17 @@ def create_variable(db):
         return Variable.objects.create(name=name, value=value)
 
     return _create_variable
+
+
+@pytest.fixture(scope="function")
+def create_dashboard(db):
+    def _create_dashboard(organization, user, name, config={}, is_default=False):
+        return Dashboard.objects.create(
+            organization=organization,
+            user=user,
+            name=name,
+            config=config,
+            is_default=is_default,
+        )
+
+    return _create_dashboard

@@ -1,0 +1,19 @@
+<form id="widget-config-form">
+    <div class="form-group">
+        <label for="widget-title">Widget Title</label>
+        <input type="text" class="form-control" id="widget-title" name="title" value="{{ title|default:'CVEs by View' }}">
+    </div>
+    <div class="form-group">
+        <label for="view-select">Select a View</label>
+        <select class="form-control" id="view-select" name="view_id">
+            {% for view in views %}
+            <option value="{{ view.id }}" {% if view.id|stringformat:"s" == config.view_id %}selected{% endif %}>{{ view.name }}</option>
+            {% endfor %}
+        </select>
+        <div class="checkbox">
+          <label>
+            <input name="show_view_info" type="checkbox" {% if config.show_view_info == 1 %}checked{% endif %}> Show view information
+          </label>
+        </div>
+    </div>
+</form>

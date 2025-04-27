@@ -9,8 +9,9 @@ from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView
 
 from changes.forms import ActivitiesViewForm
-from changes.models import Change, Report
+from changes.models import Change
 from changes.utils import CustomHtmlHTML
+from organizations.mixins import OrganizationIsMemberMixin
 
 
 class ActivityPaginator(Paginator):
@@ -26,19 +27,13 @@ class ActivityPaginator(Paginator):
         return 9999999999
 
 
-class ChangeListView(LoginRequiredMixin, ListView):
+class ChangeListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
     model = Change
     context_object_name = "changes"
     template_name = "changes/change_list.html"
     paginate_by = 10
     paginator_class = ActivityPaginator
     form_class = ActivitiesViewForm
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect("cves")
-
-        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         query = Change.objects
@@ -56,26 +51,10 @@ class ChangeListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Add the user tags
-        context["tags"] = self.request.user.tags.all()
-
-        # Add the projects
-        organization = self.request.current_organization
-        if organization:
-            projects = organization.projects.all()
-            context["projects"] = projects.order_by("name")
-
-            # Add the reports
-            context["reports"] = (
-                Report.objects.filter(project__in=projects)
-                .prefetch_related("changes")
-                .select_related("project")
-                .order_by("-day")[:10]
-            )
-
         # Add the view form
         view = self.request.user.settings["activities_view"]
         context["form"] = ActivitiesViewForm(initial={"view": view})
+
         return context
 
     def post(self, request, *args, **kwargs):
@@ -86,9 +65,10 @@ class ChangeListView(LoginRequiredMixin, ListView):
                 "activities_view": form.cleaned_data["view"],
             }
 
-            messages.success(self.request, "Your dashboard settings have been updated.")
+            messages.success(self.request, "Your activity settings have been updated.")
             self.request.user.save()
-        return redirect("home")
+
+        return redirect("activity")
 
 
 class ChangeDetailView(DetailView):

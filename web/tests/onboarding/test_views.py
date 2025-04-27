@@ -60,7 +60,7 @@ def test_onboarding_invalid_form(auth_client, create_user, create_organization):
 
 
 @freeze_time("2024-01-01")
-def test_onboarding_valid_form(auth_client, create_user, create_organization):
+def test_onboarding_valid_form(auth_client, create_user):
     user = create_user(username="john", email="john@doe.com")
     client = auth_client(user)
     url = reverse("onboarding")
