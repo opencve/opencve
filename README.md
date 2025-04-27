@@ -1,14 +1,62 @@
 <p align="center">
   <img alt="OpenCVE" src="https://raw.githubusercontent.com/opencve/opencve/v2/logo.png" width="400px;">
 </p>
-<p align="center">
-  <a href="https://github.com/opencve/opencve/actions?query=workflow%3ATests"><img alt="Tests" src="https://github.com/opencve/opencve/workflows/Tests/badge.svg"></a>
-  <a href="https://www.python.org/"><img alt="Python versions" src="https://img.shields.io/badge/python-3.10%2B-blue.svg"></a>
-  <a href="https://github.com/python/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
-</p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve1.png" width="350" height="215">
+  <a href="https://github.com/opencve/opencve/actions?query=workflow%3ATests">
+    <img alt="Tests" src="https://github.com/opencve/opencve/actions/workflows/tests.yml/badge.svg?branch=master">
+  </a>
+  <a href="https://www.python.org/">
+    <img alt="Python versions" src="https://img.shields.io/badge/python-3.10%2B-blue.svg">
+  </a>
+  <a href="https://github.com/python/black">
+    <img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg">
+  </a>
+</p>
+
+## What is OpenCVE?
+
+OpenCVE is an open-source platform that helps you monitor and manage CVEs efficiently.
+
+It aggregates vulnerabilities from multiple sources (MITRE, NVD, RedHat, Vulnrichment...) and lets you filter, track, and organize them by vendor, product, severity, and more.
+
+You can subscribe to products, receive alerts, analyze changes, and collaborate with your team — all through a simple and powerful interface.
+
+<p align="center">
+   <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve1.png" width="600" alt="How to Star and Watch the repository">
+</p>
+
+## Key Features
+
+### 📚 Explore, Filter and Organize
+- Filter CVEs by vendor, product, CVSS, CWE, publication date, and more.
+- Subscribe to vendors and products, and organize your monitoring with projects and organizations.
+- Save complex filters as reusable Views (public or private).
+
+### 🔖 Tag, Prioritize and Get Notified
+- Classify CVEs with custom tags (e.g. unread, critical, assigned-to-dev).
+- Receive alerts instantly via email or webhook (Slack and Teams coming soon).
+
+### 🔁 Track Changes and Generate Reports
+- Access the complete change history of CVEs: scores, descriptions, references, etc.
+- Generate daily reports by project to stay ahead.
+
+### 📊 Customize Your Dashboard
+- Build your own dashboard with widgets like "CVEs per project" or "CVEs per view".
+- Drag, resize, and save layouts per organization.
+
+## How to Use OpenCVE
+
+### ✅ SaaS (Recommended)
+Use the hosted version at [https://www.opencve.io](https://www.opencve.io) — no setup required.
+
+### 🐳 Self-Hosted
+Run OpenCVE on your own infrastructure using Docker. See the [installation guide](https://docs.opencve.io/deployment/) for more details.
+
+## Screenshots
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve7.png" width="350" height="215">
   <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve2.png" width="350" height="215">
   <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve3.png" width="350" height="215">
   <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve4.png" width="350" height="215">
@@ -16,37 +64,12 @@
   <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve6.png" width="350" height="215">
 </p>
 
-----------------
+## Stay Updated
 
-Try **for free** OpenCVE on [https://www.opencve.io](https://www.opencve.io) or check [documentation](https://docs.opencve.io) to install it yourself.
+OpenCVE is actively developed and regularly improved.
 
-## What is OpenCVE
+⭐ Star this repository and 🔔 watch releases to be notified of future updates.
 
-OpenCVE is a platform designed to help you **manage and monitor** the CVE database. It synchronizes the list of CVE (Common Vulnerabilities and Exposures) and allows you to **search, filter, and organize** them based on various criteria.
-
-Users can **subscribe** to specific vendors or products and **receive notifications** when a new CVE is added or an existing one is updated. These notifications can be delivered via **Email or Webhook** (additional notification methods, such as **Slack**, are planned for future releases).
-
-OpenCVE cross-references information from multiple reliable sources such as **MITRE**, **Vulnrichment**, **NVD**, and **RedHat**. This ensures that the vulnerability data remains accurate and up-to-date, even if one of the sources is temporarily unavailable.
-
-## Features
-
-- **Explore** the CVE database and filter the results by Vendor, Product, CVSS score or CWE
-- **Subscribe** to vendors and products extracted from CPE
-- **Organize** your subscription in your organizations and your projects
-- **Invite** other members into your organizations
-- **Be notified** for new CVE and for CVE updates based on subscriptions
-- **Analyse** all CVE details (vendors, products, CVSS score, CPE, CWE, References...)
-- **Create** custom tags (unread, important, devteam...) to organize the CVE list
-- **Display** the history of each CVE and see their last changes in the homepage
-- **Retrieve** the last changes in custom reports
-- **Customize** the notification settings (type of change, filter by score...)
-- **Integrate** OpenCVE with your own tools using the Webhook notification or the Rest API
-
-You can use **for free** these features on the public instance: [https://www.opencve.io](https://www.opencve.io).
-
-## How to Use OpenCVE
-
-1. **Self-Hosted**: You can install and configure OpenCVE on your own server using Docker. This provides full control over your instance.
-2. **SaaS Version**: Alternatively, you can use the hosted version of OpenCVE, available at [https://www.opencve.io](https://www.opencve.io). This option requires no setup and is ready to use out of the box.
-
-You can explore the [documentation](https://docs.opencve.io) for detailed instructions like the installation, the notifications configuration or the API usage.
+<p align="center">
+   <img src="https://raw.githubusercontent.com/opencve/opencve/master/github-star-watch.gif" width="600" alt="How to Star and Watch the repository">
+</p>
