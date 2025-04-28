@@ -34,7 +34,7 @@ class LoadDashboardView(LoginRequiredMixin, View):
             dashboard = Dashboard.objects.create(
                 organization=request.current_organization,
                 user=request.user,
-                name="Mon Dashboard",
+                name="Default",
                 is_default=True,
                 config=Dashboard.get_default_config(request),
             )
