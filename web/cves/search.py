@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db.models import Q
-from django.shortcuts import get_object_or_404
 import pyparsing as pp
 
 from cves.constants import PRODUCT_SEPARATOR
@@ -126,8 +125,11 @@ class UserTagFilter(Filter):
     supported_operators = [":"]
 
     def run(self):
-        tag = get_object_or_404(UserTag, name=self.value, user=self.user)
-        return Q(cve_tags__tags__contains=tag.name, cve_tags__user=self.user)
+        try:
+            UserTag.objects.get(name=self.value, user=self.user)
+        except UserTag.DoesNotExist:
+            raise BadQueryException(f"The tag '{self.value}' does not exist.")
+        return Q(cve_tags__tags__contains=self.value, cve_tags__user=self.user)
 
 
 class Search:
