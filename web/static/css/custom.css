@@ -652,43 +652,6 @@ pre.plainJSON{
   font-size: 13px;
 }
 
-.advanced-search-link {
-    display: inline-block;
-    text-decoration: none;
-    line-height: 1.5;
-    font-size: 12px;
-    color: #5648D8;
-    padding: 1px 5px;
-    border-radius: 4px;
-    background: #F4F3FF;
-    border: 1px solid #5648D8;
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
-.advanced-search-link:hover,
-.advanced-search-link:focus {
-    background-color: #e3e0ff;
-    border: 1px solid #3225ac;
-    color: #5648D8;
-    outline: none;
-}
-
-.beta-label {
-    font-size: 10px;
-    font-weight: normal;
-    color: #0A0031;
-    margin-left: 4px;
-}
-
-.fa-bolt {
-    margin-left: 5px;
-    color: #0A0031;
-}
-
-.advanced-search-link:focus .beta-label,
-.advanced-search-link:focus .fa-bolt {
-    color: #0A0031;
-}
 
 .view-item {
     padding: 10px;
@@ -738,4 +701,77 @@ pre.plainJSON{
 
 .widgets-list .item .product-info .product-description {
   margin-top: 8px;
+}
+
+.query-example-tag {
+  display: inline-block;
+  padding: 5px 10px;
+  margin: 3px;
+  text-decoration: none;
+  font-size: 90%;
+  font-weight: 600;
+  line-height: 1.5;
+  font-size: 12px;
+  color: #685aeb;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: #F4F3FF;
+  border: 1px solid #5648D8;
+  transition: background-color 0.1s ease;
+}
+
+.query-example-tag:hover,
+.query-example-tag:focus {
+  background-color: #e3e0ff;
+  border: 1px solid #3225ac;
+  color: #5648D8;
+  outline: none;
+}
+
+.pill-search-input {
+  border-radius: 50em;
+  height: 45px;
+  padding: 10px 20px;
+  font-size: 1.1em;
+  background-color: #f1f3f5;
+  color: #212529;
+  border: 1px solid #ced4da;
+  box-shadow: none;
+  user-select: none;
+  cursor: default;
+}
+
+.pill-search-input:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.pill-search-input.updated {
+  background-color: #e2f0fb;
+  transition: background-color 0.5s ease;
+}
+
+.query-label {
+  font-size: 0.85em;
+  color: #6c757d;
+  margin-left: 12px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.query-preview {
+  border-radius: 50em;
+  padding: 10px 20px;
+  font-size: 1.1em;
+  background-color: #f1f3f5;
+  color: #212529;
+  border: 1px solid #ced4da;
+  min-height: 45px;
+  line-height: 25px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow-x: auto;
+  cursor: default;
 }
