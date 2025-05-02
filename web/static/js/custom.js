@@ -493,6 +493,7 @@ function getContrastedColor(str){
     });
   }
 
+
   function sanitizeText(text) {
       const div = document.createElement('div');
       div.appendChild(document.createTextNode(text));
@@ -735,6 +736,169 @@ function getContrastedColor(str){
         });
 
       });
+    });
+  }
+
+  /*
+   CVE List Page - Dynamic Query Builder
+  */
+  if ($('#dynamic-query-builder').length) {
+    const $modal = $('#queryBuilderModal');
+    const $builder = $('#dynamic-query-builder');
+    const $queryOutput = $('#id_q');
+    const $modalQueryDisplay = $('#modal-query-display');
+    const queryDisplayPlaceholder = "Query will appear here as you build it...";
+
+    function updateQuery(params) {
+        let queryParts = [];
+
+        const addQueryPart = (field, value) => {
+            if (value && value.trim()) {
+                const trimmedValue = value.trim();
+
+                if (field === 'cve') {
+                    queryParts.push(`cve:${trimmedValue.toUpperCase()}`);
+                } else if (['description', 'title', 'cwe', 'vendor', 'product', 'userTag'].includes(field)) {
+                    const requiresQuotes = /[\s\:\?\*]/.test(trimmedValue);
+                    const formattedValue = requiresQuotes ? `\"${trimmedValue}\"` : trimmedValue;
+                    queryParts.push(`${field}:${formattedValue}`);
+                }
+            }
+        };
+
+        // 1. Process static, CWE & repeatable fields
+        ['cve', 'description', 'title', 'cwe', 'vendor', 'product', 'userTag'].forEach(fieldType => {
+            $builder.find(`.query-builder-input[data-field="${fieldType}"]`).each(function() {
+                addQueryPart(fieldType, $(this).val());
+            });
+        });
+
+        // 2. Process CVSS
+        const cvssVersion = $builder.find('.cvss-version').val();
+        const cvssOperator = $builder.find('.cvss-operator').val();
+        const cvssScoreRaw = $builder.find('.cvss-score').val().trim();
+        if (cvssVersion && cvssOperator && cvssScoreRaw !== '' && !isNaN(parseInt(cvssScoreRaw))) {
+            let score = parseInt(cvssScoreRaw);
+            if (score >= 0 && score <= 10) {
+                queryParts.push(`${cvssVersion}${cvssOperator}${score}`);
+            }
+        }
+
+        // Log the final query
+        const finalQuery = queryParts.join(' AND ');
+        if (finalQuery.trim() === '') {
+            $modalQueryDisplay.text(queryDisplayPlaceholder).addClass('text-muted');
+        } else {
+            $modalQueryDisplay.text(finalQuery).removeClass('text-muted');
+        }
+
+        // Enable/disable the Apply button
+        const $applyButton = $modal.find('#apply-modal-query');
+        if (finalQuery.trim() === '') {
+            $applyButton.prop('disabled', true);
+        } else {
+            $applyButton.prop('disabled', false);
+        }
+    }
+
+    // Event listener for regular inputs (text, number, non-select2 selects)
+    $modal.on('input change', '.query-builder-input:not(.select2-hidden-accessible)', updateQuery);
+
+    // Initialize Select2 for the initial User Tag select if present
+    if ($('.select2-tags-builder').length) {
+        const $initialSelect = $('.select2-tags-builder');
+        $initialSelect.select2({
+            allowClear: true,
+            width: '100%',
+            placeholder: "Select a tag...",
+            dropdownParent: $('#queryBuilderModal')
+        });
+
+        // Attach Select2 specific listeners
+        $initialSelect.on('select2:select select2:unselect', function (e) {
+           updateQuery({ fieldType: 'userTag', value: $(this).val() });
+        });
+    }
+
+    // Add filter buttons
+    let filterCounts = { vendor: 1, product: 1 };
+    $modal.on('click', '.add-filter', function() {
+        const targetSelector = $(this).data('target');
+        const fieldType = $(this).data('field');
+
+        if (!filterCounts.hasOwnProperty(fieldType)) {
+            console.warn("Attempted to add filter for unsupported type:", fieldType);
+            return;
+        }
+
+        filterCounts[fieldType]++;
+
+        const newFilterId = `query-builder-${fieldType}-${filterCounts[fieldType]}`;
+        const placeholder = (fieldType === 'vendor' ? 'e.g., apache' : 'e.g., log4j');
+        const newFilterHtml = `            <div class="form-group row filter-group mt-2" style="margin-top: 5px;">
+                <div class="col-sm-2"></div>
+                <div class="col-sm-9">
+                    <input type="text" class="form-control query-builder-input" id="${newFilterId}" data-field="${fieldType}" placeholder="${placeholder}">
+                </div>
+                <div class="col-sm-1">
+                    <button type="button" class="btn btn-danger btn-sm remove-filter" title="Remove this filter"><i class="fa fa-minus"></i></button>
+                </div>
+            </div>`;
+
+        const $newElement = $(newFilterHtml);
+        $modal.find(targetSelector).append($newElement);
+    });
+
+    // Remove filter buttons
+    $modal.on('click', '.remove-filter', function() {
+        $(this).closest('.filter-group').remove();
+        updateQuery();
+    });
+
+    // Reset button
+    $modal.on('click', '#reset-query-builder', function() {
+        $builder.find('.query-builder-input[type="text"], .query-builder-input[type="number"]').val('');
+        $builder.find('select.query-builder-input').each(function() {
+             const defaultSelected = $(this).find('option[selected]').val();
+             if (defaultSelected) {
+                 $(this).val(defaultSelected);
+             } else {
+                 $(this).prop('selectedIndex', 0);
+             }
+        });
+
+        // Remove added filters, keeping the first one
+         ['vendor', 'product'].forEach(fieldType => {
+             const filterContainer = $builder.find(`#${fieldType}-filters`);
+             if (filterContainer.length) {
+                filterContainer.find('.filter-group:not(:first)').remove();
+                filterContainer.find('.filter-group:first .query-builder-input').val('');
+             }
+         });
+         // Reset the UserTag filter
+         const userTagSelect = $builder.find('select.select2-tags-builder[data-field="userTag"]');
+         if (userTagSelect.length) {
+            userTagSelect.val(null).trigger('change');
+         }
+
+        // Reset the modal display field
+        $modalQueryDisplay.text(queryDisplayPlaceholder).addClass('text-muted');
+        updateQuery();
+    });
+
+    // Reset builder fields every time the modal is shown
+    $modal.on('show.bs.modal', function () {
+        $modal.find('#reset-query-builder').trigger('click');
+        filterCounts = { vendor: 1, product: 1 };
+    });
+
+    // Apply Query button
+    $modal.on('click', '#apply-modal-query', function() {
+        const query = $modalQueryDisplay.text();
+        if (query && query.trim() !== '' && query !== queryDisplayPlaceholder) {
+            const searchUrl = `${CVES_URL}?q=${encodeURIComponent(query)}`;
+            window.location.href = searchUrl;
+        }
     });
   }
 

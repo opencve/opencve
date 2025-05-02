@@ -63,106 +63,67 @@
     {% endif %}
 
     <div class="row">
-        <div class="col-md-9">
+        <div class="col-md-7">
             <div class="box box-primary">
                 <div class="box-header with-border">
                     <h3 class="box-title">Search</h3>
-                    <div class="box-tools pull-right">
-                      <div class="btn-group" data-toggle="btn-toggle">
-                          {% if not user.is_authenticated %}
-                          <a href="{% url 'account_login' %}" class="advanced-search-link" data-toggle="tooltip" data-container="body" title="You must be authenticated to use the advanced search feature"><span class="beta-text">Switch to Advanced Search</span> <span class="beta-label">(Beta)</span> <i class="fa fa-bolt"></i></a>
-                          {% else %}
-                                <form method="post" action="{% url 'cves' %}">
-                                {% csrf_token %}
-                                {% if search_mode == 'basic' %}
-                                    <button type="submit" class="advanced-search-link"><span class="beta-text">Switch to Advanced Search</span> <span class="beta-label">(Beta)</span> <i class="fa fa-bolt"></i></button>
-                                {% else %}
-                                    <button type="submit" class="btn btn-default btn-xs"><span class="beta-text">Switch to Basic Search</span> <i class="fa fa-exchange"></i></button>
-                                {% endif %}
-                                </form>
-                          {% endif %}
-                      </div>
-                    </div>
                 </div>
-                {% if search_mode == 'basic' %}
-                <div class="box-body" id="basic-search">
+                <div class="box-body" id="advanced-search">
                     <form method="GET">
                         {% if request.GET.cwe %}
                         <input type="hidden" name="cwe" value="{{ request.GET.cwe }}" />
                         {% endif %}
-                        {% if request.GET.vendor %}
-                        <input type="hidden" name="vendor" value="{{ vendor.name }}" />
+                        {% if request.GET.vendor and not vendor %}
+                        <input type="hidden" name="vendor" value="{{ request.GET.vendor }}" />
                         {% endif %}
-                        {% if request.GET.product %}
-                        <input type="hidden" name="product" value="{{ product.name }}" />
+                        {% if request.GET.product and not product %}
+                        <input type="hidden" name="product" value="{{ request.GET.product }}" />
                         {% endif %}
+
                         <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {% if user.is_authenticated %}
-                                    <select class="form-control select2" name="tag" data-placeholder="Select a tag">
-                                        <option></option>
-                                        {% for t in user_tags %}
-                                        <option {% if request.GET.tag == t %} selected="selected" {% endif %} value="{{ t }}">{{ t }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    {% else %}
-                                    <div data-toggle="tooltip" data-container="body" title="You must be signed in to filter the list of CVE by tag">
-                                        <select class="form-control select2" data-placeholder="Select a tag" disabled></select>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <select class="form-control select2" name="cvss" data-placeholder="Filter by CVSS v3.1">
-                                        <option></option>
-                                        <option {% if request.GET.cvss|lower == 'empty' %} selected="selected" {% endif %} value="empty">Empty</option>
-                                        <option {% if request.GET.cvss|lower == 'low' %} selected="selected" {% endif %} value="low">Low (0 - 3.9)</option>
-                                        <option {% if request.GET.cvss|lower == 'medium' %} selected="selected" {% endif %} value="medium">Medium (4.0 - 6.9)</option>
-                                        <option {% if request.GET.cvss|lower == 'high' %} selected="selected" {% endif %} value="high">High (7.0 - 8.9)</option>
-                                        <option {% if request.GET.cvss|lower == 'critical' %} selected="selected" {% endif %} value="critical">Critical (9.0 - 10.0)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <input type="text" placeholder="Search in CVEs" class="form-control" name="search"
-                                       value="{% if request.GET.search %}{{ request.GET.search }}{% endif %}">
-                            </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-primary">Search</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                {% else %}
-                <div class="box-body" id="advanced-search">
-                    <form method="GET">
-                        <div class="row">
-                            <div class="col-md-8">
+                            <div class="col-md-9">
                                 {{ search_form.q|as_crispy_field }}
                             </div>
-                            <div class="col-md-4">
-                                <button type="submit" class="btn btn-primary">Search</button>
-                                <div class="btn-group">
-                                  <button type="button" class="btn btn-default" id="save-view-button"><i class="fa fa-save"></i> Save</button>
-                                  <button type="button" class="btn btn-default" data-toggle="modal" data-target="#modal-load-views"><i class="fa fa-download"></i> Load</button>
+                            <div class="col-md-3">
+                                <div class="btn-group" style="width: 100%;">
+                                    <button type="submit" class="btn btn-primary" style="width: 60%;"><i class="fa fa-search"></i> Search</button>
+                                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="width: 40%;">
+                                        <i class="fa fa-wrench"></i> <span class="caret"></span>
+                                        <span class="sr-only">Toggle Dropdown</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-right">
+                                        <li><a href="#" data-toggle="modal" data-target="#queryBuilderModal"><i class="fa fa-cogs fa-fw"></i> Query Builder</a></li>
+                                        <li><a href="#" id="save-view-button"><i class="fa fa-save fa-fw"></i> Save Query</a></li>
+                                        <li><a href="#" data-toggle="modal" data-target="#modal-load-views"><i class="fa fa-download fa-fw"></i> Load Query</a></li>
+                                    </ul>
                                 </div>
+                            </div>
+                            <div class="col-md-12">
+                                <small class="form-text text-muted">
+                                     Use the <a href='#' data-toggle='modal' data-target='#queryBuilderModal'>Query Builder</a> to create your own search query, or check out the <a href='https://docs.opencve.io/guides/advanced_search/'>documentation</a> to learn the search syntax.
+                                </small>
                             </div>
                         </div>
                     </form>
                 </div>
-                {% endif %}
             </div>
         </div>
-
-        <div class="col-md-3">
-            <div class="info-box">
-                <span class="info-box-icon bg-primary"><i class="fa fa-shield"></i></span>
-
-                <div class="info-box-content">
-                    <span class="info-box-text">Total</span>
-                    <span class="info-box-number">{{ page_obj.paginator.count }} CVE</span>
+        <div class="col-md-5">
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Search Examples</h3>
+                </div>
+                <div class="box-body">
+                    <a href="{% url 'cves' %}?q=vendor:microsoft+AND+cvss31%3E%3D9" class="query-example-tag">Crit. Microsoft</a>
+                    <a href="{% url 'cves' %}?q=vendor:apache+AND+cvss31%3E%3D7" class="query-example-tag">High Apache</a>
+                    <a href="{% url 'cves' %}?q=cwe:CWE-89" class="query-example-tag">SQL Injection (CWE-89)</a>
+                    <a href="{% url 'cves' %}?q=vendor:linux+AND+product:linux_kernel" class="query-example-tag">Linux Kernel</a>
+                    <a href="{% url 'cves' %}?q=cvss31%3E%3D7+AND+cvss31%3C9" class="query-example-tag">High (CVSS 3.1)</a>
+                    <a href="{% url 'cves' %}?q=vendor:apache+AND+product:struts" class="query-example-tag">Apache Struts</a>
+                    <a href="{% url 'cves' %}?q=description%3A%27remote+code+execution%27" class="query-example-tag">RCE (Remote Code Execution)</a>
+                    <a href="{% url 'cves' %}?q=cwe:CWE-79" class="query-example-tag">XSS (CWE-79)</a>
+                    <a href="{% url 'cves' %}?q=cvss40%3E%3D9" class="query-example-tag">Critical (CVSS 4.0)</a>
+                    <a href="{% url 'cves' %}?q=userTag%3Atocheck" class="query-example-tag">CVEs to check</a>
                 </div>
             </div>
         </div>
@@ -172,6 +133,9 @@
         <div class='col-md-12'>
             {% if cves %}
             <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Search Results <small>({{ page_obj.paginator.count }} CVEs found)</small></h3>
+                </div>
                 <div class="box-body table-responsive no-padding">
                     {% include "cves/_cve_table.html" %}
 
@@ -202,6 +166,114 @@
         </div>
     </div>
 </section>
+
+<div class="modal fade" id="queryBuilderModal" tabindex="-1" role="dialog" aria-labelledby="queryBuilderModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="queryBuilderModalLabel">Advanced Search Builder</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+          <div id="modal-query-display" class="query-preview">
+            Query will appear here as you build it...
+          </div>
+          <hr>
+          <div id="dynamic-query-builder">
+              <div class="form-group row">
+                  <label for="query-builder-cve" class="col-sm-2 col-form-label">CVE ID</label>
+                  <div class="col-sm-10">
+                      <input type="text" class="form-control query-builder-input" id="query-builder-cve" data-field="cve" placeholder="e.g., CVE-2023-1234">
+                  </div>
+              </div>
+              <div class="form-group row">
+                  <label for="query-builder-description" class="col-sm-2 col-form-label">Description</label>
+                  <div class="col-sm-10">
+                      <input type="text" class="form-control query-builder-input" id="query-builder-description" data-field="description" placeholder="Text search in description...">
+                  </div>
+              </div>
+              <div class="form-group row">
+                  <label for="query-builder-title" class="col-sm-2 col-form-label">Title</label>
+                  <div class="col-sm-10">
+                      <input type="text" class="form-control query-builder-input" id="query-builder-title" data-field="title" placeholder="Text search in title...">
+                  </div>
+              </div>
+
+              <div class="form-group row">
+                <label for="query-builder-usertag-1" class="col-sm-2 col-form-label">User Tag</label>
+                <div class="col-sm-10">
+                    <select class="form-control query-builder-input select2-tags-builder" id="query-builder-usertag-1" data-field="userTag" data-placeholder="Select a tag...">
+                        <option></option>
+                        {% for tag in user_tags %}
+                        <option value="{{ tag }}">{{ tag }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+              <div class="form-group row">
+                  <label class="col-sm-2 col-form-label">CVSS Score</label>
+                  <div class="col-sm-3">
+                      <select class="form-control query-builder-input cvss-version" data-field-prefix="cvss">
+                          <option value="cvss40" selected>CVSS v4.0</option>
+                          <option value="cvss31">CVSS v3.1</option>
+                          <option value="cvss30">CVSS v3.0</option>
+                          <option value="cvss20">CVSS v2.0</option>
+                      </select>
+                  </div>
+                  <div class="col-sm-2">
+                      <select class="form-control query-builder-input cvss-operator">
+                          <option value=">=" selected>&gt;=</option>
+                          <option value="<=">&lt;=</option>
+                          <option value="=">=</option>
+                      </select>
+                  </div>
+                  <div class="col-sm-5">
+                      <input type="text" inputmode="numeric" pattern="[0-9]*" class="form-control query-builder-input cvss-score" placeholder="Score (0 - 10)">
+                  </div>
+              </div>
+
+              <div class="form-group row">
+                  <label for="query-builder-cwe" class="col-sm-2 col-form-label">CWE</label>
+                  <div class="col-sm-10">
+                      <input type="text" class="form-control query-builder-input" id="query-builder-cwe" data-field="cwe" placeholder="e.g., CWE-89">
+                  </div>
+              </div>
+
+              <div id="vendor-filters">
+                  <div class="form-group row filter-group">
+                      <label for="query-builder-vendor-1" class="col-sm-2 col-form-label">Vendor</label>
+                      <div class="col-sm-9">
+                          <input type="text" class="form-control query-builder-input" id="query-builder-vendor-1" data-field="vendor" placeholder="e.g., microsoft">
+                      </div>
+                      <div class="col-sm-1">
+                          <button type="button" class="btn btn-success btn-sm add-filter" data-target="#vendor-filters" data-field="vendor" title="Add another vendor filter"><i class="fa fa-plus"></i></button>
+                      </div>
+                  </div>
+              </div>
+              <div id="product-filters">
+                  <div class="form-group row filter-group">
+                      <label for="query-builder-product-1" class="col-sm-2 col-form-label">Product</label>
+                      <div class="col-sm-9">
+                          <input type="text" class="form-control query-builder-input" id="query-builder-product-1" data-field="product" placeholder="e.g., windows">
+                      </div>
+                      <div class="col-sm-1">
+                          <button type="button" class="btn btn-success btn-sm add-filter" data-target="#product-filters" data-field="product" title="Add another product filter"><i class="fa fa-plus"></i></button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="reset-query-builder" class="btn btn-secondary pull-left"><i class="fa fa-undo"></i> Reset Builder</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" id="apply-modal-query" class="btn btn-primary"><i class="fa fa-check"></i> Apply Query</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% if request.current_organization %}
 <div class="modal fade" id="modal-save-view">

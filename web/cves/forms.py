@@ -9,9 +9,6 @@ from cves.search import Search
 class SearchForm(forms.Form):
     q = forms.CharField(
         required=False,
-        help_text=mark_safe(
-            'Read the <a href="https://docs.opencve.io/guides/advanced_search/" target="_blank">Advanced Search</a> documentation to learn the syntax.'
-        ),
     )
 
     def __init__(self, *args, **kwargs):
