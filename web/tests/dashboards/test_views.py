@@ -535,15 +535,6 @@ def test_load_widget_config_view_post(client, auth_client, create_user):
     assert response_invalid_type.status_code == 400
     assert response_invalid_type.json() == {"error": "Invalid widget type"}
 
-    # ValueError during widget init/config
-    response_value_error = auth_client.post(
-        reverse("load_widget_config", kwargs={"widget_type": "view_cves"}),
-        data=json.dumps({"title": "Invalid View", "config": {"view_id": "not-a-uuid"}}),
-        content_type="application/json",
-    )
-    assert response_value_error.status_code == 400
-    assert response_value_error.json() == {"error": "Error rendering widget config"}
-
     # Valid widget
     with patch(
         "dashboards.widgets.TagsWidget.config", return_value="<p>Mocked Config HTML</p>"
@@ -557,3 +548,54 @@ def test_load_widget_config_view_post(client, auth_client, create_user):
     assert response_valid.status_code == 200
     assert response_valid.json() == {"html": "<p>Mocked Config HTML</p>"}
     mock_widget_config.assert_called_once()
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_invalid_widget_validate_config_handling(
+    auth_client, create_user, create_organization, create_dashboard
+):
+    user = create_user()
+    auth_client = auth_client(user)
+
+    # LoadWidgetConfigView does not validate the config
+    response = auth_client.post(
+        reverse("load_widget_config", kwargs={"widget_type": "view_cves"}),
+        data=json.dumps({"title": "Invalid View", "config": {"view_id": "not-a-uuid"}}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+
+    # RenderWidgetDataView validates the config
+    response = auth_client.post(
+        reverse("render_widget_data", kwargs={"widget_type": "view_cves"}),
+        data=json.dumps({"id": str(uuid.uuid4()), "config": {"view_id": "not-a-uuid"}}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+
+    # LoadWidgetDataView validate the config
+    widget_id = str(uuid.uuid4())
+    organization = create_organization(name="Test Org", user=user)
+    create_dashboard(
+        organization=organization,
+        user=user,
+        name="Default",
+        config={
+            "widgets": [
+                {
+                    "id": widget_id,
+                    "title": "Test Widget",
+                    "type": "view_cves",
+                    "config": {"view_id": "not-a-uuid"},
+                }
+            ]
+        },
+        is_default=True,
+    )
+
+    # Unauthenticated access
+    response = auth_client.get(
+        reverse("load_widget_data", kwargs={"widget_id": widget_id}),
+    )
+    assert response.status_code == 400

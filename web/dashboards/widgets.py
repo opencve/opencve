@@ -23,14 +23,19 @@ def list_widgets():
 
 class Widget:
     allowed_config_keys = []
+    default_config_values = {}
 
-    def __init__(self, request, data):
+    def __init__(self, request, data, validate_config=True):
         self.request = request
         self.id = self.validate_id(data["id"])
         self.type = self.validate_type(data["type"])
         self.title = data["title"]
+        self.raw_config = data.get("config", {})
+
         self.configuration = (
-            self.validate_config(data["config"]) if data.get("config") else {}
+            self.validate_config(self.raw_config)
+            if validate_config
+            else self.raw_config
         )
 
     @staticmethod
@@ -47,7 +52,25 @@ class Widget:
         return type
 
     def validate_config(self, config):
-        return {k: v for k, v in config.items() if k in self.allowed_config_keys}
+        # Filter config to only include allowed keys
+        config = {k: v for k, v in config.items() if k in self.allowed_config_keys}
+
+        # Inject default values for missing keys
+        for key in self.allowed_config_keys:
+            if key not in config and key in self.default_config_values:
+                config[key] = self.default_config_values[key]
+
+        # Ensure all required keys are present
+        required_keys = set(self.allowed_config_keys)
+        provided_keys = set(config.keys())
+
+        if not required_keys.issubset(provided_keys):
+            missing_keys = required_keys - provided_keys
+            raise ValueError(
+                f"Missing required configuration keys: {', '.join(sorted(missing_keys))}"
+            )
+
+        return config
 
     def index(self):
         return self.render_index()
@@ -87,6 +110,9 @@ class ActivityWidget(Widget):
     name = "CVEs Activity"
     description = "Displays the most recent CVE changes across all projects."
     allowed_config_keys = ["activities_view"]
+    default_config_values = {
+        "activities_view": "all",
+    }
 
     def validate_config(self, config):
         cleaned = super().validate_config(config)
@@ -137,6 +163,9 @@ class ViewCvesWidget(Widget):
     name = "CVEs by View"
     description = "Displays CVEs associated with a selected saved view."
     allowed_config_keys = ["view_id", "show_view_info"]
+    default_config_values = {
+        "show_view_info": 0,
+    }
 
     def validate_config(self, config):
         cleaned = super().validate_config(config)
@@ -187,6 +216,9 @@ class ProjectCvesWidget(Widget):
     name = "CVEs by Project"
     description = "Displays CVEs associated with a selected project."
     allowed_config_keys = ["project_id", "show_project_info"]
+    default_config_values = {
+        "show_project_info": 0,
+    }
 
     def validate_config(self, config):
         cleaned = super().validate_config(config)
