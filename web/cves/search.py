@@ -72,6 +72,13 @@ class CveFilter(Filter):
         return Q(**{f"cve_id__{self.operator}": self.value})
 
 
+class CweFilter(Filter):
+    supported_operators = [":"]
+
+    def run(self):
+        return Q(**{f"weaknesses__{self.operator}": self.value})
+
+
 class CvssFilter(Filter):
     supported_operators = [">", ">=", "<", "<=", "="]
 
@@ -205,6 +212,7 @@ class Search:
             "product": ProductFilter,
             "userTag": UserTagFilter,
             "cve": CveFilter,
+            "cwe": CweFilter,
         }
 
         for field, filter in filter_json.items():
