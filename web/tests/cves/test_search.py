@@ -13,6 +13,7 @@ from cves.search import (
     ProductFilter,
     UserTagFilter,
     Search,
+    CweFilter,
 )
 from users.models import UserTag
 
@@ -64,6 +65,17 @@ def test_string_filter():
 
     filter = StringFilter("foo", "icontains", "bar", None)
     assert filter.execute() == Q(foo__icontains="bar")
+
+
+def test_cwe_filter_bad_query():
+    filter = CweFilter("cwe", "lt", "CWE-123", None)
+    with pytest.raises(BadQueryException):
+        filter.execute()
+
+
+def test_cwe_filter():
+    filter = CweFilter("cwe", "icontains", "CWE-89", None)
+    assert filter.execute() == Q(weaknesses__icontains="CWE-89")
 
 
 def test_cve_filter_bad_query():
