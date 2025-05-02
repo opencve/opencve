@@ -252,7 +252,9 @@ def test_advanced_search_with_usertag(create_cve, create_user, auth_client):
 
     # UserTag not found
     response = client.get(f"{reverse('cves')}?q=userTag:test")
-    assert response.status_code == 404
+    soup = BeautifulSoup(response.content, "html.parser")
+    assert response.status_code == 200
+    assert "The tag 'test' does not exist." in soup.text
 
     # Create a UserTag and assign it to 1 CVE
     create_cve("CVE-2021-44228")
