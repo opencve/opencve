@@ -4,7 +4,6 @@ from datetime import date
 
 import pytest
 from changes.models import Change, Report
-from django.db.models.query import QuerySet
 from users.models import UserTag
 
 from dashboards.widgets import (
@@ -80,14 +79,26 @@ def test_widget_init():
         assert widget.title == "Test Widget"
         assert widget.configuration == {"key": "value"}
 
-        # Test without config
-        data_no_config = {
-            "id": "296862cf-664d-4724-84d6-ffd91c1f83d1",
-            "type": "activity",
-            "title": "Test Widget",
-        }
-        widget_no_config = Widget(mock_request, data_no_config)
-        assert widget_no_config.configuration == {}
+        # Test without config and no default value raises an error
+        with pytest.raises(
+            ValueError, match="Missing required configuration keys: key"
+        ):
+            data_no_config = {
+                "id": "296862cf-664d-4724-84d6-ffd91c1f83d1",
+                "type": "activity",
+                "title": "Test Widget",
+            }
+            Widget(mock_request, data_no_config)
+
+        # Test without config and with default value
+        with patch("dashboards.widgets.Widget.default_config_values", {"key": "value"}):
+            data_no_config = {
+                "id": "296862cf-664d-4724-84d6-ffd91c1f83d1",
+                "type": "activity",
+                "title": "Test Widget",
+            }
+            widget = Widget(mock_request, data_no_config)
+            assert widget.configuration == {"key": "value"}
 
 
 def test_widget_validate_id():
@@ -145,6 +156,7 @@ def test_widget_validate_config():
                 "id": "296862cf-664d-4724-84d6-ffd91c1f83d1",
                 "type": "activity",
                 "title": "Test",
+                "config": {"key1": "value1", "key2": "value2"},
             },
         )
 
@@ -158,7 +170,21 @@ def test_widget_validate_config():
 
         # Test with no allowed keys
         config = {"key3": "value3", "key4": "value4"}
-        assert widget.validate_config(config) == {}
+        with pytest.raises(
+            ValueError, match="Missing required configuration keys: key1, key2"
+        ):
+            widget.validate_config(config)
+
+        # Test with no allowed keys and default values
+        with patch(
+            "dashboards.widgets.Widget.default_config_values",
+            {"key1": "value1", "key2": "value2"},
+        ):
+            config = {}
+            assert widget.validate_config(config) == {
+                "key1": "value1",
+                "key2": "value2",
+            }
 
 
 def test_widget_index_config_methods():
@@ -251,6 +277,7 @@ def test_activity_widget_validate_config():
             "id": "296862cf-664d-4724-84d6-ffd91c1f83d1",
             "type": "activity",
             "title": "Test",
+            "config": {"activities_view": "all"},
         },
     )
 
@@ -265,6 +292,9 @@ def test_activity_widget_validate_config():
     # Test invalid value
     with pytest.raises(ValueError, match="Incorrect configuration"):
         widget.validate_config({"activities_view": "invalid"})
+
+    # Test with empty config and default value
+    assert widget.validate_config({}) == {"activities_view": "all"}
 
 
 @pytest.mark.django_db
@@ -475,25 +505,30 @@ def test_view_cves_widget_validate_config(
             "id": "d8e9f0a1-b2c3-d4e5-f6a7-b8c9d0e1f2a3",
             "type": "view_cves",
             "title": "Test View CVEs",
+            "config": {"view_id": str(public_view_org1.id), "show_view_info": True},
         },
     )
 
     # Invalid view_id format (not UUID)
     with pytest.raises(ValueError, match="Incorrect configuration"):
-        widget.validate_config({"view_id": "not-a-valid-uuid"})
+        widget.validate_config({"view_id": "not-a-valid-uuid", "show_view_info": True})
 
     # View does not exist
     non_existent_uuid = str(uuid.uuid4())
     with pytest.raises(ValueError, match="Incorrect configuration"):
-        widget.validate_config({"view_id": non_existent_uuid})
+        widget.validate_config({"view_id": non_existent_uuid, "show_view_info": True})
 
     # View is public but in another organization
     with pytest.raises(ValueError, match="Incorrect configuration"):
-        widget.validate_config({"view_id": str(public_view_org2.id)})
+        widget.validate_config(
+            {"view_id": str(public_view_org2.id), "show_view_info": True}
+        )
 
     # View is private but belongs to another user (user2)
     with pytest.raises(ValueError, match="Incorrect configuration"):
-        widget.validate_config({"view_id": str(private_view_user2_org1.id)})
+        widget.validate_config(
+            {"view_id": str(private_view_user2_org1.id), "show_view_info": True}
+        )
 
     # Public View with show_view_info=True
     valid_config_public_show = widget.validate_config(
@@ -504,11 +539,8 @@ def test_view_cves_widget_validate_config(
         "show_view_info": 1,
     }
 
-    # Public View with missing show_view_info
-    valid_config_public_noshow = widget.validate_config(
-        {"view_id": str(public_view_org1.id)}
-    )
-    assert valid_config_public_noshow == {
+    # Public View with missing show_view_info and default value
+    assert widget.validate_config({"view_id": str(public_view_org1.id)}) == {
         "view_id": str(public_view_org1.id),
         "show_view_info": 0,
     }
@@ -532,10 +564,7 @@ def test_view_cves_widget_validate_config(
     }
 
     # Private View with missing show_view_info
-    valid_config_private_noshow = widget.validate_config(
-        {"view_id": str(private_view_user1_org1.id)}
-    )
-    assert valid_config_private_noshow == {
+    assert widget.validate_config({"view_id": str(private_view_user1_org1.id)}) == {
         "view_id": str(private_view_user1_org1.id),
         "show_view_info": 0,
     }
@@ -592,7 +621,7 @@ def test_view_cves_widget_config(
             "id": "f9a0b1c2-d3e4-f5a6-b7c8-d9e0f1a2b3c4",
             "type": "view_cves",
             "title": "Test View CVEs Config",
-            "config": {"view_id": str(view_public_org1.id)},
+            "config": {"view_id": str(view_public_org1.id), "show_view_info": True},
         },
     )
 
@@ -714,6 +743,7 @@ def test_project_cves_widget_validate_config(
             "id": "123e4567-e89b-12d3-a456-426614174000",
             "type": "project_cves",
             "title": "Test Project CVEs",
+            "config": {"project_id": str(project1.id), "show_project_info": True},
         },
     )
 
@@ -727,29 +757,30 @@ def test_project_cves_widget_validate_config(
     cleaned_config = widget.validate_config(valid_config_false)
     assert cleaned_config == {"project_id": str(project1.id), "show_project_info": 0}
 
-    # Valid config without show_project_info (defaults to 0)
-    valid_config_default = {"project_id": str(project1.id)}
-    cleaned_config = widget.validate_config(valid_config_default)
-    assert cleaned_config == {"project_id": str(project1.id), "show_project_info": 0}
+    # Invalid config without show_project_info and default value
+    assert widget.validate_config({"project_id": str(project1.id)}) == {
+        "project_id": str(project1.id),
+        "show_project_info": 0,
+    }
 
     # Invalid project_id (not UUID)
-    invalid_uuid_config = {"project_id": "not-a-uuid"}
+    invalid_uuid_config = {"project_id": "not-a-uuid", "show_project_info": True}
     with pytest.raises(ValueError, match="Incorrect configuration"):
         widget.validate_config(invalid_uuid_config)
 
     # Project does not exist
     non_existent_uuid = str(uuid.uuid4())
-    non_existent_config = {"project_id": non_existent_uuid}
+    non_existent_config = {"project_id": non_existent_uuid, "show_project_info": True}
     with pytest.raises(ValueError, match="Incorrect configuration"):
         widget.validate_config(non_existent_config)
 
     # Project is inactive
-    inactive_config = {"project_id": str(project2.id)}
+    inactive_config = {"project_id": str(project2.id), "show_project_info": True}
     with pytest.raises(ValueError, match="Inactive Project"):
         widget.validate_config(inactive_config)
 
     # Project belongs to another organization
-    other_org_config = {"project_id": str(project3.id)}
+    other_org_config = {"project_id": str(project3.id), "show_project_info": True}
     with pytest.raises(ValueError, match="Incorrect configuration"):
         widget.validate_config(other_org_config)
 
@@ -797,7 +828,10 @@ def test_project_cves_widget_config(
             "id": "a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6",
             "type": "project_cves",
             "title": "Test Project CVEs Config",
-            "config": {"project_id": str(project_active_org1.id)},
+            "config": {
+                "project_id": str(project_active_org1.id),
+                "show_project_info": True,
+            },
         },
     )
 

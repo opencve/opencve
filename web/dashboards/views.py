@@ -160,7 +160,8 @@ class LoadWidgetConfigView(LoginRequiredMixin, View):
         }
 
         try:
-            html = widget_class(request, widget_config).config()
+            widget_intance = widget_class(request, widget_config, validate_config=False)
+            html = widget_intance.config()
         except ValueError as e:
             message = "Error rendering widget config"
             logger.error(f"{message}: {e}")
