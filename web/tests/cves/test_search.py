@@ -1,6 +1,7 @@
 import pytest
 import pyparsing as pp
 from django.db.models import Q
+from django.contrib.auth.models import AnonymousUser
 
 from cves.search import (
     BadQueryException,
@@ -168,6 +169,13 @@ def test_usertag_filter(create_user):
 
     filter = UserTagFilter("foo", "icontains", "test", user)
     assert filter.execute() == Q(cve_tags__tags__contains="test", cve_tags__user=user)
+
+
+def test_usertag_filter_anonymous_user():
+    filter = UserTagFilter("userTag", "icontains", "foobar", AnonymousUser())
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "You must be logged in to use the 'userTag' filter." in str(excinfo.value)
 
 
 def test_search_init(create_user):

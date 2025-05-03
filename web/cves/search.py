@@ -125,6 +125,11 @@ class UserTagFilter(Filter):
     supported_operators = [":"]
 
     def run(self):
+        if not self.user.is_authenticated:
+            raise BadQueryException(
+                "You must be logged in to use the 'userTag' filter."
+            )
+
         try:
             UserTag.objects.get(name=self.value, user=self.user)
         except UserTag.DoesNotExist:
