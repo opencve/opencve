@@ -1,3 +1,4 @@
+import re
 import uuid
 from unittest.mock import patch, MagicMock
 from datetime import date
@@ -111,7 +112,9 @@ def test_widget_validate_id():
 
     # Invalid UUID
     invalid_uuid = "not-a-uuid"
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(
+        ValueError, match=re.escape(f"Invalid widget ID ({invalid_uuid})")
+    ):
         Widget.validate_id(invalid_uuid)
 
 
@@ -140,7 +143,9 @@ def test_widget_validate_type():
         assert Widget.validate_type("views") == "views"
 
         # Invalid type
-        with pytest.raises(ValueError, match="Incorrect configuration"):
+        with pytest.raises(
+            ValueError, match=re.escape(f"Invalid widget type (invalid_type)")
+        ):
             Widget.validate_type("invalid_type")
 
 
@@ -290,7 +295,9 @@ def test_activity_widget_validate_config():
     }
 
     # Test invalid value
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(
+        ValueError, match=re.escape(f"Invalid activities view (invalid)")
+    ):
         widget.validate_config({"activities_view": "invalid"})
 
     # Test with empty config and default value
@@ -510,22 +517,30 @@ def test_view_cves_widget_validate_config(
     )
 
     # Invalid view_id format (not UUID)
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(
+        ValueError, match=re.escape("Invalid view ID (not-a-valid-uuid)")
+    ):
         widget.validate_config({"view_id": "not-a-valid-uuid", "show_view_info": True})
 
     # View does not exist
     non_existent_uuid = str(uuid.uuid4())
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(
+        ValueError, match=re.escape(f"View not found ({non_existent_uuid})")
+    ):
         widget.validate_config({"view_id": non_existent_uuid, "show_view_info": True})
 
     # View is public but in another organization
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(
+        ValueError, match=re.escape(f"View not found ({public_view_org2.id})")
+    ):
         widget.validate_config(
             {"view_id": str(public_view_org2.id), "show_view_info": True}
         )
 
     # View is private but belongs to another user (user2)
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(
+        ValueError, match=re.escape(f"View not found ({private_view_user2_org1.id})")
+    ):
         widget.validate_config(
             {"view_id": str(private_view_user2_org1.id), "show_view_info": True}
         )
@@ -765,23 +780,29 @@ def test_project_cves_widget_validate_config(
 
     # Invalid project_id (not UUID)
     invalid_uuid_config = {"project_id": "not-a-uuid", "show_project_info": True}
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(ValueError, match=re.escape("Invalid project ID (not-a-uuid)")):
         widget.validate_config(invalid_uuid_config)
 
     # Project does not exist
     non_existent_uuid = str(uuid.uuid4())
     non_existent_config = {"project_id": non_existent_uuid, "show_project_info": True}
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(
+        ValueError, match=re.escape(f"Project not found ({non_existent_uuid})")
+    ):
         widget.validate_config(non_existent_config)
 
     # Project is inactive
     inactive_config = {"project_id": str(project2.id), "show_project_info": True}
-    with pytest.raises(ValueError, match="Inactive Project"):
+    with pytest.raises(
+        ValueError, match=re.escape(f"Inactive project ({project2.id})")
+    ):
         widget.validate_config(inactive_config)
 
     # Project belongs to another organization
     other_org_config = {"project_id": str(project3.id), "show_project_info": True}
-    with pytest.raises(ValueError, match="Incorrect configuration"):
+    with pytest.raises(
+        ValueError, match=re.escape(f"Project not found ({project3.id})")
+    ):
         widget.validate_config(other_org_config)
 
     # Config with extra keys (should be ignored)

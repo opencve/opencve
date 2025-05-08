@@ -101,7 +101,7 @@ class BaseWidgetDataView(LoginRequiredMixin, View):
             html = widget.index()
         except ValueError as e:
             message = "Error rendering widget"
-            logger.error(f"{message}: {e}")
+            logger.warning(f"{message}: {e}")
             return JsonResponse({"error": message}, status=400)
 
         data = {"html": html}

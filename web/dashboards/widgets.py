@@ -41,14 +41,14 @@ class Widget:
     @staticmethod
     def validate_id(id):
         if id and not is_valid_uuid(id):
-            raise ValueError("Incorrect configuration")
+            raise ValueError(f"Invalid widget ID ({id})")
         return id
 
     @staticmethod
     def validate_type(type):
         allowed_types = [t["type"] for t in list_widgets().values()]
         if type not in allowed_types:
-            raise ValueError("Incorrect configuration")
+            raise ValueError(f"Invalid widget type ({type})")
         return type
 
     def validate_config(self, config):
@@ -119,7 +119,9 @@ class ActivityWidget(Widget):
 
         # Ensure the activities_view is supported
         if not cleaned.get("activities_view") in ["all", "subscriptions"]:
-            raise ValueError("Incorrect configuration")
+            raise ValueError(
+                f"Invalid activities view ({cleaned.get('activities_view')})"
+            )
 
         return cleaned
 
@@ -173,18 +175,18 @@ class ViewCvesWidget(Widget):
         # Ensures the view is correctly formatted
         view_id = cleaned.get("view_id", "")
         if not is_valid_uuid(view_id):
-            raise ValueError("Incorrect configuration")
+            raise ValueError(f"Invalid view ID ({view_id})")
 
         # Ensure the view exists
         view = View.objects.filter(
             id=view_id, organization=self.request.current_organization
         ).first()
         if not view:
-            raise ValueError("Incorrect configuration")
+            raise ValueError(f"View not found ({view_id})")
 
         # If the view is private, it must be owned by the user
         if view.privacy == "private" and view.user != self.request.user:
-            raise ValueError("Incorrect configuration")
+            raise ValueError(f"View not found ({view_id})")
 
         # By default, show_view_info is True
         cleaned["show_view_info"] = 1 if cleaned.get("show_view_info") else 0
@@ -226,7 +228,7 @@ class ProjectCvesWidget(Widget):
         # Ensures the project is correctly formatted
         project_id = cleaned.get("project_id", "")
         if not is_valid_uuid(project_id):
-            raise ValueError("Incorrect configuration")
+            raise ValueError(f"Invalid project ID ({project_id})")
 
         # Ensure the project is owned by the current organization
         project = (
@@ -237,11 +239,11 @@ class ProjectCvesWidget(Widget):
             .first()
         )
         if not project:
-            raise ValueError("Incorrect configuration")
+            raise ValueError(f"Project not found ({project_id})")
 
         # Ensure the project is active
         if not project.active:
-            raise ValueError("Inactive Project")
+            raise ValueError(f"Inactive project ({project_id})")
 
         # By default, show_project_info is True
         cleaned["show_project_info"] = 1 if cleaned.get("show_project_info") else 0
