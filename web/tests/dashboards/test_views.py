@@ -14,6 +14,7 @@ from dashboards.views import (
     SaveDashboardView,
     BaseWidgetDataView,
 )
+from organizations.models import Membership
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -438,6 +439,87 @@ def test_load_widget_data_view_get(
     assert response_not_found.status_code == 404
     assert response_not_found.json() == {"error": "Widget not found"}
     mock_render_widget.assert_not_called()
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_load_widget_data_view_multiple_members_owner_dashboard(
+    auth_client,
+    create_user,
+    create_organization,
+    create_dashboard,
+):
+    owner = create_user(username="owner")
+    organization = create_organization(name="Shared Org For Widget Test", user=owner)
+    owner_widget_id = str(uuid.uuid4())
+    create_dashboard(
+        organization=organization,
+        user=owner,
+        name="Owner dashboard",
+        config={
+            "widgets": [
+                {
+                    "id": owner_widget_id,
+                    "type": "tags",
+                    "title": "Tags Owner widget",
+                    "config": {},
+                }
+            ]
+        },
+        is_default=True,
+    )
+
+    member = create_user(username="member")
+    Membership.objects.create(
+        user=member,
+        organization=organization,
+        role=Membership.MEMBER,
+    )
+    member_widget_id = str(uuid.uuid4())
+    create_dashboard(
+        organization=organization,
+        user=member,
+        name="Member dashboard",
+        config={
+            "widgets": [
+                {
+                    "id": member_widget_id,
+                    "type": "projects",
+                    "title": "Projects Member widget",
+                    "config": {},
+                }
+            ]
+        },
+        is_default=True,
+    )
+
+    # Owner can access its own dashboard
+    client_owner = auth_client(owner)
+    response_owner = client_owner.get(
+        reverse("load_widget_data", kwargs={"widget_id": owner_widget_id})
+    )
+    assert response_owner.status_code == 200
+    assert "You don’t have any tags" in response_owner.json()["html"]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_load_widget_data_view_dashboard_not_found(
+    auth_client, create_user, create_organization
+):
+    """
+    Test LoadWidgetDataView returns 404 if no default dashboard exists.
+    """
+    user = create_user()
+    create_organization(name="Org Without Dashboard", user=user)
+
+    client = auth_client(user)
+    url = reverse("load_widget_data", kwargs={"widget_id": str(uuid.uuid4())})
+
+    response = client.get(url)
+
+    assert response.status_code == 404
+    assert response.json() == {"error": "Dashboard not found"}
 
 
 @override_settings(ENABLE_ONBOARDING=False)
