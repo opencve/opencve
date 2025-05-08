@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q, UniqueConstraint
 
 from opencve.models import BaseModel
 from organizations.models import Organization
@@ -27,7 +28,18 @@ class View(BaseModel):
 
     class Meta:
         db_table = "opencve_views"
-        unique_together = ("name", "organization")
+        constraints = [
+            UniqueConstraint(
+                fields=["name", "organization"],
+                condition=Q(privacy="public"),
+                name="unique_public_view_name_per_org",
+            ),
+            UniqueConstraint(
+                fields=["name", "organization", "user"],
+                condition=Q(privacy="private"),
+                name="unique_private_view_name_per_user_org",
+            ),
+        ]
 
     def __str__(self):
         return self.name
