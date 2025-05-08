@@ -14,6 +14,7 @@ class ViewForm(forms.ModelForm):
         widgets = {"query": forms.TextInput()}
 
     def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop("request")
         super(ViewForm, self).__init__(*args, **kwargs)
 
         self.helper = FormHelper()
@@ -34,14 +35,51 @@ class ViewForm(forms.ModelForm):
             ),
         )
 
-    def clean_name(self):
-        name = self.cleaned_data["name"]
+    def clean(self):
+        cleaned_data = super().clean()
+
+        name = cleaned_data.get("name")
+        privacy = cleaned_data.get("privacy")
 
         # Check if the name is not a reserved keyword
         if name in ("add",):
-            raise forms.ValidationError("This view is reserved.")
+            self.add_error("name", "This view is reserved.")
+            return
 
-        return name
+        # If the view is public, check if the name is unique in the organization
+        if privacy == "public":
+            exists = (
+                View.objects.filter(
+                    name=name,
+                    organization=self.request.current_organization,
+                    privacy="public",
+                )
+                .exclude(pk=self.instance.pk)
+                .exists()
+            )
+            if exists:
+                self.add_error(
+                    "name",
+                    "A public view with this name already exists in this organization.",
+                )
+
+        # If the view is private, check if the name is unique in the organization for the user
+        elif privacy == "private":
+            exists = (
+                View.objects.filter(
+                    name=name,
+                    organization=self.request.current_organization,
+                    privacy="private",
+                    user=self.request.user,
+                )
+                .exclude(pk=self.instance.pk)
+                .exists()
+            )
+            if exists:
+                self.add_error(
+                    "name",
+                    "You already have a private view with this name in this organization.",
+                )
 
     def clean_query(self):
         query = self.cleaned_data["query"]

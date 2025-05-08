@@ -167,7 +167,7 @@ class CveListView(ListView):
 
         # Add organization views
         if self.request.current_organization:
-            context["view_form"] = ViewForm
+            context["view_form"] = ViewForm(request=self.request)
 
             context["views"] = View.objects.filter(
                 models.Q(

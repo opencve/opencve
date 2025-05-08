@@ -10,6 +10,7 @@ from django.views.generic import (
     UpdateView,
 )
 
+from opencve.mixins import RequestViewMixin
 from organizations.mixins import (
     OrganizationIsMemberMixin,
 )
@@ -33,7 +34,9 @@ class ViewListView(OrganizationIsMemberMixin, ListView):
         ).order_by("privacy")
 
 
-class ViewCreateView(OrganizationIsMemberMixin, SuccessMessageMixin, CreateView):
+class ViewCreateView(
+    OrganizationIsMemberMixin, SuccessMessageMixin, RequestViewMixin, CreateView
+):
     form_class = ViewForm
     template_name = "views/save.html"
     success_message = "The view has been successfully created."
@@ -57,7 +60,9 @@ class ViewCreateView(OrganizationIsMemberMixin, SuccessMessageMixin, CreateView)
         )
 
 
-class ViewUpdateView(OrganizationIsMemberMixin, SuccessMessageMixin, UpdateView):
+class ViewUpdateView(
+    OrganizationIsMemberMixin, SuccessMessageMixin, RequestViewMixin, UpdateView
+):
     model = View
     form_class = ViewForm
     template_name = "views/save.html"
