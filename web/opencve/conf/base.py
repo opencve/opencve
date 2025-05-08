@@ -194,12 +194,14 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
 # Audit Logs
 AUDITLOG_INCLUDE_TRACKING_MODELS = (
+    "dashboards.Dashboard",
     "organizations.Organization",
     "organizations.Membership",
     "projects.Project",
     "projects.Notification",
     "users.UserTag",
     "users.CveTag",
+    "views.View",
     {"model": "users.User", "mask_fields": ["password"]},
 )
 
