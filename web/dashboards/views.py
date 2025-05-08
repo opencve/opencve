@@ -113,7 +113,14 @@ class BaseWidgetDataView(LoginRequiredMixin, View):
 
 class LoadWidgetDataView(BaseWidgetDataView):
     def get(self, request, widget_id):
-        dashboard = Dashboard.objects.get(organization=request.current_organization)
+        dashboard = Dashboard.objects.filter(
+            organization=request.current_organization,
+            user=request.user,
+            is_default=True,
+        ).first()
+        if not dashboard:
+            return JsonResponse({"error": "Dashboard not found"}, status=404)
+
         widget_config = next(
             (w for w in dashboard.config["widgets"] if w["id"] == widget_id), None
         )
