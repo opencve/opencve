@@ -1,0 +1,18 @@
+{% extends 'users/base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %} 2FA - Validation{% endblock %}
+
+{% block header %}2FA - Validation{% endblock %}
+
+{% block content%}
+
+<form method="post">
+    <!-- CERT : ToDo improve form and manage error message if error and invalidate login after X attempts-->
+    {% csrf_token %}
+    {% crispy form %}
+    <button type="submit" class="btn btn-primary pull-right btn-flat">Validate</button>
+</form>
+
+{% endblock %}
