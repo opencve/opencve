@@ -1,7 +1,7 @@
 import pytest
 import pyparsing as pp
 from django.db.models import Q
-from django.http.response import Http404
+from django.contrib.auth.models import AnonymousUser
 
 from cves.search import (
     BadQueryException,
@@ -13,6 +13,7 @@ from cves.search import (
     ProductFilter,
     UserTagFilter,
     Search,
+    CweFilter,
 )
 from users.models import UserTag
 
@@ -64,6 +65,17 @@ def test_string_filter():
 
     filter = StringFilter("foo", "icontains", "bar", None)
     assert filter.execute() == Q(foo__icontains="bar")
+
+
+def test_cwe_filter_bad_query():
+    filter = CweFilter("cwe", "lt", "CWE-123", None)
+    with pytest.raises(BadQueryException):
+        filter.execute()
+
+
+def test_cwe_filter():
+    filter = CweFilter("cwe", "icontains", "CWE-89", None)
+    assert filter.execute() == Q(weaknesses__icontains="CWE-89")
 
 
 def test_cve_filter_bad_query():
@@ -146,8 +158,9 @@ def test_usertag_filter_bad_query(create_user):
 def test_usertag_filter_tag_not_found(create_user):
     user = create_user()
     filter = UserTagFilter("foo", "icontains", "foobar", user)
-    with pytest.raises(Http404):
+    with pytest.raises(BadQueryException) as excinfo:
         filter.execute()
+    assert "The tag 'foobar' does not exist." in str(excinfo.value)
 
 
 def test_usertag_filter(create_user):
@@ -156,6 +169,13 @@ def test_usertag_filter(create_user):
 
     filter = UserTagFilter("foo", "icontains", "test", user)
     assert filter.execute() == Q(cve_tags__tags__contains="test", cve_tags__user=user)
+
+
+def test_usertag_filter_anonymous_user():
+    filter = UserTagFilter("userTag", "icontains", "foobar", AnonymousUser())
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "You must be logged in to use the 'userTag' filter." in str(excinfo.value)
 
 
 def test_search_init(create_user):

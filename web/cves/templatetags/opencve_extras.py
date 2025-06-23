@@ -299,3 +299,11 @@ def get(mapping, key):
     Used to return data when a space is contained in the key.
     """
     return mapping.get(key, "")
+
+
+@register.filter
+def get_item(value, arg):
+    for item in value:
+        if item.grouper == arg:
+            return item.list
+    return None

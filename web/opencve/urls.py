@@ -50,11 +50,13 @@ products_cves_router.register(f"cve", ProductCveViewSet, basename="product-cves"
 
 urlpatterns = [
     path("__debug__/", include("debug_toolbar.urls")),
+    path("", include("dashboards.urls")),
     path("", include("changes.urls")),
     path("", include("cves.urls")),
     path("", include("onboarding.urls")),
     path("", include("organizations.urls")),
     path("", include("projects.urls")),
+    path("", include("views.urls")),
     path("", include("django_prometheus.urls")),
     path("settings/", include("allauth.urls")),
     path(r"login/", CustomLoginView.as_view(), name="account_login"),

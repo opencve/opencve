@@ -7,12 +7,14 @@ from django.core.management import call_command
 
 def test_fix_missing_vendors(create_organization):
     def _list_vendors():
-        return list(Vendor.objects.values_list("name", flat=True))
+        return sorted(list(Vendor.objects.values_list("name", flat=True)))
 
     def _list_products():
-        return list(
-            f"{p[1]}{PRODUCT_SEPARATOR}{p[0]}"
-            for p in Product.objects.values_list("name", "vendor__name")
+        return sorted(
+            list(
+                f"{p[1]}{PRODUCT_SEPARATOR}{p[0]}"
+                for p in Product.objects.values_list("name", "vendor__name")
+            )
         )
 
     # Only 1 vendor and 1 product are saved in DB

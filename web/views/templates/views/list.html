@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load opencve_extras %}
+
+{% block title %}Views - {{ block.super }}{% endblock %}
+{% block navbar_title%}Views{% endblock %}
+
+{% block content %}
+
+<section class="content">
+
+    <div class="row">
+        <div class="col-md-12">
+
+            {% include "messages.html" %}
+
+            <div class="callout callout-info">
+                <p>The views allow you to save a query so you can easily reuse it later without having to rewrite it each time.</p>
+                <p>You can create a view <a href="{% url 'create_view' org_name=request.current_organization.name %}">here</a> or directly from the <a href="{% url 'cves' %}">vulnerabilities</a> page.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% regroup views by privacy as privacies %}
+        {% with public_views=privacies|get_item:'public' %}
+        <div class="col-md-6">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title"><i class="fa fa-eye" aria-hidden="true"></i> Public Views</h3>
+                </div>
+                <div class="box-body">
+                    <ul class="products-list product-list-in-box" id="public-views">
+                        {% for view in public_views %}
+                        {% include 'views/includes/view_item.html' %}
+                        {% empty %}
+                        <i>No public views available.</i>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+
+        {% with private_views=privacies|get_item:'private' %}
+        <div class="col-md-6">
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title"><i class="fa fa-eye-slash" aria-hidden="true"></i> Private Views</h3>
+                </div>
+                <div class="box-body">
+                    <ul class="products-list product-list-in-box" id="private-views">
+                        {% for view in private_views %}
+                        {% include 'views/includes/view_item.html' %}
+                        {% empty %}
+                        <i>No private views available.</i>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+
+    </div>
+</section>
+
+{% endblock %}

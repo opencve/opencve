@@ -1,0 +1,26 @@
+{% if reports %}
+<table class="table table-hover table-striped">
+    <thead>
+        <tr>
+            <th class="col-md-3">Date</th>
+            <th class="col-md-6">Project</th>
+            <th class="col-md-3 center">Changes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for report in reports %}
+        <tr>
+            <td><a href="{% url 'report' org_name=organization.name project_name=report.project.name day=report.day %}">{{ report.day|date:"M, d" }}</a></td>
+            <td><a href="{% url 'project' org_name=organization.name project_name=report.project.name %}">{{ report.project.name }}</a></td>
+            <td class="center">{{ report.changes.count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="alert alert-info">
+    No reports available yet.
+    <br />
+    This widget will populate automatically when CVEs are created or updated within your projects.
+</p>
+{% endif %}

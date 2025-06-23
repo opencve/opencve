@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create View - {{ block.super }}{% endblock %}
+{% block navbar_title%}{% if request.resolver_match.url_name == 'create_view' %}New{% else %}Edit{% endif %} View{% endblock %}
+
+{% block content %}
+
+<section class="content">
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">{% if request.resolver_match.url_name == 'create_view' %}New{% else %}Edit{% endif %} View</h3>
+                    </div>
+                    <div class="box-body">
+                        {% crispy form %}
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</section>
+
+{% endblock %}

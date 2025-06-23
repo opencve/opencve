@@ -3,6 +3,7 @@ import json
 import logging
 import pathlib
 import urllib.parse
+import datetime
 
 
 import aiohttp
@@ -247,6 +248,7 @@ class EmailNotifier(BaseNotifier):
                 "low": [],
                 "none": [],
             },
+            "year": datetime.datetime.now().year,
         }
 
         for change in payload["changes"]:

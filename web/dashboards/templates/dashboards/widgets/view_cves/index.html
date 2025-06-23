@@ -1,0 +1,77 @@
+{% load opencve_extras %}
+
+{% if config.show_view_info == 1 %}
+<div class="view-item view-item-no-border">
+    <div class="pointer change-collapsed collapsed" data-toggle="collapse" href="#{{ widget_id }}" aria-expanded="false">
+        <span class="product-vendors-title">
+            <strong>{{ view.name }}</strong>
+            <span class="box-meta">
+                <i class="fa fa-plus"></i>
+                <i class="fa fa-minus"></i>
+            </span>
+        </span>
+    </div>
+    <div id="{{ widget_id }}" class="panel-collapse collapse" aria-expanded="false" style="height: 0px;">
+        <div class="view-details">
+            <div class="row">
+                <div class="col-md-12">
+                    <p></p>
+                    <code>{{ view.query }}</code>
+                    <a href="{% url 'cves' %}?q={{ view.query }}" class="btn btn-default btn-sm run-button" data-toggle="tooltip" data-container="body" title="Run this query">
+                        <i class="fa fa-play"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="table-responsive">
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th>CVE</th>
+                <th class="text-center">CVSS</th>
+                <th class="text-center">Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cve in cves %}
+            <tr>
+                <td>
+                    <a href="{% url 'cve' cve_id=cve.cve_id %}">{{ cve.cve_id }}</a>
+                    <br>
+                    <small class="text-muted">{{ cve.description|truncatechars:100 }}</small>
+                </td>
+                <td class="text-center">
+                    {% if cve.cvssV3_1 %}
+                    <span class="label label-{{ cve.cvssV3_1.score|cvss_level }}">{{ cve.cvssV3_1.score }}</span>
+                    {% else %}
+                    <span class="label label-default">N/A</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <small>{{ cve.updated_at|date:"d/m" }}</small>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" class="text-center">
+                    <p class="alert alert-info">No CVEs found.</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<p class="center">
+    <a class="btn btn-default btn-sm" href="{% url 'cves' %}?q={{ view.query }}">View All CVEs</a>
+</p>
+
+<script>
+$(function() {
+    $('.view-item [data-toggle="tooltip"]').tooltip();
+});
+</script>

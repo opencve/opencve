@@ -9,8 +9,10 @@ from django.utils.timezone import now
 from psycopg2.extras import Json
 
 from cves.models import Cve, Variable
+from dashboards.models import Dashboard
 from organizations.models import Membership, Organization
 from projects.models import Notification, Project
+from views.models import View
 
 
 TESTS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -98,6 +100,20 @@ def create_notification():
     return _create_notification
 
 
+@pytest.fixture
+def create_view():
+    def _create_view(name, query, organization, privacy="public", user=None):
+        return View.objects.create(
+            name=name,
+            query=query,
+            privacy=privacy,
+            organization=organization,
+            user=user,
+        )
+
+    return _create_view
+
+
 @pytest.fixture(scope="function")
 def open_file():
     def _open_file(name):
@@ -171,3 +187,17 @@ def create_variable(db):
         return Variable.objects.create(name=name, value=value)
 
     return _create_variable
+
+
+@pytest.fixture(scope="function")
+def create_dashboard(db):
+    def _create_dashboard(organization, user, name, config={}, is_default=False):
+        return Dashboard.objects.create(
+            organization=organization,
+            user=user,
+            name=name,
+            config=config,
+            is_default=is_default,
+        )
+
+    return _create_dashboard

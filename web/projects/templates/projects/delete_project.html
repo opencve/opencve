@@ -15,7 +15,7 @@
             <p>Do you really want to delete the <strong>{{ object }}</strong> project ?</p>
             <form method="post">
                 {% csrf_token %}
-                <a href="{% url 'list_projects' org_name=request.user_organization.name %}" class="btn btn-default">Cancel</a>
+                <a href="{% url 'list_projects' org_name=request.current_organization.name %}" class="btn btn-default">Cancel</a>
                 <input type="submit" class="btn btn-danger" value="Confirm">
             </form>
           </div>

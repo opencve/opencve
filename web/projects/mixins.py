@@ -1,33 +1,29 @@
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 
-from organizations.models import Organization
 from projects.models import Project
 
 
 class ProjectObjectMixin:
-    """
-    Provides a project object based on the organization
-    and project names given in url.
-    """
+    """Populate the self.project object"""
 
-    def get_object(self, queryset=None):
-        return get_object_or_404(
+    def dispatch(self, request, *args, **kwargs):
+        self.project = get_object_or_404(
             Project,
-            organization=self.request.user_organization,
+            organization=self.request.current_organization,
             name=self.kwargs["project_name"],
         )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        return self.project
 
 
 class ProjectIsActiveMixin:
     """Check if a project is active or not"""
 
     def dispatch(self, request, *args, **kwargs):
-        organization = get_object_or_404(
-            Organization, members=request.user, name=kwargs["org_name"]
-        )
-
-        _ = get_object_or_404(
-            Project, organization=organization, name=kwargs["project_name"], active=True
-        )
+        if not self.project.active:
+            raise Http404
 
         return super().dispatch(request, *args, **kwargs)

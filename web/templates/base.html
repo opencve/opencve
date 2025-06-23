@@ -47,11 +47,11 @@
 
             <aside class="main-sidebar">
                 <section class="sidebar">
-                    {% if user.is_authenticated and request.user_organization %}
+                    {% if user.is_authenticated and request.current_organization %}
                     <form action="#" method="get" class="sidebar-form">
                         <select class="form-control select2-organizations" name="organization">
                             {% for orga in request.user_organizations %}
-                            <option {% if request.user_organization == orga %} selected="selected" {% endif %} value="{{ orga.name }}">{{ orga.name }}</option>
+                            <option {% if request.current_organization == orga %} selected="selected" {% endif %} value="{{ orga.name }}">{{ orga.name }}</option>
                             {% endfor  %}
                         </select>
                     </form>
@@ -60,7 +60,7 @@
                         <li class="header">MAIN NAVIGATION</li>
                         {% if user.is_authenticated %}
                         <li class="{% is_active_link 'home' %}"><a href="{% url 'home' %}"><i class="fa fa-home"></i><span>Dashboard</span></a></li>
-                        {% if request.user_organization %}
+                        {% if request.current_organization %}
                         <li class="treeview {% is_active_link 'list_projects' 'create_project' 'edit_project' 'delete_project' 'project' 'notifications' 'create_notification' 'edit_notification' 'reports' 'report' 'subscriptions' 'project_vulnerabilities' %}">
                             <a href="#">
                                 <i class="fa fa-rocket"></i>
@@ -70,15 +70,20 @@
                                 </span>
                             </a>
                             <ul class="treeview-menu">
-                                {% for project in request.user_organization.projects.all|dictsort:"name" %}
-                                <li class="{% is_active_project_link project.name %}"><a href="{% url 'project' org_name=request.user_organization.name project_name=project.name %}"><i class="fa fa-circle-o"></i> {{ project.name }}</a></li>
+                                {% for project in request.current_organization.projects.all|dictsort:"name" %}
+                                {% if project.active %}
+                                <li class="{% is_active_project_link project.name %}"><a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}"><i class="fa fa-circle-o"></i> {{ project.name }}</a></li>
+                                {% endif %}
                                 {% endfor %}
-                                <li class="{% is_active_link 'list_projects' %}"><a href="{% url 'list_projects' org_name=request.user_organization.name %}"><i class="fa fa-edit"></i> Manage Projects</a></li>
+                                <li class="{% is_active_link 'list_projects' %}"><a href="{% url 'list_projects' org_name=request.current_organization.name %}"><i class="fa fa-edit"></i> Manage Projects</a></li>
                             </ul>
                         </li>
                         {% endif %}
                         {% endif %}
                         <li class="{% is_active_link 'cves' 'cve' 'change' %}"><a href="{% url 'cves' %}"><i class="fa fa-shield"></i> <span>Vulnerabilities</span></a></li>
+                        {% if request.current_organization %}
+                        <li class="{% is_active_link 'list_views' 'create_view' 'update_view' 'delete_view' %}"><a href="{% url 'list_views' org_name=request.current_organization.name %}"><i class="fa fa-eye"></i> <span>Views</span></a></li>
+                        {% endif %}
                         <li class="{% is_active_link 'vendors' 'subscribe' %}"><a href="{% url 'vendors' %}"><i class="fa fa-th-list"></i> <span> Vendors & Products</span></a></li>
                         <li class="{% is_active_link 'weaknesses' %}"><a href="{% url 'weaknesses' %}"><i class="fa fa-sitemap"></i> <span> Weaknesses</span></a></li>
                         <li class="{% is_active_link 'statistics' %}"><a href="{% url 'statistics' %}"><i class="fa fa-bar-chart"></i> <span> Statistics</span></a></li>

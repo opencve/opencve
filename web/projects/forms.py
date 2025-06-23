@@ -27,7 +27,7 @@ class ProjectForm(forms.ModelForm):
             FormActions(
                 HTML(
                     """
-                    <a href="{% url 'list_projects' org_name=request.user_organization.name %}" class="btn btn-default">
+                    <a href="{% url 'list_projects' org_name=request.current_organization.name %}" class="btn btn-default">
                     Cancel
                     </a>
                     """
@@ -51,7 +51,7 @@ class ProjectForm(forms.ModelForm):
         # Check if the project already exists for this user
         if self.instance.name != name:
             if Project.objects.filter(
-                organization=self.request.user_organization, name=name
+                organization=self.request.current_organization, name=name
             ).exists():
                 raise forms.ValidationError("This project already exists.")
 

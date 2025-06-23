@@ -1,7 +1,9 @@
 import json
 
+import pyparsing as pp
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
+from django.db import models
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, TemplateView
@@ -11,11 +13,13 @@ from cves.utils import humanize
 from cves.forms import SearchForm
 from cves.models import Cve, Product, Variable, Vendor, Weakness
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
-from cves.utils import list_to_dict_vendors, list_weaknesses, list_filtered_cves
+from cves.utils import list_to_dict_vendors, list_weaknesses
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project
 from users.models import CveTag, UserTag
+from views.forms import ViewForm
+from views.models import View
 
 
 class WeaknessListView(ListView):
@@ -72,83 +76,111 @@ class CveListView(ListView):
     template_name = "cves/cve_list.html"
     paginate_by = 20
 
-    def get_search_mode(self):
-        if not self.request.user.is_authenticated:
-            return "basic"
-        elif self.request.GET.get("q"):
-            self.request.user.update_setting("search_mode", "advanced")
-            return "advanced"
-        elif (
-            self.request.GET.get("vendor")
-            or self.request.GET.get("product")
-            or self.request.GET.get("search")
-            or self.request.GET.get("weakness")
-        ):
-            self.request.user.update_setting("search_mode", "basic")
-            return "basic"
-
-        return self.request.user.get_setting("search_mode", "basic")
-
     def get_queryset(self):
-        # Advanced search
-        if self.get_search_mode() == "advanced":
-            self.form = SearchForm(self.request.GET)
+        self.form = SearchForm(self.request.GET)
 
-            search_query = None
-            if self.form.is_valid():
-                search_query = self.form.cleaned_data["q"]
+        # Validate the form
+        search_query = None
+        if not self.form.is_valid():
+            return Cve.objects.order_by("-updated_at").all()
 
-            try:
-                search = Search(search_query, self.request.user)
-                return search.query
-            except (BadQueryException, MaxFieldsExceededException) as e:
-                self.form.add_error("q", e)
-                return Cve.objects.order_by("-updated_at").all()
+        # Convert simple search to advanced search
+        search_query = self.form.cleaned_data["q"]
+        if not search_query:
+            search_query = self.convert_to_advanced_search()
+            mutable_get = self.request.GET.copy()
+            mutable_get["q"] = search_query
 
-        # Basic search
-        return list_filtered_cves(self.request.GET, self.request.user)
+            self.form = SearchForm(mutable_get)
+            self.form.is_valid()
+
+        # Execute the search
+        try:
+            search = Search(search_query, self.request.user)
+            return search.query
+        except (BadQueryException, MaxFieldsExceededException) as e:
+            self.form.add_error("q", e)
+        except pp.ParseException as e:
+            pass
+
+        return Cve.objects.order_by("-updated_at").all()
+
+    def convert_to_advanced_search(self):
+        """
+        Converts simple GET parameters to an advanced search query string.
+        """
+        advanced_parts = []
+        vendor_value = self.request.GET.get("vendor")
+        product_value = self.request.GET.get("product")
+        search_value = self.request.GET.get("search")
+        weakness_value = self.request.GET.get("weakness")
+        tag_value = self.request.GET.get("tag")
+
+        if vendor_value:
+            advanced_parts.append(f"vendor:{vendor_value}")
+
+            if product_value:
+                advanced_parts.append(f"product:{product_value}")
+
+        if weakness_value:
+            advanced_parts.append(f"cwe:{weakness_value}")
+
+        if tag_value and self.request.user.is_authenticated:
+            advanced_parts.append(f"userTag:{tag_value}")
+
+        if search_value:
+            # If multiple words, search in description as a phrase
+            if " " in search_value:
+                advanced_parts.append(f'description:"{search_value}"')
+
+            # If single word, append directly (parser handles it)
+            else:
+                advanced_parts.append(search_value)
+
+        return " AND ".join(advanced_parts)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["search_mode"] = self.get_search_mode()
 
-        if context["search_mode"] == "basic":
-            vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
-            product = self.request.GET.get("product", "").replace(" ", "_").lower()
-            weakness = self.request.GET.get("weakness", "")
+        # Handle custom titles when vendor, product or weakness is set
+        vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
+        product = self.request.GET.get("product", "").replace(" ", "_").lower()
+        weakness = self.request.GET.get("weakness", "")
 
-            if weakness:
-                context["title"] = weakness
+        if weakness:
+            context["title"] = weakness
 
-            if vendor:
-                context["vendor"] = Vendor.objects.get(name=vendor)
-                context["title"] = humanize(vendor)
+        if vendor:
+            context["title"] = humanize(vendor)
 
-                if product:
-                    context["product"] = Product.objects.get(
-                        name=product, vendor=context["vendor"]
-                    )
-                    context["title"] = humanize(product)
+        if product:
+            context["title"] = humanize(product)
 
-            # List the user tags
-            if self.request.user.is_authenticated:
-                context["user_tags"] = [
-                    t.name for t in UserTag.objects.filter(user=self.request.user).all()
-                ]
+        # List the user tags
+        if self.request.user.is_authenticated:
+            context["user_tags"] = [
+                t.name for t in UserTag.objects.filter(user=self.request.user).all()
+            ]
 
-        if context["search_mode"] == "advanced":
-            context["search_form"] = self.form
+        # Provide the search form
+        context["search_form"] = self.form
+
+        # Add organization views
+        if self.request.current_organization:
+            context["view_form"] = ViewForm(request=self.request)
+
+            context["views"] = View.objects.filter(
+                models.Q(
+                    privacy="public", organization=self.request.current_organization
+                )
+                | models.Q(
+                    privacy="private",
+                    user=self.request.user,
+                    organization=self.request.current_organization,
+                )
+            ).order_by("-created_at")
 
         return context
-
-    def post(self, request, *args, **kwargs):
-        current_mode = request.user.get_setting("search_mode", "basic")
-        new_mode = "advanced" if current_mode == "basic" else "basic"
-
-        request.user.update_setting("search_mode", new_mode)
-        request.user.save()
-
-        return redirect("cves")
 
 
 class CveDetailView(DetailView):
@@ -250,7 +282,7 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
                 "object_type": obj_type,
                 "object_name": obj_name,
                 "projects": Project.objects.filter(
-                    organization=self.request.user_organization
+                    organization=self.request.current_organization
                 )
                 .order_by("name")
                 .all(),
@@ -276,7 +308,7 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
 
         # Check if the project belongs to the current organization
         project = get_object_or_404(
-            Project, id=project_id, organization=request.user_organization
+            Project, id=project_id, organization=request.current_organization
         )
 
         # Vendor subscription

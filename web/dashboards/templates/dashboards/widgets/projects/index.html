@@ -1,0 +1,28 @@
+<div class="table-responsive">
+    {% if projects %}
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th class="col-md-4">Name</th>
+                <th class="col-md-4 center">Vendors</th>
+                <th class="col-md-4 center">Products</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for project in projects %}
+        <tr>
+            <td><a href="{% url 'project' org_name=organization.name project_name=project.name %}">{{ project.name }}</a></td>
+            <td class="center">{{ project.subscriptions.vendors|length }}</td>
+            <td class="center">{{ project.subscriptions.products|length }}</td>
+        </a></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="alert alert-info">
+        You don’t have any projects yet.
+        <br />
+        Create one by <a href="{% url 'create_project' org_name=organization.name %}">clicking here</a>.
+    </p>
+    {% endif %}
+</div>

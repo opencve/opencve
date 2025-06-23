@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db.models import Q
-from django.shortcuts import get_object_or_404
 import pyparsing as pp
 
 from cves.constants import PRODUCT_SEPARATOR
@@ -72,6 +71,13 @@ class CveFilter(Filter):
         return Q(**{f"cve_id__{self.operator}": self.value})
 
 
+class CweFilter(Filter):
+    supported_operators = [":"]
+
+    def run(self):
+        return Q(**{f"weaknesses__{self.operator}": self.value})
+
+
 class CvssFilter(Filter):
     supported_operators = [">", ">=", "<", "<=", "="]
 
@@ -119,8 +125,16 @@ class UserTagFilter(Filter):
     supported_operators = [":"]
 
     def run(self):
-        tag = get_object_or_404(UserTag, name=self.value, user=self.user)
-        return Q(cve_tags__tags__contains=tag.name, cve_tags__user=self.user)
+        if not self.user.is_authenticated:
+            raise BadQueryException(
+                "You must be logged in to use the 'userTag' filter."
+            )
+
+        try:
+            UserTag.objects.get(name=self.value, user=self.user)
+        except UserTag.DoesNotExist:
+            raise BadQueryException(f"The tag '{self.value}' does not exist.")
+        return Q(cve_tags__tags__contains=self.value, cve_tags__user=self.user)
 
 
 class Search:
@@ -205,6 +219,7 @@ class Search:
             "product": ProductFilter,
             "userTag": UserTagFilter,
             "cve": CveFilter,
+            "cwe": CweFilter,
         }
 
         for field, filter in filter_json.items():

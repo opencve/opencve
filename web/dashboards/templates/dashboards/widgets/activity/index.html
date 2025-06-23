@@ -1,0 +1,51 @@
+{% load opencve_extras %}
+
+<style>
+.timeline-body p {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    line-height: 1.4;
+}
+</style>
+
+{% if not changes %}
+<p class="alert alert-info">No activity.</p>
+{% else %}
+<ul class="timeline timeline-inverse">
+    {% for change in changes %}
+    <li class="time-label">
+        {% ifchanged change.created_at|date:"d b Y" %}
+        <span class="bg-blue bg-opencve">
+            {{ change.created_at|date:"d b Y" }}
+        </span>
+        {% endifchanged %}
+    </li>
+
+    <li>
+        {% if change|is_new_cve %}
+        <i class="fa fa-plus bg-red"></i>
+        {% else %}
+        <i class="fa fa-edit bg-blue"></i>
+        {% endif %}
+        <div class="timeline-item">
+            <span class="time" title="{{ change.created_at|date:'d b Y, H:i' }}"><i class="fa fa-clock-o"></i> {{ change.created_at|date:"H:i" }}</span>
+            <h3 class="timeline-header">
+                <a href="{% url 'cve' cve_id=change.cve.cve_id %}">{{ change.cve.cve_id }}</a>
+            </h3>
+            <div class="timeline-body">
+                <p>{{ change.cve.description }}</p>
+                {% include 'changes/change_events.html' %}
+            </div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+
+<p class="center">
+    <a class="btn btn-default btn-sm" href="{% url 'activity' %}">View All Activities</a>
+</p>
+{% endif %}

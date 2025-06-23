@@ -2,6 +2,12 @@
 <script type="text/javascript">
     const SUBSCRIBE_URL = "{% url 'subscribe' %}";
     const CHANGE_ORGANIZATION_URL = "{% url 'change_organization' %}";
+    const SAVE_DASHBOARD_URL = "{% url 'save_dashboard' %}";
+    const LOAD_DASHBOARD_URL = "{% url 'load_dashboard' %}";
+    const LOAD_WIDGET_DATA_URL = "{% url 'load_widget_data' widget_id='$WIDGET_ID$' %}";
+    const LOAD_WIDGET_CONFIG_URL = "{% url 'load_widget_config' widget_type='$WIDGET_TYPE$' %}";
+    const RENDER_WIDGET_DATA_URL = "{% url 'render_widget_data' widget_type='$WIDGET_TYPE$' %}";
+    const CVES_URL = "{% url 'cves' %}";
 </script>
 <script src="{% static 'js/jquery.min.js' %}" type="text/javascript"></script>
 <script src="{% static 'js/bootstrap.min.js' %}" type="text/javascript"></script>
@@ -10,4 +16,5 @@
 <script src="{% static 'js/spectrum.min.js' %}" type="text/javascript"></script>
 <script src="{% static 'js/select2.full.min.js' %}" type="text/javascript"></script>
 <script src="{% static 'js/chart.min.js' %}" type="text/javascript"></script>
+<script src="{% static 'js/gridstack-all.js' %}" type="text/javascript"></script>
 <script src="{% static 'js/custom.js' %}" type="text/javascript"></script>
