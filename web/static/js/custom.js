@@ -758,7 +758,7 @@ function getContrastedColor(str){
 
                 if (field === 'cve') {
                     queryParts.push(`cve:${trimmedValue.toUpperCase()}`);
-                } else if (['description', 'title', 'cwe', 'vendor', 'product', 'userTag'].includes(field)) {
+                } else if (['description', 'title', 'cwe', 'vendor', 'product', 'userTag', 'project'].includes(field)) {
                     const requiresQuotes = /[\s\:\?\*]/.test(trimmedValue);
                     const formattedValue = requiresQuotes ? `\"${trimmedValue}\"` : trimmedValue;
                     queryParts.push(`${field}:${formattedValue}`);
@@ -767,7 +767,7 @@ function getContrastedColor(str){
         };
 
         // 1. Process static, CWE & repeatable fields
-        ['cve', 'description', 'title', 'cwe', 'vendor', 'product', 'userTag'].forEach(fieldType => {
+        ['cve', 'description', 'title', 'cwe', 'vendor', 'product', 'userTag', 'project'].forEach(fieldType => {
             $builder.find(`.query-builder-input[data-field="${fieldType}"]`).each(function() {
                 addQueryPart(fieldType, $(this).val());
             });
@@ -818,6 +818,22 @@ function getContrastedColor(str){
         $initialSelect.on('select2:select select2:unselect', function (e) {
            updateQuery({ fieldType: 'userTag', value: $(this).val() });
         });
+    }
+
+    // Initialize Select2 for the initial Project select if present
+    if ($('.select2-project-builder').length) {
+      const $initialSelect = $('.select2-project-builder');
+      $initialSelect.select2({
+          allowClear: true,
+          width: '100%',
+          placeholder: "Select a project...",
+          dropdownParent: $('#queryBuilderModal')
+      });
+
+      // Attach Select2 specific listeners
+      $initialSelect.on('select2:select select2:unselect', function (e) {
+         updateQuery({ fieldType: 'project', value: $(this).val() });
+      });
     }
 
     // Add filter buttons
@@ -879,6 +895,11 @@ function getContrastedColor(str){
          const userTagSelect = $builder.find('select.select2-tags-builder[data-field="userTag"]');
          if (userTagSelect.length) {
             userTagSelect.val(null).trigger('change');
+         }
+         // Reset the Project filter
+         const projectSelect = $builder.find('select.select2-project-builder[data-field="project"]');
+         if (projectSelect.length) {
+            projectSelect.val(null).trigger('change');
          }
 
         // Reset the modal display field

@@ -5,6 +5,7 @@ import pyparsing as pp
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Cve
 from users.models import UserTag
+from projects.models import Project
 
 
 class MaxFieldsExceededException(Exception):
@@ -29,11 +30,12 @@ OPERATOR_MAP_BY_SYMBOL = {v: k for k, v in OPERATOR_MAP.items()}
 class Filter:
     supported_operators = list(OPERATOR_MAP_BY_SYMBOL.keys())
 
-    def __init__(self, field, operator, value, user=None):
+    def __init__(self, field, operator, value, user=None, request=None):
         self.field = field
         self.operator = operator
         self.value = value
         self.user = user
+        self.request = request
 
     def run(self):
         raise NotImplementedError
@@ -137,10 +139,38 @@ class UserTagFilter(Filter):
         return Q(cve_tags__tags__contains=self.value, cve_tags__user=self.user)
 
 
+class ProjectFilter(Filter):
+    supported_operators = [":"]
+
+    def run(self):
+        if not self.user.is_authenticated:
+            raise BadQueryException(
+                "You must be logged in to use the 'project' filter."
+            )
+
+        try:
+            project = Project.objects.get(
+                name=self.value, organization=self.request.current_organization
+            )
+        except Project.DoesNotExist:
+            raise BadQueryException(f"The project '{self.value}' does not exist.")
+
+        # Get vendors and products from the project subscriptions
+        vendors = project.subscriptions.get("vendors", [])
+        products = project.subscriptions.get("products", [])
+        all_keys = vendors + products
+
+        if not all_keys:
+            return Q(pk=None)
+
+        return Q(vendors__has_any_keys=all_keys)
+
+
 class Search:
-    def __init__(self, q, user=None):
+    def __init__(self, q, request=None):
         self.q = q
-        self.user = user
+        self.request = request
+        self.user = self.request.user if self.request else None
         self._query = None
         self.error = None
         self.fields_count = 0
@@ -220,6 +250,7 @@ class Search:
             "userTag": UserTagFilter,
             "cve": CveFilter,
             "cwe": CweFilter,
+            "project": ProjectFilter,
         }
 
         for field, filter in filter_json.items():
@@ -232,7 +263,7 @@ class Search:
             self.increment_fields_count()
 
             q_objects &= filters_mapping[field](
-                field, filter["operator"], filter["value"], self.user
+                field, filter["operator"], filter["value"], self.user, self.request
             ).execute()
 
         return q_objects

@@ -96,7 +96,7 @@ class CveListView(ListView):
 
         # Execute the search
         try:
-            search = Search(search_query, self.request.user)
+            search = Search(search_query, self.request)
             return search.query
         except (BadQueryException, MaxFieldsExceededException) as e:
             self.form.add_error("q", e)
@@ -156,11 +156,17 @@ class CveListView(ListView):
         if product:
             context["title"] = humanize(product)
 
-        # List the user tags
         if self.request.user.is_authenticated:
+
+            # List the user tags
             context["user_tags"] = [
                 t.name for t in UserTag.objects.filter(user=self.request.user).all()
             ]
+
+            # List the projects
+            context["projects"] = Project.objects.filter(
+                organization=self.request.current_organization
+            ).order_by("name")
 
         # Provide the search form
         context["search_form"] = self.form
