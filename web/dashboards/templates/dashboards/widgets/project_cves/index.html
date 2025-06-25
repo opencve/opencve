@@ -58,7 +58,7 @@
 </div>
 
 <p class="center">
-    <a class="btn btn-default btn-sm" href="{% url 'project_vulnerabilities' org_name=request.current_organization project_name=project.name %}">View All CVEs</a>
+    <a class="btn btn-default btn-sm" href="{% url 'cves' %}?q=project:{{ project.name }}">View All CVEs</a>
 </p>
 {% else %}
 <p class="alert alert-info">No CVEs found.</p>

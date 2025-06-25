@@ -209,7 +209,7 @@ class ViewCvesWidget(Widget):
             id=self.configuration["view_id"],
             organization=self.request.current_organization,
         ).first()
-        cves = Search(view.query, self.request.user).query.all()[:20]
+        cves = Search(view.query, self.request).query.all()[:20]
         return self.render_index(view=view, cves=cves)
 
 
