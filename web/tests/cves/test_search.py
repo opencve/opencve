@@ -150,6 +150,13 @@ def test_product_filter():
     assert filter.execute() == Q(vendors__icontains="$PRODUCT$android")
 
 
+def test_usertag_filter_anonymous_user():
+    filter = UserTagFilter("userTag", "icontains", "foobar", AnonymousUser())
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "You must be logged in to use the 'userTag' filter." in str(excinfo.value)
+
+
 def test_usertag_filter_bad_query(create_user):
     user = create_user()
     filter = UserTagFilter("foo", "lt", "foobar", user)
