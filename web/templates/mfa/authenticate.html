@@ -8,11 +8,10 @@
 
 {% block content%}
 
-<form method="post">
-    <!-- CERT : ToDo improve form and manage error message if error and invalidate login after X attempts-->
+<form action="./" method="POST" id="2faForm"> 
     {% csrf_token %}
     {% crispy form %}
-    <button type="submit" class="btn btn-primary pull-right btn-flat">Validate</button>
+    <button type="submit" onclick="document.getElementById('2faForm').submit()" class="btn btn-primary pull-right btn-flat">Validate</button>
 </form>
 
 {% endblock %}
