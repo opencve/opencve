@@ -11,57 +11,6 @@
 {% block content %}
 
 <section class="content">
-    {% if request.GET.weakness %}
-    <div class="row">
-        <div class="col-xs-6">
-            <div class="box box-info">
-                <div class="box-header">
-                    <div class="box-title"><i class="fa fa-filter"></i> Filtered by {{ request.GET.weakness }}
-                    </div>
-                    <div class="box-tools pull-right">
-                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="{% url 'cves' %}"><i class="fa fa-times"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if vendor or product %}
-    <div class="row">
-        {% if vendor %}
-        <div class="col-sm-12 col-lg-6">
-            <div class="box box-primary">
-                <div class="box-header">
-                    <div class="box-title">
-                        Filtered by vendor <strong>{{ vendor.name | humanize }}</strong>
-                        <a href="{% url 'subscribe' %}?vendor={{ vendor.name }}" class="btn btn-default btn-sm"><i class="fa fa-rocket"></i> Subscriptions</a>
-                    </div>
-                    <div class="box-tools pull-right">
-                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="{% url 'cves' %}"><i class="fa fa-times"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        {% if product %}
-        <div class="col-sm-12 col-lg-6">
-            <div class="box box-primary">
-                <div class="box-header">
-                    <div class="box-title">
-                        Filtered by product <strong>{{ product.name | humanize }}</strong>
-                        <a href="{% url 'subscribe' %}?vendor={{ product.vendor.name }}&product={{ product.name }}" class="btn btn-default btn-sm"><i class="fa fa-rocket"></i> Subscriptions</a>
-                    </div>
-                    <div class="box-tools pull-right">
-                        <a type="button" class="btn btn-box-tool" data-toggle="remove" href="{% url 'cves' %}?vendor={{ vendor.name }}"><i class="fa fa-times"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
-
     <div class="row">
         <div class="col-md-7">
             <div class="box box-primary">
@@ -70,16 +19,6 @@
                 </div>
                 <div class="box-body" id="advanced-search">
                     <form method="GET">
-                        {% if request.GET.cwe %}
-                        <input type="hidden" name="cwe" value="{{ request.GET.cwe }}" />
-                        {% endif %}
-                        {% if request.GET.vendor and not vendor %}
-                        <input type="hidden" name="vendor" value="{{ request.GET.vendor }}" />
-                        {% endif %}
-                        {% if request.GET.product and not product %}
-                        <input type="hidden" name="product" value="{{ request.GET.product }}" />
-                        {% endif %}
-
                         <div class="row">
                             <div class="col-md-9">
                                 {{ search_form.q|as_crispy_field }}

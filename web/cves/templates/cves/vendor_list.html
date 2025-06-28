@@ -70,8 +70,8 @@
                             <td class="text-center"><a href="{% url 'vendors' %}?vendor={{ vendor.name }}">{{ vendor.products.count }}</a></td>
                             <td class="text-center">
                                 <div class="btn-group">
-                                    <a href="{% url 'subscribe' %}?vendor={{ vendor.name }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
-                                    <a href="{% url 'cves' %}?vendor={{ vendor.name }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
+                                    <a href="{% url 'subscribe' %}?vendor={{ vendor.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
+                                    <a href="{% url 'cves' %}?vendor={{ vendor.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
                                 </div>
                             </td>
                         </tr>
@@ -119,8 +119,8 @@
                             <td>{{ product.vendor.name | humanize }}</td>
                             <td class="text-center">
                                 <div class="btn-group">
-                                    <a href="{% url 'subscribe' %}?vendor={{ product.vendor.name }}&product={{ product.name }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
-                                    <a href="{% url 'cves' %}?vendor={{ product.vendor.name }}&product={{ product.name }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
+                                    <a href="{% url 'subscribe' %}?vendor={{ product.vendor.name | urlencode }}&product={{ product.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
+                                    <a href="{% url 'cves' %}?vendor={{ product.vendor.name | urlencode }}&product={{ product.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
                                 </div>
                             </td>
                         </tr>

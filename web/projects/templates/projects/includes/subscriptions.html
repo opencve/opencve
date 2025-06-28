@@ -5,7 +5,7 @@
     {% if vendors %}
     <h5><strong>Vendors <span>({{ vendors|length }})</span></strong></h5>
     {% for vendor in vendors %}
-    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ vendor }}">{{ vendor| humanize }}</a>
+    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ vendor | urlencode }}">{{ vendor| humanize }}</a>
     {% endfor %}
 
     {% if products %}
@@ -16,7 +16,7 @@
     <h5><strong>Products <span>({{ products|length }})</span></strong></h5>
     {% for product in products %}
     {% with product|split:"$PRODUCT$" as p %}
-    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ p.0 }}&product={{ p.1 }}">{{ product|remove_product_separator|humanize }}</a>
+    <a class="label label-primary" href="{% url 'cves' %}?vendor={{ p.0 | urlencode }}&product={{ p.1 | urlencode }}">{{ product|remove_product_separator|humanize }}</a>
     {% endwith %}
     {% endfor %}
     {% endif %}
