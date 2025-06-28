@@ -139,6 +139,11 @@ def test_vendor_filter():
     assert filter.execute() == Q(vendors__contains="microsoft")
 
 
+def test_vendor_filter_with_backslash():
+    filter = VendorFilter("foo", "icontains", "micro\\soft", None)
+    assert filter.execute() == Q(vendors__contains="micro\\\\soft")
+
+
 def test_product_filter_bad_query():
     filter = ProductFilter("foo", "lt", "android", None)
     with pytest.raises(BadQueryException):
@@ -148,6 +153,11 @@ def test_product_filter_bad_query():
 def test_product_filter():
     filter = ProductFilter("foo", "icontains", "android", None)
     assert filter.execute() == Q(vendors__icontains="$PRODUCT$android")
+
+
+def test_product_filter_with_backslash():
+    filter = ProductFilter("foo", "icontains", "android\\", None)
+    assert filter.execute() == Q(vendors__icontains="$PRODUCT$android\\\\")
 
 
 def test_usertag_filter_anonymous_user():
