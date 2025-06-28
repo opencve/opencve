@@ -60,10 +60,6 @@ def excerpt(objects, _type):
         elif _type == "vendors":
             query_kwargs = urlencode({"vendor": obj})
             output += f"<a href='{base_url}?{query_kwargs}'>{humanize(obj)}</a>"
-        """else:
-            url = url_for("main.cves", tag=obj)
-            tag = UserTag.query.filter_by(user_id=current_user.id, name=obj).first()
-            output += f"<a href='{url}'><span class='label label-tag' style='background-color: {tag.color};'>{obj}</span></a>"""
 
         output += ", " if idx + 1 != len(objects) and _type != "tags" else " "
 
