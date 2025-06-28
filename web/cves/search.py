@@ -107,7 +107,8 @@ class VendorFilter(Filter):
     supported_operators = [":"]
 
     def run(self):
-        return Q(**{"vendors__contains": self.value})
+        safe_value = self.value.replace("\\", "\\\\")
+        return Q(**{"vendors__contains": safe_value})
 
 
 class ProductFilter(Filter):
@@ -120,7 +121,8 @@ class ProductFilter(Filter):
         #
         # We will be able to use `contains` instead of `icontains`:
         #   Q(**{"products__contains": self.value)
-        return Q(**{"vendors__icontains": f"{PRODUCT_SEPARATOR}{self.value}"})
+        safe_value = self.value.replace("\\", "\\\\")
+        return Q(**{"vendors__icontains": f"{PRODUCT_SEPARATOR}{safe_value}"})
 
 
 class UserTagFilter(Filter):
