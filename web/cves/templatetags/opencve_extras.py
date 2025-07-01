@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime
+from urllib.parse import quote
 
 from django import template
 from django.conf import settings
@@ -60,10 +61,6 @@ def excerpt(objects, _type):
         elif _type == "vendors":
             query_kwargs = urlencode({"vendor": obj})
             output += f"<a href='{base_url}?{query_kwargs}'>{humanize(obj)}</a>"
-        """else:
-            url = url_for("main.cves", tag=obj)
-            tag = UserTag.query.filter_by(user_id=current_user.id, name=obj).first()
-            output += f"<a href='{url}'><span class='label label-tag' style='background-color: {tag.color};'>{obj}</span></a>"""
 
         output += ", " if idx + 1 != len(objects) and _type != "tags" else " "
 
@@ -216,9 +213,12 @@ def search_vendor_url(s):
 
     if PRODUCT_SEPARATOR in s:
         vendor, product = s.split(PRODUCT_SEPARATOR)
-        return f"{base_url}?vendor={vendor}&product={product}"
+        vendor_encoded = quote(vendor)
+        product_encoded = quote(product)
+        return f"{base_url}?vendor={vendor_encoded}&product={product_encoded}"
 
-    return f"{base_url}?vendor={s}"
+    vendor_encoded = quote(s)
+    return f"{base_url}?vendor={vendor_encoded}"
 
 
 @register.filter
@@ -307,3 +307,9 @@ def get_item(value, arg):
         if item.grouper == arg:
             return item.list
     return None
+
+
+def needs_quotes(value: str) -> bool:
+    special_chars = set(r""" :'"()[]{}&|=!\<>+*?^~""")
+
+    return any(char in special_chars for char in value) or "\\" in value or " " in value

@@ -388,6 +388,66 @@ def test_cvelist_convert_to_advanced_search_authenticated(
     assert view.convert_to_advanced_search() == expected_query
 
 
+@pytest.mark.parametrize(
+    "params, expected_query",
+    [
+        # Test with special characters requiring quotes
+        ({"vendor": "vendor:special"}, "vendor:'vendor:special'"),
+        ({"vendor": "vendor with space"}, "vendor:'vendor with space'"),
+        ({"vendor": "vendor'quote"}, "vendor:'vendor'quote'"),
+        ({"vendor": "vendor(parentheses)"}, "vendor:'vendor(parentheses)'"),
+        ({"vendor": "vendor[brackets]"}, "vendor:'vendor[brackets]'"),
+        ({"vendor": "vendor{braces}"}, "vendor:'vendor{braces}'"),
+        ({"vendor": "vendor&ampersand"}, "vendor:'vendor&ampersand'"),
+        ({"vendor": "vendor|pipe"}, "vendor:'vendor|pipe'"),
+        ({"vendor": "vendor=equals"}, "vendor:'vendor=equals'"),
+        ({"vendor": "vendor!bang"}, "vendor:'vendor!bang'"),
+        ({"vendor": "vendor\\backslash"}, "vendor:'vendor\\backslash'"),
+        ({"vendor": "vendor<less>"}, "vendor:'vendor<less>'"),
+        ({"vendor": "vendor+plus"}, "vendor:'vendor+plus'"),
+        ({"vendor": "vendor*star"}, "vendor:'vendor*star'"),
+        ({"vendor": "vendor?question"}, "vendor:'vendor?question'"),
+        ({"vendor": "vendor^caret"}, "vendor:'vendor^caret'"),
+        ({"vendor": "vendor~tilde"}, "vendor:'vendor~tilde'"),
+        # Test with product and vendor both having special characters
+        (
+            {"vendor": "vendor:special", "product": "product with space"},
+            "vendor:'vendor:special' AND product:'product with space'",
+        ),
+        # Test normal values without special characters (should not be quoted)
+        ({"vendor": "normalvendor"}, "vendor:normalvendor"),
+        ({"vendor": "normal-vendor"}, "vendor:normal-vendor"),
+        ({"vendor": "normal_vendor"}, "vendor:normal_vendor"),
+        ({"vendor": "normalvendor123"}, "vendor:normalvendor123"),
+        # Test product with special characters (vendor must be provided)
+        (
+            {"vendor": "normalvendor", "product": "product:special"},
+            "vendor:normalvendor AND product:'product:special'",
+        ),
+    ],
+)
+@pytest.mark.django_db
+def test_cvelist_convert_to_advanced_search_special_characters(
+    create_user, params, expected_query
+):
+    """
+    Test convert_to_advanced_search properly quotes vendor and product values
+    containing special characters.
+    """
+    user = create_user()
+
+    # Simulate request using RequestFactory
+    rf = RequestFactory()
+    request = rf.get(reverse("cves"), data=params)
+    request.user = user
+
+    # Instantiate the view and attach the request
+    view = CveListView()
+    view.request = request
+
+    assert view.convert_to_advanced_search() == expected_query
+
+
 @pytest.mark.django_db
 def test_cvelist_convert_to_advanced_search_unauthenticated(rf):
     """

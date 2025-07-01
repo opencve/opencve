@@ -2,6 +2,7 @@ import pytest
 import pyparsing as pp
 from django.db.models import Q
 from django.contrib.auth.models import AnonymousUser
+from unittest.mock import Mock
 
 from cves.search import (
     BadQueryException,
@@ -14,6 +15,7 @@ from cves.search import (
     UserTagFilter,
     Search,
     CweFilter,
+    ProjectFilter,
 )
 from users.models import UserTag
 
@@ -137,6 +139,11 @@ def test_vendor_filter():
     assert filter.execute() == Q(vendors__contains="microsoft")
 
 
+def test_vendor_filter_with_backslash():
+    filter = VendorFilter("foo", "icontains", "micro\\soft", None)
+    assert filter.execute() == Q(vendors__contains="micro\\\\soft")
+
+
 def test_product_filter_bad_query():
     filter = ProductFilter("foo", "lt", "android", None)
     with pytest.raises(BadQueryException):
@@ -146,6 +153,18 @@ def test_product_filter_bad_query():
 def test_product_filter():
     filter = ProductFilter("foo", "icontains", "android", None)
     assert filter.execute() == Q(vendors__icontains="$PRODUCT$android")
+
+
+def test_product_filter_with_backslash():
+    filter = ProductFilter("foo", "icontains", "android\\", None)
+    assert filter.execute() == Q(vendors__icontains="$PRODUCT$android\\\\")
+
+
+def test_usertag_filter_anonymous_user():
+    filter = UserTagFilter("userTag", "icontains", "foobar", AnonymousUser())
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "You must be logged in to use the 'userTag' filter." in str(excinfo.value)
 
 
 def test_usertag_filter_bad_query(create_user):
@@ -171,6 +190,60 @@ def test_usertag_filter(create_user):
     assert filter.execute() == Q(cve_tags__tags__contains="test", cve_tags__user=user)
 
 
+def test_project_filter_anonymous_user():
+    filter = ProjectFilter("project", "icontains", "foobar", AnonymousUser())
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "You must be logged in to use the 'project' filter." in str(excinfo.value)
+
+
+def test_project_filter_bad_query(create_user, create_organization, create_project):
+    user = create_user()
+    org = create_organization("orga", user)
+    project = create_project(
+        name="proj1", organization=org, vendors=["foo"], products=["bar"]
+    )
+    request = Mock()
+    request.user = user
+    request.current_organization = org
+
+    filter = ProjectFilter("project", "exact", project.name, user, request)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "The operator '=' is not supported for the project field (use ':')" in str(
+        excinfo.value
+    )
+
+
+def test_project_filter_project_not_found(create_user, create_organization):
+    user = create_user()
+    org = create_organization("orga", user)
+    request = Mock()
+    request.user = user
+    request.current_organization = org
+
+    filter = ProjectFilter("project", "icontains", "doesnotexist", user, request)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "The project 'doesnotexist' does not exist." in str(excinfo.value)
+
+
+def test_project_filter(create_user, create_organization, create_project):
+    user = create_user()
+    org = create_organization("orga", user)
+    vendors = ["foo", "bar"]
+    products = ["baz"]
+    project = create_project(
+        name="proj1", organization=org, vendors=vendors, products=products
+    )
+    request = Mock()
+    request.user = user
+    request.current_organization = org
+
+    filter = ProjectFilter("project", "icontains", project.name, user, request)
+    assert filter.execute() == Q(vendors__has_any_keys=vendors + products)
+
+
 def test_usertag_filter_anonymous_user():
     filter = UserTagFilter("userTag", "icontains", "foobar", AnonymousUser())
     with pytest.raises(BadQueryException) as excinfo:
@@ -181,7 +254,10 @@ def test_usertag_filter_anonymous_user():
 def test_search_init(create_user):
     user = create_user()
     q = "description:python"
-    search = Search(q, user)
+    request = Mock()
+    request.user = user
+
+    search = Search(q, request)
     assert search.q == q
     assert search.user == user
     assert search._query is None

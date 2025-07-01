@@ -9,11 +9,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import DetailView, ListView, TemplateView
 
 from cves.constants import PRODUCT_SEPARATOR
-from cves.utils import humanize
 from cves.forms import SearchForm
 from cves.models import Cve, Product, Variable, Vendor, Weakness
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
-from cves.utils import list_to_dict_vendors, list_weaknesses
+from cves.templatetags.opencve_extras import needs_quotes
+from cves.utils import humanize, list_to_dict_vendors, list_weaknesses
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project
@@ -96,7 +96,7 @@ class CveListView(ListView):
 
         # Execute the search
         try:
-            search = Search(search_query, self.request.user)
+            search = Search(search_query, self.request)
             return search.query
         except (BadQueryException, MaxFieldsExceededException) as e:
             self.form.add_error("q", e)
@@ -117,9 +117,13 @@ class CveListView(ListView):
         tag_value = self.request.GET.get("tag")
 
         if vendor_value:
+            if needs_quotes(vendor_value):
+                vendor_value = f"'{vendor_value}'"
             advanced_parts.append(f"vendor:{vendor_value}")
 
             if product_value:
+                if needs_quotes(product_value):
+                    product_value = f"'{product_value}'"
                 advanced_parts.append(f"product:{product_value}")
 
         if weakness_value:
@@ -156,11 +160,17 @@ class CveListView(ListView):
         if product:
             context["title"] = humanize(product)
 
-        # List the user tags
         if self.request.user.is_authenticated:
+
+            # List the user tags
             context["user_tags"] = [
                 t.name for t in UserTag.objects.filter(user=self.request.user).all()
             ]
+
+            # List the projects
+            context["projects"] = Project.objects.filter(
+                organization=self.request.current_organization
+            ).order_by("name")
 
         # Provide the search form
         context["search_form"] = self.form
