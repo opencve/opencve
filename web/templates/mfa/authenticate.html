@@ -7,11 +7,9 @@
 {% block header %}2FA - Validation{% endblock %}
 
 {% block content%}
-
 <form action="./" method="POST" id="2faForm"> 
     {% csrf_token %}
     {% crispy form %}
     <button type="submit" onclick="document.getElementById('2faForm').submit()" class="btn btn-primary pull-right btn-flat">Validate</button>
 </form>
-
 {% endblock %}

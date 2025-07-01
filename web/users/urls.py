@@ -1,7 +1,6 @@
 from django.urls import path, include
 
 from users.views import (
-    MfaSettingView,
     SettingsPasswordView,
     SettingsProfileView,
     SettingsAccountView,
@@ -19,7 +18,6 @@ urlpatterns = [
     path("tags/<name>/edit", TagEditView.as_view(), name="edit_tag"),
     path("tags/<name>/delete", TagDeleteView.as_view(), name="delete_tag"),
     path("password/", SettingsPasswordView.as_view(), name="settings_password"),
-    path("mfa/", MfaSettingView.as_view(), name="settings_mfa"),
     path("profile/", SettingsProfileView.as_view(), name="settings_profile"),
     path("social", CustomConnectionView.as_view(), name="settings_social"),
     path("account/", SettingsAccountView.as_view(), name="settings_account"),

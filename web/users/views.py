@@ -156,7 +156,3 @@ class CustomSignupView(SocialProvidersMixin, SignupView):
 
 class CustomConnectionView(LoginRequiredMixin, SocialProvidersMixin, ConnectionsView):
     success_url = reverse_lazy("settings_social")
-
-
-class MfaSettingView(LoginRequiredMixin, TemplateView):
-    template_name = "users/settings/mfa.html"

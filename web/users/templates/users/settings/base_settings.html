@@ -35,8 +35,8 @@
                     <li class="{% is_active_link 'settings_password' %}">
                         <a href="{% url 'settings_password' %}">Password</a>
                     </li>
-                    <li class="{% is_active_link 'settings_mfa' %}">
-                        <a href="{% url 'settings_mfa' %}">2FA</a>
+                    <li class="{% is_active_link 'mfa_index' 'mfa_deactivate_totp' 'mfa_activate_totp' 'mfa_view_recovery_codes' 'mfa_generate_recovery_codes' %}">
+                        <a href="{% url 'mfa_index' %}">2FA</a>
                     </li>
                     <li class="{% is_active_link 'settings_social' %}">
                         <a href="{% url 'settings_social' %}">Social Auth</a>
