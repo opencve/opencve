@@ -34,6 +34,17 @@
                 </table>
             </div>
         </div>
+
+        <div class="center">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="previous"><a href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}?{% query_params_url 'page' page_obj.previous_page_number %}">« prev </a></li>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <li class="next"><a href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}?{% query_params_url 'page' page_obj.next_page_number %}">next »</a></li>
+                {% endif %}
+            </ul>
+        </div>
         {% else %}
         <p class="alert alert-info">No report yet.</p>
         {% endif %}
