@@ -1,0 +1,20 @@
+{% extends 'users/settings/base_settings.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_settings %}
+<div class="row">
+    <div class="col-lg-12 col-md-12 col-sm-12">
+        <!-- Get recovery codes -->
+        <h3>Recovery Codes</h3>
+        <p>There is {{ unused_codes|length }} out of {{ total_count }} recovery codes available</p>
+        <ul>
+            {% for code in unused_codes %}
+                <li>{{ code }}</li>
+            {% endfor %}
+        </ul>
+        
+        {% if unused_codes %}
+            {% url 'mfa_download_recovery_codes' as download_url %}
+            <a href="{{ download_url }}" class="btn btn-primary pull-right">Download codes</a>
+        {% endif %}
+{% endblock %}
