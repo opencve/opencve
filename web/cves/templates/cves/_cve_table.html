@@ -10,10 +10,10 @@
     </thead>
     {% for cve in cves %}
     <tr class="cve-header">
-        <td class="col-md-2"><a href="{% url 'cve' cve_id=cve.cve_id %}">{{cve.cve_id }}</a></td>
-        <td class="col-md-3">{{ cve.vendors|vendors_excerpt }}</td>
-        <td class="col-md-3">{{ cve.vendors|products_excerpt }}</td>
-        <td class="col-md-2 text-center">{{ cve.updated_at|date:"Y-m-d" }}</td>
+        <td class="col-md-6"><a href="{% url 'cve' cve_id=cve.cve_id %}">{{ cve.cve_id }}</a> <strong>{{ cve.title|default:"" }}</strong> </td>
+        <td class="col-md-2">{{ cve.vendors|vendors_excerpt }}</td>
+        <td class="col-md-2">{{ cve.vendors|products_excerpt }}</td>
+        <td class="col-md-1 text-center">{{ cve.updated_at|date:"Y-m-d" }}</td>
         {% if cve.cvssV3_1 %}
         <td class="col-md-1 text-center"><span class="label label-{{ cve.cvssV3_1.score|cvss_level }}">{{ cve.cvssV3_1.score }} {{ cve.cvssV3_1.score|cvss_human_score|title }}</span></td>
         {% else %}
