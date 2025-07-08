@@ -177,11 +177,11 @@ LOGIN_URL = "account_login"
 # User settings
 AUTH_USER_MODEL = "users.User"
 ACCOUNT_CHANGE_EMAIL = True
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "[OpenCVE] "
 ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
-ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_FORMS = {
     "login": "users.forms.LoginForm",
     "signup": "users.forms.RegisterForm",
@@ -194,7 +194,7 @@ SOCIALACCOUNT_EMAIL_REQUIRED = False
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 ACCOUNT_MFA_ENABLED = True
-ACCOUNT_MFA_ENFORCED = False 
+ACCOUNT_MFA_ENFORCED = False
 
 # Audit Logs
 AUDITLOG_INCLUDE_TRACKING_MODELS = (

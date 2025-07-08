@@ -7,7 +7,7 @@
 {% block header %}Please reauthenticate to safeguard your account.{% endblock %}
 
 {% block content%}
-<form action="#" method="POST" id="reauthForm"> 
+<form action="#" method="POST" id="reauthForm">
     {% csrf_token %}
     {% crispy form %}
     <button type="submit" onclick="document.getElementById('reauthForm').submit()" class="btn btn-primary pull-right btn-flat">Validate</button>
@@ -16,4 +16,3 @@
 
 {% block links %}
 {% endblock %}
-
