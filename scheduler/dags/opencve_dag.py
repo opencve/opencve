@@ -3,6 +3,7 @@ import logging
 import pendulum
 from airflow.configuration import conf
 from airflow.decorators import dag
+from airflow.operators.python import ShortCircuitOperator
 from airflow.utils.task_group import TaskGroup
 from includes.operators.fetch_operator import GitFetchOperator
 from includes.operators.process_kb_operator import ProcessKbOperator
@@ -13,6 +14,7 @@ from includes.tasks.notifications import (
 )
 from includes.tasks.statistics import compute_statistics
 from includes.tasks.reports import list_changes, list_subscriptions, populate_reports
+from includes.utils import should_execute
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,11 @@ def opencve():
             >> compute_statistics()
         )
 
+    should_create_reports = ShortCircuitOperator(
+        task_id="should_create_reports",
+        python_callable=lambda: should_execute("create_reports"),
+    )
+
     with TaskGroup(group_id="reports") as reports_group:
         (
             list_changes()
@@ -49,10 +56,16 @@ def opencve():
             >> [populate_reports(), prepare_notifications()]
         )
 
+    should_launch_notifications = ShortCircuitOperator(
+        task_id="should_launch_notifications",
+        python_callable=lambda: should_execute("launch_notifications"),
+    )
+
     with TaskGroup(group_id="notifications") as notifications_group:
         send_notifications.expand(notifications=make_notifications_chunks())
 
-    cves_group >> reports_group >> notifications_group
+    cves_group >> should_create_reports >> reports_group
+    reports_group >> should_launch_notifications >> notifications_group
 
 
 opencve()

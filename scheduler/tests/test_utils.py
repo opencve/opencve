@@ -17,6 +17,7 @@ from includes.utils import (
     list_commits,
     get_smtp_conf,
     get_smtp_message,
+    should_execute,
 )
 
 
@@ -340,3 +341,19 @@ async def test_get_smtp_message(override_conf):
     assert "From: from@example.com" in message.as_string()
     assert "To: to@example.com" in message.as_string()
     assert "Subject: Test Subject" in message.as_string()
+
+
+@patch("airflow.models.Variable.get")
+def test_should_execute_function_with_different_values(mock_variable_get):
+    """Test the should_execute function with different values"""
+    # Test with "true"
+    mock_variable_get.return_value = "true"
+    assert should_execute("test_var") is True
+
+    # Test with "false"
+    mock_variable_get.return_value = "false"
+    assert should_execute("test_var") is False
+
+    # Test with other value
+    mock_variable_get.return_value = "other"
+    assert should_execute("test_var") is False
