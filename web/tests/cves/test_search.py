@@ -16,6 +16,8 @@ from cves.search import (
     Search,
     CweFilter,
     ProjectFilter,
+    KevFilter,
+    EpssFilter,
 )
 from users.models import UserTag
 
@@ -242,6 +244,115 @@ def test_project_filter(create_user, create_organization, create_project):
 
     filter = ProjectFilter("project", "icontains", project.name, user, request)
     assert filter.execute() == Q(vendors__has_any_keys=vendors + products)
+
+
+def test_kev_filter_bad_query():
+    filter = KevFilter("kev", "gt", "true", None)
+    with pytest.raises(BadQueryException):
+        filter.execute()
+
+
+def test_kev_filter_invalid_value():
+    filter = KevFilter("kev", "icontains", "maybe", None)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "kev only supports true or false as value." in str(excinfo.value)
+
+
+def test_kev_filter_true():
+    filter = KevFilter("kev", "icontains", "true", None)
+    assert filter.execute() == Q(metrics__kev__data__dateAdded__isnull=False)
+
+
+def test_kev_filter_false():
+    filter = KevFilter("kev", "icontains", "false", None)
+    assert filter.execute() == Q(metrics__kev__data__dateAdded__isnull=True)
+
+
+def test_kev_filter_case_insensitive():
+    filter = KevFilter("kev", "icontains", "TRUE", None)
+    assert filter.execute() == Q(metrics__kev__data__dateAdded__isnull=False)
+
+    filter = KevFilter("kev", "icontains", "False", None)
+    assert filter.execute() == Q(metrics__kev__data__dateAdded__isnull=True)
+
+
+def test_epss_filter_bad_query():
+    filter = EpssFilter("epss", "icontains", "0.5", None)
+    with pytest.raises(BadQueryException):
+        filter.execute()
+
+
+def test_epss_filter_invalid_value():
+    filter = EpssFilter("epss", "exact", "invalid", None)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "The EPSS value 'invalid' is invalid (only numbers are accepted)." in str(
+        excinfo.value
+    )
+
+
+def test_epss_filter_out_of_range():
+    filter = EpssFilter("epss", "exact", "-1", None)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "The EPSS value '-1' is invalid (must be between 0 and 100)." in str(
+        excinfo.value
+    )
+
+    filter = EpssFilter("epss", "exact", "101", None)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "The EPSS value '101' is invalid (must be between 0 and 100)." in str(
+        excinfo.value
+    )
+
+
+def test_epss_filter_decimal_values():
+    filter = EpssFilter("epss", "exact", "0.5", None)
+    assert filter.execute() == Q(metrics__epss__data__score__exact=0.5)
+
+    filter = EpssFilter("epss", "gt", "0.8", None)
+    assert filter.execute() == Q(metrics__epss__data__score__gt=0.8)
+
+    filter = EpssFilter("epss", "gte", "0.9", None)
+    assert filter.execute() == Q(metrics__epss__data__score__gte=0.9)
+
+    filter = EpssFilter("epss", "lt", "0.3", None)
+    assert filter.execute() == Q(metrics__epss__data__score__lt=0.3)
+
+    filter = EpssFilter("epss", "lte", "0.7", None)
+    assert filter.execute() == Q(metrics__epss__data__score__lte=0.7)
+
+
+def test_epss_filter_percentage_conversion():
+    # Test that percentage values (>1) are converted to decimal
+    filter = EpssFilter("epss", "exact", "50", None)
+    assert filter.execute() == Q(metrics__epss__data__score__exact=0.5)
+
+    filter = EpssFilter("epss", "gt", "80", None)
+    assert filter.execute() == Q(metrics__epss__data__score__gt=0.8)
+
+    filter = EpssFilter("epss", "gte", "90", None)
+    assert filter.execute() == Q(metrics__epss__data__score__gte=0.9)
+
+    filter = EpssFilter("epss", "lt", "30", None)
+    assert filter.execute() == Q(metrics__epss__data__score__lt=0.3)
+
+    filter = EpssFilter("epss", "lte", "70", None)
+    assert filter.execute() == Q(metrics__epss__data__score__lte=0.7)
+
+
+def test_epss_filter_edge_cases():
+    # Test edge cases: 0, 1, and 100
+    filter = EpssFilter("epss", "exact", "0", None)
+    assert filter.execute() == Q(metrics__epss__data__score__exact=0.0)
+
+    filter = EpssFilter("epss", "exact", "1", None)
+    assert filter.execute() == Q(metrics__epss__data__score__exact=1.0)
+
+    filter = EpssFilter("epss", "exact", "100", None)
+    assert filter.execute() == Q(metrics__epss__data__score__exact=1.0)
 
 
 def test_usertag_filter_anonymous_user():

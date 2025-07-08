@@ -40,6 +40,13 @@
             {% endif %}
         </li>
         <li>
+            {% if cve.epss.data %}
+            <a href="#epss" data-toggle="tab">EPSS <span class="label label-danger label-cvss">{{ cve.epss.data.score }}</span></a>
+            {% else %}
+            <a href="#epss" data-toggle="tab">EPSS <span class="label label-default label-cvss">no</span></a>
+            {% endif %}
+        </li>
+        <li>
             {% if cve.ssvc.data %}
             <a href="#ssvc" data-toggle="tab">SSVC <span class="label label-danger label-cvss">yes</span></a>
             {% else %}
@@ -81,6 +88,13 @@
             {% include "cves/metrics/kev.html" with kev=cve.kev.data %}
             {% else %}
             <p class="alert alert-info">This CVE is not in the KEV list.</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane" id="epss">
+            {% if cve.epss.data %}
+            {% include "cves/metrics/epss.html" with epss=cve.epss.data %}
+            {% else %}
+            <p class="alert alert-info">No EPSS score available.</p>
             {% endif %}
         </div>
         <div class="tab-pane" id="ssvc">
