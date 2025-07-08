@@ -156,3 +156,4 @@ class CustomSignupView(SocialProvidersMixin, SignupView):
 
 class CustomConnectionView(LoginRequiredMixin, SocialProvidersMixin, ConnectionsView):
     success_url = reverse_lazy("settings_social")
+
