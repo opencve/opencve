@@ -27,7 +27,7 @@ class TestRepo:
             author_date=pendulum.datetime(2024, 1, 1, 0, 0, tz="UTC"),
         )
 
-    def commit(self, paths, hour, minute):
+    def commit(self, paths, hour, minute, message=None):
         for path in paths:
             if str(path).endswith("/"):
                 shutil.copytree(
@@ -44,7 +44,7 @@ class TestRepo:
         date = pendulum.datetime(2024, 1, 1, hour, minute, tz="UTC")
         self.repo.git.add(A=True)
         return self.repo.index.commit(
-            f"Updates for {hour}:{minute}",
+            message or f"Updates for {hour}:{minute}",
             author=self.author,
             committer=self.author,
             commit_date=date,
