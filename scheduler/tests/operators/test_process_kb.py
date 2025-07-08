@@ -323,3 +323,24 @@ def test_process_kb_operator_ignore_commit_message(
         for call in mock_process_commit.call_args_list:
             commit = call.args[0]
             assert "[ignore]" not in commit.message
+
+
+@patch("includes.handler.DiffHandler.format_cve")
+def test_process_kb_operator_ignore_invalid_files(
+    mock_format_cve, tests_path, tmp_path_factory
+):
+    repo = TestRepo("invalid-files", tests_path, tmp_path_factory)
+    repo.commit(["2025/invalid.json"], hour=1, minute=00)
+    repo.commit(["invalid/CVE-2025-1234.json"], hour=1, minute=15)
+
+    # The files are ignored because the regex doesn't match
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        operator = ProcessKbOperator(task_id="parse_test")
+        operator.execute(
+            {
+                "data_interval_start": pendulum.datetime(2024, 1, 1, 1, tz="UTC"),
+                "data_interval_end": pendulum.datetime(2024, 1, 1, 2, tz="UTC"),
+            }
+        )
+
+        assert mock_format_cve.call_count == 0
