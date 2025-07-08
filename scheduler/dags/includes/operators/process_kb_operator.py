@@ -39,6 +39,12 @@ class ProcessKbOperator(BaseOperator):
         )
 
         for commit in commits:
+
+            # Ignore commits that are marked with [ignore] in the message
+            if "[ignore]" in commit.message:
+                self.log.info("Ignoring commit %s due to ignore flag", commit)
+                continue
+
             commit_stats = commit.stats.total
             self.log.info(
                 "Analysing %s with %s files changed, %s insertions(+), %s deletions(-)",
