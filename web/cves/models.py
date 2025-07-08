@@ -138,6 +138,10 @@ class Cve(BaseModel):
         return self.metrics.get("kev")
 
     @property
+    def epss(self):
+        return self.metrics.get("epss")
+
+    @property
     def ssvc(self):
         return self.metrics.get("ssvc")
 

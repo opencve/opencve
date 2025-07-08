@@ -784,6 +784,22 @@ function getContrastedColor(str){
             }
         }
 
+        // 3. Process KEV
+        const kevChecked = $builder.find('#query-builder-kev').is(':checked');
+        if (kevChecked) {
+            queryParts.push('kev:true');
+        }
+
+        // 4. Process EPSS
+        const epssOperator = $builder.find('.epss-operator').val();
+        const epssScoreRaw = $builder.find('.epss-score').val().trim();
+        if (epssOperator && epssScoreRaw !== '' && !isNaN(parseInt(epssScoreRaw))) {
+            let score = parseInt(epssScoreRaw);
+            if (score >= 0 && score <= 100) {
+                queryParts.push(`epss${epssOperator}${score}`);
+            }
+        }
+
         // Log the final query
         const finalQuery = queryParts.join(' AND ');
         if (finalQuery.trim() === '') {
@@ -882,6 +898,13 @@ function getContrastedColor(str){
                  $(this).prop('selectedIndex', 0);
              }
         });
+
+        // Reset KEV checkbox
+        $builder.find('#query-builder-kev').prop('checked', false);
+
+        // Reset EPSS fields
+        $builder.find('.epss-operator').prop('selectedIndex', 0);
+        $builder.find('.epss-score').val('');
 
         // Remove added filters, keeping the first one
          ['vendor', 'product'].forEach(fieldType => {
