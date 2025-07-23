@@ -9,3 +9,4 @@ more-itertools==10.1.0
 nested-lookup==0.2.25
 psycopg2-binary==2.9.9
 aiosmtplib==3.0.1
+openai==1.98.0

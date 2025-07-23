@@ -1,19 +1,22 @@
+import json
 import pathlib
 from logging import Logger
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import more_itertools
+
+import openai
 from airflow.configuration import conf
 from airflow.exceptions import AirflowException, AirflowConfigException
+from airflow.models import Variable
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formatdate
 from git.objects.commit import Commit
 from git.repo import Repo
 from includes.constants import KB_LOCAL_REPO
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pendulum.datetime import DateTime
-from email.utils import formatdate
-from airflow.models import Variable
 
 
 def divide_list(iterable, n):
@@ -245,3 +248,60 @@ def should_execute(variable_name: str) -> bool:
     This function checks if a variable is set to "true".
     """
     return Variable.get(variable_name, default_var="true") == "true"
+
+
+def call_llm(
+    api_key: str, api_url: str, model: str, messages: List[Dict]
+) -> Optional[str]:
+    client = openai.OpenAI(api_key=api_key, base_url=api_url)
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+        )
+    except openai.RateLimitError as e:
+        print(f"Rate limit exceeded: {e}")
+        return None
+
+    except openai.APIError as e:
+        print(f"API Error: {e}")
+        return None
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
+
+    return response.choices[0].message.content
+
+
+def build_cve_data_for_llm(cve_id: str) -> Dict:
+    """
+    This function reads the CVE data from the KB local repo and
+    build a payload for the LLM.
+    """
+    year = cve_id.split("-")[1]
+    file_path = f"{year}/{cve_id}.json"
+    with open(pathlib.Path(KB_LOCAL_REPO) / file_path) as f:
+        cve_data = json.load(f)
+
+    kb_opencve_data = cve_data.get("opencve", {})
+
+    # Clean the data to reduce the size of the payload
+    # because the LLM is not able to handle large payloads
+    opencve_data = {
+        "cve_id": cve_id,
+        "created": kb_opencve_data.get("created", {}).get("data", None),
+        "title": kb_opencve_data.get("title", {}).get("data", None),
+        "description": kb_opencve_data.get("description", {}).get("data", None),
+        "vendors": kb_opencve_data.get("vendors", {}).get("data", []),
+        "weaknesses": kb_opencve_data.get("weaknesses", {}).get("data", []),
+        "metrics": {},
+    }
+
+    metrics = kb_opencve_data.get("metrics", {})
+    for key, value in metrics.items():
+        metric_data = value.get("data", {})
+        if metric_data:
+            opencve_data["metrics"][key] = metric_data
+
+    return opencve_data

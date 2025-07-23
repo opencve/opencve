@@ -1289,3 +1289,8 @@ notification_smtp_use_tls = True
 notification_smtp_start_tls = True
 notification_smtp_validate_certs = True
 notification_smtp_timeout = 30
+
+# The configuration for the LLM
+llm_api_key = sk-proj-1234567890
+llm_api_url = https://api.example.com
+llm_model = Mistral-7B-Instruct-v0.3

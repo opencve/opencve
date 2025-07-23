@@ -60,6 +60,10 @@ class Change(BaseModel):
 
 class Report(BaseModel):
     seen = models.BooleanField(default=False)
+    ai_summary = models.TextField(
+        null=True,
+        blank=True,
+    )
 
     day = models.DateField(default=timezone.now)
     project = models.ForeignKey(

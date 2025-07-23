@@ -1,7 +1,10 @@
+import json
 import logging
-from unittest.mock import patch
+import pathlib
+from unittest.mock import patch, mock_open, MagicMock
 
 from email.mime.multipart import MIMEMultipart
+import openai
 import pytest
 import pendulum
 
@@ -18,6 +21,8 @@ from includes.utils import (
     get_smtp_conf,
     get_smtp_message,
     should_execute,
+    call_llm,
+    build_cve_data_for_llm,
 )
 
 
@@ -357,3 +362,156 @@ def test_should_execute_function_with_different_values(mock_variable_get):
     # Test with other value
     mock_variable_get.return_value = "other"
     assert should_execute("test_var") is False
+
+
+@patch("includes.utils.openai.OpenAI")
+def test_call_llm_success(mock_openai_client):
+    """Test successful LLM API call"""
+    mock_client_instance = mock_openai_client.return_value
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "This is a test response from the LLM"
+    mock_client_instance.chat.completions.create.return_value = mock_response
+
+    result = call_llm(
+        api_key="test-api-key",
+        api_url="https://api.test.com",
+        model="Mistral-7B-Instruct-v0.3",
+        messages=[{"role": "user", "content": "Test message"}],
+    )
+
+    assert result == "This is a test response from the LLM"
+    mock_openai_client.assert_called_once_with(
+        api_key="test-api-key", base_url="https://api.test.com"
+    )
+    mock_client_instance.chat.completions.create.assert_called_once_with(
+        model="Mistral-7B-Instruct-v0.3",
+        messages=[{"role": "user", "content": "Test message"}],
+    )
+
+
+@patch("includes.utils.openai.OpenAI")
+def test_call_llm_rate_limit_error(mock_openai_client):
+    """Test LLM API call with rate limit error"""
+    mock_client_instance = mock_openai_client.return_value
+    mock_response = MagicMock()
+    mock_response.status_code = 429
+    mock_response.headers = {"x-request-id": "test-request-id"}
+    mock_response.request = MagicMock()
+    mock_client_instance.chat.completions.create.side_effect = openai.RateLimitError(
+        "Rate limit exceeded", response=mock_response, body=None
+    )
+
+    result = call_llm(
+        api_key="test-api-key",
+        api_url="https://api.test.com",
+        model="Mistral-7B-Instruct-v0.3",
+        messages=[{"role": "user", "content": "Test message"}],
+    )
+
+    assert result is None
+    mock_openai_client.assert_called_once_with(
+        api_key="test-api-key", base_url="https://api.test.com"
+    )
+
+
+@patch("includes.utils.openai.OpenAI")
+def test_call_llm_api_error(mock_openai_client):
+    """Test LLM API call with API error"""
+    mock_client_instance = mock_openai_client.return_value
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_response.headers = {"x-request-id": "test-request-id"}
+    mock_response.request = MagicMock()
+    mock_client_instance.chat.completions.create.side_effect = openai.APIStatusError(
+        "API Error occurred", response=mock_response, body=None
+    )
+
+    result = call_llm(
+        api_key="test-api-key",
+        api_url="https://api.test.com",
+        model="Mistral-7B-Instruct-v0.3",
+        messages=[{"role": "user", "content": "Test message"}],
+    )
+
+    assert result is None
+    mock_openai_client.assert_called_once_with(
+        api_key="test-api-key", base_url="https://api.test.com"
+    )
+
+
+@patch("includes.utils.openai.OpenAI")
+def test_call_llm_unexpected_error(mock_openai_client):
+    """Test LLM API call with unexpected error"""
+    mock_client_instance = mock_openai_client.return_value
+    mock_client_instance.chat.completions.create.side_effect = Exception(
+        "Unexpected error"
+    )
+
+    result = call_llm(
+        api_key="test-api-key",
+        api_url="https://api.test.com",
+        model="Mistral-7B-Instruct-v0.3",
+        messages=[{"role": "user", "content": "Test message"}],
+    )
+
+    assert result is None
+    mock_openai_client.assert_called_once_with(
+        api_key="test-api-key", base_url="https://api.test.com"
+    )
+
+
+def test_build_cve_data_for_llm_success(tests_path, tmp_path_factory):
+    """Test successful CVE data building for LLM"""
+    repo = TestRepo("llm", tests_path, tmp_path_factory)
+    repo.commit(["2025/CVE-2025-1000.json"], hour=1, minute=00)
+
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        result = build_cve_data_for_llm("CVE-2025-1000")
+
+    assert result == {
+        "cve_id": "CVE-2025-1000",
+        "created": "2025-05-05T20:55:46.335000+00:00",
+        "title": "IBM Db2 denial of service",
+        "description": "IBM Db2 for Linux, UNIX and Windows (includes DB2 Connect Server) 11.5.0 through 11.5.9 and 12.1.0 through 12.1.1 \n\ncould allow an authenticated user to cause a denial of service when connecting to a z/OS database due to improper handling of automatic client rerouting.",
+        "vendors": ["ibm", "ibm$PRODUCT$db2"],
+        "weaknesses": ["CWE-770"],
+        "metrics": {
+            "cvssV3_1": {
+                "score": 5.3,
+                "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            },
+            "epss": {"score": 0.00062},
+            "ssvc": {
+                "options": {
+                    "Automatable": "no",
+                    "Exploitation": "none",
+                    "Technical Impact": "partial",
+                },
+                "version": "2.0.3",
+            },
+        },
+    }
+
+
+def test_build_cve_data_for_llm_with_missing_fields(tests_path, tmp_path_factory):
+    """Test CVE data building for LLM with missing optional fields"""
+    repo = TestRepo("llm", tests_path, tmp_path_factory)
+    repo.commit(["2025/CVE-2025-9999.json"], hour=1, minute=00)
+
+    # Mock the KB_LOCAL_REPO path to point to our test data
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        result = build_cve_data_for_llm("CVE-2025-9999")
+
+    # Expected result
+    expected = {
+        "cve_id": "CVE-2025-9999",
+        "created": "2025-01-15T10:30:00Z",
+        "title": "Test CVE",
+        "description": "Test description",
+        "vendors": [],
+        "weaknesses": [],
+        "metrics": {},
+    }
+
+    assert result == expected
