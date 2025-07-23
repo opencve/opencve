@@ -1,19 +1,22 @@
+import json
 import pathlib
 from logging import Logger
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import more_itertools
+
+import openai
 from airflow.configuration import conf
 from airflow.exceptions import AirflowException, AirflowConfigException
+from airflow.models import Variable
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formatdate
 from git.objects.commit import Commit
 from git.repo import Repo
 from includes.constants import KB_LOCAL_REPO
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pendulum.datetime import DateTime
-from email.utils import formatdate
-from airflow.models import Variable
 
 
 def divide_list(iterable, n):
@@ -245,3 +248,204 @@ def should_execute(variable_name: str) -> bool:
     This function checks if a variable is set to "true".
     """
     return Variable.get(variable_name, default_var="true") == "true"
+
+
+def call_llm(
+    api_key: str, api_url: str, model: str, messages: List[Dict]
+) -> Optional[str]:
+    client = openai.OpenAI(api_key=api_key, base_url=api_url)
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+        )
+    except openai.RateLimitError as e:
+        print(f"Rate limit exceeded: {e}")
+        return None
+
+    except openai.APIError as e:
+        print(f"API Error: {e}")
+        return None
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return None
+
+    return response.choices[0].message.content
+
+
+def format_epss_score(score: float) -> str:
+    """Formats EPSS score as a percentage string."""
+    if not isinstance(score, (int, float)):
+        return "N/A"
+    if score == 0:
+        return "0%"
+    if 0 < score < 0.01:
+        return "< 1%"
+    return f"{score * 100:.0f}%"
+
+
+def read_cve_from_kb(cve_id: str) -> Dict:
+    """
+    This function reads the CVE data from the KB local repo and
+    build a payload for the LLM.
+    """
+    year = cve_id.split("-")[1]
+    file_path = f"{year}/{cve_id}.json"
+    with open(pathlib.Path(KB_LOCAL_REPO) / file_path) as f:
+        cve_data = json.load(f)
+
+    kb_opencve_data = cve_data.get("opencve", {})
+
+    # Clean the data to reduce the size of the payload
+    # because the LLM is not able to handle large payloads
+    opencve_data = {
+        "cve_id": cve_id,
+        "created": kb_opencve_data.get("created", {}).get("data", None),
+        "title": kb_opencve_data.get("title", {}).get("data", None),
+        "description": kb_opencve_data.get("description", {}).get("data", None),
+        "vendors": kb_opencve_data.get("vendors", {}).get("data", []),
+        "weaknesses": kb_opencve_data.get("weaknesses", {}).get("data", []),
+        "metrics": {},
+    }
+
+    metrics = kb_opencve_data.get("metrics", {})
+    for key, value in metrics.items():
+        metric_data = value.get("data", {})
+        if metric_data:
+            opencve_data["metrics"][key] = metric_data
+
+    return opencve_data
+
+
+def build_scores_distribution(scores):
+    categories = {
+        "Critical": 0,
+        "High": 0,
+        "Medium": 0,
+        "Low": 0,
+        "Unknown": 0,
+    }
+    for score in scores:
+        score_str = score["score"]
+        count = score["count"]
+
+        if score_str == "null":
+            categories["Unknown"] += count
+            continue
+
+        try:
+            score_float = float(score_str)
+            if 9.0 <= score_float <= 10.0:
+                categories["Critical"] += count
+            elif 7.0 <= score_float <= 8.9:
+                categories["High"] += count
+            elif 4.0 <= score_float <= 6.9:
+                categories["Medium"] += count
+            elif 0.1 <= score_float <= 3.9:
+                categories["Low"] += count
+            else:  # 0.0 or other cases
+                categories["Unknown"] += count
+        except (ValueError, TypeError):
+            categories["Unknown"] += count
+
+    distribution_parts = []
+    distribution_parts.append(f"Critical: {categories['Critical']}")
+    distribution_parts.append(f"High: {categories['High']}")
+    distribution_parts.append(f"Medium: {categories['Medium']}")
+    distribution_parts.append(f"Low: {categories['Low']}")
+    distribution_parts.append(f"Unknown: {categories['Unknown']}")
+
+    return distribution_parts
+
+
+def build_user_content_for_llm(
+    report_cves, report_cves_count, report_cves_score_distribution
+):
+    """
+    This function loads the user content for the LLM.
+    """
+    text_output = []
+
+    # Process the statistics
+    text_output.append("=== Statistics ===")
+    text_output.append(f"Total CVEs: {report_cves_count}")
+    text_output.append(
+        f"CVSS Severity Distribution: {', '.join(build_scores_distribution(report_cves_score_distribution))}"
+    )
+
+    # Process the CVEs
+    cve_list = [read_cve_from_kb(cve) for cve in report_cves]
+    for i, cve in enumerate(cve_list, 1):
+        text_output.append(f"=== CVE #{i} ===")
+        text_output.append(f"CVE-ID: {cve.get('cve_id', 'N/A')}")
+
+        created = cve.get("created", "N/A")
+        text_output.append(f"Created: {created}")
+
+        title = cve.get("title")
+        text_output.append(f"Title: {title or '[No title provided]'}")
+
+        # Vendors
+        vendors = cve.get("vendors", [])
+        if vendors:
+            formatted_vendors = []
+            vendors_to_process = vendors[:15]
+
+            for vendor in vendors_to_process:
+                if "$PRODUCT$" in vendor:
+                    parts = vendor.split("$PRODUCT$")
+                    if len(parts) == 2:
+                        vendor_name, product_name = parts
+                        formatted_vendors.append(
+                            f"{vendor_name.strip()} ({product_name.strip()})"
+                        )
+                    else:
+                        formatted_vendors.append(vendor)
+                else:
+                    formatted_vendors.append(vendor)
+
+            vendor_list_str = ", ".join(formatted_vendors)
+            if len(vendors) > 15:
+                vendor_list_str += f", ... (and {len(vendors) - 15} more)"
+
+            text_output.append(f"Vendors: {vendor_list_str}")
+        else:
+            text_output.append("Vendors: None listed")
+
+        # Weaknesses
+        weaknesses = cve.get("weaknesses", [])
+        if weaknesses:
+            text_output.append(f"Weaknesses: {', '.join(weaknesses)}")
+        else:
+            text_output.append("Weaknesses: None listed")
+
+        # Metrics
+        metrics = cve.get("metrics", {})
+        if metrics:
+            metric_parts = []
+
+            cvss_v3 = metrics.get("cvssV3_1", {})
+            if cvss_v3 and "score" in cvss_v3:
+                metric_parts.append(f"CVSS {cvss_v3['score']}")
+
+            epss = metrics.get("epss", {})
+            if epss and "score" in epss:
+                epss_score_value = epss.get("score")
+                formatted_epss = format_epss_score(epss_score_value)
+                metric_parts.append(f"EPSS {formatted_epss}")
+
+            kev_present = bool(metrics.get("kev"))
+            metric_parts.append(f"KEV {kev_present}")
+
+            text_output.append(f"Metrics: {', '.join(metric_parts)}")
+        else:
+            text_output.append("Metrics: None available")
+
+        # Description
+        description = cve.get("description", "N/A")
+        text_output.append(f"Description: {description}")
+
+        text_output.append("")  # Empty line between CVEs
+
+    return "\n".join(text_output)
