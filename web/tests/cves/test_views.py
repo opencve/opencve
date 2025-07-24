@@ -464,3 +464,45 @@ def test_cvelist_convert_to_advanced_search_unauthenticated(rf):
 
     # Tag should be ignored
     assert view.convert_to_advanced_search() == "vendor:v"
+
+
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_enrichment_panel(
+    mock_vulnrichment, mock_mitre, mock_nvd, mock_enrichment, db, create_cve, client
+):
+    mock_nvd.return_value = {}
+    mock_mitre.return_value = {}
+    mock_vulnrichment.return_value = {}
+    create_cve("CVE-2024-31331")
+
+    # Find the Enrichment box specifically
+    def get_enrichment_box(soup):
+        enrichment_box = None
+        for box in soup.find_all("div", {"class": "box box-primary"}):
+            box_title = box.find("div", {"class": "box-title"})
+            if box_title and "Enrichment" in box_title.text:
+                enrichment_box = box
+                break
+        return enrichment_box
+
+    # No enrichment data
+    mock_enrichment.return_value = {}
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    enrichment_box = get_enrichment_box(soup)
+    box_body = enrichment_box.find("div", {"class": "box-body"})
+    assert box_body.text.strip() == "No data."
+
+    # Enrichment data
+    mock_enrichment.return_value = {
+        "updated": "2025-07-23T20:19:23.982630+00:00",
+    }
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    enrichment_box = get_enrichment_box(soup)
+    box_body = enrichment_box.find("div", {"class": "box-body"})
+    assert box_body.text.strip() == "Updated: 2025-07-23T20:19:23Z"

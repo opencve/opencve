@@ -189,6 +189,31 @@
                 {% endif %}
             </div>
 
+            <div class="box box-primary">
+                <div class="box-header">
+                    <div class="box-title">
+                        <img src="{% static 'img/opencve_32.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
+                        OpenCVE Enrichment
+                    </div>
+                    {% if cve.enrichment_json %}
+                    <div class="box-tools pull-right">
+                        <div class="btn-group" data-toggle="btn-toggle">
+                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-enrichment-json"><i class="fa fa-code"></i></button>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if cve.enrichment_json %}
+                <div class="box-body">
+                    <p><strong>Updated:</strong> {{ cve.enrichment_json.updated|convert_str_date|date:"Y-m-d\TH:i:s" }}Z</p>
+                </div>
+                {% else %}
+                <div class="box-body">
+                    <p class="alert alert-info">No data.</p>
+                </div>
+                {% endif %}
+            </div>
+
             {% if user.is_authenticated %}
             <div class="box box-primary">
                 <div class="box-header with-border">
@@ -300,6 +325,24 @@
             </div>
             <div class="modal-body codejson">
                 {{ redhat_json }}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-right" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-enrichment-json">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">JSON object</h4>
+            </div>
+            <div class="modal-body codejson">
+                {{ enrichment_json }}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default pull-right" data-dismiss="modal">Close</button>
