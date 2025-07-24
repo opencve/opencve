@@ -118,6 +118,10 @@ class Cve(BaseModel):
         return self._redhat_json
 
     @property
+    def enrichment_json(self):
+        return self.kb_json.get("enrichment", {})
+
+    @property
     def cvssV2_0(self):
         return self.metrics.get("cvssV2_0", {}).get("data", {})
 

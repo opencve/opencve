@@ -14,6 +14,9 @@
         <li>
             <a href="#redhat" data-toggle="tab"> <img src="{% static 'img/redhat-icon.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> Affected Packages</a>
         </li>
+        <li>
+            <a href="#enrichment" data-toggle="tab"> <img src="{% static 'img/opencve_32.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> OpenCVE Enrichment</a>
+        </li>
     </ul>
     <div class="tab-content">
         <div class="tab-pane active" id="all">
@@ -37,7 +40,6 @@
                 </tr>
                 {% endfor %}
                 </tbody>
-            </table>
             </table>
             {% else %}
             <p class="alert alert-info">No data.</p>
@@ -104,6 +106,35 @@
                 </tbody>
 
 
+                </tbody>
+            </table>
+            {% else %}
+            <p class="alert alert-info">No data.</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane" id="enrichment">
+            {% if cve.enrichment_json %}
+            <p class="alert alert-info">
+                <strong>OpenCVE Enrichment</strong> is a feature of OpenCVE that uses AI to automatically link vendors and products to CVEs. <a href="https://github.com/opencve/opencve-enrichment/tree/main" target="_blank" rel="noopener">Learn more on GitHub</a>.
+            </p>
+            <table class="table table-striped table-bordered">
+                <thead>
+                <th>Vendors</th>
+                <th>Products</th>
+                </thead>
+                <tbody>
+                {% for vendor, products in enrichment_vendors.items %}
+                <tr>
+                    <td>{{ vendor | humanize }}</td>
+                    <td>
+                        <ul>
+                            {% for product in products %}
+                            <li>{{ product | humanize }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
                 </tbody>
             </table>
             {% else %}

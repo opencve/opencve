@@ -207,12 +207,15 @@ class CveDetailView(DetailView):
         context["mitre_json"] = json.dumps(context["cve"].mitre_json)
         context["redhat_json"] = json.dumps(context["cve"].redhat_json)
         context["vulnrichment_json"] = json.dumps(context["cve"].vulnrichment_json)
+        context["enrichment_json"] = json.dumps(context["cve"].enrichment_json)
 
         # Add the associated vendors and weaknesses
-        context["vendors"] = list_to_dict_vendors(
-            context["cve"].kb_json["opencve"]["vendors"]["data"]
-        )
+        context["vendors"] = list_to_dict_vendors(context["cve"].vendors)
         context["weaknesses"] = list_weaknesses(context["cve"].weaknesses)
+
+        context["enrichment_vendors"] = list_to_dict_vendors(
+            context["cve"].enrichment_json.get("vendors", [])
+        )
 
         # Get the CVE tags for the authenticated user
         user_tags = {}
