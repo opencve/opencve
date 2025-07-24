@@ -29,7 +29,7 @@ You can subscribe to products, receive alerts, analyze changes, and collaborate 
 ## Key Features
 
 ### 📚 Explore, Filter and Organize
-- Filter CVEs by vendor, product, CVSS, CWE, publication date, and more.
+- Filter CVEs by vendor, product, CVSS, KEV, EPSS, CWE, publication date, and more.
 - Subscribe to vendors and products, and organize your monitoring with projects and organizations.
 - Save complex filters as reusable Views (public or private).
 
