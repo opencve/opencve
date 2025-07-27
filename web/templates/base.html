@@ -92,6 +92,7 @@
                         <li class="{% is_active_link 'list_organizations' 'create_organization' 'edit_organization' 'delete_organization' %}"><a href="{% url 'list_organizations' %}"><i class="fa fa-group"></i> <span> Organizations</span></a></li>
                         <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}"><a href="{% url 'tags' %}"><i class="fa fa-tags"></i> <span> Tags</span></a></li>
                         <li class="{% is_active_link 'settings_profile' 'settings_password' 'account_email' %}"><a href="{% url 'settings_profile' %}"><i class="fa fa-user"></i> <span> Profile</span></a></li>
+                        <li class="{% is_active_link 'feeds:feed_tokens' %}"><a href="{% url 'feeds:feed_tokens' %}"><i class="fa fa-rss"></i> <span> RSS Feeds</span></a></li>
                         {% if user.is_superuser %}
                         <li><a href="{% url 'admin:index' %}"><i class="fa fa-gear"></i> <span> Admin</span></a></li>
                         {% endif %}

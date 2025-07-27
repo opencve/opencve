@@ -64,6 +64,8 @@ urlpatterns = [
     path("settings/", include("users.urls")),
     path("admin/", admin.site.urls),
     path("hijack/", include("hijack.urls")),
+    # RSS Feed routes
+    path("rss/", include("feeds.urls", namespace="feeds")),
     # API routes
     path("api/", include(router.urls)),
     path("api/", include(organizations_router.urls)),

@@ -38,6 +38,9 @@
                     <li class="{% is_active_link 'settings_social' %}">
                         <a href="{% url 'settings_social' %}">Social Auth</a>
                     </li>
+                    <li class="{% is_active_link 'feeds:feed_tokens' %}">
+                        <a href="{% url 'feeds:feed_tokens' %}">RSS Feeds</a>
+                    </li>
                     <li class="{% is_active_link 'settings_account' 'delete_account' %}">
                         <a href="{% url 'settings_account' %}">Account</a>
                     </li>

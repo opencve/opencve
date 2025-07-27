@@ -17,11 +17,20 @@
             <div class="box box-primary">
                 <div class="box-header with-border">
                     <h3 class="box-title">Vulnerabilities Activity</h3>
-                    {% if user.settings.activities_view == 'subscriptions' %}
                     <div class="box-tools pull-right">
+                        {% if feed_tokens %}
+                        <a href="{% url 'feeds:user_feed' token=feed_tokens.0.token %}" class="btn btn-box-tool" target="_blank" title="Subscribe to RSS feed">
+                            <i class="fa fa-rss"></i>
+                        </a>
+                        {% else %}
+                        <a href="{% url 'feeds:feed_tokens' %}" class="btn btn-box-tool" title="Setup RSS feed">
+                            <i class="fa fa-rss"></i>
+                        </a>
+                        {% endif %}
+                        {% if user.settings.activities_view == 'subscriptions' %}
                         <small class="label label-default"><i class="fa fa-filter"></i> subscriptions</small>
+                        {% endif %}
                     </div>
-                    {% endif %}
                 </div>
                 <div class="box-body">
                     {% if not changes %}
