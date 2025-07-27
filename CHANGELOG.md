@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0 - 2025-07-27
+### Added
+- Add RSS feed feature for CVE changes
+- Add token-based authentication for RSS feeds
+- Add user-wide RSS feed for all subscribed CVEs
+- Add project-specific RSS feeds for targeted monitoring
+- Add token management interface for creating and revoking feed access
+
 ## 2.1.0 - 2025-01-23
 ### Added
 - Add CVEs advanced search feature
