@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import include, path
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework_nested import routers
 
 from cves.resources import (
@@ -73,8 +75,13 @@ urlpatterns = [
     path("api/", include(vendors_router.urls)),
     path("api/", include(products_cves_router.urls)),
     path("api/", include(weaknesses_router.urls)),
+    path("rss/", include("feeds.urls", namespace="feeds")),
 ]
 
 # Custom errors
 handler404 = "cves.views.handle_page_not_found"
 handler500 = "cves.views.handle_server_error"
+
+# Serve static files in production
+if settings.DEBUG or True:  # Always serve static files for this deployment
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

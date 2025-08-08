@@ -1,0 +1,59 @@
+<div>
+  <h2>{{ obj.cve.cve_id }}</h2>
+  
+  {% if obj.cve.title %}
+    <h3>{{ obj.cve.title }}</h3>
+  {% endif %}
+  
+  <p><strong>Date:</strong> {{ obj.created_at|date:"Y-m-d H:i:s" }}</p>
+  
+  {% if obj.cve.cvssV3_1 %}
+    <p>
+      <strong>CVSS v3.1 Score:</strong> 
+      {% with score=obj.cve.cvssV3_1.score %}
+        {% if score >= 9.0 %}
+          <span style="color: #972b1e;">{{ score }}</span>
+        {% elif score >= 7.0 %}
+          <span style="color: #dd4b39;">{{ score }}</span>
+        {% elif score >= 4.0 %}
+          <span style="color: #f39c12;">{{ score }}</span>
+        {% elif score > 0.0 %}
+          <span style="color: #00c0ef;">{{ score }}</span>
+        {% else %}
+          <span style="color: #c4c4c4;">{{ score }}</span>
+        {% endif %}
+      {% endwith %}
+    </p>
+  {% endif %}
+  
+  <div>
+    <h4>Description</h4>
+    <p>{{ obj.cve.description|default:"No description available" }}</p>
+  </div>
+  
+  {% if change_data.data %}
+    <div>
+      <h4>Changes</h4>
+      <ul>
+        {% for event in change_data.data %}
+          <li>{{ event.type }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+  
+  {% if obj.cve.vendors %}
+    <div>
+      <h4>Affected Vendors/Products</h4>
+      <ul>
+        {% for vendor in obj.cve.vendors %}
+          <li>{{ vendor }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+  
+  <p>
+    <a href="{{ link }}">View details</a>
+  </p>
+</div>

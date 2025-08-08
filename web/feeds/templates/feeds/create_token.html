@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <h1>Create RSS Feed Token</h1>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title">New Token</h3>
+        </div>
+        <div class="panel-body">
+          <form method="post">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <div class="form-group">
+              <a href="{% url 'feeds:feed_tokens' %}" class="btn btn-default">Cancel</a>
+              <button type="submit" class="btn btn-primary">Create Token</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

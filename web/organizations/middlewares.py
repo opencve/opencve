@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.syndication.views import Feed
 from django.http import Http404
 
 
@@ -24,6 +25,10 @@ class OrganizationMiddleware:
     def process_view(self, request, view_func, view_args, view_kwargs):
         request.current_organization = None
         request.user_organizations = []
+
+        # Skip processing for RSS Feed views
+        if isinstance(view_func, Feed):
+            return
 
         if not request.user.is_authenticated:
             return

@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <h1>RSS Feed Management</h1>
+      <p class="lead">
+        Manage your RSS feed tokens to subscribe to CVE updates in your favorite RSS reader.
+      </p>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-md-12">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title">Your Feed Tokens</h3>
+        </div>
+        <div class="panel-body">
+          {% if tokens %}
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Token</th>
+                  <th>Created</th>
+                  <th>Last Used</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for token in tokens %}
+                <tr>
+                  <td>{{ token.name }}</td>
+                  <td>
+                    <div class="input-group">
+                      <input type="text" class="form-control" value="{{ token.token }}" readonly>
+                      <span class="input-group-btn">
+                        <button class="btn btn-default copy-btn" data-clipboard-text="{{ token.token }}" type="button">
+                          <i class="fa fa-copy"></i>
+                        </button>
+                      </span>
+                    </div>
+                  </td>
+                  <td>{{ token.created_at|date:"Y-m-d H:i" }}</td>
+                  <td>{{ token.last_used|date:"Y-m-d H:i"|default:"Never" }}</td>
+                  <td>
+                    <div class="btn-group">
+                      <a href="{% url 'feeds:user_feed' token=token.token %}" class="btn btn-sm btn-primary" target="_blank">
+                        <i class="fa fa-rss"></i> User Feed
+                      </a>
+                      <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#deleteModal{{ token.id }}">
+                        <i class="fa fa-trash"></i> Delete
+                      </button>
+                    </div>
+                    
+                    <!-- Delete Modal -->
+                    <div class="modal fade" id="deleteModal{{ token.id }}" tabindex="-1" role="dialog">
+                      <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <h4 class="modal-title">Confirm Deletion</h4>
+                          </div>
+                          <div class="modal-body">
+                            <p>Are you sure you want to delete the token "{{ token.name }}"?</p>
+                            <p class="text-danger">This action cannot be undone and will invalidate any RSS feed URLs using this token.</p>
+                          </div>
+                          <div class="modal-footer">
+                            <form method="post" action="{% url 'feeds:delete_token' token_id=token.id %}">
+                              {% csrf_token %}
+                              <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                              <button type="submit" class="btn btn-danger">Delete Token</button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="alert alert-info">
+              <p>You don't have any feed tokens yet. Create one below to get started with RSS feeds.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row">
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title">Create New Token</h3>
+        </div>
+        <div class="panel-body">
+          <form method="post" action="{% url 'feeds:create_token' %}">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <button type="submit" class="btn btn-primary">Create Token</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-6">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title">How to Use RSS Feeds</h3>
+        </div>
+        <div class="panel-body">
+          <p>You can use the following URLs to subscribe to RSS feeds of CVE changes:</p>
+          
+          <h4>User Feed</h4>
+          <p>This feed includes all CVE changes related to all your project subscriptions:</p>
+          <div class="input-group">
+            <input type="text" class="form-control" value="{{ request.scheme }}://{{ request.get_host }}{% url 'feeds:user_feed' token='YOUR_TOKEN' %}" readonly>
+            <span class="input-group-btn">
+              <button class="btn btn-default copy-btn" data-clipboard-text="{{ request.scheme }}://{{ request.get_host }}{% url 'feeds:user_feed' token='YOUR_TOKEN' %}" type="button">
+                <i class="fa fa-copy"></i>
+              </button>
+            </span>
+          </div>
+          <p class="help-block">Replace <code>YOUR_TOKEN</code> with one of your tokens.</p>
+          
+          <h4>Project Feed</h4>
+          <p>This feed includes only CVE changes related to a specific project:</p>
+          <div class="input-group">
+            <input type="text" class="form-control" value="{{ request.scheme }}://{{ request.get_host }}{% url 'feeds:project_feed' token='YOUR_TOKEN' org_name='ORGANIZATION_NAME' project_name='PROJECT_NAME' %}" readonly>
+            <span class="input-group-btn">
+              <button class="btn btn-default copy-btn" data-clipboard-text="{{ request.scheme }}://{{ request.get_host }}{% url 'feeds:project_feed' token='YOUR_TOKEN' org_name='ORGANIZATION_NAME' project_name='PROJECT_NAME' %}" type="button">
+                <i class="fa fa-copy"></i>
+              </button>
+            </span>
+          </div>
+          <p class="help-block">Replace <code>YOUR_TOKEN</code>, <code>ORGANIZATION_NAME</code>, and <code>PROJECT_NAME</code> with your actual values.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.8/clipboard.min.js"></script>
+<script>
+  $(document).ready(function() {
+    var clipboard = new ClipboardJS('.copy-btn');
+    
+    clipboard.on('success', function(e) {
+      $(e.trigger).tooltip({
+        title: 'Copied!',
+        trigger: 'manual'
+      }).tooltip('show');
+      
+      setTimeout(function() {
+        $(e.trigger).tooltip('hide');
+      }, 1000);
+      
+      e.clearSelection();
+    });
+  });
+</script>
+{% endblock %}
+{% endblock %}

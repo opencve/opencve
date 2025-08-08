@@ -32,6 +32,19 @@
                         <i class="fa fa-gear"></i>
                     </a>
                 </li>
+                {% if feed_tokens %}
+                <li class="pull-right">
+                    <a href="{% url 'feeds:project_feed' token=feed_tokens.0.token org_name=request.current_organization.name project_name=project.name %}" target="_blank" title="Subscribe to RSS feed">
+                        <i class="fa fa-rss"></i>
+                    </a>
+                </li>
+                {% else %}
+                <li class="pull-right">
+                    <a href="{% url 'feeds:feed_tokens' %}" title="Setup RSS feed">
+                        <i class="fa fa-rss"></i>
+                    </a>
+                </li>
+                {% endif %}
             </ul>
         </div>
     </div>
