@@ -37,6 +37,10 @@ class DiffHandler:
         return self.diff.change_type == "A"
 
     def format_cve(self):
+        # Ignore if the file is not a valid CVE file
+        if "opencve" not in self.data:
+            return None
+
         data = self.data["opencve"]
         payload = {
             "cve": self.data["cve"],

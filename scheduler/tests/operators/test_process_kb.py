@@ -344,3 +344,22 @@ def test_process_kb_operator_ignore_invalid_files(
         )
 
         assert mock_format_cve.call_count == 0
+
+
+@pytest.mark.web_db
+def test_process_kb_operator_invalid_cve(tests_path, tmp_path_factory, web_pg_hook):
+    repo = TestRepo("invalid-cves", tests_path, tmp_path_factory)
+    repo.commit(["2025/CVE-2025-8875.json"], hour=1, minute=00)
+
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        operator = ProcessKbOperator(task_id="parse_test")
+        operator.execute(
+            {
+                "data_interval_start": pendulum.datetime(2024, 1, 1, 1, tz="UTC"),
+                "data_interval_end": pendulum.datetime(2024, 1, 1, 2, tz="UTC"),
+            }
+        )
+
+    # The CVE is ignored because it's invalid
+    db_data = web_pg_hook.get_records("SELECT count(*) FROM opencve_cves;")
+    assert db_data[0][0] == 0
