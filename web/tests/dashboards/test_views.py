@@ -26,7 +26,7 @@ def test_dashboard_view_context(client, auth_client, create_user):
     # Test unauthenticated access
     response = client.get(reverse("home"))
     assert response.status_code == 302
-    assert reverse("account_login") in response.url
+    assert reverse("cves") in response.url
 
     user = create_user()
     client = auth_client(user)
