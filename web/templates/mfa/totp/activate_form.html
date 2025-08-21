@@ -1,0 +1,24 @@
+{% extends 'users/settings/base_settings.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_settings %}
+<div class="row">
+    <div class="col-lg-12 col-md-12 col-sm-12">
+        <!-- Configure 2FA -->
+        <h3>Activate Authenticator App</h3>
+        <img src="{{ totp_svg_data_uri }}"/>
+        <p>
+            <label for="authenticator_secret">Authenticator secret</label>
+            <input disabled="" id="authenticator_secret" value="{{ form.secret }}" type="text">
+            <span>You can store this secret and use it to reinstall your authenticator app at a later time.</span>
+        </p>
+
+        {% url 'mfa_activate_totp' as activate_url %}
+        <form method="post" action="{{ activate_url }}" id="activate2faForm">
+            {% csrf_token %}
+            {% crispy form %}
+            <button type="submit" onclick="document.getElementById('activate2faForm').submit()" class="btn btn-primary pull-right">Activate</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
