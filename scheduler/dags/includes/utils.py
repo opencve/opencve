@@ -13,6 +13,7 @@ from includes.constants import KB_LOCAL_REPO
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pendulum.datetime import DateTime
 from email.utils import formatdate
+from airflow.models import Variable
 
 
 def divide_list(iterable, n):
@@ -237,3 +238,10 @@ def get_smtp_conf():
         pass
 
     return kwargs
+
+
+def should_execute(variable_name: str) -> bool:
+    """
+    This function checks if a variable is set to "true".
+    """
+    return Variable.get(variable_name, default_var="true") == "true"

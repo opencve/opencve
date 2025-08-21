@@ -103,6 +103,42 @@ class CvssFilter(Filter):
         return Q(**{f"metrics__{metric}__data__score__{self.operator}": value})
 
 
+class KevFilter(Filter):
+    supported_operators = [":"]
+
+    def run(self):
+        if self.value.lower() == "true":
+            return Q(metrics__kev__data__dateAdded__isnull=False)
+        elif self.value.lower() == "false":
+            return Q(metrics__kev__data__dateAdded__isnull=True)
+        else:
+            raise BadQueryException("kev only supports true or false as value.")
+
+
+class EpssFilter(Filter):
+    supported_operators = [">", ">=", "<", "<=", "="]
+
+    def run(self):
+        try:
+            value = float(self.value)
+        except ValueError:
+            raise BadQueryException(
+                f"The EPSS value '{self.value}' is invalid (only numbers are accepted)."
+            )
+
+            # Validate that the value is between 0 and 100 (for percentage) or 0 and 1 (for decimal)
+        if value < 0 or value > 100:
+            raise BadQueryException(
+                f"The EPSS value '{self.value}' is invalid (must be between 0 and 100)."
+            )
+
+        # Convert percentage to decimal if value is > 1
+        if value > 1:
+            value = value / 100
+
+        return Q(**{f"metrics__epss__data__score__{self.operator}": value})
+
+
 class VendorFilter(Filter):
     supported_operators = [":"]
 
@@ -253,6 +289,8 @@ class Search:
             "cve": CveFilter,
             "cwe": CweFilter,
             "project": ProjectFilter,
+            "kev": KevFilter,
+            "epss": EpssFilter,
         }
 
         for field, filter in filter_json.items():

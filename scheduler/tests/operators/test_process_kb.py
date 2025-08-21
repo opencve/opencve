@@ -295,3 +295,71 @@ def test_process_kb_operator_create_changes(tests_path, tmp_path_factory, web_pg
         "OR (id = 'd70b3c8b-6f7a-4494-bd01-a2f19f546023' AND commit = '6ab19ef6d05d16d71f0174befc836f7552949dfe');"
     )
     assert db_data[0][0] == 2
+
+
+@patch.object(ProcessKbOperator, "process_commit")
+def test_process_kb_operator_ignore_commit_message(
+    mock_process_commit, tests_path, tmp_path_factory
+):
+    repo = TestRepo("example", tests_path, tmp_path_factory)
+    repo.commit(["a/"], hour=1, minute=0)
+    repo.commit(
+        ["b/"], hour=1, minute=15, message="[ignore] this commit should be ignored"
+    )
+    repo.commit(["c/"], hour=1, minute=50)
+
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        operator = ProcessKbOperator(task_id="parse_test")
+        operator.execute(
+            {
+                "data_interval_start": pendulum.datetime(2024, 1, 1, 1, tz="UTC"),
+                "data_interval_end": pendulum.datetime(2024, 1, 1, 2, tz="UTC"),
+            }
+        )
+        # Only a/ and c/ commits have to be processed
+        assert mock_process_commit.call_count == 2
+
+        # Check that the ignored commit is not passed to process_commit
+        for call in mock_process_commit.call_args_list:
+            commit = call.args[0]
+            assert "[ignore]" not in commit.message
+
+
+@patch("includes.handler.DiffHandler.format_cve")
+def test_process_kb_operator_ignore_invalid_files(
+    mock_format_cve, tests_path, tmp_path_factory
+):
+    repo = TestRepo("invalid-files", tests_path, tmp_path_factory)
+    repo.commit(["2025/invalid.json"], hour=1, minute=00)
+    repo.commit(["invalid/CVE-2025-1234.json"], hour=1, minute=15)
+
+    # The files are ignored because the regex doesn't match
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        operator = ProcessKbOperator(task_id="parse_test")
+        operator.execute(
+            {
+                "data_interval_start": pendulum.datetime(2024, 1, 1, 1, tz="UTC"),
+                "data_interval_end": pendulum.datetime(2024, 1, 1, 2, tz="UTC"),
+            }
+        )
+
+        assert mock_format_cve.call_count == 0
+
+
+@pytest.mark.web_db
+def test_process_kb_operator_invalid_cve(tests_path, tmp_path_factory, web_pg_hook):
+    repo = TestRepo("invalid-cves", tests_path, tmp_path_factory)
+    repo.commit(["2025/CVE-2025-8875.json"], hour=1, minute=00)
+
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        operator = ProcessKbOperator(task_id="parse_test")
+        operator.execute(
+            {
+                "data_interval_start": pendulum.datetime(2024, 1, 1, 1, tz="UTC"),
+                "data_interval_end": pendulum.datetime(2024, 1, 1, 2, tz="UTC"),
+            }
+        )
+
+    # The CVE is ignored because it's invalid
+    db_data = web_pg_hook.get_records("SELECT count(*) FROM opencve_cves;")
+    assert db_data[0][0] == 0

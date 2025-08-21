@@ -16,7 +16,7 @@
 
 ## What is OpenCVE?
 
-OpenCVE is an open-source platform that helps you monitor and manage CVEs efficiently.
+OpenCVE is a Vulnerability Intelligence Platform that helps you monitor and manage CVEs efficiently.
 
 It aggregates vulnerabilities from multiple sources (MITRE, NVD, RedHat, Vulnrichment...) and lets you filter, track, and organize them by vendor, product, severity, and more.
 
@@ -29,7 +29,7 @@ You can subscribe to products, receive alerts, analyze changes, and collaborate 
 ## Key Features
 
 ### 📚 Explore, Filter and Organize
-- Filter CVEs by vendor, product, CVSS, CWE, publication date, and more.
+- Filter CVEs by vendor, product, CVSS, KEV, EPSS, CWE, publication date, and more.
 - Subscribe to vendors and products, and organize your monitoring with projects and organizations.
 - Save complex filters as reusable Views (public or private).
 

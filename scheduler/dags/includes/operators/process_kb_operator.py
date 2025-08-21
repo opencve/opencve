@@ -1,3 +1,5 @@
+import re
+
 from airflow.models.baseoperator import BaseOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from git.objects.commit import Commit
@@ -20,6 +22,12 @@ class ProcessKbOperator(BaseOperator):
         if handler.diff.change_type == "D":
             return
 
+        # Check if the file is a CVE file
+        file_regex = "^\d{4}/CVE-.*\.json$"
+        if not re.match(file_regex, handler.path):
+            self.log.info("Skipping %s (regex not matched)", handler.path)
+            return
+
         return handler.format_cve()
 
     def process_commit(self, commit: Commit):
@@ -27,6 +35,8 @@ class ProcessKbOperator(BaseOperator):
 
         for diff in commit.parents[0].diff(commit):
             cve_payload = self.process_diff(diff, commit_hash)
+            if not cve_payload:
+                continue
 
             self.log.info("Inserting %s data", cve_payload["cve"])
             self.hook.run(sql=CVE_UPSERT_PROCEDURE, parameters=cve_payload)
@@ -39,6 +49,12 @@ class ProcessKbOperator(BaseOperator):
         )
 
         for commit in commits:
+
+            # Ignore commits that are marked with [ignore] in the message
+            if "[ignore]" in commit.message:
+                self.log.info("Ignoring commit %s due to ignore flag", commit)
+                continue
+
             commit_stats = commit.stats.total
             self.log.info(
                 "Analysing %s with %s files changed, %s insertions(+), %s deletions(-)",
