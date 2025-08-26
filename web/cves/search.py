@@ -23,6 +23,8 @@ OPERATOR_MAP = {
     "lte": "<=",
     "exact": "=",
     "icontains": ":",
+    "not_exact": "!=",
+    "not_icontains": "!:",
 }
 OPERATOR_MAP_BY_SYMBOL = {v: k for k, v in OPERATOR_MAP.items()}
 
@@ -60,9 +62,11 @@ class Filter:
 
 
 class StringFilter(Filter):
-    supported_operators = [":", "="]
+    supported_operators = [":", "=", "!=", "!:"]
 
     def run(self):
+        if self.operator.startswith("not"):
+            return ~Q(**{f"{self.field}__{self.operator[4:]}": self.value})
         return Q(**{f"{self.field}__{self.operator}": self.value})
 
 
@@ -314,7 +318,7 @@ class Search:
         """
         # Define grammar for parsing
         identifier = pp.Word(pp.alphanums + "_-")
-        operator = pp.oneOf(": = != > < >= <=")
+        operator = pp.oneOf(": = > < >= <= !: !=")
         value = pp.Word(pp.alphanums + "_-") | pp.quotedString.setParseAction(
             pp.removeQuotes
         )
