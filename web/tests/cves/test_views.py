@@ -190,6 +190,8 @@ def test_statistics(create_variable, client):
         ),
         ("product:jboss_fuse", ["CVE-2021-44228", "CVE-2022-22965"]),
         ("product:jboss_fuse AND cvss31=10", ["CVE-2021-44228"]),
+        ("vendor:cisco AND description!:log4j", ["CVE-2022-22965"]),
+        ("vendor:cisco AND title!:spring", ["CVE-2021-44228"]),
     ],
 )
 @override_settings(ENABLE_ONBOARDING=False)

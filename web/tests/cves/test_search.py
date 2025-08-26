@@ -29,6 +29,7 @@ from users.models import UserTag
         ([">", ">=", "<"], ">, >= or <"),
         ([">", ">="], "> or >="),
         ([">"], "'>'"),
+        (["!=", "!:"], "!= or !:"),
     ],
 )
 def test_filter_allowed_operator_str(input, output):
@@ -69,6 +70,14 @@ def test_string_filter():
 
     filter = StringFilter("foo", "icontains", "bar", None)
     assert filter.execute() == Q(foo__icontains="bar")
+
+
+def test_string_filter_negation():
+    filter = StringFilter("foo", "not_exact", "bar", None)
+    assert filter.execute() == ~Q(foo__exact="bar")
+
+    filter = StringFilter("foo", "not_icontains", "bar", None)
+    assert filter.execute() == ~Q(foo__icontains="bar")
 
 
 def test_cwe_filter_bad_query():
