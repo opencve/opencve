@@ -1,11 +1,17 @@
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 
 import pytest
 import pendulum
+from airflow.exceptions import AirflowConfigException, AirflowSkipException
 from airflow.utils.state import TaskInstanceState
 
 from includes.operators.process_kb_operator import ProcessKbOperator
-from includes.tasks.reports import list_changes, list_subscriptions, populate_reports
+from includes.tasks.reports import (
+    list_changes,
+    list_subscriptions,
+    populate_reports,
+    summarize_reports,
+)
 from utils import TestRepo
 
 
@@ -362,3 +368,118 @@ def test_populate_reports(
         ("114e2218-49c5-43fe-bcd7-18a1adc17a25",),
         ("114e2218-49c5-43fe-bcd7-18a1adc17a25",),
     ]
+
+
+def test_summarize_reports_missing_api_key():
+    """Test summarize_reports with missing LLM API key"""
+    mock_context = {
+        "data_interval_start": pendulum.datetime(2025, 1, 1, 2, 0, tz="UTC")
+    }
+
+    with patch(
+        "includes.tasks.reports.conf.get",
+        side_effect=AirflowConfigException("Configuration not found"),
+    ):
+        with pytest.raises(AirflowSkipException, match="LLM API key is not configured"):
+            summarize_reports.function(**mock_context)
+
+
+def test_summarize_reports_missing_api_url():
+    """Test summarize_reports with missing LLM API URL"""
+    mock_context = {
+        "data_interval_start": pendulum.datetime(2025, 1, 1, 2, 0, tz="UTC")
+    }
+
+    def mock_get(section, key, **kwargs):
+        if key == "llm_api_key":
+            return "test-api-key"
+        else:
+            raise AirflowConfigException("Configuration not found")
+
+    with patch("includes.tasks.reports.conf.get", side_effect=mock_get):
+        with pytest.raises(AirflowSkipException, match="LLM API URL is not configured"):
+            summarize_reports.function(**mock_context)
+
+
+def test_summarize_reports_no_reports():
+    """Test summarize_reports with no reports to process"""
+    mock_context = {
+        "data_interval_start": pendulum.datetime(2025, 1, 1, 2, 0, tz="UTC")
+    }
+
+    def mock_get(section, key, **kwargs):
+        if key == "llm_api_key":
+            return "test-api-key"
+        elif key == "llm_api_url":
+            return "https://api.test.com"
+        elif key == "llm_model":
+            return "test-model"
+        else:
+            raise AirflowConfigException("Configuration not found")
+
+    with patch("includes.tasks.reports.conf.get", side_effect=mock_get):
+        with patch("includes.tasks.reports.PostgresHook") as mock_hook:
+            mock_hook_instance = mock_hook.return_value
+            mock_hook_instance.get_records.return_value = []
+
+            result = summarize_reports.function(**mock_context)
+            assert result is None
+
+
+def test_summarize_reports_success(tests_path, tmp_path_factory):
+    """Test successful summarize_reports execution"""
+    repo = TestRepo("llm", tests_path, tmp_path_factory)
+    repo.commit(["2025/CVE-2025-1000.json"], hour=1, minute=0)
+
+    context = {"data_interval_start": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC")}
+
+    def mock_get(section, key, **kwargs):
+        values = {
+            "llm_api_key": "test-api-key",
+            "llm_api_url": "https://api.test.com",
+            "llm_model": "Mistral-7B-Instruct-v0.3",
+        }
+        if key in values:
+            return values[key]
+        raise AirflowConfigException("Configuration not found")
+
+    mock_records = [
+        (
+            "report-123",
+            ["CVE-2025-1000"],
+            1,
+            [{"score": "HIGH", "count": 1}],
+        )
+    ]
+    llm_response = "Critical vulnerability in IBM Db2"
+
+    with (
+        patch("includes.tasks.reports.conf.get", side_effect=mock_get),
+        patch(
+            "includes.tasks.reports.open",
+            mock_open(read_data="You are a CVE report analyzer."),
+        ),
+        patch("includes.tasks.reports.PostgresHook") as mock_hook,
+        patch("includes.utils.KB_LOCAL_REPO", repo.repo_path),
+        patch(
+            "includes.tasks.reports.call_llm", return_value=llm_response
+        ) as mock_call_llm,
+    ):
+        mock_hook_instance = mock_hook.return_value
+        mock_hook_instance.get_records.return_value = mock_records
+
+        summarize_reports.function(**context)
+
+        # Check LLM call
+        mock_call_llm.assert_called_once()
+        api_key, api_url, model, messages = mock_call_llm.call_args[0]
+        assert api_key == "test-api-key"
+        assert api_url == "https://api.test.com"
+        assert model == "Mistral-7B-Instruct-v0.3"
+        assert len(messages) == 2  # system + user messages
+
+        # Check DB update
+        mock_hook_instance.run.assert_called_once()
+        params = mock_hook_instance.run.call_args[1]["parameters"]
+        assert params["report_id"] == "report-123"
+        assert params["ai_summary"] == llm_response
