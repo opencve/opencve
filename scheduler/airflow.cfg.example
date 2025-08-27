@@ -1270,6 +1270,11 @@ vulnrichment_repo_path = /home/airflow/repositories/vulnrichment
 # It has to be set once and only once during OpenCVE initialization.
 start_date = 2024-01-01
 
+# The starting date of the start_date_summarize_reports workflow,
+# used to generate summaries for each report using a LLM.
+# It has to be set once and only once during OpenCVE initialization.
+start_date_summarize_reports = 2025-08-28
+
 # How many notifications to send in parallel per notification task
 max_notifications_per_task = 10
 
@@ -1289,3 +1294,8 @@ notification_smtp_use_tls = True
 notification_smtp_start_tls = True
 notification_smtp_validate_certs = True
 notification_smtp_timeout = 30
+
+# The configuration for the LLM
+llm_api_key = sk-proj-1234567890
+llm_api_url = https://api.example.com
+llm_model = Mistral-7B-Instruct-v0.3
