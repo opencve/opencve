@@ -1,8 +1,12 @@
 import logging
+import pathlib
+import json
 import uuid
+import time
 
+from airflow.configuration import conf
 from airflow.decorators import task
-from airflow.exceptions import AirflowSkipException
+from airflow.exceptions import AirflowSkipException, AirflowConfigException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from psycopg2.errors import ForeignKeyViolation
@@ -11,6 +15,8 @@ from includes.constants import (
     REPORT_UPSERT_PROCEDURE,
     SQL_CHANGE_WITH_VENDORS,
     SQL_PROJECT_WITH_SUBSCRIPTIONS,
+    SQL_REPORTS_CVES_BY_DAY,
+    SQL_UPDATE_REPORT_AI_SUMMARY,
 )
 from includes.utils import (
     format_change_details,
@@ -18,6 +24,8 @@ from includes.utils import (
     merge_project_subscriptions,
     get_dates_from_context,
     group_changes_by_vendor,
+    call_llm,
+    build_user_content_for_llm,
 )
 from psycopg2.extras import Json
 
@@ -157,3 +165,76 @@ def populate_reports(**context):
             error_msg = 'insert or update on table "opencve_reports" violates foreign key constraint'
             if str(e).startswith(error_msg):
                 logger.info(f"Project {project_id} does not exist anymore")
+
+
+@task
+def summarize_reports(**context):
+    """
+    This task is used to generate summaries for each report.
+    """
+
+    # First we check if the LLM is well configured
+    try:
+        llm_api_key = conf.get("opencve", "llm_api_key")
+    except AirflowConfigException:
+        raise AirflowSkipException("LLM API key is not configured")
+
+    try:
+        llm_api_url = conf.get("opencve", "llm_api_url")
+    except AirflowConfigException:
+        raise AirflowSkipException("LLM API URL is not configured")
+
+    try:
+        llm_model = conf.get("opencve", "llm_model")
+    except AirflowConfigException:
+        llm_model = "Mistral-7B-Instruct-v0.3"
+
+    # Retrieve the reports for the last day
+    last_day = str(context["data_interval_start"].date())
+    logger.info("Retrieving reports for day %s", last_day)
+
+    hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    reports = hook.get_records(
+        sql=SQL_REPORTS_CVES_BY_DAY,
+        parameters={"day": last_day},
+    )
+
+    # LLM system prompt
+    prompt_path = (
+        pathlib.Path(__file__).parent.parent / "data" / "summarize_reports.prompt"
+    )
+    with open(prompt_path, "r") as f:
+        system_prompt = f.read()
+
+    for report in reports:
+        report_id = report[0]
+        report_cves = report[1]
+        report_cves_count = report[2]
+        report_cves_score_distribution = report[3]
+        logger.info("Processing report %s with %s CVEs", report_id, report_cves_count)
+
+        user_content_for_llm = build_user_content_for_llm(
+            report_cves, report_cves_count, report_cves_score_distribution
+        )
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content_for_llm},
+        ]
+
+        # Call the LLM
+        logger.info("Calling LLM for report %s", report_id)
+        start_time = time.time()
+        response = call_llm(llm_api_key, llm_api_url, llm_model, messages)
+        logger.info(
+            "LLM response for report %s in %s seconds",
+            report_id,
+            time.time() - start_time,
+        )
+
+        # Update the report with the LLM response
+        logger.info("Updating report %s with LLM response", report_id)
+        hook.run(
+            sql=SQL_UPDATE_REPORT_AI_SUMMARY,
+            parameters={"report_id": report_id, "ai_summary": response},
+        )

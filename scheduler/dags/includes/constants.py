@@ -216,3 +216,88 @@ SELECT
 FROM
     opencve_cves;
 """
+
+
+SQL_REPORTS_CVES_BY_DAY = """
+WITH distinct_cves AS (
+  SELECT DISTINCT ON (reports.id, cves.cve_id)
+    reports.id AS report_id,
+    cves.cve_id,
+    (cves.metrics->'cvssV3_1'->'data'->>'score')::float AS score
+  FROM
+    opencve_reports AS reports
+    JOIN opencve_reports_changes AS rc ON reports.id = rc.report_id
+    JOIN opencve_changes AS changes ON rc.change_id = changes.id
+    JOIN opencve_cves AS cves ON changes.cve_id = cves.id
+  WHERE
+    reports.day = %(day)s
+  ORDER BY
+    reports.id,
+    cves.cve_id,
+    (cves.metrics->'cvssV3_1'->'data'->>'score')::float DESC NULLS LAST
+),
+
+ranked_cves AS (
+  SELECT
+    report_id,
+    cve_id,
+    score,
+    ROW_NUMBER() OVER (
+      PARTITION BY report_id
+      ORDER BY score DESC NULLS LAST, cve_id ASC
+    ) AS rank
+  FROM distinct_cves
+),
+
+top_cves AS (
+  SELECT
+    report_id,
+    TO_JSONB(ARRAY_AGG(cve_id ORDER BY score DESC NULLS LAST, cve_id ASC)) AS cve_ids
+  FROM ranked_cves
+  WHERE rank <= 50
+  GROUP BY report_id
+),
+
+total_count AS (
+  SELECT
+    report_id,
+    COUNT(*) AS total_cve_count
+  FROM distinct_cves
+  GROUP BY report_id
+),
+
+score_distribution AS (
+  SELECT
+    report_id,
+    JSONB_AGG(
+      jsonb_build_object(
+        'score', score,
+        'count', count
+      ) ORDER BY score DESC NULLS LAST
+    ) AS score_distribution
+  FROM (
+    SELECT
+      report_id,
+      score,
+      COUNT(*) AS count
+    FROM distinct_cves
+    GROUP BY report_id, score
+  ) AS sub
+  GROUP BY report_id
+)
+
+SELECT
+  t.report_id,
+  t.cve_ids,
+  tc.total_cve_count,
+  sd.score_distribution
+FROM top_cves t
+JOIN total_count tc ON t.report_id = tc.report_id
+JOIN score_distribution sd ON t.report_id = sd.report_id;
+"""
+
+SQL_UPDATE_REPORT_AI_SUMMARY = """
+UPDATE opencve_reports
+SET ai_summary = %(ai_summary)s
+WHERE id = %(report_id)s;
+"""

@@ -9,10 +9,29 @@
 
 
 <div class="row">
+    {% if object.report.ai_summary %}
+    <div class="col-md-12">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title"><i class="fa fa-magic"></i> AI Summary</h3>
+            </div>
+            <div class="box-body">
+                <div class="callout callout-info">
+                    <p>
+                        AI Summary uses a <strong>Large Language Model</strong> to automaticaly generates a human-readable summary of each report. This helps you quickly understand the most critical vulnerabilities.
+                    </p>
+                </div>
+                <div class="callout callout-note">
+                    {{ object.report.ai_summary|safe|linebreaksbr }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     <div class="col-md-12">
         <div class="tabs-vertical-env tabs-report">
             <ul class="nav tabs-vertical">
-                {% for change in object.changes|dictsortreversed:'cve.cvssV3_1.score' %}
+                {% for change in object.changes|dictsortreversed:'score' %}
                 <li class="{% if forloop.first %}active{% endif %}">
                     <a aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" data-toggle="tab"  href="#{{change.cve.cve_id}}">
                         {{change.cve.cve_id}}
@@ -31,13 +50,25 @@
 
                     <div class="row">
                         <div class="col-md-12">
-                            <div class="callout callout-info">
-                                <h4>
-                                    {{ change.cve.cve_id }}
-                                    <small><a href="{% url 'cve' cve_id=change.cve.cve_id%}" target="_blank"><i class="fa fa-external-link"></i></a></small>
-                                </h4>
-                                <p>{{ change.cve.description }}</p>
+                            <h3 style="margin-top: 0;">
+                                {{ change.cve.cve_id }}
+                                <small><a href="{% url 'cve' cve_id=change.cve.cve_id%}" target="_blank"><i class="fa fa-external-link"></i></a></small>
+                            </h3>
+
+                            {% if change.cve.title %}
+                            <p><strong>Title</strong></p>
+                            <div class="callout callout-note">
+                                {{ change.cve.title|linebreaksbr }}
                             </div>
+                            {% endif %}
+
+                            {% if change.cve.description %}
+                            <p><strong>Description</strong></p>
+                            <div class="callout callout-note">
+                                {{ change.cve.description|linebreaksbr }}
+                            </div>
+                            {% endif %}
+
                         </div>
                         <div class="col-md-12">
                             <h3>Vendors & Products impacted</h3>
