@@ -1,0 +1,22 @@
+<div class="box box-primary">
+    <div class="box-header">
+        <div class="box-title">Fixes</div>
+    </div>
+    <div class="box-body">
+        <p><strong>Solution</strong></p>
+        {% if cve.solution %}
+            <p>{{ cve.solution }}</p>
+        {% else %}
+            <p class="text-muted"><em>No solution given by the vendor.</em></p>
+        {% endif %}
+
+        <hr>
+
+        <p><strong>Workaround</strong></p>
+        {% if cve.workaround %}
+            <p>{{ cve.workaround }}</p>
+        {% else %}
+            <p class="text-muted"><em>No workaround given by the vendor.</em></p>
+        {% endif %}
+    </div>
+</div>

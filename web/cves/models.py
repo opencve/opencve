@@ -153,6 +153,21 @@ class Cve(BaseModel):
     def references(self):
         return self.kb_json["opencve"]["references"]
 
+    def _get_text_from_mitre_list(self, field):
+        items = self.mitre_json.get("containers", {}).get("cna", {}).get(field, [])
+        for item in items:
+            if item.get("lang") == "en":
+                return item.get("value")
+        return None
+
+    @property
+    def solution(self):
+        return self._get_text_from_mitre_list("solutions")
+
+    @property
+    def workaround(self):
+        return self._get_text_from_mitre_list("workarounds")
+
     def __str__(self):
         return self.cve_id
 
