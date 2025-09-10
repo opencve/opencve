@@ -313,3 +313,21 @@ def needs_quotes(value: str) -> bool:
     special_chars = set(r""" :'"()[]{}&|=!\<>+*?^~""")
 
     return any(char in special_chars for char in value) or "\\" in value or " " in value
+
+
+@register.simple_tag
+def get_active_cvss_tab(cve):
+    """
+    Determine which CVSS tab should be active by default based on priority.
+    Priority order: CVSS v4.0 > v3.1 > v3.0 > v2.0 > fallback to v4.0
+    """
+    if cve.cvssV4_0:
+        return "cvss40"
+    elif cve.cvssV3_1:
+        return "cvss31"
+    elif cve.cvssV3_0:
+        return "cvss30"
+    elif cve.cvssV2_0:
+        return "cvss2"
+    else:
+        return "cvss40"
