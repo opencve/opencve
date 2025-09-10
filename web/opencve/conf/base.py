@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "django_prometheus",
     "allauth",
     "allauth.account",
+    "allauth.mfa",
     "allauth.socialaccount",
     "auditlog",
     "crispy_forms",
@@ -175,11 +176,11 @@ LOGIN_URL = "account_login"
 # User settings
 AUTH_USER_MODEL = "users.User"
 ACCOUNT_CHANGE_EMAIL = True
-ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = "[OpenCVE] "
 ACCOUNT_LOGOUT_REDIRECT_URL = "account_login"
-ACCOUNT_AUTHENTICATION_METHOD = "username_email"
+ACCOUNT_LOGIN_METHODS = {"username", "email"}
 ACCOUNT_FORMS = {
     "login": "users.forms.LoginForm",
     "signup": "users.forms.RegisterForm",
