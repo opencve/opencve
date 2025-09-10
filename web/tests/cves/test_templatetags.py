@@ -1,4 +1,4 @@
-from cves.templatetags.opencve_extras import get_item
+from cves.templatetags.opencve_extras import get_item, get_active_cvss_tab
 
 
 def test_get_item():
@@ -67,3 +67,56 @@ def test_needs_quotes(value, expected):
     that need to be quoted due to special characters or spaces.
     """
     assert needs_quotes(value) == expected
+
+
+def test_get_active_cvss_tab():
+    """
+    Test get_active_cvss_tab function to ensure it returns the correct
+    active tab based on CVSS score availability priority.
+    """
+
+    class MockCVE:
+        def __init__(self, cvssV4_0=None, cvssV3_1=None, cvssV3_0=None, cvssV2_0=None):
+            self.cvssV4_0 = cvssV4_0
+            self.cvssV3_1 = cvssV3_1
+            self.cvssV3_0 = cvssV3_0
+            self.cvssV2_0 = cvssV2_0
+
+    # CVSS v4.0 has highest priority
+    cve_with_all = MockCVE(cvssV4_0="10", cvssV3_1="10", cvssV3_0="10", cvssV2_0="10")
+    assert get_active_cvss_tab(cve_with_all) == "cvss40"
+
+    # Choose v3.1 when v4.0 is not available
+    cve_with_v31_and_below = MockCVE(
+        cvssV4_0=None, cvssV3_1="10", cvssV3_0="10", cvssV2_0="10"
+    )
+    assert get_active_cvss_tab(cve_with_v31_and_below) == "cvss31"
+
+    # Choose v3.0 when v4.0 and v3.1 are not available
+    cve_with_v30_and_below = MockCVE(
+        cvssV4_0=None, cvssV3_1=None, cvssV3_0="10", cvssV2_0="10"
+    )
+    assert get_active_cvss_tab(cve_with_v30_and_below) == "cvss30"
+
+    # Choose v2.0 when only v2.0 is available
+    cve_with_only_v2 = MockCVE(
+        cvssV4_0=None, cvssV3_1=None, cvssV3_0=None, cvssV2_0="10"
+    )
+    assert get_active_cvss_tab(cve_with_only_v2) == "cvss2"
+
+    # Fallback to v4.0 when no CVSS scores are available
+    cve_with_no_scores = MockCVE(
+        cvssV4_0=None, cvssV3_1=None, cvssV3_0=None, cvssV2_0=None
+    )
+    assert get_active_cvss_tab(cve_with_no_scores) == "cvss40"
+
+    # Treat empty strings as None/falsy
+    cve_with_empty_strings = MockCVE(cvssV4_0="", cvssV3_1="", cvssV3_0="", cvssV2_0="")
+    assert get_active_cvss_tab(cve_with_empty_strings) == "cvss40"
+
+    # Mixed scenarios
+    cve_mixed_1 = MockCVE(cvssV4_0=None, cvssV3_1=None, cvssV3_0="10", cvssV2_0=None)
+    assert get_active_cvss_tab(cve_mixed_1) == "cvss30"
+
+    cve_mixed_2 = MockCVE(cvssV4_0="10", cvssV3_1=None, cvssV3_0=None, cvssV2_0="10")
+    assert get_active_cvss_tab(cve_mixed_2) == "cvss40"

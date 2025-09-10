@@ -2,30 +2,33 @@
 
 <h2 class="page-header">Metrics</h2>
 
+{# Get the active CVSS tab #}
+{% get_active_cvss_tab cve as active_cvss_tab %}
+
 <div class="nav-tabs-custom nav-tabs-primary">
     <ul class="nav nav-tabs">
-        <li class="active">
+        <li{% if active_cvss_tab == "cvss40" %} class="active"{% endif %}>
             {% if cve.cvssV4_0 %}
             <a href="#cvss40" data-toggle="tab">CVSS v4.0 <span class="label label-{{ cve.cvssV4_0.score|cvss_level }} label-cvss">{{ cve.cvssV4_0.score }} {{ cve.cvssV4_0.score|cvss_human_score|title }}</span></a>
             {% else %}
             <a href="#cvss40" data-toggle="tab">CVSS v4.0 <span class="label label-default label-cvss">N/A</span></a>
             {% endif %}
         </li>
-        <li>
+        <li{% if active_cvss_tab == "cvss31" %} class="active"{% endif %}>
             {% if cve.cvssV3_1 %}
             <a href="#cvss31" data-toggle="tab">CVSS v3.1 <span class="label label-{{ cve.cvssV3_1.score|cvss_level }} label-cvss">{{ cve.cvssV3_1.score }} {{ cve.cvssV3_1.score|cvss_human_score|title }}</span></a>
             {% else %}
             <a href="#cvss31" data-toggle="tab">CVSS v3.1 <span class="label label-default label-cvss">N/A</span></a>
             {% endif %}
         </li>
-        <li>
+        <li{% if active_cvss_tab == "cvss30" %} class="active"{% endif %}>
             {% if cve.cvssV3_0 %}
             <a href="#cvss30" data-toggle="tab">CVSS v3.0 <span class="label label-{{ cve.cvssV3_0.score|cvss_level }} label-cvss">{{ cve.cvssV3_0.score }} {{ cve.cvssV3_0.score|cvss_human_score|title }}</span></a>
             {% else %}
             <a href="#cvss30" data-toggle="tab">CVSS v3.0 <span class="label label-default label-cvss">N/A</span></a>
             {% endif %}
         </li>
-        <li>
+        <li{% if active_cvss_tab == "cvss2" %} class="active"{% endif %}>
             {% if cve.cvssV2_0 %}
             <a href="#cvss2" data-toggle="tab">CVSS v2 <span class="label label-{{ cve.cvssV2_0.score|cvss_level }} label-cvss">{{ cve.cvssV2_0.score }} {{ cve.cvssV2_0.score|cvss_human_score|title }}</span></a>
             {% else %}
@@ -55,28 +58,28 @@
         </li>
     </ul>
     <div class="tab-content">
-        <div class="tab-pane active" id="cvss40">
+        <div class="tab-pane{% if active_cvss_tab == 'cvss40' %} active{% endif %}" id="cvss40">
             {% if cve.cvssV4_0 %}
             {% include "cves/metrics/cvssV4_0.html" with cvss=cve.cvssV4_0 %}
             {% else %}
             <p class="alert alert-info">No CVSS v4.0</p>
             {% endif %}
         </div>
-        <div class="tab-pane" id="cvss31">
+        <div class="tab-pane{% if active_cvss_tab == 'cvss31' %} active{% endif %}" id="cvss31">
             {% if cve.cvssV3_1 %}
             {% include "cves/metrics/cvssV3_x.html" with cvss=cve.cvssV3_1 %}
             {% else %}
             <p class="alert alert-info">No CVSS v3.1</p>
             {% endif %}
         </div>
-        <div class="tab-pane" id="cvss30">
+        <div class="tab-pane{% if active_cvss_tab == 'cvss30' %} active{% endif %}" id="cvss30">
             {% if cve.cvssV3_0 %}
             {% include "cves/metrics/cvssV3_x.html" with cvss=cve.cvssV3_0 %}
             {% else %}
             <p class="alert alert-info">No CVSS v3.0</p>
             {% endif %}
         </div>
-        <div class="tab-pane" id="cvss2">
+        <div class="tab-pane{% if active_cvss_tab == 'cvss2' %} active{% endif %}" id="cvss2">
             {% if cve.cvssV2_0 %}
             {% include "cves/metrics/cvssV2_0.html" with cvss=cve.cvssV2_0 %}
             {% else %}
