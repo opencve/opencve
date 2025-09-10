@@ -1,0 +1,19 @@
+
+{% extends 'users/base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}Confirm Access - {{ block.super }}{% endblock %}
+
+{% block header %}Please reauthenticate to safeguard your account.{% endblock %}
+
+{% block content%}
+<form action="#" method="POST" id="reauthForm">
+    {% csrf_token %}
+    {% crispy form %}
+    <button type="submit" onclick="document.getElementById('reauthForm').submit()" class="btn btn-primary pull-right btn-flat">Validate</button>
+</form>
+{% endblock %}
+
+{% block links %}
+{% endblock %}
