@@ -3,6 +3,7 @@ from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from cves.models import Vendor, Product
 
+
 @pytest.mark.django_db
 def test_vendor_products_search_by_name():
     User = get_user_model()

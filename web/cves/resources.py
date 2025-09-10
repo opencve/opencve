@@ -49,6 +49,7 @@ class VendorViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ["name"]
 
+
 class VendorCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
     permission_classes = (permissions.IsAuthenticated,)
