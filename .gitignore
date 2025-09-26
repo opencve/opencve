@@ -36,3 +36,7 @@ web/.pytest_cache/
 web/emails/
 docker/conf/opencve.conf.template
 docker/conf/default.conf.template
+
+# Ignore content of previews, but not the folder itself
+scheduler/tests/previews/*
+!scheduler/tests/previews/.gitkeep

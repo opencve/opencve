@@ -1,6 +1,9 @@
 from unittest.mock import patch
+import pathlib
+import json
 
 import pendulum
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from includes.notifiers import BaseNotifier, EmailNotifier
 from utils import TestRepo
@@ -167,3 +170,123 @@ def test_prepare_payload(tests_path, tmp_path_factory):
                 }
             ],
         }
+
+
+def test_generate_email_previews(tests_path, tmp_path_factory):
+    """
+    This test generates email previews in HTML and TXT formats.
+    It's not meant to assert anything, but to provide a visual representation
+    of the email notification with different vulnerability severities.
+    """
+    notification = {
+        "project_id": "0439aa01-62b3-465c-ba7b-bd07c961c778",
+        "project_name": "orga1-project1",
+        "organization_name": "orga1",
+        "notification_name": "notification1",
+        "notification_type": "email",
+        "project_subscriptions": ["foo", "foo$PRODUCT$bar"],
+        "notification_conf": {
+            "types": ["references", "description"],
+            "extras": {
+                "email": "foo@bar.com",
+            },
+            "metrics": {"cvss31": "0"},  # accept all scores
+        },
+    }
+
+    change_details = {
+        # Critical
+        "11111111-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "11111111-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "previews/CVE-CRITICAL.json",
+            "change_types": ["description"],
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-CRITICAL",
+            "cve_metrics": {},
+        },
+        "11111111-49c5-43fe-bcd7-18a1adc17a26": {
+            "change_id": "11111111-49c5-43fe-bcd7-18a1adc17a26",
+            "change_path": "previews/CVE-CRITICAL-2.json",
+            "change_types": ["description"],
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-CRITICAL-2",
+            "cve_metrics": {},
+        },
+        # High
+        "22222222-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "22222222-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "previews/CVE-HIGH.json",
+            "change_types": ["description"],
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-HIGH",
+            "cve_metrics": {},
+        },
+        # Medium
+        "33333333-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "33333333-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "previews/CVE-MEDIUM.json",
+            "change_types": ["description"],
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-MEDIUM",
+            "cve_metrics": {},
+        },
+        # Low
+        "44444444-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "44444444-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "previews/CVE-LOW.json",
+            "change_types": ["description"],
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-LOW",
+            "cve_metrics": {},
+        },
+        # None
+        "55555555-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "55555555-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "previews/CVE-NONE.json",
+            "change_types": ["description"],
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-NONE",
+            "cve_metrics": {},
+        },
+    }
+
+    notif = EmailNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=list(change_details.keys()),
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    kb_path = pathlib.Path(__file__).parent / "data"
+    with patch("includes.notifiers.KB_LOCAL_REPO", kb_path):
+        context = notif.get_template_context()
+
+    # Render templates
+    env = Environment(
+        loader=FileSystemLoader(
+            pathlib.Path(__file__).parent.parent / "dags/templates"
+        ),
+        autoescape=select_autoescape(),
+    )
+    html_template = env.get_template("email_notification.html")
+    html_content = html_template.render(context)
+
+    txt_template = env.get_template("email_notification.txt")
+    txt_content = txt_template.render(context)
+
+    # Save previews
+    previews_dir = pathlib.Path(__file__).parent / "previews"
+    previews_dir.mkdir(exist_ok=True)
+
+    html_file = previews_dir / "email_test.html"
+    html_file.write_text(html_content)
+
+    txt_file = previews_dir / "email_test.txt"
+    txt_file.write_text(txt_content)
+
+    print(f"\nEmail previews generated in: {previews_dir.resolve()}")
