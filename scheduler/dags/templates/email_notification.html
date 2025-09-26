@@ -173,7 +173,7 @@
                                     <tr>
                                       <td align="center" style="font-size:0px;padding:10px 25px;word-break:break-word;">
                                         <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:24px;font-weight:500;line-height:30px;text-align:center;color:#ffffff;">
-                                          <h1 style="margin: 0; font-size: 20px; line-height: normal; font-weight: 400;"> {{ severity|capitalize }} Vulnerabilities ({{ vulnerabilities|length }})</h1>
+                                          <h1 style="margin: 0; font-size: 20px; line-height: normal; font-weight: 400;">{% if severity != 'none' %}{{ severity|capitalize }}{% else %}Unknown Severity{% endif %} {% if vulnerabilities|length > 1 %}Vulnerabilities{% else %}Vulnerability{% endif %} ({{ vulnerabilities|length }})</h1>
                                         </div>
                                       </td>
                                     </tr>
