@@ -6,6 +6,7 @@ from urllib.parse import quote
 
 from django import template
 from django.conf import settings
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
@@ -331,3 +332,26 @@ def get_active_cvss_tab(cve):
         return "cvss2"
     else:
         return "cvss40"
+
+
+@register.simple_tag
+def advisory_source_display(source):
+    """
+    Display advisory source with icon and formatted text.
+    """
+    source_mapping = {
+        "euvd": "EUVD",
+        "usn": "Ubuntu USN",
+        "dsa": "Debian DSA",
+        "dla": "Debian DLA",
+        "ghsa": "Github GHSA",
+    }
+
+    source_lower = source.lower()
+    display_text = source_mapping.get(source_lower, source)
+
+    icon_url = static(f"img/sources/{source_lower}.png")
+
+    return mark_safe(
+        f'<img src="{icon_url}" alt="{display_text}" style="width: 22px; margin-right: 4px; vertical-align: middle;"> {display_text}'
+    )

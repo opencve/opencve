@@ -508,3 +508,56 @@ def test_cve_detail_enrichment_panel(
     enrichment_box = get_enrichment_box(soup)
     box_body = enrichment_box.find("div", {"class": "box-body"})
     assert box_body.text.strip() == "Updated: 2025-07-23T20:19:23Z"
+
+
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.redhat_json", new_callable=PropertyMock)
+def test_cve_detail_advisories_panel(
+    mock_vulnrichment,
+    mock_mitre,
+    mock_nvd,
+    mock_enrichment,
+    mock_redhat,
+    db,
+    create_cve,
+    client,
+):
+    mock_nvd.return_value = {}
+    mock_mitre.return_value = {}
+    mock_vulnrichment.return_value = {}
+    mock_enrichment.return_value = {}
+    mock_redhat.return_value = {}
+
+    # No advisories
+    create_cve("CVE-2024-31331")
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert soup.find("title").text == "CVE-2024-31331 - Vulnerability Details - OpenCVE"
+    assert (
+        soup.find("div", {"id": "advisories-box"})
+        .find("div", {"class": "box-body"})
+        .text.strip()
+        == "No advisories yet."
+    )
+
+    # Advisories
+    create_cve("CVE-2022-48703")
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2022-48703"}))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    output = (
+        soup.find("div", {"id": "advisories-box"})
+        .find("div", {"class": "box-body"})
+        .text.strip()
+    )
+    assert "USN-7774-1" in output
+    assert "USN-7774-2" in output
+    assert "USN-7774-3" in output
+    assert "USN-7775-1" in output
+    assert "USN-7775-2" in output
+    assert "USN-7776-1" in output
+    assert "USN-7775-3" in output
+    assert "USN-7774-4" in output
+    assert "USN-7774-5" in output
