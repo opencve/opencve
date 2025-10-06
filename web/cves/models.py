@@ -153,6 +153,10 @@ class Cve(BaseModel):
     def references(self):
         return self.kb_json["opencve"]["references"]
 
+    @property
+    def advisories(self):
+        return self.kb_json.get("advisories", [])
+
     def _get_text_from_mitre_list(self, field):
         items = self.mitre_json.get("containers", {}).get("cna", {}).get(field, [])
         for item in items:

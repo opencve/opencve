@@ -1,4 +1,8 @@
-from cves.templatetags.opencve_extras import get_item, get_active_cvss_tab
+from cves.templatetags.opencve_extras import (
+    get_item,
+    get_active_cvss_tab,
+    advisory_source_display,
+)
 
 
 def test_get_item():
@@ -120,3 +124,50 @@ def test_get_active_cvss_tab():
 
     cve_mixed_2 = MockCVE(cvssV4_0="10", cvssV3_1=None, cvssV3_0=None, cvssV2_0="10")
     assert get_active_cvss_tab(cve_mixed_2) == "cvss40"
+
+
+def test_advisory_source_display():
+    """
+    Test advisory_source_display function to ensure it correctly formats
+    advisory sources with icons and proper display text.
+    """
+    # Test known sources
+    euvd_result = advisory_source_display("euvd")
+    assert "img/sources/euvd.png" in euvd_result
+    assert "EUVD" in euvd_result
+    assert 'alt="EUVD"' in euvd_result
+
+    usn_result = advisory_source_display("usn")
+    assert "img/sources/usn.png" in usn_result
+    assert "Ubuntu USN" in usn_result
+    assert 'alt="Ubuntu USN"' in usn_result
+
+    dsa_result = advisory_source_display("dsa")
+    assert "img/sources/dsa.png" in dsa_result
+    assert "Debian DSA" in dsa_result
+    assert 'alt="Debian DSA"' in dsa_result
+
+    dla_result = advisory_source_display("dla")
+    assert "img/sources/dla.png" in dla_result
+    assert "Debian DLA" in dla_result
+    assert 'alt="Debian DLA"' in dla_result
+
+    ghsa_result = advisory_source_display("ghsa")
+    assert "img/sources/ghsa.png" in ghsa_result
+    assert "Github GHSA" in ghsa_result
+    assert 'alt="Github GHSA"' in ghsa_result
+
+    # Test case insensitive
+    upper_case_result = advisory_source_display("EUVD")
+    assert "img/sources/euvd.png" in upper_case_result
+    assert "EUVD" in upper_case_result
+
+    mixed_case_result = advisory_source_display("GhSa")
+    assert "img/sources/ghsa.png" in mixed_case_result
+    assert "Github GHSA" in mixed_case_result
+
+    # Test HTML structure
+    result = advisory_source_display("euvd")
+    assert "<img src=" in result
+    assert 'style="width: 22px; margin-right: 4px; vertical-align: middle;"' in result
+    assert result.count("<img") == 1  # Only one image tag

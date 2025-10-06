@@ -165,3 +165,18 @@ def test_cve_model_workaround_property(create_cve):
         cve.workaround
         == 'If an upgrade is not feasible in the short term, we advise mitigating the risk by configuring a "Trusted Host Access" policy.'
     )
+
+
+@pytest.mark.django_db
+def test_cve_model_advisories_property(create_cve):
+    cve = create_cve("CVE-2025-48543")
+    assert cve.advisories == []
+
+    cve._kb_json = {
+        "advisories": [
+            {"source": "euvd", "id": "EUVD-2025-0001", "title": "EUVD Advisory"},
+        ]
+    }
+    assert cve.advisories == [
+        {"source": "euvd", "id": "EUVD-2025-0001", "title": "EUVD Advisory"},
+    ]
