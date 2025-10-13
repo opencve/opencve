@@ -36,21 +36,34 @@ class Command(BaseCommand):
         with open(path) as f:
             cve = json.load(f)
 
-        cve_data = cve.get("opencve")
+        cve_data = cve.get("opencve") or {}
+
+        def data_of(key, default=None):
+            v = cve_data.get(key) or {}
+            return v.get("data") if isinstance(v, dict) else default
+
+        created = data_of("created")
+        if not created:
+            self.stdout.write(
+                self.style.WARNING(f"Skipping {cve.get('cve','<unknown>')}: missing 'created' date")
+            )
+            return
+
         params = dict(
             cve_data,
             **{
-                "cve": cve["cve"],
-                "created": cve_data["created"]["data"],
-                "updated": cve_data["updated"]["data"],
-                "description": cve_data["description"]["data"],
-                "title": cve_data["title"]["data"],
-                "metrics": Json(cve_data["metrics"]),
-                "vendors": Json(cve_data["vendors"]["data"]),
-                "weaknesses": Json(cve_data["weaknesses"]["data"]),
+                "cve": cve.get("cve"),
+                "created": created,
+                "updated": data_of("updated"),
+                "description": data_of("description", ""),
+                "title": data_of("title", cve.get("cve", "")),
+                "metrics": Json(cve_data.get("metrics") or {}),
+                "vendors": Json(data_of("vendors", [])),
+                "weaknesses": Json(data_of("weaknesses", [])),
                 "changes": Json([]),
             },
         )
+
         self.call_procedure(params)
 
     def handle(self, *args, **options):
