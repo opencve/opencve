@@ -166,7 +166,27 @@
                         {% endfor %}
                     </select>
                 </div>
-            </div>
+              </div>
+
+              <div class="form-group row">
+                <label class="col-sm-2 col-form-label">Date Filter</label>
+                <div class="col-sm-3">
+                    <select class="form-control query-builder-input date-field">
+                        <option value="created" selected>Created</option>
+                        <option value="updated">Updated</option>
+                    </select>
+                </div>
+                <div class="col-sm-2">
+                    <select class="form-control query-builder-input date-operator">
+                        <option value=">=" selected>&gt;=</option>
+                        <option value="<=">&lt;=</option>
+                        <option value="=">=</option>
+                    </select>
+                </div>
+                <div class="col-sm-5">
+                    <input type="text" class="form-control query-builder-input date-value" placeholder="e.g., 2025-01-01 or 7d">
+                </div>
+              </div>
 
               <div class="form-group row">
                   <label class="col-sm-2 col-form-label">CVSS Score</label>

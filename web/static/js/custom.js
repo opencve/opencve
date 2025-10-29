@@ -800,6 +800,14 @@ function getContrastedColor(str){
             }
         }
 
+        // 5. Process Date Filter
+        const dateField = $builder.find('.date-field').val();
+        const dateOperator = $builder.find('.date-operator').val();
+        const dateValue = $builder.find('.date-value').val().trim();
+        if (dateField && dateOperator && dateValue) {
+            queryParts.push(`${dateField}${dateOperator}${dateValue}`);
+        }
+
         // Log the final query
         const finalQuery = queryParts.join(' AND ');
         if (finalQuery.trim() === '') {
@@ -819,6 +827,9 @@ function getContrastedColor(str){
 
     // Event listener for regular inputs (text, number, non-select2 selects)
     $modal.on('input change', '.query-builder-input:not(.select2-hidden-accessible)', updateQuery);
+
+    // Specific listener for date fields to ensure updates
+    $modal.on('input change', '.date-field, .date-operator, .date-value', updateQuery);
 
     // Initialize Select2 for the initial User Tag select if present
     if ($('.select2-tags-builder').length) {
@@ -905,6 +916,11 @@ function getContrastedColor(str){
         // Reset EPSS fields
         $builder.find('.epss-operator').prop('selectedIndex', 0);
         $builder.find('.epss-score').val('');
+
+        // Reset Date fields
+        $builder.find('.date-field').val('created');
+        $builder.find('.date-operator').val('>=');
+        $builder.find('.date-value').val('');
 
         // Remove added filters, keeping the first one
          ['vendor', 'product'].forEach(fieldType => {

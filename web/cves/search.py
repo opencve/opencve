@@ -1,3 +1,6 @@
+import re
+from datetime import datetime, timedelta, time
+
 from django.conf import settings
 from django.db.models import Q
 import pyparsing as pp
@@ -68,6 +71,84 @@ class StringFilter(Filter):
         if self.operator.startswith("not"):
             return ~Q(**{f"{self.field}__{self.operator[4:]}": self.value})
         return Q(**{f"{self.field}__{self.operator}": self.value})
+
+
+class DateFilter(Filter):
+    supported_operators = [">", ">=", "<", "<=", "="]
+
+    @staticmethod
+    def _get_datetime_bound(date_value, operator):
+        if operator == "exact":
+            return date_value
+
+        time_boundaries = {
+            "gt": time.max,
+            "gte": time.min,
+            "lt": time.min,
+            "lte": time.max,
+        }
+        return datetime.combine(date_value, time_boundaries.get(operator, time.min))
+
+    def run(self):
+        value = self.value.lower()
+        # Handle relative dates (e.g., 1d, 2w, 3m, 4y)
+        is_relative_date = re.match(r"^\d+[dwmy]$", value)
+        if is_relative_date:
+            num = int(value[:-1])
+            unit = value[-1]
+            if unit == "d":
+                delta = timedelta(days=num)
+            elif unit == "w":
+                delta = timedelta(weeks=num)
+            elif unit == "m":
+                # Approximate months as 30 days
+                delta = timedelta(days=num * 30)
+            elif unit == "y":
+                # Approximate years as 365 days
+                delta = timedelta(days=num * 365)
+            date_value = datetime.now().date() - delta
+
+            # For relative dates, invert <= and >= operators for intuitive semantics:
+            # created<=30d means "created in the last 30 days" (recent) -> created_at >= (now - 30d)
+            # created>=30d means "created 30+ days ago" (old) -> created_at <= (now - 30d)
+            # Keep < and > unchanged for consistency with tests
+            operator_map = {
+                "lte": "gte",  # <= becomes >= for relative dates
+                "gte": "lte",  # >= becomes <= for relative dates
+            }
+            # Only invert <= and >=, keep others unchanged
+            if self.operator in operator_map:
+                operator = operator_map[self.operator]
+            else:
+                operator = self.operator
+        else:
+            # Handle absolute dates (e.g., YYYY-MM-DD)
+            try:
+                date_value = datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError as e:
+                error_message = str(e).lower()
+                if "day is out of range" in error_message or "month" in error_message:
+                    raise BadQueryException(
+                        f"The date '{self.value}' is out of range (invalid day or month). Use a valid date in 'YYYY-MM-DD' format or a relative format (e.g., 1d, 2w, 3m)."
+                    )
+                raise BadQueryException(
+                    f"The date '{self.value}' is invalid. Use 'YYYY-MM-DD' format or a relative format (e.g., 1d, 2w, 3m)."
+                )
+            operator = self.operator
+
+        # Map field name to actual database field
+        field_mapping = {
+            "created": "created_at",
+            "updated": "updated_at",
+        }
+        db_field = field_mapping.get(self.field)
+
+        lookup = (
+            f"{db_field}__date" if operator == "exact" else f"{db_field}__{operator}"
+        )
+        filter_value = self._get_datetime_bound(date_value, operator)
+
+        return Q(**{lookup: filter_value})
 
 
 class CveFilter(Filter):
@@ -295,6 +376,8 @@ class Search:
             "project": ProjectFilter,
             "kev": KevFilter,
             "epss": EpssFilter,
+            "created": DateFilter,
+            "updated": DateFilter,
         }
 
         for field, filter in filter_json.items():
@@ -319,8 +402,11 @@ class Search:
         # Define grammar for parsing
         identifier = pp.Word(pp.alphanums + "_-")
         operator = pp.oneOf(": = > < >= <= !: !=")
-        value = pp.Word(pp.alphanums + "_-.") | pp.quotedString.setParseAction(
-            pp.removeQuotes
+        date_value = pp.Regex(r"\d{4}-\d{2}-\d{2}")
+        value = (
+            pp.Word(pp.alphanums + "_-.")
+            | pp.quotedString.setParseAction(pp.removeQuotes)
+            | date_value
         )
 
         # Allow standalone words

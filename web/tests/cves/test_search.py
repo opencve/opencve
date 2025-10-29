@@ -3,6 +3,7 @@ import pyparsing as pp
 from django.db.models import Q
 from django.contrib.auth.models import AnonymousUser
 from unittest.mock import Mock
+from datetime import datetime, timedelta, time
 
 from cves.search import (
     BadQueryException,
@@ -18,6 +19,7 @@ from cves.search import (
     ProjectFilter,
     KevFilter,
     EpssFilter,
+    DateFilter,
 )
 from users.models import UserTag
 
@@ -467,3 +469,72 @@ def test_search_jql_to_json():
         ]
     }
     assert json_filter == expected_json
+
+
+def test_date_filter_bad_query():
+    filter = DateFilter("created", "icontains", "1d", None)
+    with pytest.raises(BadQueryException):
+        filter.execute()
+
+
+def test_date_filter_invalid_date():
+    filter = DateFilter("created", "gt", "invalid-date", None)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "The date 'invalid-date' is invalid." in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "value, delta",
+    [
+        ("1d", timedelta(days=1)),
+        ("2w", timedelta(weeks=2)),
+        ("3m", timedelta(days=90)),
+        ("4y", timedelta(days=1460)),
+    ],
+)
+def test_date_filter_relative_dates(value, delta):
+    filter = DateFilter("created", "gt", value, None)
+    expected_date = datetime.now().date() - delta
+    expected_datetime = datetime.combine(expected_date, time.max)
+    assert filter.execute() == Q(created_at__gt=expected_datetime)
+
+
+def test_date_filter_absolute_date():
+    filter = DateFilter("updated", "lt", "2023-01-01", None)
+    expected_date = datetime.strptime("2023-01-01", "%Y-%m-%d").date()
+    expected_datetime = datetime.combine(expected_date, time.min)
+    assert filter.execute() == Q(updated_at__lt=expected_datetime)
+
+
+def test_date_filter_invalid_range():
+    filter = DateFilter("created", "gt", "2024-02-30", None)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "out of range" in str(excinfo.value)
+
+
+def test_date_filter_exact_date():
+    filter = DateFilter("created", "exact", "2024-12-31", None)
+    expected_date = datetime.strptime("2024-12-31", "%Y-%m-%d").date()
+    assert filter.execute() == Q(created_at__date=expected_date)
+
+
+@pytest.mark.parametrize(
+    "operator, expected_time",
+    [
+        ("exact", None),  # Should return a date object
+        ("gt", time.max),
+        ("gte", time.min),
+        ("lt", time.min),
+        ("lte", time.max),
+    ],
+)
+def test_date_filter_get_datetime_bound(operator, expected_time):
+    date_value = datetime(2024, 1, 1).date()
+    result = DateFilter._get_datetime_bound(date_value, operator)
+
+    if expected_time is None:
+        assert result == date_value
+    else:
+        assert result == datetime.combine(date_value, expected_time)
