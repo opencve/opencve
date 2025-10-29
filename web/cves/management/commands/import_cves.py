@@ -8,6 +8,8 @@ from psycopg2.extras import Json
 
 from opencve.commands import BaseCommand
 
+import re
+from datetime import datetime, timezone
 
 class Command(BaseCommand):
     KB_PATH = settings.KB_REPO_PATH
@@ -35,23 +37,41 @@ class Command(BaseCommand):
     def insert_cve(self, path):
         with open(path) as f:
             cve = json.load(f)
-
-        cve_data = cve.get("opencve")
+        
+        cve_data = cve.get("opencve", {})
+        cve_id = cve.get("cve")
+        
+        created = cve_data.get("created", {}).get("data")
+        if not created:
+            created = self.fake_cve_date(cve_id)
+        
+        updated = cve_data.get("updated", {}).get("data")
+        if not updated:
+            updated = self.fake_cve_date(cve_id)
+        
         params = dict(
             cve_data,
             **{
-                "cve": cve["cve"],
-                "created": cve_data["created"]["data"],
-                "updated": cve_data["updated"]["data"],
-                "description": cve_data["description"]["data"],
-                "title": cve_data["title"]["data"],
-                "metrics": Json(cve_data["metrics"]),
-                "vendors": Json(cve_data["vendors"]["data"]),
-                "weaknesses": Json(cve_data["weaknesses"]["data"]),
+                "cve": cve_id,
+                "created": created,
+                "updated": updated,
+                "description": cve_data.get("description", {}).get("data", ""),
+                "title": cve_data.get("title", {}).get("data", ""),
+                "metrics": Json(cve_data.get("metrics", {})),
+                "vendors": Json(cve_data.get("vendors", {}).get("data", [])),
+                "weaknesses": Json(cve_data.get("weaknesses", {}).get("data", [])),
                 "changes": Json([]),
             },
         )
         self.call_procedure(params)
+
+    def fake_cve_date(self, cve):
+        m = re.match(r'^\s*CVE-(\d{4})-\d+', cve or '', flags=re.IGNORECASE)
+        if not m:
+            return None
+        year = int(m.group(1))
+        return datetime(year, 1, 1, tzinfo=timezone.utc)
+        
 
     def handle(self, *args, **options):
         if not self.kb_repo_exist():
