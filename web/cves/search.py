@@ -319,12 +319,12 @@ class Search:
         # Define grammar for parsing
         identifier = pp.Word(pp.alphanums + "_-")
         operator = pp.oneOf(": = > < >= <= !: !=")
-        value = pp.Word(pp.alphanums + "_-") | pp.quotedString.setParseAction(
+        value = pp.Word(pp.alphanums + "_-.") | pp.quotedString.setParseAction(
             pp.removeQuotes
         )
 
         # Allow standalone words
-        standalone = pp.Word(pp.alphanums + "_-")
+        standalone = pp.Word(pp.alphanums + "_-.")
         term = pp.Group(
             (identifier + operator + value)
             | standalone.setParseAction(self._single_fields)
