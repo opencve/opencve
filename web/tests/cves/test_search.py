@@ -435,6 +435,18 @@ def test_search_parse_jql():
     assert parsed_query == expected_parsed
 
 
+def test_search_parse_jql_with_special_chars_in_value():
+    search = Search("")
+    query = "product:some.product-1_beta"
+    parsed_query = search.parse_jql(query)
+    expected_parsed = [
+        "product",
+        ":",
+        "some.product-1_beta",
+    ]
+    assert parsed_query == expected_parsed
+
+
 def test_search_jql_to_json():
     search = Search("")
     parsed_query = [
