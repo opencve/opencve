@@ -261,7 +261,7 @@ create-superuser() {
     export $(grep -v '^#' .env | grep -E '^POSTGRES' | tr '\n' ' ')
 
     log "\n--------| Auto confirm the created user"
-    display-and-exec "confirming the created admin user" -q docker compose exec postgres psql -U "$POSTGRES_USER" -c "INSERT INTO account_emailaddress(email, verified, \"primary\", user_id) SELECT email, 1::bool, 1::bool, id FROM opencve_users ON CONFLICT (user_id, email) DO NOTHING;"
+    display-and-exec "confirming the created admin user" -q docker compose exec postgres psql -U "$POSTGRES_USER" -d ${POSTGRES_DB:-opencve} -c "INSERT INTO account_emailaddress(email, verified, \"primary\", user_id) SELECT email, 1::bool, 1::bool, id FROM opencve_users ON CONFLICT (user_id, email) DO NOTHING;"
 
     unset POSTGRES_USER
     unset POSTGRES_PASSWORD
