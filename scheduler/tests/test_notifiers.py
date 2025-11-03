@@ -1,11 +1,19 @@
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock, MagicMock
 import pathlib
 import json
 
 import pendulum
+import pytest
+import aiohttp
+import asyncio
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from includes.notifiers import BaseNotifier, EmailNotifier
+from includes.notifiers import (
+    BaseNotifier,
+    EmailNotifier,
+    WebhookNotifier,
+    SlackNotifier,
+)
 from utils import TestRepo
 
 
@@ -290,3 +298,607 @@ def test_generate_email_previews(tests_path, tmp_path_factory):
     txt_file.write_text(txt_content)
 
     print(f"\nEmail previews generated in: {previews_dir.resolve()}")
+
+
+# Tests for BaseNotifier utility methods
+
+
+def test_humanize_subscription():
+    assert BaseNotifier.humanize_subscription("foo") == "Foo"
+    assert BaseNotifier.humanize_subscription("foo_bar") == "Foo Bar"
+    assert BaseNotifier.humanize_subscription("foo$PRODUCT$bar") == "Bar"
+    assert BaseNotifier.humanize_subscription("FOO_BAR") == "Foo Bar"
+    assert BaseNotifier.humanize_subscription("foo_bar_baz") == "Foo Bar Baz"
+
+
+def test_humanize_subscriptions():
+    subscriptions = ["foo", "bar_baz", "test$PRODUCT$value"]
+    result = BaseNotifier.humanize_subscriptions(subscriptions)
+    assert result == ["Foo", "Bar Baz", "Value"]
+
+
+def test_get_title():
+    payload1 = {
+        "changes": [{"cve": {"cve_id": "CVE-2024-0001"}}],
+        "matched_subscriptions": {"human": ["Foo"]},
+    }
+    assert BaseNotifier.get_title(payload1) == "1 change on Foo"
+
+    payload2 = {
+        "changes": [
+            {"cve": {"cve_id": "CVE-2024-0001"}},
+            {"cve": {"cve_id": "CVE-2024-0002"}},
+        ],
+        "matched_subscriptions": {"human": ["Bar", "Foo"]},
+    }
+    assert BaseNotifier.get_title(payload2) == "2 changes on Bar, Foo"
+
+
+def test_get_severity_str():
+    assert BaseNotifier.get_severity_str(None) == "none"
+    assert BaseNotifier.get_severity_str(0.0) == "none"  # 0.0 is falsy, treated as none
+    assert BaseNotifier.get_severity_str(0.1) == "low"
+    assert BaseNotifier.get_severity_str(3.9) == "low"
+    assert BaseNotifier.get_severity_str(4.0) == "medium"
+    assert BaseNotifier.get_severity_str(6.9) == "medium"
+    assert BaseNotifier.get_severity_str(7.0) == "high"
+    assert BaseNotifier.get_severity_str(8.9) == "high"
+    assert BaseNotifier.get_severity_str(9.0) == "critical"
+    assert BaseNotifier.get_severity_str(10.0) == "critical"
+    assert BaseNotifier.get_severity_str(11.0) == "none"  # Invalid score
+
+
+# Tests for WebhookNotifier
+
+
+def test_webhook_notifier_init():
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "notification_conf": {
+            "extras": {
+                "url": "https://example.com/webhook",
+                "headers": {"Authorization": "Bearer token"},
+            }
+        },
+    }
+
+    notifier = WebhookNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=[],
+        changes_details={},
+        period={"start": "2024-01-01", "end": "2024-01-02"},
+    )
+
+    assert notifier.url == "https://example.com/webhook"
+    assert notifier.headers == {"Authorization": "Bearer token"}
+
+
+@pytest.mark.asyncio
+async def test_webhook_notifier_send_success(tests_path, tmp_path_factory):
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "url": "https://example.com/webhook",
+                "headers": {"Authorization": "Bearer token"},
+            }
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {},
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    semaphore = asyncio.Semaphore(10)
+    session = AsyncMock()
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json = AsyncMock(return_value={"status": "ok"})
+    session.post.return_value.__aenter__.return_value = mock_response
+
+    notifier = WebhookNotifier(
+        semaphore=semaphore,
+        session=session,
+        notification=notification,
+        changes=["114e2218-49c5-43fe-bcd7-18a1adc17a25"],
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
+        result = await notifier.execute()
+
+    assert result == {}
+    session.post.assert_called_once()
+    call_kwargs = session.post.call_args
+    assert call_kwargs[0][0] == "https://example.com/webhook"
+    assert "json" in call_kwargs[1]
+    assert call_kwargs[1]["headers"] == {"Authorization": "Bearer token"}
+
+
+@pytest.mark.asyncio
+async def test_webhook_notifier_send_connection_error(tests_path, tmp_path_factory):
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "url": "https://example.com/webhook",
+                "headers": {},
+            }
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {},
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    semaphore = asyncio.Semaphore(10)
+    session = AsyncMock()
+
+    # Create ClientConnectorError
+    connection_key = MagicMock()
+    os_error = OSError("Connection refused")
+    os_error.errno = 61  # Connection refused error code
+    session.post.side_effect = aiohttp.ClientConnectorError(
+        connection_key, os_error=os_error
+    )
+
+    notifier = WebhookNotifier(
+        semaphore=semaphore,
+        session=session,
+        notification=notification,
+        changes=["114e2218-49c5-43fe-bcd7-18a1adc17a25"],
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
+        result = await notifier.execute()
+
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_webhook_notifier_send_timeout_error(tests_path, tmp_path_factory):
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "url": "https://example.com/webhook",
+                "headers": {},
+            }
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {},
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    semaphore = asyncio.Semaphore(10)
+    session = AsyncMock()
+    session.post.side_effect = asyncio.TimeoutError()
+
+    notifier = WebhookNotifier(
+        semaphore=semaphore,
+        session=session,
+        notification=notification,
+        changes=["114e2218-49c5-43fe-bcd7-18a1adc17a25"],
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
+        result = await notifier.execute()
+
+    assert result == {}
+
+
+# Tests for SlackNotifier
+
+
+def test_slack_notifier_init():
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "notification_conf": {
+            "extras": {
+                "webhook_url": "https://hooks.slack.com/webhook",
+            }
+        },
+    }
+
+    notifier = SlackNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=[],
+        changes_details={},
+        period={"start": "2024-01-01", "end": "2024-01-02"},
+    )
+
+    assert notifier.webhook_url == "https://hooks.slack.com/webhook"
+
+
+def test_slack_notifier_format_slack_blocks(tests_path, tmp_path_factory):
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "webhook_url": "https://hooks.slack.com/webhook",
+            }
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {},
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    notifier = SlackNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=["114e2218-49c5-43fe-bcd7-18a1adc17a25"],
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
+        messages = notifier.format_slack_blocks()
+
+    assert isinstance(messages, list)
+    assert len(messages) > 0
+    assert "blocks" in messages[0]
+    assert len(messages[0]["blocks"]) > 0
+
+    # Check first block contains title
+    first_block = messages[0]["blocks"][0]
+    assert first_block["type"] == "section"
+    assert "test-org" in first_block["text"]["text"]
+    assert "test-project" in first_block["text"]["text"]
+
+
+def test_slack_notifier_format_slack_blocks_multiple_severities(
+    tests_path, tmp_path_factory
+):
+    """Test that Slack blocks properly group CVEs by severity"""
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "webhook_url": "https://hooks.slack.com/webhook",
+            }
+        },
+    }
+
+    # Create multiple changes with different severities
+    change_details = {
+        "critical": {
+            "change_id": "critical",
+            "change_path": "previews/CVE-CRITICAL.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-CRITICAL",
+            "cve_metrics": {},
+        },
+        "high": {
+            "change_id": "high",
+            "change_path": "previews/CVE-HIGH.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-HIGH",
+            "cve_metrics": {},
+        },
+        "low": {
+            "change_id": "low",
+            "change_path": "previews/CVE-LOW.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-LOW",
+            "cve_metrics": {},
+        },
+    }
+
+    kb_path = pathlib.Path(__file__).parent / "data"
+
+    notifier = SlackNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=list(change_details.keys()),
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", kb_path):
+        messages = notifier.format_slack_blocks()
+
+    assert isinstance(messages, list)
+    assert len(messages) > 0
+
+    # Check that blocks contain severity sections
+    blocks_text = " ".join(
+        block.get("text", {}).get("text", "")
+        for message in messages
+        for block in message.get("blocks", [])
+        if block.get("type") == "section"
+    )
+
+    # Should contain severity indicators
+    assert "CRITICAL" in blocks_text or "HIGH" in blocks_text or "LOW" in blocks_text
+
+
+@pytest.mark.asyncio
+async def test_slack_notifier_send_success(tests_path, tmp_path_factory):
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "webhook_url": "https://hooks.slack.com/webhook",
+            }
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {},
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    semaphore = asyncio.Semaphore(10)
+    session = AsyncMock()
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.text = AsyncMock(return_value="ok")
+    session.post.return_value.__aenter__.return_value = mock_response
+
+    notifier = SlackNotifier(
+        semaphore=semaphore,
+        session=session,
+        notification=notification,
+        changes=["114e2218-49c5-43fe-bcd7-18a1adc17a25"],
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
+        await notifier.execute()
+
+    session.post.assert_called()
+    call_kwargs = session.post.call_args
+    assert call_kwargs[0][0] == "https://hooks.slack.com/webhook"
+    assert call_kwargs[1]["headers"] == {"Content-Type": "application/json"}
+    assert "json" in call_kwargs[1]
+
+
+@pytest.mark.asyncio
+async def test_slack_notifier_send_error(tests_path, tmp_path_factory):
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "webhook_url": "https://hooks.slack.com/webhook",
+            }
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {},
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    semaphore = asyncio.Semaphore(10)
+    session = AsyncMock()
+    mock_response = AsyncMock()
+    mock_response.status = 400
+    mock_response.text = AsyncMock(return_value="invalid_payload")
+    session.post.return_value.__aenter__.return_value = mock_response
+
+    notifier = SlackNotifier(
+        semaphore=semaphore,
+        session=session,
+        notification=notification,
+        changes=["114e2218-49c5-43fe-bcd7-18a1adc17a25"],
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
+        await notifier.execute()
+
+    # Should still complete without raising
+    session.post.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_slack_notifier_send_exception(tests_path, tmp_path_factory):
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "webhook_url": "https://hooks.slack.com/webhook",
+            }
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {},
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    semaphore = asyncio.Semaphore(10)
+    session = AsyncMock()
+    session.post.side_effect = Exception("Network error")
+
+    notifier = SlackNotifier(
+        semaphore=semaphore,
+        session=session,
+        notification=notification,
+        changes=["114e2218-49c5-43fe-bcd7-18a1adc17a25"],
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
+        await notifier.execute()
+
+    # Should complete without raising despite the exception
+    session.post.assert_called()
+
+
+def test_slack_notifier_format_slack_blocks_max_blocks(tests_path, tmp_path_factory):
+    """Test that Slack blocks are split when exceeding MAX_BLOCKS"""
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "webhook_url": "https://hooks.slack.com/webhook",
+            }
+        },
+    }
+
+    # Create many changes to exceed MAX_BLOCKS
+    change_details = {}
+    for i in range(30):  # Should create enough blocks to exceed MAX_BLOCKS=50
+        change_id = f"change_{i}"
+        change_details[change_id] = {
+            "change_id": change_id,
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": f"CVE-2024-{i:04d}",
+            "cve_metrics": {},
+        }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    notifier = SlackNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=list(change_details.keys()),
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
+        messages = notifier.format_slack_blocks()
+
+    assert isinstance(messages, list)
+    # Each message should have at most MAX_BLOCKS blocks
+    for message in messages:
+        assert len(message["blocks"]) <= SlackNotifier.MAX_BLOCKS

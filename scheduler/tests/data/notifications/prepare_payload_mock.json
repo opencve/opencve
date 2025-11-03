@@ -1,0 +1,466 @@
+{
+    "organization": "Test Organization",
+    "project": "Security Monitoring Project",
+    "notification": "Slack Test Notification",
+    "subscriptions": {
+      "raw": ["apache", "spring", "java", "docker", "web"],
+      "human": ["Apache", "Spring", "Java", "Docker", "Web"]
+    },
+    "matched_subscriptions": {
+      "raw": ["apache", "spring", "docker"],
+      "human": ["Apache", "Spring", "Docker"]
+    },
+    "title": "30 changes on Apache, Spring, Docker",
+    "period": {
+      "start": "2025-11-02T08:00:00+00:00",
+      "end": "2025-11-03T08:00:00+00:00"
+    },
+    "changes": [
+      {
+        "cve": {
+          "cve_id": "CVE-2025-3001",
+          "description": "Remote code execution vulnerability in Apache Struts allowing attackers to execute arbitrary code on the server through deserialization of untrusted data.",
+          "cvss31": 9.8,
+          "subscriptions": {
+            "raw": ["apache", "struts"],
+            "human": ["Apache", "Struts"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "metrics", "data": "CVSS score updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-3001",
+          "description": "Remote code execution vulnerability in Apache Struts allowing attackers to execute arbitrary code on the server through deserialization of untrusted data.",
+          "cvss31": 9.8,
+          "subscriptions": {
+            "raw": ["apache", "struts"],
+            "human": ["Apache", "Struts"]
+          }
+        },
+        "events": [
+          {"type": "vendors", "data": "Vendor information updated"},
+          {"type": "weaknesses", "data": "Weakness enumeration added"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-3002",
+          "description": "Critical authentication bypass in Spring Framework enabling unauthorized access to protected resources and sensitive data.",
+          "cvss31": 9.9,
+          "subscriptions": {
+            "raw": ["spring", "java"],
+            "human": ["Spring", "Java"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "references", "data": "New reference added"},
+          {"type": "description", "data": "Description updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-3003",
+          "description": "Maximum severity remote code execution in Apache Log4j affecting multiple versions and allowing complete system compromise.",
+          "cvss31": 10.0,
+          "subscriptions": {
+            "raw": ["apache", "log4j"],
+            "human": ["Apache", "Log4j"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "metrics", "data": "CVSS score updated"},
+          {"type": "cpes", "data": "CPE list modified"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-3004",
+          "description": "SQL injection vulnerability in database connection layer allowing unauthorized data access and potential data exfiltration.",
+          "cvss31": 9.1,
+          "subscriptions": {
+            "raw": ["mysql", "database"],
+            "human": ["MySQL", "Database"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-3005",
+          "description": "Deserialization of untrusted data leading to remote code execution in multiple Java frameworks and libraries.",
+          "cvss31": 9.5,
+          "subscriptions": {
+            "raw": ["deserialization"],
+            "human": ["Deserialization"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "references", "data": "New reference added"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-4001",
+          "description": "Path traversal vulnerability allowing unauthorized file system access and potential code execution through directory traversal attacks.",
+          "cvss31": 8.5,
+          "subscriptions": {
+            "raw": ["filesystem", "linux"],
+            "human": ["FileSystem", "Linux"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "metrics", "data": "CVSS score updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-4001",
+          "description": "Path traversal vulnerability allowing unauthorized file system access and potential code execution through directory traversal attacks.",
+          "cvss31": 8.5,
+          "subscriptions": {
+            "raw": ["filesystem", "linux"],
+            "human": ["FileSystem", "Linux"]
+          }
+        },
+        "events": [
+          {"type": "vendors", "data": "Vendor information updated"},
+          {"type": "weaknesses", "data": "Weakness enumeration added"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-4002",
+          "description": "Privilege escalation vulnerability in container runtime environment allowing container escape and host system access.",
+          "cvss31": 8.8,
+          "subscriptions": {
+            "raw": ["docker", "containers"],
+            "human": ["Docker", "Containers"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "cpes", "data": "CPE list modified"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-4003",
+          "description": "Cross-site scripting (XSS) vulnerability in web application framework allowing script injection and session hijacking.",
+          "cvss31": 7.8,
+          "subscriptions": {
+            "raw": ["web", "javascript"],
+            "human": ["Web", "JavaScript"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "references", "data": "New reference added"},
+          {"type": "description", "data": "Description updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-4004",
+          "description": "Command injection vulnerability in API endpoints allowing remote command execution and system compromise.",
+          "cvss31": 8.2,
+          "subscriptions": {
+            "raw": ["api", "rest"],
+            "human": ["API", "REST"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "metrics", "data": "CVSS score updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-4005",
+          "description": "Authentication bypass in OAuth2 implementation allowing unauthorized access to protected resources and user data.",
+          "cvss31": 7.9,
+          "subscriptions": {
+            "raw": ["oauth2", "authentication"],
+            "human": ["OAuth2", "Authentication"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-4006",
+          "description": "Server-side request forgery (SSRF) vulnerability in microservices architecture allowing internal network scanning and service enumeration.",
+          "cvss31": 8.1,
+          "subscriptions": {
+            "raw": ["microservices", "network"],
+            "human": ["Microservices", "Network"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "references", "data": "New reference added"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-5001",
+          "description": "Information disclosure vulnerability exposing sensitive configuration data and authentication credentials in error messages.",
+          "cvss31": 6.5,
+          "subscriptions": {
+            "raw": ["configuration", "security"],
+            "human": ["Configuration", "Security"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "metrics", "data": "CVSS score updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-5001",
+          "description": "Information disclosure vulnerability exposing sensitive configuration data and authentication credentials in error messages.",
+          "cvss31": 6.5,
+          "subscriptions": {
+            "raw": ["configuration", "security"],
+            "human": ["Configuration", "Security"]
+          }
+        },
+        "events": [
+          {"type": "vendors", "data": "Vendor information updated"},
+          {"type": "weaknesses", "data": "Weakness enumeration added"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-5002",
+          "description": "Denial of service vulnerability causing application unavailability under load and resource exhaustion attacks.",
+          "cvss31": 5.8,
+          "subscriptions": {
+            "raw": ["dos", "performance"],
+            "human": ["DoS", "Performance"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "cpes", "data": "CPE list modified"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-5003",
+          "description": "Cross-site request forgery (CSRF) vulnerability in web forms allowing unauthorized actions on behalf of authenticated users.",
+          "cvss31": 6.2,
+          "subscriptions": {
+            "raw": ["web", "forms"],
+            "human": ["Web", "Forms"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "references", "data": "New reference added"},
+          {"type": "description", "data": "Description updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-5004",
+          "description": "Weak encryption implementation allowing potential data decryption and cryptographic attacks.",
+          "cvss31": 5.5,
+          "subscriptions": {
+            "raw": ["encryption", "crypto"],
+            "human": ["Encryption", "Crypto"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-5005",
+          "description": "Insecure direct object reference (IDOR) vulnerability in REST APIs allowing unauthorized access to resources.",
+          "cvss31": 6.8,
+          "subscriptions": {
+            "raw": ["rest", "api"],
+            "human": ["REST", "API"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "metrics", "data": "CVSS score updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-5006",
+          "description": "Session fixation vulnerability in authentication mechanism allowing session hijacking and account takeover.",
+          "cvss31": 5.9,
+          "subscriptions": {
+            "raw": ["session", "auth"],
+            "human": ["Session", "Auth"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "references", "data": "New reference added"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-5007",
+          "description": "Security misconfiguration leading to information leakage and potential unauthorized access.",
+          "cvss31": 6.0,
+          "subscriptions": {
+            "raw": ["configuration"],
+            "human": ["Configuration"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-6001",
+          "description": "Information disclosure through error messages revealing system details and internal paths.",
+          "cvss31": 3.1,
+          "subscriptions": {
+            "raw": ["errorhandling"],
+            "human": ["ErrorHandling"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "metrics", "data": "CVSS score updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-6002",
+          "description": "Weak password policy allowing predictable passwords and brute force attacks.",
+          "cvss31": 2.8,
+          "subscriptions": {
+            "raw": ["password", "policy"],
+            "human": ["Password", "Policy"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-6003",
+          "description": "Missing security headers in HTTP responses allowing clickjacking and MIME type confusion attacks.",
+          "cvss31": 3.5,
+          "subscriptions": {
+            "raw": ["http", "headers"],
+            "human": ["HTTP", "Headers"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "references", "data": "New reference added"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-6004",
+          "description": "Verbose logging exposing sensitive information in log files including passwords and tokens.",
+          "cvss31": 3.0,
+          "subscriptions": {
+            "raw": ["logging"],
+            "human": ["Logging"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "description", "data": "Description updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-6005",
+          "description": "Missing rate limiting on API endpoints allowing potential abuse and resource exhaustion.",
+          "cvss31": 2.5,
+          "subscriptions": {
+            "raw": ["ratelimiting", "api"],
+            "human": ["RateLimiting", "API"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-6006",
+          "description": "Insufficient session timeout allowing extended unauthorized access after logout.",
+          "cvss31": 3.3,
+          "subscriptions": {
+            "raw": ["session"],
+            "human": ["Session"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "metrics", "data": "CVSS score updated"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-7001",
+          "description": "Vulnerability pending analysis and CVSS score assignment by security researchers.",
+          "cvss31": null,
+          "subscriptions": {
+            "raw": ["pending"],
+            "human": ["Pending"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-7002",
+          "description": "Information about potential security issue under investigation by the vendor and security team.",
+          "cvss31": null,
+          "subscriptions": {
+            "raw": ["investigation"],
+            "human": ["Investigation"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"},
+          {"type": "references", "data": "New reference added"}
+        ]
+      },
+      {
+        "cve": {
+          "cve_id": "CVE-2025-7003",
+          "description": "Rejected CVE marked as not applicable to current configuration or false positive.",
+          "cvss31": null,
+          "subscriptions": {
+            "raw": ["rejected"],
+            "human": ["Rejected"]
+          }
+        },
+        "events": [
+          {"type": "created", "data": "CVE created"}
+        ]
+      }
+    ]
+  }

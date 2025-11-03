@@ -56,6 +56,7 @@
             <div class="box-body">
                 <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=email"><i class="fa fa-plus"></i> Email</a>
                 <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=webhook"><i class="fa fa-plus"></i> Webhook</a>
+                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=slack"><i class="fa fa-plus"></i> Slack</a>
             </div>
         </div>
     </div>
