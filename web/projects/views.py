@@ -309,7 +309,7 @@ class NotificationCreateView(
     success_message = "The notification has been successfully created."
 
     def get(self, request, *args, **kwargs):
-        if request.GET.get("type") not in ["email", "webhook"]:
+        if request.GET.get("type") not in ["email", "webhook", "slack"]:
             raise Http404()
         return super().get(request, *args, **kwargs)
 

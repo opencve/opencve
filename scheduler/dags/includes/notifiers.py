@@ -1,18 +1,13 @@
 import asyncio
 import json
 import logging
-import pathlib
 import urllib.parse
 import datetime
-
 
 import aiohttp
 import aiosmtplib
 import arrow
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from airflow.configuration import conf
-from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from includes.constants import KB_LOCAL_REPO
 from includes.utils import get_smtp_conf, get_smtp_message
@@ -205,6 +200,134 @@ class WebhookNotifier(BaseNotifier):
 
         # No need to return the response we don't use it
         return {}
+
+
+class SlackNotifier(BaseNotifier):
+    type = "slack"
+    MAX_BLOCKS = 50
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+        self.webhook_url = self.config.get("extras").get("webhook_url")
+
+    def format_slack_blocks(self):
+        payload = self.prepare_payload()
+        title = payload["title"]
+        organization = payload["organization"]
+        project = payload["project"]
+
+        # Group changes by CVE ID
+        cves = {}
+        for change in payload["changes"]:
+            cve = change["cve"]
+            cve_id = cve["cve_id"]
+            if cve_id not in cves:
+                score = float(cve["cvss31"]) if cve["cvss31"] else None
+                severity = self.get_severity_str(score)
+                cves[cve_id] = {
+                    "cve_id": cve_id,
+                    "score": score,
+                    "severity": severity,
+                    "desc": (
+                        (cve["description"][:400] + "…")
+                        if len(cve["description"]) > 400
+                        else cve["description"]
+                    ),
+                    "subscriptions": ", ".join(cve["subscriptions"]["human"]),
+                    "events": set(),
+                }
+            cves[cve_id]["events"].update(e["type"] for e in change["events"])
+
+        # Group CVEs by severity
+        severities = ["critical", "high", "medium", "low", "none"]
+        grouped = {s: [] for s in severities}
+        for cve in cves.values():
+            grouped[cve["severity"]].append(cve)
+
+        # Build all blocks
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"🔔 *{title}*\n_{organization} / {project}_",
+                },
+            },
+            {"type": "divider"},
+        ]
+
+        for severity in severities:
+            if not grouped[severity]:
+                continue
+            emoji = {
+                "critical": "🔴",
+                "high": "🟠",
+                "medium": "🟡",
+                "low": "🟢",
+                "none": "⚪️",
+            }[severity]
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"{emoji} *{severity.upper()} Severity* — {len(grouped[severity])} CVE(s)",
+                    },
+                }
+            )
+            blocks.append({"type": "divider"})
+
+            for cve in grouped[severity]:
+                text = (
+                    f"*<https://app.opencve.io/cve/{cve['cve_id']}|{cve['cve_id']}>*\n"
+                    f"*CVSS:* {cve['score'] or 'N/A'} | "
+                    f"*Events:* {', '.join(cve['events']) or 'None'} | "
+                    f"*Subscriptions:* {cve['subscriptions']}\n"
+                    f"{cve['desc']}"
+                )
+                blocks.append(
+                    {"type": "section", "text": {"type": "mrkdwn", "text": text}}
+                )
+                blocks.append({"type": "divider"})
+
+        # Split into messages if needed
+        return [
+            {"blocks": blocks[i : i + self.MAX_BLOCKS]}
+            for i in range(0, len(blocks), self.MAX_BLOCKS)
+        ]
+
+    async def send(self):
+        logger.info("Sending Slack notification to %s", self.webhook_url)
+        messages = self.format_slack_blocks()
+
+        for idx, msg in enumerate(messages, 1):
+            try:
+                async with self.session.post(
+                    self.webhook_url,
+                    json=msg,
+                    headers={"Content-Type": "application/json"},
+                    timeout=self.request_timeout,
+                ) as resp:
+                    text = await resp.text()
+                    if resp.status != 200:
+                        logger.error(
+                            "Slack message %s/%s failed: %s %s",
+                            idx,
+                            len(messages),
+                            resp.status,
+                            text,
+                        )
+                    else:
+                        logger.info(
+                            "Slack message %s/%s sent (%s blocks)",
+                            idx,
+                            len(messages),
+                            len(msg["blocks"]),
+                        )
+            except Exception as e:
+                logger.error(
+                    "Error sending Slack message %s/%s: %s", idx, len(messages), e
+                )
 
 
 class EmailNotifier(BaseNotifier):

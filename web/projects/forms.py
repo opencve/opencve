@@ -7,7 +7,11 @@ from django.conf import settings
 from cves.constants import CVSS_SCORES
 from projects.models import Notification, Project
 
-FORM_MAPPING = {"email": ["email"], "webhook": ["url", "headers"]}
+FORM_MAPPING = {
+    "email": ["email"],
+    "webhook": ["url", "headers"],
+    "slack": ["webhook_url"],
+}
 
 
 class ProjectForm(forms.ModelForm):
@@ -124,3 +128,12 @@ class WebhookForm(NotificationForm):
                 )
 
         return headers
+
+
+class SlackForm(NotificationForm):
+    webhook_url = forms.URLField(
+        required=True,
+        assume_scheme="https",
+        label="Slack Webhook URL",
+        help_text="Enter your Slack incoming webhook URL",
+    )
