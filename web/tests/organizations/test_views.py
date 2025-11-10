@@ -22,14 +22,14 @@ def test_list_organizations(auth_client, create_user, create_organization):
     # No organization
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("table", {"id": "table-organizations"}).text
+    content = soup.find("ul", {"class": "organizations-list"}).text
     assert "No organization yet" in content
 
     # User can see his own organization
     create_organization(name="organization1", user=user1, owner=True)
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("table", {"id": "table-organizations"}).text
+    content = soup.find("ul", {"class": "organizations-list"}).text
     assert "organization1" in content
 
     # But not those of others
@@ -37,7 +37,7 @@ def test_list_organizations(auth_client, create_user, create_organization):
     create_organization(name="organization2", user=user2, owner=True)
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("table", {"id": "table-organizations"}).text
+    content = soup.find("ul", {"class": "organizations-list"}).text
     assert "organization2" not in content
 
 
@@ -94,7 +94,14 @@ def test_edit_organization_is_owner(auth_client, create_user, create_organizatio
     url = reverse("edit_organization", kwargs={"org_name": "orga2"})
     assert client.get(url).status_code == 200
     url = reverse("edit_organization", kwargs={"org_name": "orga1"})
-    assert client.get(url).status_code == 404
+    response = client.get(url)
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+    messages = list(response.wsgi_request._messages)
+    assert any(
+        message.message == "The requested organization does not exist."
+        for message in messages
+    )
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -104,7 +111,13 @@ def test_edit_organization_not_found(auth_client, create_user):
     url = reverse("edit_organization", kwargs={"org_name": "orga1"})
 
     response = client.get(url)
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+    messages = list(response.wsgi_request._messages)
+    assert any(
+        message.message == "The requested organization does not exist."
+        for message in messages
+    )
 
 
 def test_edit_organization(auth_client, create_user, create_organization):
@@ -113,8 +126,24 @@ def test_edit_organization(auth_client, create_user, create_organization):
     create_organization(name="orga1", user=user1, owner=True)
     url = reverse("edit_organization", kwargs={"org_name": "orga1"})
 
-    response = client.post(url, data={}, follow=True)
+    response = client.post(url, data={"name": "orga1"}, follow=True)
     assert b"The organization has been successfully updated." in response.content
+
+
+def test_rename_organization(auth_client, create_user, create_organization):
+    user1 = create_user(username="user1")
+    client = auth_client(user1)
+    organization = create_organization(name="orga1", user=user1, owner=True)
+    url = reverse("edit_organization", kwargs={"org_name": "orga1"})
+
+    response = client.post(url, data={"name": "orga2"}, follow=True)
+    assert b"The organization has been successfully updated." in response.content
+
+    organization.refresh_from_db()
+    assert organization.name == "orga2"
+    assert response.redirect_chain == [
+        (reverse("edit_organization", kwargs={"org_name": "orga2"}), 302)
+    ]
 
 
 # Delete Organizations
@@ -139,8 +168,18 @@ def test_delete_organization_is_owner(auth_client, create_user, create_organizat
     assert client.post(url).status_code == 302
 
     url = reverse("delete_organization", kwargs={"org_name": "orga1"})
-    assert client.get(url).status_code == 404
-    assert client.post(url).status_code == 404
+    response = client.get(url)
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+    messages = list(response.wsgi_request._messages)
+    assert any(
+        message.message == "The requested organization does not exist."
+        for message in messages
+    )
+
+    response = client.post(url)
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -158,7 +197,13 @@ def test_delete_organization(auth_client, create_user, create_organization):
     assert response.redirect_chain == [(reverse("list_organizations"), 302)]
 
     response = client.get(url)
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+    messages = list(response.wsgi_request._messages)
+    assert any(
+        message.message == "The requested organization does not exist."
+        for message in messages
+    )
 
 
 # List Memberships
@@ -194,7 +239,12 @@ def test_create_memberships_is_owner(auth_client, create_user, create_organizati
     response = client.post(
         url, data={"email": "user3@example.com", "role": "member"}, follow=True
     )
-    assert response.status_code == 404
+    assert response.redirect_chain[-1] == (reverse("list_organizations"), 302)
+    messages = list(response.wsgi_request._messages)
+    assert any(
+        message.message == "The requested organization does not exist."
+        for message in messages
+    )
 
     # User1 can create new member
     client = auth_client(user1)
@@ -423,8 +473,8 @@ def test_organization_invitation(auth_client, create_user, create_organization):
     url = reverse("list_organizations")
     response = client.get(url, data={}, follow=True)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("table", {"id": "table-organizations"}).find_all("td")
-    assert "Accept Invitation" in content[2].text
+    content = soup.find("ul", {"class": "organizations-list"}).text
+    assert "Accept Invitation" in content
 
     url = reverse(
         "accept_organization_invitation", kwargs={"org_name": "orga1", "key": "foobar"}

@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 
@@ -18,7 +19,8 @@ class OrganizationIsMemberMixin:
 
     def dispatch(self, request, *args, **kwargs):
         if not request.current_organization:
-            raise Http404
+            messages.error(request, "The requested organization does not exist.")
+            return redirect("list_organizations")
 
         return super().dispatch(request, *args, **kwargs)
 
@@ -28,18 +30,24 @@ class OrganizationIsOwnerMixin:
 
     def dispatch(self, request, *args, **kwargs):
         if not request.current_organization:
-            raise Http404
+            messages.error(request, "The requested organization does not exist.")
+            return redirect("list_organizations")
 
         # Check if user is owner
-        membership = get_object_or_404(
-            Membership,
-            user=request.user,
-            organization=request.current_organization,
-            role=Membership.OWNER,
-        )
+        try:
+            membership = get_object_or_404(
+                Membership,
+                user=request.user,
+                organization=request.current_organization,
+                role=Membership.OWNER,
+            )
+        except Http404:
+            messages.error(request, "The requested organization does not exist.")
+            return redirect("list_organizations")
 
         # Check if user is not just invited
         if membership.is_invited:
-            raise Http404()
+            messages.error(request, "The requested organization does not exist.")
+            return redirect("list_organizations")
 
         return super().dispatch(request, *args, **kwargs)

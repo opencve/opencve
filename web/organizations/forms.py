@@ -16,6 +16,13 @@ class OrganizationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop("request")
         super(OrganizationForm, self).__init__(*args, **kwargs)
+
+        # Add help text to name field only when editing
+        if self.instance and not self.instance._state.adding:
+            self.fields["name"].help_text = (
+                "Renaming the organization will break any external links to it, as the URL changes."
+            )
+
         self.helper = FormHelper()
         self.helper.layout = Layout(
             "name",
@@ -34,10 +41,6 @@ class OrganizationForm(forms.ModelForm):
         # Check if the organization is not a reserved keyword
         if name in ("add",):
             raise forms.ValidationError("This organization is reserved.")
-
-        # In case of update, check if the user tried to change the name
-        if (bool(self.instance.name)) and (self.instance.name != name):
-            raise forms.ValidationError("Existing organizations can't be renamed.")
 
         # Check if the organization already exists
         if self.instance.name != name:

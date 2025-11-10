@@ -38,7 +38,8 @@ def test_projects_list_view_organization_member_access(
     # User2 cannot access org1's projects
     client = auth_client(user2)
     response = client.get(reverse("list_projects", kwargs={"org_name": "org1"}))
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -114,7 +115,8 @@ def test_project_detail_view_organization_member_access(
     response = client.get(
         reverse("project", kwargs={"org_name": "org1", "project_name": "project1"})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -247,7 +249,8 @@ def test_project_create_view_requires_owner(
     # Member cannot access
     client = auth_client(user2)
     response = client.get(reverse("create_project", kwargs={"org_name": "org1"}))
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -338,24 +341,8 @@ def test_project_edit_view_requires_owner(
     response = client.get(
         reverse("edit_project", kwargs={"org_name": "org1", "project_name": "project1"})
     )
-    assert response.status_code == 404
-
-
-@override_settings(ENABLE_ONBOARDING=False)
-def test_project_edit_view_name_disabled(
-    create_organization, create_user, create_project, auth_client
-):
-    """Test that project name field is disabled in edit form"""
-    user = create_user()
-    org = create_organization(name="org1", user=user)
-    project = create_project(name="project1", organization=org)
-
-    client = auth_client(user)
-    response = client.get(
-        reverse("edit_project", kwargs={"org_name": "org1", "project_name": "project1"})
-    )
-    assert response.status_code == 200
-    assert response.context["form"].fields["name"].disabled
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -375,7 +362,7 @@ def test_project_edit_view_valid_form(
             "edit_project", kwargs={"org_name": "org1", "project_name": "project1"}
         ),
         data={
-            "name": "project1",  # Name should be disabled but still in POST
+            "name": "project1",
             "description": "New description",
             "active": "on",
         },
@@ -389,6 +376,70 @@ def test_project_edit_view_valid_form(
     # Check success message
     messages = list(get_messages(response.wsgi_request))
     assert any("successfully updated" in str(m) for m in messages)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_edit_view_rename_project(
+    create_organization, create_user, create_project, auth_client
+):
+    """Test renaming a project updates its name"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(
+        name="project1", organization=org, description="Some description"
+    )
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "edit_project", kwargs={"org_name": "org1", "project_name": "project1"}
+        ),
+        data={
+            "name": "project-renamed",
+            "description": "Some description",
+            "active": "on",
+        },
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    project.refresh_from_db()
+    assert project.name == "project-renamed"
+
+    messages = list(get_messages(response.wsgi_request))
+    assert any("successfully updated" in str(m) for m in messages)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_edit_view_rename_project_name_conflict(
+    create_organization, create_user, create_project, auth_client
+):
+    """Test renaming a project fails when the name already exists"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(
+        name="project1", organization=org, description="Some description"
+    )
+    create_project(name="existing", organization=org)
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "edit_project", kwargs={"org_name": "org1", "project_name": "project1"}
+        ),
+        data={
+            "name": "existing",
+            "description": "Some description",
+            "active": "on",
+        },
+    )
+
+    assert response.status_code == 200
+    form = response.context["form"]
+    assert form.errors == {"name": ["This project already exists."]}
+
+    project.refresh_from_db()
+    assert project.name == "project1"
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -437,7 +488,8 @@ def test_project_delete_view_requires_owner(
             "delete_project", kwargs={"org_name": "org1", "project_name": "project1"}
         )
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -507,7 +559,8 @@ def test_project_vulnerabilities_view_organization_member_access(
             kwargs={"org_name": "org1", "project_name": "project1"},
         )
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -687,7 +740,8 @@ def test_reports_view_organization_member_access(
     response = client.get(
         reverse("reports", kwargs={"org_name": "org1", "project_name": "project1"})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -763,7 +817,8 @@ def test_report_view_organization_member_access(
             },
         )
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -879,7 +934,8 @@ def test_subscriptions_view_organization_member_access(
             kwargs={"org_name": "org1", "project_name": "project1"},
         )
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -924,7 +980,8 @@ def test_notifications_view_organization_member_access(
             kwargs={"org_name": "org1", "project_name": "project1"},
         )
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1001,7 +1058,8 @@ def test_notification_create_view_requires_owner(
         )
         + "?type=email",
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1128,7 +1186,8 @@ def test_notification_update_view_requires_owner(
             },
         )
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1235,7 +1294,8 @@ def test_notification_delete_view_requires_owner(
             },
         )
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1318,7 +1378,8 @@ def test_assign_cve_user_view_organization_member_access(
         content_type="application/json",
         data=json.dumps({"cve_id": "CVE-2023-22490", "assignee_id": None}),
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1554,7 +1615,8 @@ def test_update_cve_status_view_organization_member_access(
         content_type="application/json",
         data=json.dumps({"cve_id": "CVE-2023-22490", "status": "to_evaluate"}),
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 @override_settings(ENABLE_ONBOARDING=False)

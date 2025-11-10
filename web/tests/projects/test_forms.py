@@ -54,7 +54,23 @@ def test_project_form_update_instance(create_organization, create_project):
         request=request,
         instance=project,
     )
-    assert form.errors == {"name": ["Existing projects can't be renamed."]}
+    assert form.errors == {}
+
+
+def test_project_form_rename_with_existing_name_in_other_org(
+    create_organization, create_project
+):
+    org1 = create_organization(name="org1")
+    org2 = create_organization(name="org2")
+    project1 = create_project(name="project1", organization=org1)
+    create_project(name="existing", organization=org2)
+    request = Mock(current_organization=org1.id)
+    form = ProjectForm(
+        data={"name": "existing", "description": "my description", "active": "on"},
+        request=request,
+        instance=project1,
+    )
+    assert form.errors == {}
 
 
 def test_project_form_name_already_exists(create_organization, create_project):

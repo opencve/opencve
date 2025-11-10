@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.http import Http404
+from django.shortcuts import redirect
 
 
 VIEW_WITHOUT_REDIRECTION = [
@@ -45,7 +46,8 @@ class OrganizationMiddleware:
 
             # User is attempting to access an organization he's not a member of
             if not organization:
-                raise Http404
+                messages.error(request, "The requested organization does not exist.")
+                return redirect("list_organizations")
 
             # Update the session if the organization changes
             if str(organization.id) != request.session.get("current_organization_id"):

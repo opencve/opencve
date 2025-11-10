@@ -95,4 +95,10 @@ def test_organization_middleware_load_from_url(
     response = client.get(
         reverse("edit_organization", kwargs={"org_name": "org_unknown"})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+    messages = list(response.wsgi_request._messages)
+    assert any(
+        message.message == "The requested organization does not exist."
+        for message in messages
+    )

@@ -23,13 +23,26 @@ def test_organization_form_update_instance(db, create_user, create_organization)
     user = create_user(username="user1")
     organization = create_organization(name="orga1", user=user)
     form = OrganizationForm(data={"name": "orga2"}, request=None, instance=organization)
-    assert form.errors == {"name": ["Existing organizations can't be renamed."]}
+    assert form.errors == {}
 
 
 def test_organization_form_name_already_exists(db, create_user, create_organization):
     user = create_user(username="user1")
     create_organization(name="orga1", user=user)
     form = OrganizationForm(data={"name": "orga1"}, request=None)
+    assert form.errors == {"name": ["This organization name is not available."]}
+
+
+def test_organization_form_rename_with_existing_name(
+    db, create_user, create_organization
+):
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+    organization1 = create_organization(name="orga1", user=user1)
+    create_organization(name="orga2", user=user2)
+    form = OrganizationForm(
+        data={"name": "orga2"}, request=None, instance=organization1
+    )
     assert form.errors == {"name": ["This organization name is not available."]}
 
 
