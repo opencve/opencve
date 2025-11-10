@@ -19,37 +19,78 @@
             </div>
 
             <div class="box box-primary">
-                <div class="box-body table-responsive no-padding">
-                    <table class="table table-hover table-striped" id="table-organizations">
-                        <tbody>
-                        <tr>
-                            <th>Name</th>
-                            <th>Role</th>
-                            <th></th>
-                        </tr>
+                <div class="box-body">
+                    <ul class="organizations-list products-list product-list-in-box">
+                        {% if memberships %}
                         {% for membership in memberships %}
-                        <tr>
-                            <td>{{ membership.organization.name }}</td>
-                            <td>{{ membership.role }}</td>
-                            <td class="pull-right">
-                                <div class="btn-group" role="group">
-                                    {% if membership.is_invited %}
-                                    <a href="{% url 'accept_organization_invitation' org_name=membership.organization.name key=membership.key %}" class="btn btn-primary btn-xs" type="button">Accept Invitation</a>
-                                    {% endif %}
-                                    {% if membership.is_owner and not membership.is_invited %}
-                                    <a href="{% url 'edit_organization' org_name=membership.organization.name %}" class="btn btn-default btn-xs">Edit</a>
-                                    <a href="{% url 'delete_organization' org_name=membership.organization.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
-                                    {% endif %}
+                        <li class="item">
+                            <div class="product-info">
+                                <div class="product-title">
+                                    {{ membership.organization.name }}
+                                    <div class="pull-right">
+                                        <div class="btn-group" role="group">
+                                            {% if membership.is_invited %}
+                                            <a href="{% url 'accept_organization_invitation' org_name=membership.organization.name key=membership.key %}" class="btn btn-primary btn-xs" type="button">Accept Invitation</a>
+                                            {% endif %}
+                                            {% if membership.is_owner and not membership.is_invited %}
+                                            <a href="{% url 'edit_organization' org_name=membership.organization.name %}" class="btn btn-default btn-xs">Edit</a>
+                                            <a href="{% url 'delete_organization' org_name=membership.organization.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
                                 </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="2">No organization yet</td>
-                        </tr>
+                                <span class="product-description">
+                                    Role: {{ membership.role }}
+                                </span>
+                                {% if membership.is_owner and not membership.is_invited %}
+                                {% with members=membership.organization.membership_set.all %}
+                                <div class="product-vendors">
+                                    <div class="pointer change-collapsed collapsed" data-toggle="collapse" href="#org-{{ membership.organization.id }}" aria-expanded="false">
+                                        <span class="product-vendors-title">Members (<strong>{{ members|length }}</strong>)
+                                            <span class="box-meta">
+                                                <i class="fa fa-plus"></i>
+                                                <i class="fa fa-minus"></i>
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div id="org-{{ membership.organization.id }}" class="panel-collapse collapse" aria-expanded="false" style="height: 0px;">
+                                        <div class="box-body">
+                                            <table class="table table-hover">
+                                                <tbody>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Email</th>
+                                                        <th>Role</th>
+                                                    </tr>
+                                                    {% for member in members %}
+                                                    <tr>
+                                                        <td>{{ member.user.username }}</td>
+                                                        <td>{{ member.user.email }}</td>
+                                                        {% if member.date_joined %}
+                                                        <td><span class="label label-primary">{{ member.role }}</span></td>
+                                                        {% else %}
+                                                        <td><span class="label label-default">invited</span></td>
+                                                        {% endif %}
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+                                {% endif %}
+                            </div>
+                        </li>
                         {% endfor %}
-                        </tbody>
-                    </table>
+                        {% else %}
+                        <li class="item">
+                            <div class="product-info">
+                                <i>No organization yet.</i>
+                            </div>
+                        </li>
+                        {% endif %}
+                    </ul>
                 </div>
             </div>
         </div>

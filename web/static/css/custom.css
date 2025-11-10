@@ -644,6 +644,7 @@ pre.plainJSON{
   color: #1a1071;
 }
 
+.organizations-list .product-info,
 .projects-list .product-info {
   margin-left: 10px;
 }
@@ -658,7 +659,6 @@ pre.plainJSON{
 .products-list .product-vendors-title {
   font-size: 13px;
 }
-
 
 .view-item {
     padding: 10px;

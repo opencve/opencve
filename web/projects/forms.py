@@ -24,6 +24,12 @@ class ProjectForm(forms.ModelForm):
         self.request = kwargs.pop("request")
         super(ProjectForm, self).__init__(*args, **kwargs)
 
+        # Add help text to name field only when editing
+        if self.instance and not self.instance._state.adding:
+            self.fields["name"].help_text = (
+                "Renaming the project will break any external links to it, as the URL changes."
+            )
+
         self.helper = FormHelper()
         self.helper.layout = Layout(
             "name",
@@ -48,10 +54,6 @@ class ProjectForm(forms.ModelForm):
         # Check if the project is not a reserved keyword
         if name in ("add",):
             raise forms.ValidationError("This project is reserved.")
-
-        # In case of update, check if the user tried to change the name
-        if (bool(self.instance.name)) and (self.instance.name != name):
-            raise forms.ValidationError("Existing projects can't be renamed.")
 
         # Check if the project already exists for this user
         if self.instance.name != name:

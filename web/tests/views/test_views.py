@@ -38,20 +38,24 @@ def test_views_is_org_members(
     )
     assert response.status_code == 200
 
-    # User2 is not member of the organization, so 404
+    # User2 is not member of the organization, so redirect to list_organizations
     client = auth_client(user2)
     response = client.get(reverse("list_views", kwargs={"org_name": "org1"}))
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
     response = client.get(reverse("create_view", kwargs={"org_name": "org1"}))
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
     response = client.get(
         reverse("update_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
     response = client.get(
         reverse("delete_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
 
 def test_views_not_found(create_organization, create_user, create_view, auth_client):
@@ -66,13 +70,16 @@ def test_views_not_found(create_organization, create_user, create_view, auth_cli
 
     client = auth_client(user)
     response = client.get(reverse("list_views", kwargs={"org_name": "404"}))
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
     response = client.get(reverse("create_view", kwargs={"org_name": "404"}))
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
     response = client.get(
         reverse("update_view", kwargs={"org_name": "404", "view_id": str(uuid.uuid4())})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
     response = client.get(
         reverse("update_view", kwargs={"org_name": "org", "view_id": str(uuid.uuid4())})
     )
@@ -80,7 +87,8 @@ def test_views_not_found(create_organization, create_user, create_view, auth_cli
     response = client.get(
         reverse("delete_view", kwargs={"org_name": "404", "view_id": str(uuid.uuid4())})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
     response = client.get(
         reverse("delete_view", kwargs={"org_name": "org", "view_id": str(uuid.uuid4())})
     )
@@ -263,12 +271,13 @@ def test_update_view_permissions(
     )
     assert response.status_code == 200
 
-    # User2 is not member of the org, so it can't update the view
+    # User2 is not member of the org, so redirect to list_organizations
     client = auth_client(user2)
     response = client.get(
         reverse("update_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
     # User3 is member of the org, but the view is private, so he can't update it
     client = auth_client(user3)
@@ -341,12 +350,13 @@ def test_delete_view_permissions(
     )
     assert response.status_code == 200
 
-    # User2 is not member of the org, so it can't delete the view
+    # User2 is not member of the org, so redirect to list_organizations
     client = auth_client(user2)
     response = client.get(
         reverse("delete_view", kwargs={"org_name": "org1", "view_id": view.id})
     )
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
 
     # User3 is member of the org, but the view is private, so he can't delete it
     client = auth_client(user3)
