@@ -25,10 +25,21 @@ class ProjectForm(forms.ModelForm):
         super(ProjectForm, self).__init__(*args, **kwargs)
 
         self.helper = FormHelper()
-        self.helper.layout = Layout(
+        layout = [
             "name",
             "description",
             "active",
+        ]
+
+        # Add help message only when editing (instance exists)
+        if self.instance.pk:
+            layout.append(
+                HTML(
+                    '<p class="help-block" style="font-size: 13px;">* Renaming the project will break any external links to it, as the URL changes.</p>'
+                )
+            )
+
+        layout.append(
             FormActions(
                 HTML(
                     """
@@ -39,8 +50,10 @@ class ProjectForm(forms.ModelForm):
                 ),
                 Submit("save", "Save"),
                 css_class="pull-right",
-            ),
+            )
         )
+
+        self.helper.layout = Layout(*layout)
 
     def clean_name(self):
         name = self.cleaned_data["name"]
@@ -48,10 +61,6 @@ class ProjectForm(forms.ModelForm):
         # Check if the project is not a reserved keyword
         if name in ("add",):
             raise forms.ValidationError("This project is reserved.")
-
-        # In case of update, check if the user tried to change the name
-        if (bool(self.instance.name)) and (self.instance.name != name):
-            raise forms.ValidationError("Existing projects can't be renamed.")
 
         # Check if the project already exists for this user
         if self.instance.name != name:

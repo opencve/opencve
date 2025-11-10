@@ -28,7 +28,12 @@ class OrganizationsListView(LoginRequiredMixin, ListView):
     template_name = "organizations/list_organizations.html"
 
     def get_queryset(self):
-        query = Membership.objects.filter(user=self.request.user).all()
+        query = (
+            Membership.objects.filter(user=self.request.user)
+            .select_related("organization")
+            .prefetch_related("organization__membership_set__user")
+            .all()
+        )
         return query.order_by("organization__name")
 
 
@@ -71,11 +76,6 @@ class OrganizationEditView(
     slug_url_kwarg = "org_name"
     context_object_name = "organization"
 
-    def get_form(self, form_class=None):
-        form = super().get_form()
-        form.fields["name"].disabled = True
-        return form
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["members"] = Membership.objects.filter(
@@ -87,7 +87,7 @@ class OrganizationEditView(
     def get_success_url(self):
         return reverse(
             "edit_organization",
-            kwargs={"org_name": self.request.current_organization.name},
+            kwargs={"org_name": self.object.name},
         )
 
 

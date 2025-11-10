@@ -54,7 +54,7 @@ def test_project_form_update_instance(create_organization, create_project):
         request=request,
         instance=project,
     )
-    assert form.errors == {"name": ["Existing projects can't be renamed."]}
+    assert form.errors == {}
 
 
 def test_project_form_name_already_exists(create_organization, create_project):
