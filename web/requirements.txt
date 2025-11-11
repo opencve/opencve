@@ -1,6 +1,4 @@
-django==5.2.7
-django[argon2]==5.2.7
-django[bcrypt]==5.2.7
+django[argon2,bcrypt]==5.2.8
 django-crispy-forms==2.3
 django-environ==0.11.2
 django-extensions==3.2.3
