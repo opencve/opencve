@@ -1,11 +1,11 @@
 import importlib
+import json
 
-from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import Prefetch, Q
-from django.http import Http404
-from django.shortcuts import get_object_or_404, redirect, render
+from django.db.models import Count, Prefetch
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
     CreateView,
@@ -13,6 +13,7 @@ from django.views.generic import (
     DetailView,
     ListView,
     UpdateView,
+    View,
 )
 
 from changes.models import Change, Report
@@ -22,9 +23,10 @@ from organizations.mixins import (
     OrganizationIsMemberMixin,
     OrganizationIsOwnerMixin,
 )
-from projects.forms import FORM_MAPPING, ProjectForm
+from projects.forms import FORM_MAPPING, ProjectForm, CveTrackerFilterForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
-from projects.models import Notification, Project
+from projects.models import Notification, Project, CveTracker
+from users.models import User
 
 NOTIFICATION_TYPES = [
     "cpes",
@@ -62,6 +64,48 @@ class ProjectDetailView(
     model = Project
     template_name = "projects/dashboard.html"
 
+    def _get_cve_tracking_stats(self):
+        # Assignee statistics
+        assignee_stats = (
+            CveTracker.objects.filter(project=self.project)
+            .exclude(assignee__isnull=True)
+            .values("assignee__username", "assignee__id")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:10]
+        )
+
+        # Status statistics
+        status_stats = (
+            CveTracker.objects.filter(project=self.project)
+            .exclude(status__isnull=True)
+            .values("status")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
+
+        # Prepare status display names
+        status_choices_dict = dict(CveTracker.STATUS_CHOICES)
+        status_stats_dict = {}
+        for stat in status_stats:
+            status_stats_dict[stat["status"]] = {
+                "status": stat["status"],
+                "status_display": status_choices_dict.get(
+                    stat["status"], stat["status"]
+                ),
+                "count": stat["count"],
+            }
+
+        # Order status stats
+        status_stats_with_labels = []
+        for status_key, status_label in CveTracker.STATUS_CHOICES:
+            if status_key in status_stats_dict:
+                status_stats_with_labels.append(status_stats_dict[status_key])
+
+        return {
+            "assignee_stats": assignee_stats,
+            "status_stats": status_stats_with_labels,
+        }
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
@@ -75,6 +119,7 @@ class ProjectDetailView(
             query = Change.objects.select_related("cve")
             query = query.filter(cve__vendors__has_any_keys=vendors)
             context["changes"] = query.all().order_by("-created_at")[:10]
+            context["cve_tracking_stats"] = self._get_cve_tracking_stats()
 
         # Last reports
         query = (
@@ -165,11 +210,62 @@ class ProjectVulnerabilitiesView(
         if not vendors:
             return self.model.objects.none()
 
-        return Cve.objects.order_by("-updated_at").filter(vendors__has_any_keys=vendors)
+        queryset = (
+            Cve.objects.select_related()
+            .prefetch_related(
+                Prefetch(
+                    "trackers",
+                    queryset=CveTracker.objects.filter(
+                        project=self.project
+                    ).select_related("assignee"),
+                    to_attr="project_trackers",
+                )
+            )
+            .filter(vendors__has_any_keys=vendors)
+            .order_by("-updated_at")
+        )
+
+        # Apply filters
+        assignee_username = self.request.GET.get("assignee")
+        status = self.request.GET.get("status")
+
+        if assignee_username:
+            queryset = queryset.filter(
+                trackers__project=self.project,
+                trackers__assignee__username=assignee_username,
+            )
+
+        if status:
+            queryset = queryset.filter(
+                trackers__project=self.project, trackers__status=status
+            )
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
+
+        # Add filter form
+        filter_form = CveTrackerFilterForm(
+            data=self.request.GET or None,
+            organization=self.request.current_organization,
+        )
+        context["filter_form"] = filter_form
+
+        # Add organization members for dropdowns
+        context["organization_members"] = (
+            User.objects.filter(
+                membership__organization=self.request.current_organization,
+                membership__date_joined__isnull=False,
+            )
+            .distinct()
+            .order_by("username")
+        )
+
+        # Add status choices
+        context["status_choices"] = CveTracker.STATUS_CHOICES
+
         return context
 
 
@@ -450,4 +546,106 @@ class NotificationDeleteView(
                 "org_name": self.request.current_organization.name,
                 "project_name": self.project.name,
             },
+        )
+
+
+class AssignCveUserView(
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+):
+    """AJAX endpoint to assign a user to a CVE"""
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"success": False, "error": "Invalid JSON payload"}, status=400
+            )
+
+        cve_id = data.get("cve_id")
+        assignee_id = data.get("assignee_id")
+
+        # Get the CVE
+        cve = get_object_or_404(Cve, cve_id=cve_id)
+
+        # Get assignee if provided
+        assignee = None
+        if assignee_id:
+            assignee = get_object_or_404(
+                User,
+                id=assignee_id,
+                membership__organization=self.request.current_organization,
+                membership__date_joined__isnull=False,
+            )
+
+        # Update tracker (will delete if no status and no assignee)
+        tracker = CveTracker.update_tracker(
+            project=self.project, cve=cve, assignee=assignee
+        )
+
+        if tracker is None:
+            return JsonResponse(
+                {
+                    "success": True,
+                    "assignee_username": None,
+                    "status": None,
+                }
+            )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "assignee_username": (
+                    tracker.assignee.username if tracker.assignee else None
+                ),
+                "status": tracker.get_status_display() if tracker.status else None,
+            }
+        )
+
+
+class UpdateCveStatusView(
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+):
+    """AJAX endpoint to update CVE status"""
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"success": False, "error": "Invalid JSON payload"}, status=400
+            )
+
+        cve_id = data.get("cve_id")
+        status = data.get("status")
+
+        # Validate status (allow None/empty to clear status)
+        if status:
+            valid_statuses = [choice[0] for choice in CveTracker.STATUS_CHOICES]
+            if status not in valid_statuses:
+                return JsonResponse(
+                    {"success": False, "error": "Invalid status"}, status=400
+                )
+
+        # Get the CVE
+        cve = get_object_or_404(Cve, cve_id=cve_id)
+
+        # Update tracker (will delete if no status and no assignee)
+        tracker = CveTracker.update_tracker(
+            project=self.project, cve=cve, status=status
+        )
+
+        if tracker is None:
+            return JsonResponse(
+                {
+                    "success": True,
+                    "status": None,
+                }
+            )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "status": tracker.get_status_display() if tracker.status else None,
+            }
         )

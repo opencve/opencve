@@ -1,0 +1,53 @@
+{% load opencve_extras %}
+
+{% if trackers %}
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>CVE</th>
+                <th class="text-center">Project</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">CVSS</th>
+                <th class="text-center">Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tracker in trackers %}
+            <tr class="cve-header">
+                <td>
+                    <a href="{% url 'cve' cve_id=tracker.cve.cve_id %}">{{ tracker.cve.cve_id }}</a>
+                </td>
+                <td class="text-center">
+                    <a href="{% url 'project' org_name=request.current_organization.name project_name=tracker.project.name %}">{{ tracker.project.name }}</a>
+                </td>
+                <td class="text-center">
+                    {% if tracker.status %}
+                    <span class="badge-modern badge-modern-status {{ tracker.status }}">{{ tracker.get_status_display }}</span>
+                    {% else %}
+                    <span class="badge-modern badge-modern-status-empty">No status</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    {% if tracker.cve.cvssV3_1 %}
+                    <span class="label label-{{ tracker.cve.cvssV3_1.score|cvss_level }}">{{ tracker.cve.cvssV3_1.score }}</span>
+                    {% else %}
+                    <span class="label label-default">N/A</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <small>{{ tracker.cve.updated_at|date:"d/m" }}</small>
+                </td>
+            </tr>
+            <tr class="cve-summary">
+                <td colspan="5" class="cve-description-cell">
+                    <small class="text-muted">{{ tracker.cve.description }}</small>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="alert alert-info">No CVEs found.</p>
+{% endif %}

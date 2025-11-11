@@ -4,7 +4,10 @@ from unittest.mock import patch, MagicMock
 from datetime import date
 
 import pytest
+from django.utils import timezone
 from changes.models import Change, Report
+from organizations.models import Membership
+from projects.models import CveTracker
 from users.models import UserTag
 
 from dashboards.widgets import (
@@ -17,6 +20,8 @@ from dashboards.widgets import (
     TagsWidget,
     ProjectsWidget,
     LastReportsWidget,
+    MyAssignedCvesWidget,
+    AssignmentCvesWidget,
 )
 
 
@@ -1171,3 +1176,536 @@ def test_last_reports_widget_index(
     assert actual_organization == org1
     assert list(actual_reports) == [report_new_org1, report_old_org1]
     assert report_org2 not in actual_reports
+
+
+# MyAssignedCvesWidget class
+
+
+@pytest.mark.django_db
+def test_my_assigned_cves_widget_index(
+    create_user,
+    create_organization,
+    create_project,
+    create_cve,
+):
+    """
+    Test MyAssignedCvesWidget.index to ensure only CVEs assigned to the current user
+    across organization projects are returned.
+    """
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+    org1 = create_organization(name="org1", owner=user1)
+    org2 = create_organization(name="org2", owner=user2)
+
+    project1_org1 = create_project(name="Project1 Org1", organization=org1, active=True)
+    project2_org1 = create_project(name="Project2 Org1", organization=org1, active=True)
+    project1_org2 = create_project(name="Project1 Org2", organization=org2, active=True)
+
+    cve1 = create_cve("CVE-2021-34181")
+    cve2 = create_cve("CVE-2022-20698")
+    cve3 = create_cve("CVE-2023-22490")
+    cve4 = create_cve("CVE-2024-31331")
+
+    # Create trackers: user1 assigned to cve1 and cve2 in org1 projects
+    CveTracker.update_tracker(
+        project=project1_org1, cve=cve1, assignee=user1, status="to_evaluate"
+    )
+    CveTracker.update_tracker(
+        project=project2_org1, cve=cve2, assignee=user1, status="pending_review"
+    )
+    # user2 assigned to cve3 in org1 (should not appear for user1)
+    CveTracker.update_tracker(
+        project=project1_org1, cve=cve3, assignee=user2, status="to_evaluate"
+    )
+    # user1 assigned to cve4 in org2 (should not appear, different org)
+    CveTracker.update_tracker(
+        project=project1_org2, cve=cve4, assignee=user1, status="to_evaluate"
+    )
+
+    mock_request = MagicMock()
+    mock_request.user = user1
+    mock_request.current_organization = org1
+
+    widget = MyAssignedCvesWidget(
+        mock_request,
+        {
+            "id": "a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6",
+            "type": "my_assignment_cves",
+            "title": "My Assigned CVEs",
+            "config": {},
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.index()
+
+    # Assertions
+    mock_render.assert_called_once()
+
+    actual_call_args, _ = mock_render.call_args
+    actual_template_name = actual_call_args[0]
+    assert actual_template_name == "dashboards/widgets/my_assignment_cves/index.html"
+
+    actual_context = actual_call_args[1]
+    actual_trackers = actual_context.pop("trackers")
+    assert actual_context == {
+        "widget_id": "a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6",
+        "widget_type": "my_assignment_cves",
+        "title": "My Assigned CVEs",
+        "config": {},
+        "request": mock_request,
+    }
+
+    # Verify only trackers for CVEs assigned to user1 in org1 are returned
+    returned_cve_ids = {t.cve.cve_id for t in actual_trackers}
+    assert cve1.cve_id in returned_cve_ids
+    assert cve2.cve_id in returned_cve_ids
+    assert cve3.cve_id not in returned_cve_ids  # Assigned to user2
+    assert cve4.cve_id not in returned_cve_ids  # Different organization
+
+
+# AssignmentCvesWidget class
+
+
+@pytest.mark.django_db
+def test_assignment_cves_widget_validate_config(
+    create_user,
+    create_organization,
+    create_project,
+):
+    """
+    Test AssignmentCvesWidget.validate_config for various scenarios:
+    - Invalid assignee_id format
+    - Assignee not found or not in organization
+    - Invalid status
+    - Invalid project_id format
+    - Project not found or inactive
+    """
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+    org1 = create_organization(name="org1", user=user1)
+    org2 = create_organization(name="org2", user=user2)
+
+    project1_org1 = create_project(name="project1", organization=org1, active=True)
+    project2_org1 = create_project(name="project2", organization=org1, active=False)
+    project1_org2 = create_project(name="project3", organization=org2, active=True)
+
+    mock_request = MagicMock()
+    mock_request.user = user1
+    mock_request.current_organization = org1
+
+    widget = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "b1c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {"assignee_id": "", "status": "", "project_id": ""},
+        },
+    )
+
+    # Valid empty config
+    assert widget.validate_config({}) == {
+        "assignee_id": "",
+        "status": "",
+        "project_id": "",
+    }
+
+    # Invalid assignee_id format (not UUID)
+    with pytest.raises(ValueError, match=re.escape("Invalid assignee ID (not-a-uuid)")):
+        widget.validate_config(
+            {"assignee_id": "not-a-uuid", "status": "", "project_id": ""}
+        )
+
+    # Assignee not found
+    non_existent_uuid = str(uuid.uuid4())
+    with pytest.raises(
+        ValueError, match=re.escape(f"Assignee not found ({non_existent_uuid})")
+    ):
+        widget.validate_config(
+            {"assignee_id": non_existent_uuid, "status": "", "project_id": ""}
+        )
+
+    # Assignee in different organization (user2 is not member of org1 yet)
+    with pytest.raises(ValueError, match=re.escape(f"Assignee not found ({user2.id})")):
+        widget.validate_config(
+            {"assignee_id": str(user2.id), "status": "", "project_id": ""}
+        )
+
+    # Valid assignee_id (user1 is owner of org1)
+    valid_config_assignee = widget.validate_config(
+        {"assignee_id": str(user1.id), "status": "", "project_id": ""}
+    )
+    assert valid_config_assignee == {
+        "assignee_id": str(user1.id),
+        "status": "",
+        "project_id": "",
+    }
+
+    # Now add user2 as member of org1 and test again
+    Membership.objects.create(
+        user=user2,
+        organization=org1,
+        role=Membership.MEMBER,
+        date_invited=timezone.now(),
+        date_joined=timezone.now(),
+    )
+
+    # Valid assignee_id for user2 (now member of org1)
+    valid_config_assignee_user2 = widget.validate_config(
+        {"assignee_id": str(user2.id), "status": "", "project_id": ""}
+    )
+    assert valid_config_assignee_user2 == {
+        "assignee_id": str(user2.id),
+        "status": "",
+        "project_id": "",
+    }
+
+    # Invalid status
+    with pytest.raises(ValueError, match=re.escape("Invalid status (invalid_status)")):
+        widget.validate_config(
+            {"assignee_id": "", "status": "invalid_status", "project_id": ""}
+        )
+
+    # Valid status
+    valid_config_status = widget.validate_config(
+        {"assignee_id": "", "status": "to_evaluate", "project_id": ""}
+    )
+    assert valid_config_status == {
+        "assignee_id": "",
+        "status": "to_evaluate",
+        "project_id": "",
+    }
+
+    # Invalid project_id format
+    with pytest.raises(ValueError, match=re.escape("Invalid project ID (not-a-uuid)")):
+        widget.validate_config(
+            {"assignee_id": "", "status": "", "project_id": "not-a-uuid"}
+        )
+
+    # Project not found
+    non_existent_project_uuid = str(uuid.uuid4())
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"Project not found ({non_existent_project_uuid})"),
+    ):
+        widget.validate_config(
+            {
+                "assignee_id": "",
+                "status": "",
+                "project_id": non_existent_project_uuid,
+            }
+        )
+
+    # Project in different organization
+    with pytest.raises(
+        ValueError, match=re.escape(f"Project not found ({project1_org2.id})")
+    ):
+        widget.validate_config(
+            {"assignee_id": "", "status": "", "project_id": str(project1_org2.id)}
+        )
+
+    # Inactive project
+    with pytest.raises(
+        ValueError, match=re.escape(f"Inactive project ({project2_org1.id})")
+    ):
+        widget.validate_config(
+            {"assignee_id": "", "status": "", "project_id": str(project2_org1.id)}
+        )
+
+    # Valid project_id
+    valid_config_project = widget.validate_config(
+        {"assignee_id": "", "status": "", "project_id": str(project1_org1.id)}
+    )
+    assert valid_config_project == {
+        "assignee_id": "",
+        "status": "",
+        "project_id": str(project1_org1.id),
+    }
+
+    # Valid config with all fields
+    valid_config_all = widget.validate_config(
+        {
+            "assignee_id": str(user1.id),
+            "status": "resolved",
+            "project_id": str(project1_org1.id),
+        }
+    )
+    assert valid_config_all == {
+        "assignee_id": str(user1.id),
+        "status": "resolved",
+        "project_id": str(project1_org1.id),
+    }
+
+
+@pytest.mark.django_db
+def test_assignment_cves_widget_config(
+    create_user,
+    create_organization,
+    create_project,
+):
+    """
+    Test AssignmentCvesWidget.config to ensure correct members, projects,
+    and status choices are passed to the config template.
+    """
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+    org1 = create_organization(name="org1", user=user1)
+    org2 = create_organization(name="org2", user=user2)
+
+    project_active_org1 = create_project(
+        name="Active Org1", organization=org1, active=True
+    )
+    project_inactive_org1 = create_project(
+        name="Inactive Org1", organization=org1, active=False
+    )
+    project_active_org2 = create_project(
+        name="Active Org2", organization=org2, active=True
+    )
+
+    # Add user2 as member of org1 for testing
+    Membership.objects.create(
+        user=user2,
+        organization=org1,
+        role=Membership.MEMBER,
+        date_invited=timezone.now(),
+        date_joined=timezone.now(),
+    )
+
+    mock_request = MagicMock()
+    mock_request.user = user1
+    mock_request.current_organization = org1
+
+    widget = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "c1d2e3f4-a5b6-c7d8-e9f0-a1b2c3d4e5f6",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment Config",
+            "config": {"assignee_id": "", "status": "", "project_id": ""},
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.config()
+
+    # Assertions
+    mock_render.assert_called_once()
+
+    actual_call_args, _ = mock_render.call_args
+    actual_template_name = actual_call_args[0]
+    assert actual_template_name == "dashboards/widgets/assignment_cves/config.html"
+
+    actual_context = actual_call_args[1]
+    actual_members = actual_context.pop("members")
+    actual_projects = actual_context.pop("projects")
+    actual_status_choices = actual_context.pop("status_choices")
+    assert actual_context == {
+        "widget_id": "c1d2e3f4-a5b6-c7d8-e9f0-a1b2c3d4e5f6",
+        "widget_type": "assignment_cves",
+        "title": "CVEs by Assignment Config",
+        "config": widget.configuration,
+        "request": mock_request,
+    }
+
+    # Verify only active project from org1 is passed
+    assert list(actual_projects) == [project_active_org1]
+    returned_project_ids = {p.id for p in actual_projects}
+    assert project_inactive_org1.id not in returned_project_ids
+    assert project_active_org2.id not in returned_project_ids
+
+    # Verify members from org1 are included
+    returned_member_ids = {m.id for m in actual_members}
+    assert user1.id in returned_member_ids
+    assert user2.id in returned_member_ids  # user2 is member of org1
+
+    # Verify status choices are passed
+    assert actual_status_choices == CveTracker.STATUS_CHOICES
+
+
+@pytest.mark.django_db
+def test_assignment_cves_widget_index(
+    create_user,
+    create_organization,
+    create_project,
+    create_cve,
+):
+    """
+    Test AssignmentCvesWidget.index to ensure CVEs are filtered correctly
+    by assignee, status, and project.
+    """
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+    org1 = create_organization(name="org1", user=user1)
+
+    project1 = create_project(name="Project1", organization=org1, active=True)
+    project2 = create_project(name="Project2", organization=org1, active=True)
+
+    # Add user2 as member of org1 for testing
+    Membership.objects.create(
+        user=user2,
+        organization=org1,
+        role=Membership.MEMBER,
+        date_invited=timezone.now(),
+        date_joined=timezone.now(),
+    )
+
+    cve1 = create_cve("CVE-2021-34181")
+    cve2 = create_cve("CVE-2022-20698")
+    cve3 = create_cve("CVE-2023-22490")
+    cve4 = create_cve("CVE-2024-31331")
+
+    # Create trackers with different combinations
+    CveTracker.update_tracker(
+        project=project1, cve=cve1, assignee=user1, status="to_evaluate"
+    )
+    CveTracker.update_tracker(
+        project=project1, cve=cve2, assignee=user1, status="resolved"
+    )
+    CveTracker.update_tracker(
+        project=project1, cve=cve3, assignee=user2, status="to_evaluate"
+    )
+    CveTracker.update_tracker(
+        project=project2, cve=cve4, assignee=user1, status="to_evaluate"
+    )
+
+    mock_request = MagicMock()
+    mock_request.user = user1
+    mock_request.current_organization = org1
+
+    # Test with no filters (all CVEs in organization)
+    widget = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {"assignee_id": "", "status": "", "project_id": ""},
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.index()
+
+    mock_render.assert_called_once()
+    actual_call_args, _ = mock_render.call_args
+    actual_context = actual_call_args[1]
+    actual_trackers = actual_context.pop("trackers")
+    returned_cve_ids = {t.cve.cve_id for t in actual_trackers}
+
+    assert cve1.cve_id in returned_cve_ids
+    assert cve2.cve_id in returned_cve_ids
+    assert cve3.cve_id in returned_cve_ids
+    assert cve4.cve_id in returned_cve_ids
+
+    # Test with assignee filter
+    widget_assignee = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {
+                "assignee_id": str(user1.id),
+                "status": "",
+                "project_id": "",
+            },
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render_assignee:
+        widget_assignee.index()
+
+    actual_call_args_assignee, _ = mock_render_assignee.call_args
+    actual_context_assignee = actual_call_args_assignee[1]
+    actual_trackers_assignee = actual_context_assignee.pop("trackers")
+    returned_cve_ids_assignee = {t.cve.cve_id for t in actual_trackers_assignee}
+
+    assert cve1.cve_id in returned_cve_ids_assignee
+    assert cve2.cve_id in returned_cve_ids_assignee
+    assert cve4.cve_id in returned_cve_ids_assignee
+    assert cve3.cve_id not in returned_cve_ids_assignee  # Assigned to user2
+
+    # Test with status filter
+    widget_status = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {
+                "assignee_id": "",
+                "status": "to_evaluate",
+                "project_id": "",
+            },
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render_status:
+        widget_status.index()
+
+    actual_call_args_status, _ = mock_render_status.call_args
+    actual_context_status = actual_call_args_status[1]
+    actual_trackers_status = actual_context_status.pop("trackers")
+    returned_cve_ids_status = {t.cve.cve_id for t in actual_trackers_status}
+
+    assert cve1.cve_id in returned_cve_ids_status
+    assert cve3.cve_id in returned_cve_ids_status
+    assert cve4.cve_id in returned_cve_ids_status
+    assert cve2.cve_id not in returned_cve_ids_status  # Status is "resolved"
+
+    # Test with project filter
+    widget_project = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {
+                "assignee_id": "",
+                "status": "",
+                "project_id": str(project1.id),
+            },
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render_project:
+        widget_project.index()
+
+    actual_call_args_project, _ = mock_render_project.call_args
+    actual_context_project = actual_call_args_project[1]
+    actual_trackers_project = actual_context_project.pop("trackers")
+    returned_cve_ids_project = {t.cve.cve_id for t in actual_trackers_project}
+
+    assert cve1.cve_id in returned_cve_ids_project
+    assert cve2.cve_id in returned_cve_ids_project
+    assert cve3.cve_id in returned_cve_ids_project
+    assert cve4.cve_id not in returned_cve_ids_project  # In project2
+
+    # Test with all filters combined
+    widget_all = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "b1c2d3e4-f5a6-b7c8-d9e0-f1a2b3c4d5e6",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {
+                "assignee_id": str(user1.id),
+                "status": "to_evaluate",
+                "project_id": str(project1.id),
+            },
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render_all:
+        widget_all.index()
+
+    actual_call_args_all, _ = mock_render_all.call_args
+    actual_context_all = actual_call_args_all[1]
+    actual_trackers_all = actual_context_all.pop("trackers")
+    returned_cve_ids_all = {t.cve.cve_id for t in actual_trackers_all}
+
+    assert cve1.cve_id in returned_cve_ids_all
+    assert cve2.cve_id not in returned_cve_ids_all  # Status is "resolved"
+    assert cve3.cve_id not in returned_cve_ids_all  # Assigned to user2
+    assert cve4.cve_id not in returned_cve_ids_all  # In project2

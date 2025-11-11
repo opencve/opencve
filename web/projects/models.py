@@ -97,3 +97,74 @@ class Notification(BaseModel):
                 "org_name": self.project.organization.name,
             },
         )
+
+
+class CveTracker(BaseModel):
+    """Track CVE assignments and status within projects"""
+
+    STATUS_CHOICES = [
+        ("to_evaluate", "To evaluate"),
+        ("pending_review", "Pending review"),
+        ("analysis_in_progress", "Analysis in progress"),
+        ("remediation_in_progress", "Remediation in progress"),
+        ("evaluated", "Evaluated"),
+        ("resolved", "Resolved"),
+        ("not_applicable", "Not applicable"),
+        ("risk_accepted", "Risk accepted"),
+    ]
+
+    status = models.CharField(
+        max_length=32, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    # Relationships
+    cve = models.ForeignKey(
+        "cves.Cve", on_delete=models.CASCADE, related_name="trackers"
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="cve_trackers"
+    )
+    assignee = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="assigned_cves",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        db_table = "opencve_cve_trackers"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cve", "project"],
+                name="ix_unique_cve_project_tracker",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.cve.cve_id} - {self.project.name}"
+
+    @classmethod
+    def update_tracker(cls, project, cve, assignee=Ellipsis, status=Ellipsis):
+        """
+        Get or create a tracker, update assignee and/or status,
+        and delete it if both are empty.
+        """
+        tracker, _ = cls.objects.get_or_create(cve=cve, project=project)
+
+        # Update assignee if provided (None means clear, Ellipsis means skip)
+        if assignee is not Ellipsis:
+            tracker.assignee = assignee
+
+        # Update status if provided (None or empty string means clear, Ellipsis means skip)
+        if status is not Ellipsis:
+            tracker.status = status if status else None
+
+        # If tracker has no status and no assignee, delete it
+        if not tracker.status and not tracker.assignee:
+            tracker.delete()
+            return None
+
+        tracker.save()
+        return tracker

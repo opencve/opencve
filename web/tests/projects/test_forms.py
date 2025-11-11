@@ -1,8 +1,16 @@
 from unittest.mock import Mock
 
 import pytest
+from django.utils.timezone import now
 
-from projects.forms import EmailForm, WebhookForm, NotificationForm, ProjectForm
+from organizations.models import Membership
+from projects.forms import (
+    EmailForm,
+    WebhookForm,
+    NotificationForm,
+    ProjectForm,
+    CveTrackerFilterForm,
+)
 
 
 def test_project_form_valid(create_organization):
@@ -274,3 +282,172 @@ def test_webhook_notification_valid_headers(
         assert form.errors == {
             "headers": ["HTTP headers must be in a simple key-value format"]
         }
+
+
+def test_cve_tracker_filter_form_valid_empty(create_organization):
+    """Test that form is valid with no data"""
+    org = create_organization(name="my-orga")
+    form = CveTrackerFilterForm(data={}, organization=org)
+    assert form.errors == {}
+    assert form.is_valid()
+
+
+def test_cve_tracker_filter_form_valid_with_assignee(create_organization, create_user):
+    """Test that form is valid with assignee only"""
+    user = create_user(username="testuser")
+    org = create_organization(name="my-orga-with-member", user=user)
+
+    form = CveTrackerFilterForm(
+        data={"assignee": user.username},
+        organization=org,
+    )
+    assert form.errors == {}
+    assert form.is_valid()
+
+
+def test_cve_tracker_filter_form_valid_with_status(create_organization):
+    """Test that form is valid with status only"""
+    org = create_organization(name="my-orga")
+    form = CveTrackerFilterForm(
+        data={"status": "to_evaluate"},
+        organization=org,
+    )
+    assert form.errors == {}
+    assert form.is_valid()
+
+
+def test_cve_tracker_filter_form_valid_with_both(create_organization, create_user):
+    """Test that form is valid with both assignee and status"""
+    user = create_user(username="testuser")
+    org = create_organization(name="my-orga-with-member", user=user)
+
+    form = CveTrackerFilterForm(
+        data={"assignee": user.username, "status": "pending_review"},
+        organization=org,
+    )
+    assert form.errors == {}
+    assert form.is_valid()
+
+
+def test_cve_tracker_filter_form_assignee_queryset_filtered_by_organization(
+    create_organization, create_user
+):
+    """Test that assignee choices only contain members of the organization"""
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+    user3 = create_user(username="user3")
+
+    org1 = create_organization(name="org1", user=user1)
+    org2 = create_organization(name="org2", user=user2)
+    # user3 is not a member of any organization
+
+    form = CveTrackerFilterForm(organization=org1)
+    assignee_usernames = [
+        choice[0] for choice in form.fields["assignee"].choices if choice[0]
+    ]
+
+    assert user1.username in assignee_usernames
+    assert user2.username not in assignee_usernames
+    assert user3.username not in assignee_usernames
+
+    form = CveTrackerFilterForm(organization=org2)
+    assignee_usernames = [
+        choice[0] for choice in form.fields["assignee"].choices if choice[0]
+    ]
+
+    assert user1.username not in assignee_usernames
+    assert user2.username in assignee_usernames
+    assert user3.username not in assignee_usernames
+
+
+def test_cve_tracker_filter_form_assignee_queryset_empty_without_organization():
+    """Test that assignee choices only contain empty option when no organization is provided"""
+    form = CveTrackerFilterForm()
+    # Should only have the empty label choice
+    assert len(form.fields["assignee"].choices) == 0
+
+
+def test_cve_tracker_filter_form_invalid_assignee_from_different_organization(
+    create_organization, create_user
+):
+    """Test that selecting an assignee from a different organization is invalid"""
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+
+    org1 = create_organization(name="org1", user=user1)
+    org2 = create_organization(name="org2", user=user2)
+
+    # Try to use user2 in org1's form
+    form = CveTrackerFilterForm(
+        data={"assignee": user2.username},
+        organization=org1,
+    )
+    assert not form.is_valid()
+    assert "assignee" in form.errors
+
+
+def test_cve_tracker_filter_form_invalid_status(create_organization):
+    """Test that invalid status values are rejected"""
+    org = create_organization(name="my-orga")
+    form = CveTrackerFilterForm(
+        data={"status": "invalid_status"},
+        organization=org,
+    )
+    assert not form.is_valid()
+    assert "status" in form.errors
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "to_evaluate",
+        "pending_review",
+        "analysis_in_progress",
+        "remediation_in_progress",
+        "evaluated",
+        "resolved",
+        "not_applicable",
+        "risk_accepted",
+    ],
+)
+def test_cve_tracker_filter_form_valid_statuses(create_organization, status):
+    """Test that all valid status values are accepted"""
+    org = create_organization(name="my-orga")
+    form = CveTrackerFilterForm(
+        data={"status": status},
+        organization=org,
+    )
+    assert form.errors == {}
+    assert form.is_valid()
+
+
+def test_cve_tracker_filter_form_assignee_queryset_ordered_by_username(
+    create_organization, create_user
+):
+    """Test that assignee choices are ordered by username"""
+    user_c = create_user(username="charlie")
+    user_a = create_user(username="alice")
+    user_b = create_user(username="bob")
+    org = create_organization(name="org", user=user_a)
+
+    # Add multiple users to org
+    Membership.objects.create(
+        user=user_b,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    Membership.objects.create(
+        user=user_c,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    form = CveTrackerFilterForm(organization=org)
+    # Extract usernames from choices (skip empty label)
+    usernames = [choice[0] for choice in form.fields["assignee"].choices if choice[0]]
+
+    assert usernames == ["alice", "bob", "charlie"]

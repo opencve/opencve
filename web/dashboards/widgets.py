@@ -6,7 +6,8 @@ from cves.models import Cve
 from cves.search import Search
 from views.models import View
 from opencve.utils import is_valid_uuid
-from projects.models import Project
+from projects.models import Project, CveTracker
+from users.models import User
 
 
 def list_widgets():
@@ -303,7 +304,7 @@ class LastReportsWidget(Widget):
     id = "last_reports"
     name = "Last Reports"
     description = (
-        "Displays the latest CVE reports generated for your organization’s projects."
+        "Displays the latest CVE reports generated for your organization's projects."
     )
 
     def index(self):
@@ -317,3 +318,129 @@ class LastReportsWidget(Widget):
             .order_by("-day")[:10]
         )
         return self.render_index(organization=organization, reports=reports)
+
+
+class MyAssignedCvesWidget(Widget):
+    id = "my_assignment_cves"
+    name = "My Assigned CVEs"
+    description = "Displays the most recent CVEs assigned to you."
+
+    def index(self):
+        trackers = (
+            CveTracker.objects.filter(
+                assignee=self.request.user,
+                project__organization=self.request.current_organization,
+            )
+            .select_related("cve", "project", "assignee")
+            .order_by("-cve__updated_at")[:20]
+        )
+        return self.render_index(trackers=trackers)
+
+
+class AssignmentCvesWidget(Widget):
+    id = "assignment_cves"
+    name = "CVEs by Assignment"
+    description = "Displays CVEs filtered by project, assignee and status."
+    allowed_config_keys = ["assignee_id", "status", "project_id"]
+    default_config_values = {
+        "assignee_id": "",
+        "status": "",
+        "project_id": "",
+    }
+
+    def validate_config(self, config):
+        cleaned = super().validate_config(config)
+
+        # Validate assignee_id if provided
+        assignee_id = cleaned.get("assignee_id", "")
+        if assignee_id:
+            if not is_valid_uuid(assignee_id):
+                raise ValueError(f"Invalid assignee ID ({assignee_id})")
+
+            # Verify user exists and is organization member
+            user = User.objects.filter(
+                id=assignee_id,
+                membership__organization=self.request.current_organization,
+                membership__date_joined__isnull=False,
+            ).first()
+            if not user:
+                raise ValueError(f"Assignee not found ({assignee_id})")
+
+        # Validate status if provided
+        status = cleaned.get("status", "")
+        if status:
+            valid_statuses = [choice[0] for choice in CveTracker.STATUS_CHOICES]
+            if status not in valid_statuses:
+                raise ValueError(f"Invalid status ({status})")
+
+        # Validate project_id if provided
+        project_id = cleaned.get("project_id", "")
+        if project_id:
+            if not is_valid_uuid(project_id):
+                raise ValueError(f"Invalid project ID ({project_id})")
+
+            # Verify project exists and belongs to organization
+            project = (
+                Project.objects.filter(
+                    id=project_id, organization=self.request.current_organization
+                )
+                .only("active")
+                .first()
+            )
+            if not project:
+                raise ValueError(f"Project not found ({project_id})")
+
+            # Ensure the project is active
+            if not project.active:
+                raise ValueError(f"Inactive project ({project_id})")
+
+        return cleaned
+
+    def config(self):
+        members = (
+            User.objects.filter(
+                membership__organization=self.request.current_organization,
+                membership__date_joined__isnull=False,
+            )
+            .distinct()
+            .order_by("username")
+        )
+
+        projects = Project.objects.filter(
+            organization=self.request.current_organization,
+            active=True,
+        ).order_by("name")
+
+        return self.render_config(
+            members=members,
+            status_choices=CveTracker.STATUS_CHOICES,
+            projects=projects,
+        )
+
+    def index(self):
+        # Build tracker filter conditions
+        tracker_filters = {"project__organization": self.request.current_organization}
+
+        # Apply project filter if provided
+        project_id = self.configuration.get("project_id", "")
+        if project_id:
+            tracker_filters["project_id"] = project_id
+
+        # Apply assignee filter if provided
+        assignee_id = self.configuration.get("assignee_id", "")
+        if assignee_id:
+            tracker_filters["assignee_id"] = assignee_id
+
+        # Apply status filter if provided
+        status = self.configuration.get("status", "")
+        if status:
+            tracker_filters["status"] = status
+
+        # Query trackers directly with all filters
+        trackers = (
+            CveTracker.objects.filter(**tracker_filters)
+            .select_related("cve", "project", "assignee")
+            .order_by("-cve__updated_at")[:20]
+        )
+
+        return self.render_index(trackers=trackers)
