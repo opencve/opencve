@@ -5,7 +5,8 @@ from django import forms
 from django.conf import settings
 
 from cves.constants import CVSS_SCORES
-from projects.models import Notification, Project
+from projects.models import Notification, Project, CveTracker
+from users.models import User
 
 FORM_MAPPING = {
     "email": ["email"],
@@ -105,6 +106,40 @@ class NotificationForm(forms.ModelForm):
 
 class EmailForm(NotificationForm):
     email = forms.EmailField(required=True)
+
+
+class CveTrackerFilterForm(forms.Form):
+    """Form for filtering CVEs by assignee and status"""
+
+    assignee = forms.ChoiceField(
+        choices=[],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control select2-assignee"}),
+    )
+
+    status = forms.ChoiceField(
+        choices=[("", "All statuses")] + CveTracker.STATUS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control select2-status"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        organization = kwargs.pop("organization", None)
+        super().__init__(*args, **kwargs)
+
+        if organization:
+            # Only show organization members in the assignee dropdown
+            members = (
+                User.objects.filter(
+                    membership__organization=organization,
+                    membership__date_joined__isnull=False,
+                )
+                .distinct()
+                .order_by("username")
+            )
+            self.fields["assignee"].choices = [("", "All assignees")] + [
+                (user.username, user.username) for user in members
+            ]
 
 
 class WebhookForm(NotificationForm):

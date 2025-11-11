@@ -72,6 +72,19 @@ function getContrastedColor(str){
     setTagsColor();
     $('.select2').select2({allowClear: true});
     $('#select2-tags').val($('.select2').data("values")).trigger('change');
+    $('.select2-assignee').select2({
+      allowClear: true,
+      placeholder: 'All assignees',
+    });
+    $('.select2-status').select2({
+      allowClear: true,
+      placeholder: 'All statuses',
+    });
+
+  // Handle clear event to ensure it works correctly with empty value
+  $('#id_assignee').on('select2:clear', function() {
+      $(this).val('').trigger('change');
+  });
 
     // Input used to list the user organizations
     $('.select2-organizations').select2({allowClear: false, minimumResultsForSearch: Infinity});
@@ -962,4 +975,295 @@ function getContrastedColor(str){
     });
   }
 
-  });
+  /*
+   CVE Tracking
+  */
+  if ($('#cves-tracking-list').length) {
+    let currentTippy = null;
+
+    // Helper function to get edit icon SVG
+    function getEditIconSVG() {
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    }
+
+    // Initialize assignee badges
+    document.querySelectorAll('.editable-assignee').forEach(function(badge) {
+        const cveId = badge.getAttribute('data-cve-id');
+        const currentAssigneeId = badge.getAttribute('data-current-assignee');
+
+        tippy(badge, {
+            content: createAssigneeMenu(cveId, currentAssigneeId),
+            allowHTML: true,
+            interactive: true,
+            trigger: 'click',
+            placement: 'bottom-start',
+            animation: 'shift-away',
+            theme: 'light-border',
+            maxWidth: 250,
+            onShow(instance) {
+                if (currentTippy && currentTippy !== instance) {
+                    currentTippy.hide();
+                }
+                currentTippy = instance;
+            },
+            onHide() {
+                currentTippy = null;
+            }
+        });
+    });
+
+    // Initialize status badges
+    document.querySelectorAll('.editable-status').forEach(function(badge) {
+        const cveId = badge.getAttribute('data-cve-id');
+        const currentStatus = badge.getAttribute('data-current-status');
+
+        tippy(badge, {
+            content: createStatusMenu(cveId, currentStatus),
+            allowHTML: true,
+            interactive: true,
+            trigger: 'click',
+            placement: 'bottom-start',
+            animation: 'shift-away',
+            theme: 'light-border',
+            maxWidth: 200,
+            onShow(instance) {
+                if (currentTippy && currentTippy !== instance) {
+                    currentTippy.hide();
+                }
+                currentTippy = instance;
+            },
+            onHide() {
+                currentTippy = null;
+            }
+        });
+    });
+
+    function createAssigneeMenu(cveId, currentAssigneeId) {
+        const members = window.cveTrackingData.organizationMembers;
+        let menuHtml = '<div class="floating-menu">';
+
+        // Add unassign option
+        const isUnassigned = !currentAssigneeId || currentAssigneeId === '';
+        menuHtml += `<button class="floating-menu-item unassign ${isUnassigned ? 'selected' : ''}"
+                            data-cve-id="${cveId}" data-assignee-id="">
+                        <i class="fa fa-times"></i> Unassigned
+                     </button>`;
+
+        // Add members
+        members.forEach(function(member) {
+            const isSelected = member.id === currentAssigneeId;
+            menuHtml += `<button class="floating-menu-item ${isSelected ? 'selected' : ''}"
+                                data-cve-id="${cveId}" data-assignee-id="${member.id}">
+                            <i class="fa fa-user"></i> ${member.username}
+                         </button>`;
+        });
+
+        menuHtml += '</div>';
+        return menuHtml;
+    }
+
+    function createStatusMenu(cveId, currentStatus) {
+        const statuses = window.cveTrackingData.statusChoices;
+
+        // Define the desired order for statuses
+        const statusOrder = [
+            'to_evaluate',
+            'pending_review',
+            'analysis_in_progress',
+            'remediation_in_progress',
+            'evaluated',
+            'resolved',
+            'not_applicable',
+            'risk_accepted'
+        ];
+
+        // Sort statuses according to the desired order
+        const sortedStatuses = statuses.slice().sort(function(a, b) {
+            const indexA = statusOrder.indexOf(a.key);
+            const indexB = statusOrder.indexOf(b.key);
+            // If status not found in order, put it at the end
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+
+        let menuHtml = '<div class="floating-menu">';
+
+        // Add "No status" option
+        const isNoStatus = !currentStatus || currentStatus === '';
+        menuHtml += `<button class="floating-menu-item ${isNoStatus ? 'selected' : ''}"
+                            data-cve-id="${cveId}" data-status="">
+                        <i class="fa fa-times"></i> No status
+                     </button>`;
+
+        sortedStatuses.forEach(function(status) {
+            const isSelected = status.key === currentStatus;
+            const badgeClass = getStatusBadgeClass(status.key);
+            menuHtml += `<button class="floating-menu-item ${isSelected ? 'selected' : ''}"
+                                data-cve-id="${cveId}" data-status="${status.key}">
+                            <span class="badge ${badgeClass}" style="margin-right: 8px; font-size: 10px;">${status.label}</span>
+                         </button>`;
+        });
+
+        menuHtml += '</div>';
+        return menuHtml;
+    }
+
+    function getStatusBadgeClass(statusKey) {
+        const statusClasses = {
+            'to_evaluate': 'badge-secondary',
+            'pending_review': 'badge-secondary',
+            'analysis_in_progress': 'badge-info',
+            'remediation_in_progress': 'badge-info',
+            'evaluated': 'badge-success',
+            'resolved': 'badge-success',
+            'not_applicable': 'badge-warning',
+            'risk_accepted': 'badge-warning'
+        };
+        return statusClasses[statusKey] || 'badge-secondary';
+    }
+
+    // Event delegation for menu items
+    $(document).on('click', '.floating-menu-item', function(event) {
+        const menuItem = $(this)[0];
+        const cveId = menuItem.getAttribute('data-cve-id');
+
+        // Handle assignee selection
+        if (menuItem.hasAttribute('data-assignee-id')) {
+            const assigneeId = menuItem.getAttribute('data-assignee-id');
+            assignUser(cveId, assigneeId);
+        }
+
+        // Handle status selection
+        if (menuItem.hasAttribute('data-status')) {
+            const status = menuItem.getAttribute('data-status');
+            updateStatus(cveId, status);
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+    });
+
+    // Global functions for menu actions
+    function assignUser(cveId, assigneeId) {
+        if (currentTippy) {
+            currentTippy.hide();
+        }
+
+        const data = {
+            cve_id: cveId,
+            assignee_id: assigneeId || null
+        };
+
+        fetch(window.cveTrackingData.urls.assignUser, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                updateAssigneeBadge(cveId, assigneeId, data.assignee_username);
+                showSuccessAnimation(cveId);
+            } else {
+                console.error('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    function updateStatus(cveId, status) {
+        if (currentTippy) {
+            currentTippy.hide();
+        }
+
+        const data = {
+            cve_id: cveId,
+            status: status || null  // Send null if empty string to clear status
+        };
+
+        fetch(window.cveTrackingData.urls.updateStatus, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                updateStatusBadge(cveId, status, data.status);
+                showSuccessAnimation(cveId);
+            } else {
+                console.error('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('An error occurred while updating the status:', error);
+        });
+    }
+
+    function updateAssigneeBadge(cveId, assigneeId, assigneeUsername) {
+        const badge = document.querySelector(`[data-cve-id="${cveId}"].editable-assignee`);
+        if (badge) {
+            badge.setAttribute('data-current-assignee', assigneeId || '');
+            const editIcon = getEditIconSVG();
+            if (assigneeId && assigneeUsername) {
+                badge.innerHTML = assigneeUsername + '<span class="edit-icon">' + editIcon + '</span>';
+                badge.className = 'editable-assignee badge badge-info';
+            } else {
+                badge.innerHTML = 'Unassigned<span class="edit-icon">' + editIcon + '</span>';
+                badge.className = 'editable-assignee badge badge-secondary';
+            }
+
+            // Update the tippy content with the new assignee
+            if (badge._tippy) {
+                badge._tippy.setContent(createAssigneeMenu(cveId, assigneeId || ''));
+            }
+        }
+    }
+
+    function updateStatusBadge(cveId, statusKey, statusLabel) {
+        const badge = document.querySelector(`[data-cve-id="${cveId}"].editable-status`);
+        if (badge) {
+            badge.setAttribute('data-current-status', statusKey || '');
+            const editIcon = getEditIconSVG();
+            if (statusKey && statusLabel) {
+                badge.innerHTML = statusLabel + '<span class="edit-icon">' + editIcon + '</span>';
+                const badgeClass = getStatusBadgeClass(statusKey);
+                badge.className = `editable-status badge ${badgeClass}`;
+            } else {
+                badge.innerHTML = 'No status<span class="edit-icon">' + editIcon + '</span>';
+                badge.className = 'editable-status badge badge-secondary';
+            }
+
+            // Update the tippy content with the new status
+            if (badge._tippy) {
+                badge._tippy.setContent(createStatusMenu(cveId, statusKey || ''));
+            }
+        }
+    }
+
+    function showSuccessAnimation(cveId) {
+        const row = document.querySelector(`[data-cve-id="${cveId}"]`).closest('tr');
+        if (row) {
+            row.style.backgroundColor = '#dafbe1';
+            setTimeout(() => {
+                row.style.backgroundColor = '';
+            }, 1500);
+        }
+    }
+
+  }
+
+});

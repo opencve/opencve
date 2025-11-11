@@ -63,6 +63,75 @@
 
     </div>
     <div class="col-md-4">
+        <!-- CVE Tracking Statistics -->
+        {% if cve_tracking_stats %}
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">CVE Tracking Overview</h3>
+                <div class="box-tools pull-right">
+                    <a class="btn btn-box-tool" href="{% url 'project_vulnerabilities' org_name=request.current_organization.name project_name=project.name %}" data-toggle="tooltip" data-container="body" data-placement="left" title="View all vulnerabilities"><i class="fa fa-shield"></i></a>
+                </div>
+            </div>
+            <div class="box-body" id="cves-tracking-stats">
+
+                <!-- Status Statistics -->
+                <div style="margin-bottom: 20px;">
+                    <h4 class="text-small-14">
+                        <i class="fa fa-tasks"></i> Status Breakdown
+                    </h4>
+                    {% if cve_tracking_stats.status_stats %}
+                        <div class="table-responsive">
+                            <table class="table table-condensed" style="margin-bottom: 0;">
+                                {% for stat in cve_tracking_stats.status_stats %}
+                                <tr class="clickable-row" style="cursor: pointer;" data-href="{% url 'project_vulnerabilities' org_name=request.current_organization.name project_name=project.name %}?assignee=&status={{ stat.status }}">
+                                    <td>
+                                        <span class="badge badge-{% if stat.status == 'to_evaluate' %}secondary{% elif stat.status == 'pending_review' %}secondary{% elif stat.status == 'analysis_in_progress' %}info{% elif stat.status == 'remediation_in_progress' %}info{% elif stat.status == 'evaluated' %}success{% elif stat.status == 'resolved' %}success{% elif stat.status == 'not_applicable' %}warning{% elif stat.status == 'risk_accepted' %}warning{% else %}secondary{% endif %}">
+                                            {{ stat.status_display }}
+                                        </span>
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <span class="text-muted">{{ stat.count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-small-12">No tracking data available</p>
+                    {% endif %}
+                </div>
+
+                <hr />
+
+                <!-- Assignee Statistics -->
+                <div>
+                    <h4 class="text-small-14">
+                        <i class="fa fa-users"></i> Top Assignees
+                    </h4>
+                    {% if cve_tracking_stats.assignee_stats %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                {% for stat in cve_tracking_stats.assignee_stats|slice:":5" %}
+                                <tr class="clickable-row" style="cursor: pointer;" data-href="{% url 'project_vulnerabilities' org_name=request.current_organization.name project_name=project.name %}?assignee={{ stat.assignee__username }}&status=">
+                                    <td>
+                                        <i class="fa fa-user" style="font-size: 11px; color: #999; margin-right: 5px;"></i>
+                                        {{ stat.assignee__username }}
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <span class="badge badge-primary">{{ stat.count }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-small-12">No assignments yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="box box-primary">
             <div class="box-header">
                 <div class="box-title">Subscriptions</div>
@@ -107,5 +176,27 @@
         </div>
     </div>
 </div>
+
+<script>
+// Make rows clickable
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.clickable-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+            var url = this.getAttribute('data-href');
+            // Only allow navigation if URL is strictly relative to current origin
+            if (url && /^\/[^\s]*$/.test(url)) {
+                try {
+                    var parsed = new URL(url, window.location.origin);
+                    if (parsed.origin === window.location.origin && parsed.pathname.startsWith('/')) {
+                        window.location.href = parsed.pathname + parsed.search + parsed.hash;
+                    }
+                } catch(e) {
+                    // Ignore invalid URLs
+                }
+            }
+        });
+    });
+});
+</script>
 
 {% endblock %}

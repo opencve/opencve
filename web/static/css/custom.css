@@ -177,6 +177,13 @@
     margin-right: 6px;
     text-shadow: none;
 }
+.text-small-12 {
+  font-size: 12px;
+}
+
+.text-small-14 {
+  font-size: 14px;
+}
 
 .panel-group-cvss {
   margin-bottom: 10px;
@@ -774,4 +781,227 @@ pre.plainJSON{
   white-space: nowrap;
   overflow-x: auto;
   cursor: default;
+}
+
+/* CVE Tracking */
+
+#cves-tracking-list .editable-assignee, #cves-tracking-list .editable-status {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background-color: #f3f1ff;
+  color: #5648D8;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(86,72,216,0.1);
+}
+
+#cves-tracking-list .editable-assignee:hover, #cves-tracking-list .editable-status:hover {
+  background-color: #ebe7ff;
+  transform: scale(1.05);
+  box-shadow: 0 2px 6px rgba(86,72,216,0.15);
+}
+
+#cves-tracking-list .edit-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+#cves-tracking-list .edit-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#cves-tracking-list .tippy-box {
+  background: #fff !important;
+  border: 1px solid #e3e2ef !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+  padding: 0 !important;
+}
+
+#cves-tracking-list .tippy-box[data-theme~='light'] {
+  background: #fff !important;
+  border: 1px solid #e3e2ef !important;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+}
+
+#cves-tracking-list .tippy-box[data-theme~='light'] .tippy-content {
+  padding: 0 !important;
+  color: #333 !important;
+}
+
+#cves-tracking-list .tippy-arrow {
+  color: #fff !important;
+}
+
+#cves-tracking-list .tippy-box[data-theme~='light'] .tippy-arrow:before {
+  border-top-color: #e3e2ef !important;
+  border-bottom-color: #e3e2ef !important;
+  border-left-color: #e3e2ef !important;
+  border-right-color: #e3e2ef !important;
+}
+
+#cves-tracking-list .floating-menu {
+  background: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 2px;
+  min-width: 180px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+#cves-tracking-list .floating-menu-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#cves-tracking-list .floating-menu-item i {
+  opacity: 0.6;
+  font-size: 13px;
+}
+
+#cves-tracking-list .floating-menu-item:hover {
+  background-color: #f6f5ff;
+  color: #5648D8;
+}
+
+#cves-tracking-list .floating-menu-item.selected {
+  background-color: #e0dbff;
+}
+
+#cves-tracking-list .badge {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+#cves-tracking-stats .badge {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+#cves-tracking-list .badge-warning, #cves-tracking-stats .badge-warning { background-color: #FFE58A; color: #856404; }
+#cves-tracking-list .badge-info, #cves-tracking-stats .badge-info { background-color: #d8f1ff; color: #0c5460; }
+#cves-tracking-list .badge-success, #cves-tracking-stats .badge-success { background-color: #dafbe1; color: #0f5132; }
+#cves-tracking-list .badge-secondary, #cves-tracking-stats .badge-secondary { background-color: #e9ecef; color: #495057; }
+#cves-tracking-list .badge-danger, #cves-tracking-stats .badge-danger { background-color: #ffe5e5; color: #842029; }
+
+#cves-tracking-stats .clickable-row:hover {
+  background-color: #f5f5f5;
+}
+
+/* Base badge */
+.badge-modern {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  border-radius: 4px;
+  border: 1px solid;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+/* ------- Assignee badges ------- */
+
+.badge-modern-assignee {
+  background-color: #efe6ff;
+  border-color: #c4a6ea;
+  color: #5b2c91;
+}
+
+.badge-modern-assignee-empty {
+  background-color: #f4f4f4;
+  border-color: #d2d2d2;
+  color: #666;
+}
+
+/* ------- Status badges (base) ------- */
+
+.badge-modern-status {
+  background-color: #eee;
+  border-color: #ccc;
+  color: #555;
+}
+
+/* Empty status */
+.badge-modern-status-empty {
+  background-color: #f4f4f4;
+  border-color: #d2d2d2;
+  color: #666;
+}
+
+/* ------- Status-specific colors ------- */
+
+.badge-modern-status.to_evaluate,
+.badge-modern-status.pending_review {
+  background-color: #f4f4f4;
+  border-color: #d6d6d6;
+  color: #666;
+}
+
+.badge-modern-status.analysis_in_progress,
+.badge-modern-status.remediation_in_progress {
+  background-color: #d9eaff;
+  border-color: #97c0ef;
+  color: #1f5fad;
+}
+
+.badge-modern-status.evaluated,
+.badge-modern-status.resolved {
+  background-color: #d6f7df;
+  border-color: #82d8a7;
+  color: #146635;
+}
+
+.badge-modern-status.not_applicable,
+.badge-modern-status.risk_accepted {
+  background-color: #fff4d8;
+  border-color: #f5d796;
+  color: #8b6514;
+}
+
+/* CVE description cell in dashboard widgets */
+.cve-description-cell {
+  border-top: none !important;
+  padding-top: 4px;
+  padding-bottom: 8px;
+}
+
+.cve-description-cell small {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.4;
+  word-wrap: break-word;
 }

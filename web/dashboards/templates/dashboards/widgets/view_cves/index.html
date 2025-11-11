@@ -28,7 +28,7 @@
 {% endif %}
 
 <div class="table-responsive">
-    <table class="table table-hover table-striped">
+    <table class="table">
         <thead>
             <tr>
                 <th>CVE</th>
@@ -38,11 +38,9 @@
         </thead>
         <tbody>
             {% for cve in cves %}
-            <tr>
+            <tr class="cve-header">
                 <td>
                     <a href="{% url 'cve' cve_id=cve.cve_id %}">{{ cve.cve_id }}</a>
-                    <br>
-                    <small class="text-muted">{{ cve.description|truncatechars:100 }}</small>
                 </td>
                 <td class="text-center">
                     {% if cve.cvssV3_1 %}
@@ -53,6 +51,11 @@
                 </td>
                 <td class="text-center">
                     <small>{{ cve.updated_at|date:"d/m" }}</small>
+                </td>
+            </tr>
+            <tr class="cve-summary">
+                <td colspan="3" class="cve-description-cell">
+                    <small class="text-muted">{{ cve.description }}</small>
                 </td>
             </tr>
             {% empty %}

@@ -1,0 +1,33 @@
+<form id="widget-config-form">
+    <div class="form-group">
+        <label for="widget-title">Widget Title</label>
+        <input type="text" class="form-control" id="widget-title" name="title" value="{{ title|default:'CVEs by Assignment' }}">
+    </div>
+    <div class="form-group">
+        <label for="project-select">Select a Project</label>
+        <select class="form-control" id="project-select" name="project_id">
+            <option value="">All projects</option>
+            {% for project in projects %}
+            <option value="{{ project.id }}" {% if project.id|stringformat:"s" == config.project_id %}selected{% endif %}>{{ project.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="assignee-select">Select an Assignee</label>
+        <select class="form-control" id="assignee-select" name="assignee_id">
+            <option value="">All assignees</option>
+            {% for member in members %}
+            <option value="{{ member.id }}" {% if member.id|stringformat:"s" == config.assignee_id %}selected{% endif %}>{{ member.username }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="status-select">Select a Status</label>
+        <select class="form-control" id="status-select" name="status">
+            <option value="">All statuses</option>
+            {% for status_key, status_label in status_choices %}
+            <option value="{{ status_key }}" {% if status_key == config.status %}selected{% endif %}>{{ status_label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
