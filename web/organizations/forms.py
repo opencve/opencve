@@ -19,6 +19,9 @@ class OrganizationForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             "name",
+            HTML(
+                '<p class="help-block" style="font-size: 13px;">* Renaming the organization will break any external links to it, as the URL changes.</p>'
+            ),
             FormActions(
                 HTML(
                     """<a href="{% url 'list_organizations' %}" class="btn btn-default">Cancel</a> """
@@ -34,10 +37,6 @@ class OrganizationForm(forms.ModelForm):
         # Check if the organization is not a reserved keyword
         if name in ("add",):
             raise forms.ValidationError("This organization is reserved.")
-
-        # In case of update, check if the user tried to change the name
-        if (bool(self.instance.name)) and (self.instance.name != name):
-            raise forms.ValidationError("Existing organizations can't be renamed.")
 
         # Check if the organization already exists
         if self.instance.name != name:

@@ -23,7 +23,7 @@ def test_organization_form_update_instance(db, create_user, create_organization)
     user = create_user(username="user1")
     organization = create_organization(name="orga1", user=user)
     form = OrganizationForm(data={"name": "orga2"}, request=None, instance=organization)
-    assert form.errors == {"name": ["Existing organizations can't be renamed."]}
+    assert form.errors == {}
 
 
 def test_organization_form_name_already_exists(db, create_user, create_organization):
