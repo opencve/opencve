@@ -39,7 +39,11 @@ class Command(BaseCommand):
         with open(path) as f:
             cve = json.load(f)
 
+        # Skip the file if it doesn't contain valid CVE data
         cve_data = cve.get("opencve")
+        if not cve_data:
+            return
+
         params = dict(
             cve_data,
             **{
