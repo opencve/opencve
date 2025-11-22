@@ -95,3 +95,14 @@ def test_import_cves_command_idempotent(db):
     # Verify no duplicates were created
     assert first_count == second_count
     assert first_cve_ids == second_cve_ids
+
+
+def test_import_cves_command_ignores_invalid_files(db):
+    """Test that the command ignores JSON files without the 'opencve' key."""
+    call_command("import_cves")
+
+    # Invalid CVE are ignored
+    assert not Cve.objects.filter(cve_id="CVE-2025-8875").exists()
+
+    # Valid CVEs are still imported
+    assert Cve.objects.filter(cve_id="CVE-2021-34181").exists()
