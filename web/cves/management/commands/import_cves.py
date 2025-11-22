@@ -10,7 +10,6 @@ from opencve.commands import BaseCommand
 
 
 class Command(BaseCommand):
-    KB_PATH = settings.KB_REPO_PATH
     CVE_UPSERT_PROCEDURE = """
     CALL cve_upsert(
         %(cve)s,
@@ -25,12 +24,16 @@ class Command(BaseCommand):
     );
     """
 
+    @property
+    def kb_path(self):
+        return settings.KB_REPO_PATH
+
     def call_procedure(self, params):
         with connection.cursor() as cursor:
             cursor.execute(self.CVE_UPSERT_PROCEDURE, params)
 
     def kb_repo_exist(self):
-        return pathlib.Path.exists(pathlib.Path(self.KB_PATH))
+        return pathlib.Path.exists(pathlib.Path(self.kb_path))
 
     def insert_cve(self, path):
         with open(path) as f:
@@ -58,8 +61,8 @@ class Command(BaseCommand):
             self.error("The OpenCVE KB repository has to be cloned first")
             return
 
-        self.info(f"Parsing the OpenCVE KB repository ({self.blue(self.KB_PATH)})")
-        files = glob.glob(self.KB_PATH + "/**/CVE*.json", recursive=True)
+        self.info(f"Parsing the OpenCVE KB repository ({self.blue(self.kb_path)})")
+        files = glob.glob(self.kb_path + "/**/CVE*.json", recursive=True)
         msg = f"Found {self.blue(len(files))} CVEs, adding them in database"
 
         with self.timed_operation(msg):
