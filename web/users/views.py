@@ -16,7 +16,7 @@ from django.views.generic import (
 )
 
 from opencve.mixins import RequestViewMixin
-from organizations.mixins import Membership
+from organizations.models import Membership
 from users.forms import PasswordChangeForm, ProfileChangeForm, UserTagForm
 from users.mixin import SocialProvidersMixin
 from users.models import CveTag, UserTag, User

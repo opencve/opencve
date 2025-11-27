@@ -644,6 +644,14 @@ pre.plainJSON{
   color: #1a1071;
 }
 
+.pending-invitations-box {
+  margin-bottom: 30px;
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
 .organizations-list .product-info,
 .projects-list .product-info {
   margin-left: 10px;
@@ -1004,4 +1012,23 @@ pre.plainJSON{
   max-width: 100%;
   line-height: 1.4;
   word-wrap: break-word;
+}
+
+/* Divider with centered text */
+.divider-with-text {
+  position: relative;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.divider-with-text hr {
+  margin: 0;
+}
+
+.divider-with-text span {
+  position: relative;
+  top: -10px;
+  background-color: white;
+  padding: 0 15px;
+  color: #999;
 }

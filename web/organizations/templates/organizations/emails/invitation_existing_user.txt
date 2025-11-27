@@ -1,0 +1,10 @@
+Hello {{ user.username }},
+
+You have been invited to join the organization "{{ organization.name }}" on OpenCVE.
+
+To accept this invitation, please visit your organizations page:
+
+{{ organizations_url }}
+
+Best regards,
+The OpenCVE Team
