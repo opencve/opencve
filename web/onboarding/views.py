@@ -33,6 +33,17 @@ class OnboardingFormView(LoginRequiredMixin, SuccessMessageMixin, FormView):
             return redirect("home")
         return super().dispatch(request, *args, **kwargs)
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get pending invitations for this user
+        pending_invitations = Membership.objects.filter(
+            user=self.request.user, date_joined__isnull=True
+        ).select_related("organization")
+
+        context["pending_invitations"] = pending_invitations
+        return context
+
     @transaction.atomic
     def form_valid(self, form):
         """

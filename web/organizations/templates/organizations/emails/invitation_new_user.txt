@@ -1,0 +1,12 @@
+Hello,
+
+You have been invited to join the organization "{{ organization.name }}" on OpenCVE.
+
+To accept this invitation, you need to create an account on OpenCVE first. Click on the following link to sign up:
+
+{{ signup_url }}
+
+After creating your account, you will be able to accept the invitation.
+
+Best regards,
+The OpenCVE Team

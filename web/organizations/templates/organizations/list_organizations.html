@@ -64,12 +64,16 @@
                                                     </tr>
                                                     {% for member in members %}
                                                     <tr>
-                                                        <td>{{ member.user.username }}</td>
-                                                        <td>{{ member.user.email }}</td>
-                                                        {% if member.date_joined %}
-                                                        <td><span class="label label-primary">{{ member.role }}</span></td>
+                                                        <td>{% if member.user %}{{ member.user.username }}{% else %}-{% endif %}</td>
+                                                        <td>{% if member.user %}{{ member.user.email }}{% else %}{{ member.email }}{% endif %}</td>
+                                                        {% if member.user %}
+                                                            {% if member.date_joined %}
+                                                            <td><span class="label label-primary">{{ member.role }}</span></td>
+                                                            {% else %}
+                                                            <td><span class="label label-default">invited</span></td>
+                                                            {% endif %}
                                                         {% else %}
-                                                        <td><span class="label label-default">invited</span></td>
+                                                            <td><span class="label label-warning">pending signup</span></td>
                                                         {% endif %}
                                                     </tr>
                                                     {% endfor %}

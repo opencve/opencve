@@ -20,6 +20,10 @@ from opencve.mixins import RequestViewMixin
 from organizations.forms import MembershipForm, OrganizationForm
 from organizations.mixins import OrganizationIsOwnerMixin
 from organizations.models import Membership, Organization
+from organizations.utils import (
+    send_organization_invitation_email,
+    send_organization_signup_invitation_email,
+)
 from users.models import User
 
 
@@ -114,7 +118,6 @@ class OrganizationMembersFormView(
     model = Organization
     slug_field = "name"
     slug_url_kwarg = "org_name"
-    success_message = "The new member has been added."
 
     def post(self, request, *args, **kwargs):
         organization = request.current_organization
@@ -127,28 +130,64 @@ class OrganizationMembersFormView(
                 reverse("edit_organization", kwargs={"org_name": organization.name})
             )
 
+        email = form.cleaned_data["email"]
+
         # Check if the invited user exists
-        user = User.objects.filter(email=form.cleaned_data["email"]).first()
-        if not user:
-            messages.error(request, "User not found")
-            return redirect(
-                reverse("edit_organization", kwargs={"org_name": organization.name})
+        user = User.objects.filter(email=email).first()
+
+        # The user exists
+        if user:
+            # Check if he's already a member of the organization
+            if Membership.objects.filter(user=user, organization=organization).exists():
+                messages.error(request, "Member already exist")
+                return redirect(
+                    reverse("edit_organization", kwargs={"org_name": organization.name})
+                )
+
+            # Create the membership for existing user
+            membership = Membership.objects.create(
+                user=user,
+                organization=organization,
+                role=form.cleaned_data["role"],
+                key=get_random_string(64).lower(),
             )
 
-        # Check if the member already exists
-        if Membership.objects.filter(user=user, organization=organization).exists():
-            messages.error(request, "Member already exist")
-            return redirect(
-                reverse("edit_organization", kwargs={"org_name": organization.name})
+            # Send invitation email
+            send_organization_invitation_email(membership, request)
+            messages.success(
+                request,
+                f"Invitation email has been sent to {email}",
             )
 
-        # Create the membership
-        Membership.objects.create(
-            user=user,
-            organization=organization,
-            role=form.cleaned_data["role"],
-            key=get_random_string(64).lower(),
-        )
+        # The user doesn't exist
+        else:
+            # Check if there's already a pending invitation for this email
+            if Membership.objects.filter(
+                email=email, organization=organization, user__isnull=True
+            ).exists():
+                messages.error(
+                    request,
+                    "An invitation has already been sent to this email address",
+                )
+                return redirect(
+                    reverse("edit_organization", kwargs={"org_name": organization.name})
+                )
+
+            # Create the membership with email only
+            membership = Membership.objects.create(
+                user=None,
+                email=email,
+                organization=organization,
+                role=form.cleaned_data["role"],
+                key=get_random_string(64).lower(),
+            )
+
+            # Send signup invitation email
+            send_organization_signup_invitation_email(membership, request)
+            messages.success(
+                request,
+                f"Signup invitation email has been sent to {email}",
+            )
 
         return super().post(request, *args, **kwargs)
 
@@ -213,12 +252,19 @@ class OrganizationInvitationView(LoginRequiredMixin, SingleObjectMixin, View):
     model = Membership
 
     def get(self, *args, **kwargs):
-        object = self.get_object()
-        object.key = None
-        object.date_joined = now()
-        object.save()
+        membership = self.get_object()
+
+        # Complete the invitation
+        membership.key = None
+        membership.date_joined = now()
+        membership.save()
 
         messages.success(self.request, "The invitation has been accepted")
+
+        # Change the current organization
+        self.request.session["current_organization_id"] = str(
+            membership.organization.id
+        )
 
         return redirect("list_organizations")
 

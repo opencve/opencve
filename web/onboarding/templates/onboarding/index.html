@@ -18,8 +18,27 @@
 
       <div class="onboarding-description help-block text-center">
         <p><strong>Welcome to OpenCVE {{ request.user.username }} (<a href="{% url 'account_logout' %}">logout</a>)!</strong></p>
+        {% if not pending_invitations %}
         <p>Complete your setup by entering the information below.</p>
+        {% endif %}
       </div>
+
+      {% if pending_invitations %}
+      <div class="onboarding-description help-block text-center pending-invitations-box">
+        <p>You have been invited to join the following organizations:</p>
+        {% for invitation in pending_invitations %}
+        <p>
+          <strong>{{ invitation.organization.name }}</strong> ({{ invitation.role }})
+          <a href="{% url 'accept_organization_invitation' org_name=invitation.organization.name key=invitation.key %}" class="btn btn-primary btn-sm">Accept</a>
+        </p>
+        {% endfor %}
+      </div>
+
+      <div class="divider-with-text">
+        <hr>
+        <span>Or create a new organization below:</span>
+      </div>
+      {% endif %}
 
       {% crispy form %}
 
