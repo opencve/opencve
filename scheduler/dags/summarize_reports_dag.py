@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timedelta
 
 import pendulum
 from airflow.configuration import conf
@@ -25,5 +25,9 @@ with DAG(
     catchup=True,
     max_active_runs=1,
     doc_md=doc_md_DAG,
+    default_args={
+        "retries": 3,
+        "retry_delay": timedelta(seconds=10),
+    },
 ) as dag:
     summarize_reports()
