@@ -917,6 +917,148 @@ pre.plainJSON{
 #cves-tracking-list .badge-warning, #cves-tracking-stats .badge-warning { background-color: #FFE58A; color: #856404; }
 #cves-tracking-list .badge-info, #cves-tracking-stats .badge-info { background-color: #d8f1ff; color: #0c5460; }
 #cves-tracking-list .badge-success, #cves-tracking-stats .badge-success { background-color: #dafbe1; color: #0f5132; }
+
+/* Vendor/Product Quick Subscription Styles */
+.subscribe-vendor,
+.subscribe-product {
+  transition: all 0.15s ease;
+}
+
+.subscribe-vendor:hover,
+.subscribe-product:hover {
+  color: #5648D8;
+}
+
+.subscribe-vendor:hover .fa-bell-o,
+.subscribe-product:hover .fa-bell-o {
+  opacity: 1;
+  color: #5648D8;
+}
+
+/* Success flash animation for subscription buttons */
+@keyframes subscribe-success-flash {
+  0% {
+    background-color: #dafbe1;
+    border-color: #86efac;
+  }
+  50% {
+    background-color: #bbf7d0;
+    border-color: #4ade80;
+  }
+  100% {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+  }
+}
+
+.subscribe-vendor.subscribe-success,
+.subscribe-product.subscribe-success {
+  animation: subscribe-success-flash 0.6s ease-out;
+}
+
+.floating-menu {
+  background: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 2px;
+  min-width: 180px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.floating-menu-title {
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  border-bottom: 1px solid #e3e2ef;
+  margin-bottom: 2px;
+}
+
+.vendor-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  min-height: 28px;
+}
+
+.vendor-name {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+
+.vendor-item .btn {
+  flex: 0 0 auto;
+  min-width: 120px;
+  text-align: center;
+  margin-left: auto;
+}
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.product-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  min-height: 28px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.product-item:hover {
+  background-color: #f5f3fb;
+}
+
+.product-name {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+
+.product-item .btn {
+  flex: 0 0 auto;
+  min-width: 120px;
+  text-align: center;
+  margin-left: auto;
+}
+
+.floating-menu-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.floating-menu-item i {
+  opacity: 0.6;
+  font-size: 13px;
+}
+
+.floating-menu-item:hover {
+  background-color: #f6f5ff;
+  color: #5648D8;
+}
+
+.floating-menu-item.selected {
+  background-color: #e0dbff;
+}
 #cves-tracking-list .badge-secondary, #cves-tracking-stats .badge-secondary { background-color: #e9ecef; color: #495057; }
 #cves-tracking-list .badge-danger, #cves-tracking-stats .badge-danger { background-color: #ffe5e5; color: #842029; }
 

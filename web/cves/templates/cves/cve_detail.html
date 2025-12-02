@@ -389,5 +389,13 @@
 </div>
 {% endif %}
 
+{% if user.is_authenticated and projects_json %}
+<script>
+window.vendorSubscriptionData = {
+    projects: {{ projects_json|safe }},
+    url: "{% url 'subscribe' %}"
+};
+</script>
+{% endif %}
 
 {% endblock %}

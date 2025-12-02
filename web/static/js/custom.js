@@ -1266,4 +1266,245 @@ function getContrastedColor(str){
 
   }
 
+  /*
+   Vendor/Product Quick Subscription
+  */
+  if (window.vendorSubscriptionData && window.vendorSubscriptionData.projects.length > 0) {
+    let currentSubscriptionTippy = null;
+
+    function createProjectMenu(vendorId, vendorName, productId, productName) {
+        const projects = window.vendorSubscriptionData.projects;
+        const objType = productId ? 'product' : 'vendor';
+        const objId = productId || vendorId;
+        const objName = productId ? `${vendorName}$PRODUCT$${productName}` : vendorName;
+
+        let menuHtml = '<div class="floating-menu">';
+        menuHtml += '<div class="floating-menu-title">Select a project</div>';
+
+        projects.forEach(function(project) {
+            let isSubscribed = false;
+            if (objType === 'vendor') {
+                isSubscribed = project.subscriptions.vendors.indexOf(vendorName) !== -1;
+            } else {
+                isSubscribed = project.subscriptions.products.indexOf(objName) !== -1;
+            }
+
+            const action = isSubscribed ? 'unsubscribe' : 'subscribe';
+            const actionLabel = isSubscribed ? 'Unsubscribe' : 'Subscribe';
+            const iconClass = isSubscribed ? 'fa-bell' : 'fa-bell-o';
+
+            menuHtml += `<button class="floating-menu-item ${isSubscribed ? 'selected' : ''}"
+                                data-action="${action}"
+                                data-obj-type="${objType}"
+                                data-obj-id="${objId}"
+                                data-project-id="${project.id}">
+                            <i class="fa ${iconClass}"></i> ${project.name} <span style="opacity: 0.6; font-size: 11px;">(${actionLabel})</span>
+                         </button>`;
+        });
+
+        menuHtml += '</div>';
+        return menuHtml;
+    }
+
+    // Initialize vendor subscription tippy
+    document.querySelectorAll('.subscribe-vendor').forEach(function(element) {
+        const vendorId = element.getAttribute('data-vendor-id');
+        const vendorName = element.getAttribute('data-vendor-name');
+
+        tippy(element, {
+            content: createProjectMenu(vendorId, vendorName, null, null),
+            allowHTML: true,
+            interactive: true,
+            trigger: 'click',
+            placement: 'bottom-start',
+            animation: 'shift-away',
+            theme: 'light-border',
+            maxWidth: 300,
+            onShow(instance) {
+                if (currentSubscriptionTippy && currentSubscriptionTippy !== instance) {
+                    currentSubscriptionTippy.hide();
+                }
+                currentSubscriptionTippy = instance;
+            },
+            onHide() {
+                currentSubscriptionTippy = null;
+            }
+        });
+    });
+
+    // Initialize product subscription tippy
+    document.querySelectorAll('.subscribe-product').forEach(function(element) {
+        const vendorId = element.getAttribute('data-vendor-id');
+        const vendorName = element.getAttribute('data-vendor-name');
+        const productId = element.getAttribute('data-product-id');
+        const productName = element.getAttribute('data-product-name');
+
+        tippy(element, {
+            content: createProjectMenu(vendorId, vendorName, productId, productName),
+            allowHTML: true,
+            interactive: true,
+            trigger: 'click',
+            placement: 'bottom-start',
+            animation: 'shift-away',
+            theme: 'light-border',
+            maxWidth: 300,
+            onShow(instance) {
+                if (currentSubscriptionTippy && currentSubscriptionTippy !== instance) {
+                    currentSubscriptionTippy.hide();
+                }
+                currentSubscriptionTippy = instance;
+            },
+            onHide() {
+                currentSubscriptionTippy = null;
+            }
+        });
+    });
+
+    // Event delegation for subscription menu items
+    $(document).on('click', '.floating-menu-item[data-obj-type]', function(event) {
+        const menuItem = $(this)[0];
+        const action = menuItem.getAttribute('data-action');
+        const objType = menuItem.getAttribute('data-obj-type');
+        const objId = menuItem.getAttribute('data-obj-id');
+        const projectId = menuItem.getAttribute('data-project-id');
+
+        subscribeToVendorProduct(action, objType, objId, projectId);
+
+        event.preventDefault();
+        event.stopPropagation();
+    });
+
+    function subscribeToVendorProduct(action, objType, objId, projectId) {
+        // Find the trigger element using the current tippy instance before hiding it
+        let triggerElement = null;
+        if (currentSubscriptionTippy && currentSubscriptionTippy.reference) {
+            triggerElement = currentSubscriptionTippy.reference;
+        } else {
+            // Fallback: find by data attributes
+            if (objType === 'vendor') {
+                triggerElement = document.querySelector('.subscribe-vendor[data-vendor-id="' + objId + '"]');
+            } else {
+                triggerElement = document.querySelector('.subscribe-product[data-product-id="' + objId + '"]');
+            }
+        }
+
+        if (!triggerElement) {
+            console.error('Could not find trigger element');
+            return;
+        }
+
+        const vendorName = triggerElement.getAttribute('data-vendor-name');
+        const productId = triggerElement.getAttribute('data-product-id');
+        const productName = triggerElement.getAttribute('data-product-name');
+
+        // Store reference to triggerElement for use in success callback
+        const buttonElement = triggerElement;
+
+        // Hide tippy after getting the reference
+        if (currentSubscriptionTippy) {
+            currentSubscriptionTippy.hide();
+        }
+
+        $.ajax({
+            url: window.vendorSubscriptionData.url,
+            data: {
+                'action': action,
+                'obj_type': objType,
+                'obj_id': objId,
+                'project_id': projectId
+            },
+            dataType: 'json',
+            type: 'POST',
+            success: function(data) {
+                if (data.status === 'ok') {
+                    // Update the project subscription status in the data
+                    const projects = window.vendorSubscriptionData.projects;
+                    const project = projects.find(p => p.id === projectId);
+                    if (project) {
+                        if (objType === 'vendor') {
+                            if (action === 'subscribe') {
+                                if (project.subscriptions.vendors.indexOf(vendorName) === -1) {
+                                    project.subscriptions.vendors.push(vendorName);
+                                }
+                            } else {
+                                const index = project.subscriptions.vendors.indexOf(vendorName);
+                                if (index !== -1) {
+                                    project.subscriptions.vendors.splice(index, 1);
+                                }
+                            }
+                        } else {
+                            const objName = `${vendorName}$PRODUCT$${productName}`;
+                            if (action === 'subscribe') {
+                                if (project.subscriptions.products.indexOf(objName) === -1) {
+                                    project.subscriptions.products.push(objName);
+                                }
+                            } else {
+                                const index = project.subscriptions.products.indexOf(objName);
+                                if (index !== -1) {
+                                    project.subscriptions.products.splice(index, 1);
+                                }
+                            }
+                        }
+                    }
+
+                    // Update the tippy content with the new subscription state
+                    if (buttonElement && buttonElement._tippy) {
+                        const vendorId = buttonElement.getAttribute('data-vendor-id');
+                        buttonElement._tippy.setContent(createProjectMenu(vendorId, vendorName, productId, productName));
+                    }
+
+                    // Recalculate and update the subscription count in the button
+                    if (buttonElement) {
+                        const projects = window.vendorSubscriptionData.projects;
+                        let count = 0;
+
+                        if (objType === 'vendor') {
+                            // Count how many projects have this vendor subscribed
+                            projects.forEach(function(p) {
+                                if (p.subscriptions.vendors.indexOf(vendorName) !== -1) {
+                                    count++;
+                                }
+                            });
+                        } else {
+                            // Count how many projects have this product subscribed
+                            const objName = `${vendorName}$PRODUCT$${productName}`;
+                            projects.forEach(function(p) {
+                                if (p.subscriptions.products.indexOf(objName) !== -1) {
+                                    count++;
+                                }
+                            });
+                        }
+
+                        // Update button text with new count
+                        const iconElement = buttonElement.querySelector('i');
+                        let buttonText;
+                        if (count > 0) {
+                            buttonText = 'Subscribed (' + count + ')';
+                        } else {
+                            buttonText = 'Subscribe';
+                        }
+
+                        if (iconElement) {
+                            const iconClass = iconElement.className;
+                            buttonElement.innerHTML = '<i class="' + iconClass + '"></i> ' + buttonText;
+                        } else {
+                            // Fallback if icon not found
+                            buttonElement.innerHTML = '<i class="fa fa-bell-o"></i> ' + buttonText;
+                        }
+
+                        // Add success flash effect
+                        buttonElement.classList.add('subscribe-success');
+                        setTimeout(function() {
+                            buttonElement.classList.remove('subscribe-success');
+                        }, 600);
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Subscription error:', error);
+            }
+        });
+    }
+  }
+
 });

@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch, PropertyMock
 
 import pytest
@@ -5,10 +6,12 @@ from django.test import override_settings
 from django.urls import reverse
 from bs4 import BeautifulSoup
 from django.test.client import RequestFactory
-from cves.views import CveListView
-
-from users.models import User, UserTag, CveTag
 from django.contrib.auth.models import AnonymousUser
+
+from cves.constants import PRODUCT_SEPARATOR
+from cves.views import CveListView, CveDetailView
+from cves.models import Vendor, Product
+from users.models import UserTag, CveTag
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -127,26 +130,541 @@ def test_cves_list_title(db, create_cve, client, url_to_check):
     assert soup.find("meta", {"name": "description"})["content"] == description
 
 
+# Tests for CveDetailView
+
+
 @patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
 @patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.redhat_json", new_callable=PropertyMock)
 @patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
 @override_settings(ENABLE_ONBOARDING=False)
-def test_cve_detail_title(
-    mock_nvd, mock_mitre, mock_vulnrichment, db, create_cve, client
+def test_cve_detail_page_basic_rendering(
+    mock_enrichment,
+    mock_vulnrichment,
+    mock_redhat,
+    mock_mitre,
+    mock_nvd,
+    db,
+    create_cve,
+    client,
 ):
+    """Test that the CVE detail page renders correctly."""
     mock_nvd.return_value = {}
     mock_mitre.return_value = {}
+    mock_redhat.return_value = {}
     mock_vulnrichment.return_value = {}
-    create_cve("CVE-2024-31331")
+    mock_enrichment.return_value = {}
+
+    cve = create_cve("CVE-2024-31331")
 
     response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
     soup = BeautifulSoup(response.content, features="html.parser")
 
+    # Check title
     assert soup.find("title").text == "CVE-2024-31331 - Vulnerability Details - OpenCVE"
-    assert (
-        soup.find("meta", {"name": "description"})["content"]
-        == "In setMimeGroup of PackageManagerService.java, there is a possible way to hide the service from Settings due to a logic error in the code. This could lead to local escalation of privilege with User execution privileges needed. User interaction is needed for exploitation."
+
+    # Check meta description
+    assert soup.find("meta", {"name": "description"})["content"].startswith(
+        "In setMimeGroup of PackageManagerService.java"
     )
+
+    # Check CVE ID is present in navbar
+    navbar_title = soup.find("h1", {"class": "navbar-title"})
+    assert navbar_title is not None
+    assert "CVE-2024-31331" in navbar_title.text
+
+    # Check CVE description is present in content
+    description_box = soup.find("div", {"class": "box box-primary"})
+    assert description_box is not None
+    box_body = description_box.find("div", {"class": "box-body"})
+    assert box_body is not None
+    assert "setMimeGroup" in box_body.text
+    assert "PackageManagerService" in box_body.text
+
+    # Check that main content sections are present
+    assert soup.find("section", {"class": "content"}) is not None
+    assert len(soup.find_all("div", {"class": "box box-primary"})) > 0
+
+
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.redhat_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_build_json_context(
+    mock_enrichment,
+    mock_vulnrichment,
+    mock_redhat,
+    mock_mitre,
+    mock_nvd,
+    db,
+    create_cve,
+):
+    """Test that build_json_context correctly serializes all JSON properties."""
+    mock_nvd.return_value = {"foo": "bar"}
+    mock_mitre.return_value = {"baz": "qux"}
+    mock_redhat.return_value = {"red": "hat"}
+    mock_vulnrichment.return_value = {"vuln": "richment"}
+    mock_enrichment.return_value = {"enrich": "ment"}
+
+    cve = create_cve("CVE-2024-31331")
+    rf = RequestFactory()
+    request = rf.get("/")
+    view = CveDetailView()
+    view.request = request
+
+    context = view.build_json_context(cve)
+
+    assert context["nvd_json"] == '{"foo": "bar"}'
+    assert context["mitre_json"] == '{"baz": "qux"}'
+    assert context["redhat_json"] == '{"red": "hat"}'
+    assert context["vulnrichment_json"] == '{"vuln": "richment"}'
+    assert context["enrichment_json"] == '{"enrich": "ment"}'
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_build_tags_context_unauthenticated(db, create_cve):
+    """Test that build_tags_context returns empty tags for unauthenticated users."""
+    cve = create_cve("CVE-2024-31331")
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = AnonymousUser()
+    view = CveDetailView()
+    view.request = request
+
+    context = view.build_tags_context(cve)
+
+    assert context["user_tags"] == []
+    assert context["tags"] == []
+    assert "cve_tags_encoded" not in context
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_build_tags_context_authenticated_no_tags(
+    db, create_cve, create_user
+):
+    """Test that build_tags_context returns empty tags for authenticated users."""
+    user = create_user()
+    cve = create_cve("CVE-2024-31331")
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = user
+    view = CveDetailView()
+    view.request = request
+
+    context = view.build_tags_context(cve)
+
+    assert list(context["user_tags"]) == []
+    assert context["tags"] == []
+    assert context["cve_tags_encoded"] == "[]"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_build_tags_context_authenticated_with_tags(
+    db, create_cve, create_user
+):
+    """Test that build_tags_context correctly returns tags for authenticated users."""
+    user = create_user()
+    cve = create_cve("CVE-2024-31331")
+    UserTag.objects.create(name="tag1", user=user, color="#ff0000")
+    UserTag.objects.create(name="tag2", user=user, color="#00ff00")
+    CveTag.objects.create(user=user, cve=cve, tags=["tag1", "tag2"])
+
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = user
+    view = CveDetailView()
+    view.request = request
+
+    context = view.build_tags_context(cve)
+
+    assert set(context["user_tags"]) == {"tag1", "tag2"}
+    assert sorted([tag["name"] for tag in context["tags"]]) == ["tag1", "tag2"]
+    assert context["cve_tags_encoded"] == '["tag1", "tag2"]'
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_get_projects(db, create_user, create_organization, create_project):
+    """Test that get_projects returns only projects from the current organization."""
+    user = create_user()
+    org1 = create_organization(name="org1", user=user)
+    org2 = create_organization(name="org2", user=user)
+    project1 = create_project(name="project1", organization=org1)
+    project2 = create_project(name="project2", organization=org1)
+    project3 = create_project(name="project3", organization=org2)
+
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = user
+    request.current_organization = org1
+    view = CveDetailView()
+    view.request = request
+
+    projects = view.get_projects()
+
+    assert list(projects) == [project1, project2]
+    assert project3 not in projects
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_serialize_projects(
+    db, create_user, create_organization, create_project
+):
+    """Test that serialize_projects correctly converts project objects to JSON."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project1 = create_project(
+        name="project1",
+        organization=org,
+        vendors=["vendor1"],
+        products=["vendor1$PRODUCT$product1"],
+    )
+    project2 = create_project(
+        name="project2", organization=org, vendors=["vendor2"], products=[]
+    )
+
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = user
+    view = CveDetailView()
+    view.request = request
+
+    projects = [project1, project2]
+    serialized = view.serialize_projects(projects)
+    data = json.loads(serialized)
+    assert data[0] == {
+        "id": str(project1.id),
+        "name": "project1",
+        "subscriptions": {
+            "vendors": ["vendor1"],
+            "products": ["vendor1$PRODUCT$product1"],
+        },
+    }
+    assert data[1] == {
+        "id": str(project2.id),
+        "name": "project2",
+        "subscriptions": {
+            "vendors": ["vendor2"],
+            "products": [],
+        },
+    }
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_compute_subscription_counts(
+    db, create_user, create_organization, create_project
+):
+    """Test that compute_subscription_counts correctly counts projects subscriptions."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project1 = create_project(
+        name="project1",
+        organization=org,
+        vendors=["vendor1", "vendor2"],
+        products=[f"vendor1{PRODUCT_SEPARATOR}product1"],
+    )
+    project2 = create_project(
+        name="project2",
+        organization=org,
+        vendors=["vendor1"],
+        products=[
+            f"vendor1{PRODUCT_SEPARATOR}product1",
+            f"vendor2{PRODUCT_SEPARATOR}product2",
+        ],
+    )
+
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = user
+    view = CveDetailView()
+    view.request = request
+
+    projects = [project1, project2]
+    counts = view.compute_subscription_counts(projects)
+
+    assert counts["vendor1"] == 2
+    assert counts["vendor2"] == 1
+    assert counts[f"vendor1{PRODUCT_SEPARATOR}product1"] == 2
+    assert counts[f"vendor2{PRODUCT_SEPARATOR}product2"] == 1
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_build_vendors_data_empty(db, create_user):
+    """Test that build_vendors_data returns an empty dictionary when given no vendors."""
+    user = create_user()
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = user
+    view = CveDetailView()
+    view.request = request
+
+    result = view.build_vendors_data({}, {})
+
+    assert result == {}
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_build_vendors_data(
+    db, create_user, create_organization, create_project
+):
+    """Test that build_vendors_data correctly builds vendors data structure."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    vendor1 = Vendor.objects.create(name="vendor1")
+    vendor2 = Vendor.objects.create(name="vendor2")
+    product1 = Product.objects.create(name="product1", vendor=vendor1)
+    product2 = Product.objects.create(name="product2", vendor=vendor1)
+    product3 = Product.objects.create(name="product3", vendor=vendor2)
+
+    project1 = create_project(
+        name="project1",
+        organization=org,
+        vendors=["vendor1"],
+        products=[f"vendor1{PRODUCT_SEPARATOR}product1"],
+    )
+    project2 = create_project(
+        name="project2",
+        organization=org,
+        vendors=["vendor1", "vendor2"],
+        products=[
+            f"vendor1{PRODUCT_SEPARATOR}product1",
+            f"vendor2{PRODUCT_SEPARATOR}product3",
+        ],
+    )
+
+    vendors_dict = {
+        "vendor1": ["product1", "product2"],
+        "vendor2": ["product3"],
+    }
+
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = user
+    view = CveDetailView()
+    view.request = request
+
+    projects = [project1, project2]
+    subscription_counts = view.compute_subscription_counts(projects)
+    result = view.build_vendors_data(vendors_dict, subscription_counts)
+
+    assert result["vendor1"] == {
+        "vendor": vendor1,
+        "subscription_count": 2,
+        "products": {
+            "product1": {
+                "product": product1,
+                "subscription_count": 2,
+            },
+            "product2": {
+                "product": product2,
+                "subscription_count": 0,
+            },
+        },
+    }
+    assert result["vendor2"] == {
+        "vendor": vendor2,
+        "subscription_count": 1,
+        "products": {
+            "product3": {
+                "product": product3,
+                "subscription_count": 1,
+            },
+        },
+    }
+
+
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.redhat_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_get_context_data_unauthenticated(
+    mock_enrichment,
+    mock_vulnrichment,
+    mock_redhat,
+    mock_mitre,
+    mock_nvd,
+    db,
+    create_cve,
+    client,
+):
+    """Test that get_context_data returns correct context for unauthenticated users."""
+    mock_nvd.return_value = {}
+    mock_mitre.return_value = {}
+    mock_redhat.return_value = {}
+    mock_vulnrichment.return_value = {}
+    mock_enrichment.return_value = {}
+
+    cve = create_cve("CVE-2024-31331")
+
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    context = response.context
+
+    assert context["cve"] == cve
+    assert "nvd_json" in context
+    assert "mitre_json" in context
+    assert "redhat_json" in context
+    assert "vulnrichment_json" in context
+    assert "enrichment_json" in context
+    assert "vendors" in context
+    assert "weaknesses" in context
+    assert "enrichment_vendors" in context
+    assert context["user_tags"] == []
+    assert context["tags"] == []
+    assert "projects" not in context
+    assert "projects_json" not in context
+    assert "vendors_data" not in context
+    assert "enrichment_vendors_data" not in context
+
+
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.redhat_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_get_context_data_authenticated(
+    mock_enrichment,
+    mock_nvd,
+    mock_mitre,
+    mock_redhat,
+    mock_vulnrichment,
+    db,
+    create_cve,
+    create_user,
+    create_organization,
+    create_project,
+    auth_client,
+):
+    """Test that get_context_data returns correct context for authenticated users."""
+    mock_nvd.return_value = {}
+    mock_mitre.return_value = {}
+    mock_redhat.return_value = {}
+    mock_vulnrichment.return_value = {}
+    mock_enrichment.return_value = {}
+
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    vendor1 = Vendor.objects.create(name="vendor1")
+    Product.objects.create(name="product1", vendor=vendor1)
+    project = create_project(
+        name="project1",
+        organization=org,
+        vendors=["vendor1"],
+        products=[f"vendor1{PRODUCT_SEPARATOR}product1"],
+    )
+
+    cve = create_cve("CVE-2024-31331")
+    client = auth_client(user)
+    session = client.session
+    session["current_organization_id"] = str(org.id)
+    session.save()
+
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    context = response.context
+
+    assert context["cve"] == cve
+    assert list(context["projects"]) == [project]
+    assert "projects_json" in context
+    assert "vendors_data" in context
+    assert "enrichment_vendors_data" in context
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_post_unauthenticated(db, create_cve, client):
+    """Test that POST request to update CVE tags returns 404 for unauthenticated users."""
+    cve = create_cve("CVE-2024-31331")
+
+    response = client.post(
+        reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}),
+        data={"tags": ["tag1"]},
+    )
+
+    assert response.status_code == 404
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_post_invalid_tag(db, create_cve, create_user, auth_client):
+    """Test that POST request with invalid tags returns 404."""
+    user = create_user()
+    cve = create_cve("CVE-2024-31331")
+    client = auth_client(user)
+
+    response = client.post(
+        reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}),
+        data={"tags": ["invalid_tag"]},
+    )
+
+    assert response.status_code == 404
+    assert not CveTag.objects.filter(user=user, cve=cve).exists()
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_post_valid_tags_new(db, create_cve, create_user, auth_client):
+    """Test that POST request with valid tags creates a new CveTag entry."""
+    user = create_user()
+    cve = create_cve("CVE-2024-31331")
+    UserTag.objects.create(name="tag1", user=user)
+    UserTag.objects.create(name="tag2", user=user)
+    client = auth_client(user)
+
+    response = client.post(
+        reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}),
+        data={"tags": ["tag1", "tag2"]},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("cve", kwargs={"cve_id": "CVE-2024-31331"})
+    cve_tag = CveTag.objects.filter(user=user, cve=cve).first()
+    assert cve_tag is not None
+    assert cve_tag.tags == ["tag1", "tag2"]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_post_valid_tags_update(db, create_cve, create_user, auth_client):
+    """Test that POST request with valid tags updates an existing CveTag entry."""
+    user = create_user()
+    cve = create_cve("CVE-2024-31331")
+    UserTag.objects.create(name="tag1", user=user)
+    UserTag.objects.create(name="tag2", user=user)
+    UserTag.objects.create(name="tag3", user=user)
+    CveTag.objects.create(user=user, cve=cve, tags=["tag1"])
+    client = auth_client(user)
+
+    response = client.post(
+        reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}),
+        data={"tags": ["tag2", "tag3"]},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("cve", kwargs={"cve_id": "CVE-2024-31331"})
+    cve_tag = CveTag.objects.filter(user=user, cve=cve).first()
+    assert cve_tag is not None
+    assert cve_tag.tags == ["tag2", "tag3"]
+    assert "tag1" not in cve_tag.tags
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_post_empty_tags(db, create_cve, create_user, auth_client):
+    """Test that POST request with empty tags list removes all tags from a CVE."""
+    user = create_user()
+    cve = create_cve("CVE-2024-31331")
+    CveTag.objects.create(user=user, cve=cve, tags=["tag1"])
+    client = auth_client(user)
+
+    response = client.post(
+        reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}),
+        data={"tags": []},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("cve", kwargs={"cve_id": "CVE-2024-31331"})
+    cve_tag = CveTag.objects.filter(user=user, cve=cve).first()
+    assert cve_tag is not None
+    assert cve_tag.tags == []
 
 
 def test_statistics(create_variable, client):

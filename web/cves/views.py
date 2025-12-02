@@ -199,45 +199,151 @@ class CveDetailView(DetailView):
     slug_url_kwarg = "cve_id"
     template_name = "cves/cve_detail.html"
 
+    def build_json_context(self, cve):
+        return {
+            "nvd_json": json.dumps(cve.nvd_json),
+            "mitre_json": json.dumps(cve.mitre_json),
+            "redhat_json": json.dumps(cve.redhat_json),
+            "vulnrichment_json": json.dumps(cve.vulnrichment_json),
+            "enrichment_json": json.dumps(cve.enrichment_json),
+        }
+
+    def build_tags_context(self, cve):
+        user = self.request.user
+        if not user.is_authenticated:
+            return {"user_tags": [], "tags": []}
+
+        user_tags = {
+            t.name: {"name": t.name, "color": t.color, "description": t.description}
+            for t in UserTag.objects.filter(user=user)
+        }
+
+        tags = []
+        cve_tags = CveTag.objects.filter(user=user, cve=cve).first()
+        if cve_tags:
+            tags = [user_tags[tag] for tag in cve_tags.tags]
+            encoded = json.dumps(cve_tags.tags)
+        else:
+            encoded = "[]"
+
+        return {
+            "user_tags": user_tags.keys(),
+            "tags": tags,
+            "cve_tags_encoded": encoded,
+        }
+
+    def get_projects(self):
+        return Project.objects.filter(
+            organization=self.request.current_organization
+        ).order_by("name")
+
+    def serialize_projects(self, projects):
+        return json.dumps(
+            [
+                {
+                    "id": str(project.id),
+                    "name": project.name,
+                    "subscriptions": {
+                        "vendors": project.subscriptions.get("vendors", []),
+                        "products": project.subscriptions.get("products", []),
+                    },
+                }
+                for project in projects
+            ]
+        )
+
+    def compute_subscription_counts(self, projects):
+        counts = {}
+
+        for project in projects:
+            for vendor in project.subscriptions.get("vendors", []):
+                counts[vendor] = counts.get(vendor, 0) + 1
+
+            for product in project.subscriptions.get("products", []):
+                counts[product] = counts.get(product, 0) + 1
+
+        return counts
+
+    def build_vendors_data(self, vendors_dict, subscription_counts):
+        if not vendors_dict:
+            return {}
+
+        # Collect all vendor names and product names
+        vendor_names = list(vendors_dict.keys())
+        all_product_names = set()
+        for vendor_name, product_names in vendors_dict.items():
+            all_product_names.update(product_names)
+
+        # Fetch all vendors and products
+        vendors_qs = Vendor.objects.filter(name__in=vendor_names)
+        vendors_by_name = {v.name: v for v in vendors_qs}
+        products_qs = Product.objects.filter(
+            vendor__name__in=vendor_names, name__in=all_product_names
+        ).select_related("vendor")
+
+        # Create a lookup dict: (vendor_name, product_name) -> product_obj
+        products_by_vendor_and_name = {(p.vendor.name, p.name): p for p in products_qs}
+
+        # Build the result structure
+        result = {}
+        for vendor_name, product_names in vendors_dict.items():
+            vendor_obj = vendors_by_name.get(vendor_name)
+            if not vendor_obj:
+                continue
+
+            result[vendor_name] = {
+                "vendor": vendor_obj,
+                "subscription_count": subscription_counts.get(vendor_name, 0),
+                "products": {},
+            }
+
+            for product_name in product_names:
+                product_obj = products_by_vendor_and_name.get(
+                    (vendor_name, product_name)
+                )
+                if not product_obj:
+                    continue
+
+                key = f"{vendor_name}{PRODUCT_SEPARATOR}{product_name}"
+                result[vendor_name]["products"][product_name] = {
+                    "product": product_obj,
+                    "subscription_count": subscription_counts.get(key, 0),
+                }
+
+        return result
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Raw json files
-        context["nvd_json"] = json.dumps(context["cve"].nvd_json)
-        context["mitre_json"] = json.dumps(context["cve"].mitre_json)
-        context["redhat_json"] = json.dumps(context["cve"].redhat_json)
-        context["vulnrichment_json"] = json.dumps(context["cve"].vulnrichment_json)
-        context["enrichment_json"] = json.dumps(context["cve"].enrichment_json)
+        cve = context["cve"]
 
-        # Add the associated vendors and weaknesses
-        context["vendors"] = list_to_dict_vendors(context["cve"].vendors)
-        context["weaknesses"] = list_weaknesses(context["cve"].weaknesses)
+        # JSON context (KB, Mitre...)
+        context.update(self.build_json_context(cve))
 
+        # Vendors / weaknesses
+        context["vendors"] = list_to_dict_vendors(cve.vendors)
+        context["weaknesses"] = list_weaknesses(cve.weaknesses)
         context["enrichment_vendors"] = list_to_dict_vendors(
-            context["cve"].enrichment_json.get("vendors", [])
+            cve.enrichment_json.get("vendors", [])
         )
 
-        # Get the CVE tags for the authenticated user
-        user_tags = {}
-        tags = []
+        # Tags
+        context.update(self.build_tags_context(cve))
 
-        user = self.request.user
-        if user.is_authenticated:
-            user_tags = {
-                t.name: {"name": t.name, "color": t.color, "description": t.description}
-                for t in UserTag.objects.filter(user=self.request.user).all()
-            }
-            cve_tags = CveTag.objects.filter(
-                user=self.request.user, cve=context["cve"]
-            ).first()
-            if cve_tags:
-                tags = [user_tags[cve_tag] for cve_tag in cve_tags.tags]
+        # Projects + subscription counts
+        if self.request.user.is_authenticated and self.request.current_organization:
+            projects = self.get_projects()
+            context["projects"] = projects
+            context["projects_json"] = self.serialize_projects(projects)
 
-                # We have to pass an encoded list of tags for the modal box
-                context["cve_tags_encoded"] = json.dumps(cve_tags.tags)
+            subscription_counts = self.compute_subscription_counts(projects)
+            context["vendors_data"] = self.build_vendors_data(
+                context["vendors"], subscription_counts
+            )
+            context["enrichment_vendors_data"] = self.build_vendors_data(
+                context["enrichment_vendors"], subscription_counts
+            )
 
-        context["user_tags"] = user_tags.keys()
-        context["tags"] = tags
         return context
 
     def post(self, request, *args, **kwargs):
