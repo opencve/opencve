@@ -375,11 +375,14 @@ def test_call_llm_success(mock_openai_client):
     mock_response.choices[0].message.content = "This is a test response from the LLM"
     mock_client_instance.chat.completions.create.return_value = mock_response
 
+    logger = logging.getLogger(__name__)
+
     result = call_llm(
         api_key="test-api-key",
         api_url="https://api.test.com",
         model="Mistral-7B-Instruct-v0.3",
         messages=[{"role": "user", "content": "Test message"}],
+        logger=logger,
     )
 
     assert result == "This is a test response from the LLM"
@@ -392,8 +395,9 @@ def test_call_llm_success(mock_openai_client):
     )
 
 
+@patch("includes.utils.time.sleep")
 @patch("includes.utils.openai.OpenAI")
-def test_call_llm_rate_limit_error(mock_openai_client):
+def test_call_llm_rate_limit_error(mock_openai_client, mock_sleep):
     """Test LLM API call with rate limit error"""
     mock_client_instance = mock_openai_client.return_value
     mock_response = MagicMock()
@@ -409,6 +413,7 @@ def test_call_llm_rate_limit_error(mock_openai_client):
         api_url="https://api.test.com",
         model="Mistral-7B-Instruct-v0.3",
         messages=[{"role": "user", "content": "Test message"}],
+        logger=logging.getLogger(__name__),
     )
 
     assert result is None
@@ -417,8 +422,9 @@ def test_call_llm_rate_limit_error(mock_openai_client):
     )
 
 
+@patch("includes.utils.time.sleep")
 @patch("includes.utils.openai.OpenAI")
-def test_call_llm_api_error(mock_openai_client):
+def test_call_llm_api_error(mock_openai_client, mock_sleep):
     """Test LLM API call with API error"""
     mock_client_instance = mock_openai_client.return_value
     mock_response = MagicMock()
@@ -434,6 +440,7 @@ def test_call_llm_api_error(mock_openai_client):
         api_url="https://api.test.com",
         model="Mistral-7B-Instruct-v0.3",
         messages=[{"role": "user", "content": "Test message"}],
+        logger=logging.getLogger(__name__),
     )
 
     assert result is None
@@ -442,8 +449,9 @@ def test_call_llm_api_error(mock_openai_client):
     )
 
 
+@patch("includes.utils.time.sleep")
 @patch("includes.utils.openai.OpenAI")
-def test_call_llm_unexpected_error(mock_openai_client):
+def test_call_llm_unexpected_error(mock_openai_client, mock_sleep):
     """Test LLM API call with unexpected error"""
     mock_client_instance = mock_openai_client.return_value
     mock_client_instance.chat.completions.create.side_effect = Exception(
@@ -455,12 +463,88 @@ def test_call_llm_unexpected_error(mock_openai_client):
         api_url="https://api.test.com",
         model="Mistral-7B-Instruct-v0.3",
         messages=[{"role": "user", "content": "Test message"}],
+        logger=logging.getLogger(__name__),
     )
 
     assert result is None
     mock_openai_client.assert_called_once_with(
         api_key="test-api-key", base_url="https://api.test.com"
     )
+
+
+@patch("includes.utils.time.sleep")
+@patch("includes.utils.openai.OpenAI")
+def test_call_llm_retry_success_after_failure(mock_openai_client, mock_sleep):
+    """Test LLM API call with retry mechanism (succeeds after initial failure)"""
+    mock_client_instance = mock_openai_client.return_value
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Success after retry"
+
+    # First call fails, second succeeds
+    mock_response_error = MagicMock()
+    mock_response_error.status_code = 429
+    mock_response_error.headers = {"x-request-id": "test-request-id"}
+    mock_response_error.request = MagicMock()
+    mock_client_instance.chat.completions.create.side_effect = [
+        openai.RateLimitError(
+            "Rate limit exceeded", response=mock_response_error, body=None
+        ),
+        mock_response,  # Second call succeeds
+    ]
+
+    logger = logging.getLogger(__name__)
+
+    result = call_llm(
+        api_key="test-api-key",
+        api_url="https://api.test.com",
+        model="Mistral-7B-Instruct-v0.3",
+        messages=[{"role": "user", "content": "Test message"}],
+        logger=logger,
+    )
+
+    # Check result is as expected
+    assert result == "Success after retry"
+
+    # Check retry was attempted (sleep called once before retry)
+    mock_sleep.assert_called_once_with(5)
+
+    # Check create was called twice (initial + retry)
+    assert mock_client_instance.chat.completions.create.call_count == 2
+
+
+@patch("includes.utils.time.sleep")
+@patch("includes.utils.openai.OpenAI")
+def test_call_llm_retry_all_attempts_fail(mock_openai_client, mock_sleep):
+    """Test LLM API call with retry mechanism - all attempts fail"""
+    mock_client_instance = mock_openai_client.return_value
+    mock_response_error = MagicMock()
+    mock_response_error.status_code = 500
+    mock_response_error.headers = {"x-request-id": "test-request-id"}
+    mock_response_error.request = MagicMock()
+    # All 3 attempts fail
+    mock_client_instance.chat.completions.create.side_effect = openai.APIStatusError(
+        "API Error occurred", response=mock_response_error, body=None
+    )
+
+    logger = logging.getLogger(__name__)
+
+    result = call_llm(
+        api_key="test-api-key",
+        api_url="https://api.test.com",
+        model="Mistral-7B-Instruct-v0.3",
+        messages=[{"role": "user", "content": "Test message"}],
+        logger=logger,
+    )
+
+    # Check result is as expected
+    assert result is None
+
+    # Check sleep was called 2 times (before 2nd and 3rd attempts)
+    assert mock_sleep.call_count == 2
+
+    # Check create was called 3 times (max retries)
+    assert mock_client_instance.chat.completions.create.call_count == 3
 
 
 def test_read_cve_from_kb_success(tests_path, tmp_path_factory):

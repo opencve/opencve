@@ -1,5 +1,6 @@
 import json
 import pathlib
+import time
 from logging import Logger
 from typing import Dict, List, Optional, Tuple
 
@@ -250,28 +251,39 @@ def should_execute(variable_name: str) -> bool:
     return Variable.get(variable_name, default_var="true") == "true"
 
 
-def call_llm(
-    api_key: str, api_url: str, model: str, messages: List[Dict]
-) -> Optional[str]:
+def call_llm(api_key, api_url, model, messages, logger):
+    """
+    Call the LLM API with retry mechanism (3 attempts).
+    Returns the response content or None if all attempts fail.
+    """
+    max_retries = 3
     client = openai.OpenAI(api_key=api_key, base_url=api_url)
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-        )
-    except openai.RateLimitError as e:
-        print(f"Rate limit exceeded: {e}")
-        return None
 
-    except openai.APIError as e:
-        print(f"API Error: {e}")
-        return None
+    # Internal function to handle retry
+    def _handle_retry(attempt, error_type, error):
+        if attempt < max_retries:
+            logger.info(f"{error_type} (attempt {attempt}/{max_retries}): {error}")
+            logger.info(f"Retrying in 5 seconds...")
+            time.sleep(5)
+        else:
+            logger.error(f"Failed to call LLM after {max_retries} attempts")
 
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        return None
+    # Try to call the LLM
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+            )
+            return response.choices[0].message.content
+        except openai.RateLimitError as e:
+            _handle_retry(attempt, "Rate limit exceeded", e)
+        except openai.APIError as e:
+            _handle_retry(attempt, "API Error", e)
+        except Exception as e:
+            _handle_retry(attempt, "Unexpected error", e)
 
-    return response.choices[0].message.content
+    return None
 
 
 def format_epss_score(score: float) -> str:

@@ -225,7 +225,12 @@ def summarize_reports(**context):
         # Call the LLM
         logger.info("Calling LLM for report %s", report_id)
         start_time = time.time()
-        response = call_llm(llm_api_key, llm_api_url, llm_model, messages)
+        response = call_llm(llm_api_key, llm_api_url, llm_model, messages, logger)
+
+        # If the LLM response is None, skip the report
+        if response is None:
+            continue
+
         logger.info(
             "LLM response for report %s in %s seconds",
             report_id,
