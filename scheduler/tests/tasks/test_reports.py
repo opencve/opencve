@@ -472,7 +472,7 @@ def test_summarize_reports_success(tests_path, tmp_path_factory):
 
         # Check LLM call
         mock_call_llm.assert_called_once()
-        api_key, api_url, model, messages = mock_call_llm.call_args[0]
+        api_key, api_url, model, messages, logger = mock_call_llm.call_args[0]
         assert api_key == "test-api-key"
         assert api_url == "https://api.test.com"
         assert model == "Mistral-7B-Instruct-v0.3"
@@ -483,3 +483,56 @@ def test_summarize_reports_success(tests_path, tmp_path_factory):
         params = mock_hook_instance.run.call_args[1]["parameters"]
         assert params["report_id"] == "report-123"
         assert params["ai_summary"] == llm_response
+
+
+def test_summarize_reports_none_response(tests_path, tmp_path_factory):
+    """Test summarize_reports when LLM returns None (report should be skipped)"""
+    repo = TestRepo("llm", tests_path, tmp_path_factory)
+    repo.commit(["2025/CVE-2025-1000.json"], hour=1, minute=0)
+
+    context = {"data_interval_start": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC")}
+
+    def mock_get(section, key, **kwargs):
+        values = {
+            "llm_api_key": "test-api-key",
+            "llm_api_url": "https://api.test.com",
+            "llm_model": "Mistral-7B-Instruct-v0.3",
+        }
+        if key in values:
+            return values[key]
+        raise AirflowConfigException("Configuration not found")
+
+    mock_records = [
+        (
+            "report-123",
+            ["CVE-2025-1000"],
+            1,
+            [{"score": "HIGH", "count": 1}],
+        )
+    ]
+
+    with (
+        patch("includes.tasks.reports.conf.get", side_effect=mock_get),
+        patch(
+            "includes.tasks.reports.open",
+            mock_open(read_data="You are a CVE report analyzer."),
+        ),
+        patch("includes.tasks.reports.PostgresHook") as mock_hook,
+        patch("includes.utils.KB_LOCAL_REPO", repo.repo_path),
+        patch("includes.tasks.reports.call_llm", return_value=None) as mock_call_llm,
+    ):
+        mock_hook_instance = mock_hook.return_value
+        mock_hook_instance.get_records.return_value = mock_records
+
+        summarize_reports.function(**context)
+
+        # Check LLM call was made
+        mock_call_llm.assert_called_once()
+        api_key, api_url, model, messages, logger = mock_call_llm.call_args[0]
+        assert api_key == "test-api-key"
+        assert api_url == "https://api.test.com"
+        assert model == "Mistral-7B-Instruct-v0.3"
+        assert len(messages) == 2  # system + user messages
+
+        # Check DB update was NOT called (report skipped)
+        mock_hook_instance.run.assert_not_called()
