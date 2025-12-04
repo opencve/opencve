@@ -77,3 +77,67 @@ def test_membership_model(create_user):
     assert membership.key == "foobar"
     assert membership.is_owner is False
     assert membership.is_invited is True
+
+
+def test_organization_get_members(create_user, create_organization):
+    """Test that get_members correctly filters and returns organization members."""
+    organization = create_organization(name="orga1")
+    other_organization = create_organization(name="orga2")
+
+    # Create members
+    active_user1 = create_user(username="alice")
+    active_user2 = create_user(username="bob")
+    invited_user = create_user(username="charlie")
+    other_org_user = create_user(username="david")
+
+    Membership.objects.create(
+        user=active_user1,
+        organization=organization,
+        role=Membership.OWNER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    Membership.objects.create(
+        user=active_user2,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    # Invited member (date_joined is None)
+    Membership.objects.create(
+        user=invited_user,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=None,
+    )
+
+    # Member of another organization (should not appear)
+    Membership.objects.create(
+        user=other_org_user,
+        organization=other_organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    # Test with active=True (should return only active members)
+    active_members = organization.get_members(active=True)
+    assert list(active_members) == [active_user1, active_user2]
+    assert invited_user not in active_members
+    assert other_org_user not in active_members
+
+    # Test with active=False (should return all members including invited
+    all_members = organization.get_members(active=False)
+    assert list(all_members) == [active_user1, active_user2, invited_user]
+    assert other_org_user not in all_members
+
+    # Test default behavior (active=True)
+    default_members = organization.get_members()
+    assert list(default_members) == [active_user1, active_user2]
+
+    # Verify results are ordered by username
+    usernames = [user.username for user in active_members]
+    assert usernames == sorted(usernames)

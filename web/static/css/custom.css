@@ -536,6 +536,26 @@ pre.plainJSON{
     font-style: italic;
 }
 
+.project-assignment-item {
+  margin-top: 5px;
+  margin-bottom: 10px;
+}
+
+.project-assignment-item-header {
+  margin-bottom: 8px;
+}
+
+.project-assignment-item-badges {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.project-assignment-item hr {
+  margin-top: 10px;
+  margin-bottom: 0px;
+}
+
 .widget-user .widget-user-header {
     text-align: center;
 }
@@ -918,6 +938,13 @@ pre.plainJSON{
 #cves-tracking-list .badge-info, #cves-tracking-stats .badge-info { background-color: #d8f1ff; color: #0c5460; }
 #cves-tracking-list .badge-success, #cves-tracking-stats .badge-success { background-color: #dafbe1; color: #0f5132; }
 
+#cves-tracking-list .badge-secondary, #cves-tracking-stats .badge-secondary { background-color: #e9ecef; color: #495057; }
+#cves-tracking-list .badge-danger, #cves-tracking-stats .badge-danger { background-color: #ffe5e5; color: #842029; }
+
+#cves-tracking-stats .clickable-row:hover {
+  background-color: #f5f5f5;
+}
+
 /* Vendor/Product Quick Subscription Styles */
 .subscribe-vendor,
 .subscribe-product {
@@ -1058,12 +1085,6 @@ pre.plainJSON{
 
 .floating-menu-item.selected {
   background-color: #e0dbff;
-}
-#cves-tracking-list .badge-secondary, #cves-tracking-stats .badge-secondary { background-color: #e9ecef; color: #495057; }
-#cves-tracking-list .badge-danger, #cves-tracking-stats .badge-danger { background-color: #ffe5e5; color: #842029; }
-
-#cves-tracking-stats .clickable-row:hover {
-  background-color: #f5f5f5;
 }
 
 /* Base badge */

@@ -10,8 +10,9 @@ from django.contrib.auth.models import AnonymousUser
 
 from cves.constants import PRODUCT_SEPARATOR
 from cves.views import CveListView, CveDetailView
-from cves.models import Vendor, Product
+from cves.models import Vendor, Product, Cve
 from users.models import UserTag, CveTag
+from projects.models import CveTracker
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -475,6 +476,106 @@ def test_cve_detail_build_vendors_data(
     }
 
 
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_list_cve_projects(
+    db, create_user, create_organization, create_project
+):
+    """Test that list_cve_projects correctly filters projects and returns trackers."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    cve = Cve.objects.create(
+        cve_id="CVE-2024-99999",
+        title="Test CVE",
+        description="Test description",
+        vendors=["vendor1", f"vendor1{PRODUCT_SEPARATOR}product1", "vendor2"],
+        weaknesses=[],
+        metrics={},
+    )
+
+    # Project 1: subscribed to vendor1 (should be included)
+    project1 = create_project(
+        name="project1",
+        organization=org,
+        vendors=["vendor1"],
+        products=[],
+    )
+
+    # Project 2: subscribed to vendor1/product1 (should be included)
+    project2 = create_project(
+        name="project2",
+        organization=org,
+        vendors=[],
+        products=[f"vendor1{PRODUCT_SEPARATOR}product1"],
+    )
+
+    # Project 3: subscribed to vendor2 (should be included)
+    project3 = create_project(
+        name="project3",
+        organization=org,
+        vendors=["vendor2"],
+        products=[],
+    )
+
+    # Project 4: subscribed to vendor3 (should NOT be included)
+    project4 = create_project(
+        name="project4",
+        organization=org,
+        vendors=["vendor3"],
+        products=[],
+    )
+
+    # Project 5: subscribed to vendor1/product2 (should NOT be included)
+    project5 = create_project(
+        name="project5",
+        organization=org,
+        vendors=[],
+        products=[f"vendor1{PRODUCT_SEPARATOR}product2"],
+    )
+
+    # Create trackers for some projects (no tracker for project3)
+    tracker1 = CveTracker.objects.create(
+        cve=cve, project=project1, assignee=user, status="to_evaluate"
+    )
+    tracker2 = CveTracker.objects.create(
+        cve=cve, project=project2, assignee=None, status="resolved"
+    )
+
+    rf = RequestFactory()
+    request = rf.get("/")
+    request.user = user
+    view = CveDetailView()
+    view.request = request
+
+    all_projects = [project1, project2, project3, project4, project5]
+    result = view.list_cve_projects(cve, all_projects)
+
+    # Should return only projects 1, 2, and 3 (matching subscriptions)
+    assert len(result) == 3
+
+    # Check project1 has a tracker
+    result_project1 = next((r for r in result if r["project"] == project1), None)
+    assert result_project1 is not None
+    assert result_project1["project"] == project1
+    assert result_project1["tracker"] == tracker1
+
+    # Check project2 has a tracker
+    result_project2 = next((r for r in result if r["project"] == project2), None)
+    assert result_project2 is not None
+    assert result_project2["project"] == project2
+    assert result_project2["tracker"] == tracker2
+
+    # Check project3 has no tracker
+    result_project3 = next((r for r in result if r["project"] == project3), None)
+    assert result_project3 is not None
+    assert result_project3["project"] == project3
+    assert result_project3["tracker"] is None
+
+    # Check project4 and project5 are not in results
+    result_project_ids = {r["project"].id for r in result}
+    assert project4.id not in result_project_ids
+    assert project5.id not in result_project_ids
+
+
 @patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
 @patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
 @patch("cves.models.Cve.redhat_json", new_callable=PropertyMock)
@@ -571,6 +672,10 @@ def test_cve_detail_get_context_data_authenticated(
     assert "projects_json" in context
     assert "vendors_data" in context
     assert "enrichment_vendors_data" in context
+    assert "filtered_projects" in context
+    assert "filtered_projects" in context
+    assert "organization_members" in context
+    assert "status_choices" in context
 
 
 @override_settings(ENABLE_ONBOARDING=False)

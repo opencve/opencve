@@ -2,6 +2,7 @@ from cves.templatetags.opencve_extras import (
     get_item,
     get_active_cvss_tab,
     advisory_source_display,
+    tracker_status_badge_class,
 )
 
 
@@ -171,3 +172,29 @@ def test_advisory_source_display():
     assert "<img src=" in result
     assert 'style="width: 22px; margin-right: 4px; vertical-align: middle;"' in result
     assert result.count("<img") == 1  # Only one image tag
+
+
+@pytest.mark.parametrize(
+    "status, expected",
+    [
+        (None, "badge-secondary"),
+        ("", "badge-secondary"),
+        (0, "badge-secondary"),
+        (False, "badge-secondary"),
+        ("to_evaluate", "badge-secondary"),
+        ("pending_review", "badge-secondary"),
+        ("analysis_in_progress", "badge-info"),
+        ("remediation_in_progress", "badge-info"),
+        ("evaluated", "badge-success"),
+        ("resolved", "badge-success"),
+        ("not_applicable", "badge-warning"),
+        ("risk_accepted", "badge-warning"),
+        ("unknown_status", "badge-secondary"),
+        ("invalid", "badge-secondary"),
+    ],
+)
+def test_tracker_status_badge_class(status, expected):
+    """
+    Test tracker_status_badge_class function.
+    """
+    assert tracker_status_badge_class(status) == expected
