@@ -109,6 +109,28 @@
                     {% endif %}
                 </div>
             </div>
+
+            {% if user.is_authenticated %}
+            <div class="box box-primary">
+                <div class="box-header">
+                    <h3 class="box-title">Tags</h3>
+                    <div class="box-tools pull-right">
+                        <button type="button" class="btn btn-box-tool" data-toggle="modal" data-target="#modal-tags"><i class="fa fa-edit"></i></button>
+                    </div>
+                </div>
+                <div class="box-body">
+                    {% if tags %}
+                    {% for tag in tags %}
+                    <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
+                        <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
+                    </a>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted"><em>No tag found for this CVE.</em></p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <div class="col-md-3">
@@ -255,27 +277,6 @@
                 {% endif %}
             </div>
 
-            {% if user.is_authenticated %}
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Tags</h3>
-                    <div class="box-tools pull-right">
-                        <button type="button" class="btn btn-box-tool" data-toggle="modal" data-target="#modal-tags"><i class="fa fa-edit"></i></button>
-                    </div>
-                </div>
-                <div class="box-body">
-                    {% if tags %}
-                    {% for tag in tags %}
-                    <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
-                        <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
-                    </a>
-                    {% endfor %}
-                    {% else %}
-                    <p class="alert alert-info">No tag.</p>
-                    {% endif %}
-                </div>
-            </div>
-
             <div class="box box-primary">
                 <div class="box-header">
                     <div class="box-title">Weaknesses</div>
@@ -295,7 +296,6 @@
                     {% endif %}
                 </div>
             </div>
-            {% endif %}
 
         </div>
     </div>
