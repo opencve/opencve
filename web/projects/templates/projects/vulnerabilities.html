@@ -64,56 +64,12 @@
 
                         <!-- Assignee Column -->
                         <td class="col-md-1 text-center">
-                            {% if tracker and tracker.assignee %}
-                                <span class="editable-assignee badge badge-info"
-                                      data-cve-id="{{ cve.cve_id }}"
-                                      data-current-assignee="{{ tracker.assignee.id }}"
-                                      title="Click to change assignee">
-                                    {{ tracker.assignee.username }}
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                                        <path d="M12 20h9"/>
-                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                                    </svg>
-                                </span>
-                            {% else %}
-                                <span class="editable-assignee badge badge-secondary"
-                                      data-cve-id="{{ cve.cve_id }}"
-                                      data-current-assignee=""
-                                      title="Click to assign">
-                                    Unassigned
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                                        <path d="M12 20h9"/>
-                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                                    </svg>
-                                </span>
-                            {% endif %}
+                            {% include "cves/_assignee_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
                         </td>
 
                         <!-- Status Column -->
                         <td class="col-md-1 text-center">
-                            {% if tracker and tracker.status %}
-                                <span class="editable-status badge badge-{% if tracker.status == 'to_evaluate' %}secondary{% elif tracker.status == 'pending_review' %}secondary{% elif tracker.status == 'analysis_in_progress' %}info{% elif tracker.status == 'remediation_in_progress' %}info{% elif tracker.status == 'evaluated' %}success{% elif tracker.status == 'resolved' %}success{% elif tracker.status == 'not_applicable' %}warning{% elif tracker.status == 'risk_accepted' %}warning{% else %}secondary{% endif %}"
-                                      data-cve-id="{{ cve.cve_id }}"
-                                      data-current-status="{{ tracker.status }}"
-                                      title="Click to change status">
-                                    {{ tracker.get_status_display }}
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                                        <path d="M12 20h9"/>
-                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                                    </svg>
-                                </span>
-                            {% else %}
-                                <span class="editable-status badge badge-secondary"
-                                      data-cve-id="{{ cve.cve_id }}"
-                                      data-current-status=""
-                                      title="Click to change status">
-                                    No status
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                                        <path d="M12 20h9"/>
-                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-                                    </svg>
-                                </span>
-                            {% endif %}
+                            {% include "cves/_status_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
                         </td>
                     </tr>
                     <tr class="cve-summary">
@@ -168,11 +124,7 @@ window.cveTrackingData = {
             label: "{{ status_label|escapejs }}"
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
-    ],
-    urls: {
-        assignUser: "{% url 'assign_cve_user' org_name=request.current_organization.name project_name=project.name %}",
-        updateStatus: "{% url 'update_cve_status' org_name=request.current_organization.name project_name=project.name %}"
-    }
+    ]
 };
 </script>
 

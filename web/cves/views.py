@@ -16,7 +16,7 @@ from cves.templatetags.opencve_extras import needs_quotes
 from cves.utils import humanize, list_to_dict_vendors, list_weaknesses
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
-from projects.models import Project
+from projects.models import Project, CveTracker
 from users.models import CveTag, UserTag
 from views.forms import ViewForm
 from views.models import View
@@ -312,6 +312,36 @@ class CveDetailView(DetailView):
 
         return result
 
+    def list_cve_projects(self, cve, projects):
+        """
+        Filter projects that are subscribed to at least one vendor/product of the CVE.
+        """
+        cve_items = set(cve.vendors)
+
+        filtered_projects = [
+            project
+            for project in projects
+            if cve_items.intersection(
+                set(project.subscriptions.get("vendors", []))
+                | set(project.subscriptions.get("products", []))
+            )
+        ]
+
+        # Prefetch trackers once for all filtered projects
+        trackers = CveTracker.objects.filter(
+            cve=cve, project__in=filtered_projects
+        ).select_related("assignee", "project")
+
+        trackers_by_project = {tracker.project_id: tracker for tracker in trackers}
+
+        # Build final list
+        projects_with_trackers = [
+            {"project": project, "tracker": trackers_by_project.get(project.id)}
+            for project in filtered_projects
+        ]
+
+        return projects_with_trackers
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
@@ -343,6 +373,12 @@ class CveDetailView(DetailView):
             context["enrichment_vendors_data"] = self.build_vendors_data(
                 context["enrichment_vendors"], subscription_counts
             )
+
+            context["filtered_projects"] = self.list_cve_projects(cve, projects)
+            context["organization_members"] = (
+                self.request.current_organization.get_members(active=True)
+            )
+            context["status_choices"] = CveTracker.STATUS_CHOICES
 
         return context
 

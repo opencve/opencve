@@ -355,3 +355,24 @@ def advisory_source_display(source):
     return mark_safe(
         f'<img src="{icon_url}" alt="{display_text}" style="width: 22px; margin-right: 4px; vertical-align: middle;"> {display_text}'
     )
+
+
+@register.filter
+def tracker_status_badge_class(status):
+    """
+    Returns the badge class for a given tracker status.
+    """
+    if not status:
+        return "badge-secondary"
+
+    status_classes = {
+        "to_evaluate": "badge-secondary",
+        "pending_review": "badge-secondary",
+        "analysis_in_progress": "badge-info",
+        "remediation_in_progress": "badge-info",
+        "evaluated": "badge-success",
+        "resolved": "badge-success",
+        "not_applicable": "badge-warning",
+        "risk_accepted": "badge-warning",
+    }
+    return status_classes.get(status, "badge-secondary")

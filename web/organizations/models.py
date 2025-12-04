@@ -29,6 +29,17 @@ class Organization(BaseModel):
 
         return list(sorted(unique_vendors))
 
+    def get_members(self, active=True):
+        """Return members of the organization."""
+        queryset = User.objects.filter(
+            membership__organization=self,
+        )
+
+        if active:
+            queryset = queryset.filter(membership__date_joined__isnull=False)
+
+        return queryset.distinct().order_by("username")
+
     def __str__(self):
         return self.name
 

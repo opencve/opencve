@@ -77,6 +77,43 @@
         <div class="col-md-3">
             <div class="box box-primary">
                 <div class="box-header">
+                    <h3 class="box-title">Projects</h3>
+                    <div class="box-tools pull-right">
+                        <i class="fa fa-info-circle" data-toggle="tooltip" data-container="body" data-placement="left" title="Projects appear here if they subscribe to at least one vendor or product affected by this CVE."></i>
+                    </div>
+                </div>
+                <div class="box-body" id="cves-tracking-list">
+                    {% if user.is_authenticated and filtered_projects %}
+                        {% for project_data in filtered_projects %}
+                            {% with project=project_data.project tracker=project_data.tracker %}
+                            <div class="project-assignment-item">
+                                <div class="project-assignment-item-header">
+                                    <strong>{{ project.name }}</strong>
+                                </div>
+                                <div class="project-assignment-item-badges">
+                                    <div>
+                                        {% include "cves/_assignee_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
+                                    </div>
+                                    <div>
+                                        {% include "cves/_status_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
+                                    </div>
+                                </div>
+                                {% if not forloop.last %}<hr />{% endif %}
+                            </div>
+                            {% endwith %}
+                        {% endfor %}
+                    {% elif user.is_authenticated %}
+                        <p class="text-muted"><em>No projects match this CVE’s vendors or products.</em></p>
+                    {% else %}
+                        <p class="text-muted"><em><a href="{% url 'account_login' %}">Sign in</a> to view the affected projects.</em></p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="box box-primary">
+                <div class="box-header">
                     <div class="box-title">
                         <img src="{% static 'img/cve-icon.png' %}" class="provider-icon" alt="cve-icon" />
                         MITRE
@@ -394,6 +431,30 @@
 window.vendorSubscriptionData = {
     projects: {{ projects_json|safe }},
     url: "{% url 'subscribe' %}"
+};
+</script>
+{% endif %}
+
+{% if user.is_authenticated and filtered_projects %}
+<script>
+window.cveTrackingData = {
+    organizationMembers: [
+        {% for member in organization_members %}
+        {
+            id: "{{ member.id }}",
+            username: "{{ member.username|escapejs }}",
+            email: "{{ member.email|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    statusChoices: [
+        {% for status_key, status_label in status_choices %}
+        {
+            key: "{{ status_key|escapejs }}",
+            label: "{{ status_label|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
 };
 </script>
 {% endif %}
