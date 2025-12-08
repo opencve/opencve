@@ -1,9 +1,10 @@
 import importlib
 import json
 
+import pyparsing as pp
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
@@ -18,6 +19,7 @@ from django.views.generic import (
 
 from changes.models import Change, Report
 from cves.models import Cve
+from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from opencve.mixins import RequestViewMixin
 from organizations.mixins import (
     OrganizationIsMemberMixin,
@@ -27,6 +29,7 @@ from projects.forms import FORM_MAPPING, ProjectForm, CveTrackerFilterForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
 from projects.models import Notification, Project, CveTracker
 from users.models import User
+from views.models import View as SavedView
 
 NOTIFICATION_TYPES = [
     "cpes",
@@ -197,6 +200,30 @@ class ProjectVulnerabilitiesView(
     template_name = "projects/vulnerabilities.html"
     paginate_by = 20
 
+    def _apply_search_query(self, base_queryset, query):
+        """
+        Returns the filtered queryset or base_queryset if query is invalid.
+        """
+        if not query:
+            return base_queryset
+
+        try:
+            # Validate the query parsing
+            search = Search(query, self.request)
+            if not search.validate_parsing():
+                return base_queryset
+
+            else:
+
+                # Apply the search query to the base queryset
+                search_queryset = search.query
+                return base_queryset & search_queryset
+
+        except (BadQueryException, MaxFieldsExceededException):
+            return base_queryset
+        except pp.ParseException:
+            return base_queryset
+
     def get_queryset(self):
         vendors = (
             self.project.subscriptions["vendors"]
@@ -205,7 +232,8 @@ class ProjectVulnerabilitiesView(
         if not vendors:
             return self.model.objects.none()
 
-        queryset = (
+        # Base queryset filtered by project vendors
+        base_queryset = (
             Cve.objects.select_related()
             .prefetch_related(
                 Prefetch(
@@ -217,8 +245,11 @@ class ProjectVulnerabilitiesView(
                 )
             )
             .filter(vendors__has_any_keys=vendors)
-            .order_by("-updated_at")
         )
+
+        # Apply advanced search query if provided
+        query = self.request.GET.get("query", "").strip()
+        queryset = self._apply_search_query(base_queryset, query)
 
         # Apply filters
         assignee_username = self.request.GET.get("assignee")
@@ -235,7 +266,7 @@ class ProjectVulnerabilitiesView(
                 trackers__project=self.project, trackers__status=status
             )
 
-        return queryset
+        return queryset.order_by("-updated_at")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -245,7 +276,22 @@ class ProjectVulnerabilitiesView(
         filter_form = CveTrackerFilterForm(
             data=self.request.GET or None,
             organization=self.request.current_organization,
+            user=self.request.user,
         )
+
+        # Validate query if provided
+        query = self.request.GET.get("query", "").strip()
+        if query:
+            try:
+                search = Search(query, self.request)
+                _ = search.query
+                if not search.validate_parsing():
+                    filter_form.add_error("query", search.error)
+            except (BadQueryException, MaxFieldsExceededException) as e:
+                filter_form.add_error("query", str(e))
+            except pp.ParseException as e:
+                filter_form.add_error("query", "Invalid query syntax.")
+
         context["filter_form"] = filter_form
 
         # Add organization members for dropdowns
@@ -260,6 +306,21 @@ class ProjectVulnerabilitiesView(
 
         # Add status choices
         context["status_choices"] = CveTracker.STATUS_CHOICES
+
+        # Add views with their queries for JavaScript
+        views = SavedView.objects.filter(
+            Q(privacy="public", organization=self.request.current_organization)
+            | Q(
+                privacy="private",
+                user=self.request.user,
+                organization=self.request.current_organization,
+            )
+        ).order_by("name")
+
+        context["views_data"] = [
+            {"id": str(view.id), "name": view.name, "query": view.query}
+            for view in views
+        ]
 
         return context
 

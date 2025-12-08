@@ -1,14 +1,18 @@
 import json
 from datetime import date, timedelta
+from unittest.mock import Mock, PropertyMock, patch
 
 from django.contrib.messages import get_messages
-from django.test import override_settings
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
 from changes.models import Change, Report
+from cves.models import Cve
+from cves.search import BadQueryException, MaxFieldsExceededException
 from organizations.models import Membership
 from projects.models import CveTracker, Notification, Project
+from projects.views import ProjectVulnerabilitiesView
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -664,6 +668,66 @@ def test_project_vulnerabilities_view_filter_by_status(
     cves = list(response.context["cves"])
     assert len(cves) == 1
     assert cves[0].cve_id == "CVE-2023-22490"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_view_filter_by_query(
+    create_organization, create_user, create_project, create_cve, auth_client
+):
+    """Test filtering vulnerabilities by query parameter"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(
+        name="project1",
+        organization=org,
+        vendors=["git-scm", "apache"],
+    )
+    cve1 = create_cve("CVE-2023-22490")  # git-scm vendor
+    cve2 = create_cve("CVE-2021-44228")  # apache vendor
+    cve3 = create_cve("CVE-2022-22965")  # vmware vendor (not subscribed)
+
+    client = auth_client(user)
+
+    # Test without query (should return all subscribed CVEs)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+    assert response.status_code == 200
+    cves = list(response.context["cves"])
+    cve_ids = [cve.cve_id for cve in cves]
+    assert "CVE-2023-22490" in cve_ids
+    assert "CVE-2021-44228" in cve_ids
+    assert "CVE-2022-22965" not in cve_ids  # Not subscribed
+
+    # Test with query filtering by specific CVE ID
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"query": "cve:CVE-2023-22490"},
+    )
+    assert response.status_code == 200
+    cves = list(response.context["cves"])
+    assert len(cves) == 1
+    assert cves[0].cve_id == "CVE-2023-22490"
+    assert cve2 not in cves
+    assert cve3 not in cves
+
+    # Test with query that matches no CVE
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"query": "cve:CVE-9999-99999"},
+    )
+    assert response.status_code == 200
+    cves = list(response.context["cves"])
+    assert len(cves) == 0
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1806,3 +1870,509 @@ def test_update_cve_status_view_invalid_json(
     data = json.loads(response.content)
     assert data["success"] is False
     assert "Invalid JSON payload" in data["error"]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_apply_search_query_empty_query(
+    create_organization, create_user, create_project, create_cve
+):
+    """Test that _apply_search_query returns base_queryset when query is empty"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+    cve = create_cve("CVE-2023-22490")  # git-scm vendor
+
+    rf = RequestFactory()
+    request = rf.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+    request.user = user
+    request.current_organization = org
+
+    view = ProjectVulnerabilitiesView()
+    view.request = request
+    view.project = project
+
+    # Create base queryset
+    base_queryset = Cve.objects.filter(vendors__has_any_keys=["git-scm"])
+
+    # Test with empty query
+    result = view._apply_search_query(base_queryset, "")
+    assert result == base_queryset
+
+    # Test with None query
+    result = view._apply_search_query(base_queryset, None)
+    assert result == base_queryset
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_apply_search_query_valid_query(
+    create_organization, create_user, create_project, create_cve
+):
+    """Test that _apply_search_query applies valid query correctly"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+    cve1 = create_cve("CVE-2023-22490")  # git-scm vendor
+    cve2 = create_cve("CVE-2021-44228")  # apache vendor (not subscribed)
+
+    rf = RequestFactory()
+    request = rf.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+    request.user = user
+    request.current_organization = org
+
+    view = ProjectVulnerabilitiesView()
+    view.request = request
+    view.project = project
+
+    # Create base queryset
+    base_queryset = Cve.objects.filter(vendors__has_any_keys=["git-scm"])
+
+    # Test with valid queries
+    result = view._apply_search_query(base_queryset, "cve:CVE-2023-22490")
+    assert cve1 in result
+    assert cve2 not in result
+
+    result = view._apply_search_query(base_queryset, "cve:CVE-2021-44228")
+    assert cve1 not in result
+    assert cve2 not in result
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_apply_search_query_invalid_parse_exception(
+    create_organization, create_user, create_project, create_cve
+):
+    """Test that _apply_search_query returns base_queryset on ParseException"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+    cve = create_cve("CVE-2023-22490")
+
+    rf = RequestFactory()
+    request = rf.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+    request.user = user
+    request.current_organization = org
+
+    view = ProjectVulnerabilitiesView()
+    view.request = request
+    view.project = project
+
+    base_queryset = Cve.objects.filter(vendors__has_any_keys=["git-scm"])
+
+    # Test with invalid syntax that causes ParseException
+    result = view._apply_search_query(base_queryset, "invalid(syntax")
+    assert result == base_queryset
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_apply_search_query_bad_query_exception(
+    create_organization, create_user, create_project, create_cve
+):
+    """Test that _apply_search_query returns base_queryset on BadQueryException"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+    cve = create_cve("CVE-2023-22490")
+
+    rf = RequestFactory()
+    request = rf.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+    request.user = user
+    request.current_organization = org
+
+    view = ProjectVulnerabilitiesView()
+    view.request = request
+    view.project = project
+
+    base_queryset = Cve.objects.filter(vendors__has_any_keys=["git-scm"])
+
+    # Mock Search to raise BadQueryException
+    with patch("projects.views.Search") as mock_search:
+        mock_instance = Mock()
+        mock_instance.validate_parsing.return_value = True
+        type(mock_instance).query = PropertyMock(
+            side_effect=BadQueryException("Invalid field")
+        )
+        mock_search.return_value = mock_instance
+
+        result = view._apply_search_query(base_queryset, "invalidField:value")
+        assert result == base_queryset
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_apply_search_query_max_fields_exceeded_exception(
+    create_organization, create_user, create_project, create_cve
+):
+    """Test that _apply_search_query returns base_queryset on MaxFieldsExceededException"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+    cve = create_cve("CVE-2023-22490")
+
+    rf = RequestFactory()
+    request = rf.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+    request.user = user
+    request.current_organization = org
+
+    view = ProjectVulnerabilitiesView()
+    view.request = request
+    view.project = project
+
+    base_queryset = Cve.objects.filter(vendors__has_any_keys=["git-scm"])
+
+    # Mock Search to raise MaxFieldsExceededException
+    with patch("projects.views.Search") as mock_search:
+        mock_instance = Mock()
+        mock_instance.validate_parsing.return_value = True
+        type(mock_instance).query = PropertyMock(
+            side_effect=MaxFieldsExceededException("Too many fields")
+        )
+        mock_search.return_value = mock_instance
+
+        result = view._apply_search_query(base_queryset, "cvss31>=7 AND cvss31>=8")
+        assert result == base_queryset
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_apply_search_query_validation_fails(
+    create_organization, create_user, create_project, create_cve
+):
+    """Test that _apply_search_query returns base_queryset when validation fails"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+    cve = create_cve("CVE-2023-22490")
+
+    rf = RequestFactory()
+    request = rf.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+    request.user = user
+    request.current_organization = org
+
+    view = ProjectVulnerabilitiesView()
+    view.request = request
+    view.project = project
+
+    base_queryset = Cve.objects.filter(vendors__has_any_keys=["git-scm"])
+
+    # Mock Search to return False for validate_parsing
+    with patch("projects.views.Search") as mock_search:
+        mock_instance = Mock()
+        mock_instance.validate_parsing.return_value = False
+        mock_search.return_value = mock_instance
+
+        result = view._apply_search_query(base_queryset, "some query")
+        assert result == base_queryset
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_get_context_data_basic_context(
+    create_organization, create_user, create_project, auth_client
+):
+    """Test that get_context_data returns all required context variables"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+
+    assert response.status_code == 200
+    context = response.context
+
+    # Check basic context variables
+    assert "project" in context
+    assert context["project"] == project
+    assert "filter_form" in context
+    assert "organization_members" in context
+    assert "status_choices" in context
+    assert "views_data" in context
+    assert context["status_choices"] == CveTracker.STATUS_CHOICES
+    members = list(context["organization_members"])
+    assert user in members
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_get_context_data_organization_members_filtering(
+    create_organization, create_user, create_project, auth_client
+):
+    """Test that organization_members only includes users who have joined"""
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+    user3 = create_user(username="user3")
+    org = create_organization(name="org1", user=user1)
+
+    # User2 has joined
+    Membership.objects.create(
+        user=user2,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    # User3 has been invited but hasn't joined yet
+    Membership.objects.create(
+        user=user3,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=None,
+    )
+
+    project = create_project(name="project1", organization=org)
+
+    client = auth_client(user1)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+
+    assert response.status_code == 200
+    members = list(response.context["organization_members"])
+    usernames = [m.username for m in members]
+
+    # Should include user1 (owner) and user2 (joined member)
+    assert "user1" in usernames
+    assert "user2" in usernames
+    # Should NOT include user3 (not joined)
+    assert "user3" not in usernames
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_get_context_data_views_data_public_and_private(
+    create_organization, create_user, create_project, create_view, auth_client
+):
+    """Test that views_data includes both public and user's private views"""
+    user1 = create_user(username="user1")
+    user2 = create_user(username="user2")
+    org = create_organization(name="org1", user=user1)
+    Membership.objects.create(
+        user=user2,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    project = create_project(name="project1", organization=org)
+
+    # Create public view
+    public_view = create_view(
+        name="Public View",
+        query="cvss31>=7",
+        organization=org,
+        privacy="public",
+    )
+
+    # Create private view for user1
+    private_view_user1 = create_view(
+        name="Private View User1",
+        query="cvss31>=8",
+        organization=org,
+        privacy="private",
+        user=user1,
+    )
+
+    # Create private view for user2 (should not appear for user1)
+    private_view_user2 = create_view(
+        name="Private View User2",
+        query="cvss31>=9",
+        organization=org,
+        privacy="private",
+        user=user2,
+    )
+
+    client = auth_client(user1)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+
+    assert response.status_code == 200
+    views_data = response.context["views_data"]
+    view_ids = [v["id"] for v in views_data]
+    view_names = [v["name"] for v in views_data]
+
+    # Should include public view
+    assert str(public_view.id) in view_ids
+    assert "Public View" in view_names
+
+    # Should include user1's private view
+    assert str(private_view_user1.id) in view_ids
+    assert "Private View User1" in view_names
+
+    # Should NOT include user2's private view
+    assert str(private_view_user2.id) not in view_ids
+    assert "Private View User2" not in view_names
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_get_context_data_filter_form_with_valid_query(
+    create_organization, create_user, create_project, auth_client
+):
+    """Test that filter_form is created correctly with valid query"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"query": "cve:CVE-2023-22490"},
+    )
+
+    assert response.status_code == 200
+    filter_form = response.context["filter_form"]
+    assert filter_form is not None
+    # Valid query should not have errors
+    assert not filter_form.errors
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_get_context_data_filter_form_with_invalid_query(
+    create_organization, create_user, create_project, auth_client
+):
+    """Test that filter_form has errors with invalid query"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"query": "invalid(syntax"},
+    )
+
+    assert response.status_code == 200
+    filter_form = response.context["filter_form"]
+    assert filter_form is not None
+    # Invalid query should have errors
+    assert "query" in filter_form.errors
+    assert filter_form.errors["query"] == ["Invalid query syntax."]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_get_context_data_filter_form_with_bad_query_exception(
+    create_organization, create_user, create_project, auth_client
+):
+    """Test that filter_form handles BadQueryException"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+
+    client = auth_client(user)
+    # Use a query that might trigger BadQueryException
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"query": "invalidField:value"},
+    )
+
+    assert response.status_code == 200
+    filter_form = response.context["filter_form"]
+    assert hasattr(filter_form, "errors")
+    assert filter_form.errors["query"][0].startswith(
+        "The field 'invalidField' is not valid"
+    )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_get_context_data_filter_form_with_empty_query(
+    create_organization, create_user, create_project, auth_client
+):
+    """Test that filter_form works correctly with empty query"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org, vendors=["git-scm"])
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"query": ""},
+    )
+
+    assert response.status_code == 200
+    filter_form = response.context["filter_form"]
+    assert filter_form is not None
+    assert not filter_form.errors
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_get_context_data_views_data_ordered_by_name(
+    create_organization, create_user, create_project, create_view, auth_client
+):
+    """Test that views_data is ordered by name"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    # Create views in non-alphabetical order
+    view_c = create_view(
+        name="C View", query="cvss31>=7", organization=org, privacy="public"
+    )
+    view_a = create_view(
+        name="A View", query="cvss31>=8", organization=org, privacy="public"
+    )
+    view_b = create_view(
+        name="B View", query="cvss31>=9", organization=org, privacy="public"
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+
+    assert response.status_code == 200
+    views_data = response.context["views_data"]
+    view_names = [v["name"] for v in views_data]
+    assert view_names == ["A View", "B View", "C View"]
