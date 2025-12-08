@@ -261,7 +261,7 @@ def is_active_project_link(context, *args):
     if "/projects/" not in resolver.route:
         return ""
 
-    current_project_name = resolver.kwargs.get("name")
+    current_project_name = resolver.kwargs.get("project_name")
     if not current_project_name:
         return ""
     elif current_project_name == args[0]:
