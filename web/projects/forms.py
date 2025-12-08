@@ -3,10 +3,12 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Button, Div, Field, Layout, Submit
 from django import forms
 from django.conf import settings
+from django.db.models import Q
 
 from cves.constants import CVSS_SCORES
 from projects.models import Notification, Project, CveTracker
 from users.models import User
+from views.models import View as SavedView
 
 FORM_MAPPING = {
     "email": ["email"],
@@ -111,7 +113,7 @@ class EmailForm(NotificationForm):
 
 
 class CveTrackerFilterForm(forms.Form):
-    """Form for filtering CVEs by assignee and status"""
+    """Form for filtering CVEs by assignee, status, and query"""
 
     assignee = forms.ChoiceField(
         choices=[],
@@ -125,8 +127,25 @@ class CveTrackerFilterForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-control select2-status"}),
     )
 
+    query = forms.CharField(
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "e.g., kev:true AND cvss31>=8",
+            }
+        ),
+    )
+
+    view = forms.ChoiceField(
+        choices=[],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-control select2-view"}),
+    )
+
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop("organization", None)
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
         if organization:
@@ -141,6 +160,20 @@ class CveTrackerFilterForm(forms.Form):
             )
             self.fields["assignee"].choices = [("", "All assignees")] + [
                 (user.username, user.username) for user in members
+            ]
+
+            # Show available views (public and user's private views)
+            views = SavedView.objects.filter(
+                Q(privacy="public", organization=organization)
+                | Q(
+                    privacy="private",
+                    user=user,
+                    organization=organization,
+                )
+            ).order_by("name")
+
+            self.fields["view"].choices = [("", "All views")] + [
+                (str(view.id), view.name) for view in views
             ]
 
 

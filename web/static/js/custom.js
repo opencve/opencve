@@ -80,7 +80,10 @@ function getContrastedColor(str){
       allowClear: true,
       placeholder: 'All statuses',
     });
-
+    $('.select2-view').select2({
+      allowClear: true,
+      placeholder: 'Select a view',
+    });
   // Handle clear event to ensure it works correctly with empty value
   $('#id_assignee').on('select2:clear', function() {
       $(this).val('').trigger('change');
@@ -1300,6 +1303,25 @@ function getContrastedColor(str){
             event.preventDefault();
             event.stopPropagation();
         });
+
+        // Auto-fill query field when a view is selected
+        if (window.cveTrackingData && window.cveTrackingData.views) {
+            $('#id_view').on('select2:select select2:clear', function(e) {
+                const selectedViewId = $(this).val();
+                const queryInput = $('#id_query');
+
+                if (selectedViewId) {
+                    const selectedView = window.cveTrackingData.views.find(function(view) {
+                        return view.id === selectedViewId;
+                    });
+                    if (selectedView) {
+                        queryInput.val(selectedView.query);
+                    }
+                } else {
+                    queryInput.val('');
+                }
+            });
+        }
     }
   })();
 

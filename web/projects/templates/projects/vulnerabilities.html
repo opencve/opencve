@@ -13,18 +13,38 @@
                 <h3 class="box-title">Filter CVEs</h3>
             </div>
             <div class="box-body">
-                <form method="get" class="form-inline">
-                    <div class="form-group">
-                        <label for="id_assignee">Assignee:</label>
-                        {{ filter_form.assignee }}
-                    </div>
-                    <div class="form-group" style="margin-left: 15px;">
-                        <label for="id_status">Status:</label>
-                        {{ filter_form.status }}
-                    </div>
-                    <div class="form-group" style="margin-left: 15px;">
-                        <button type="submit" class="btn btn-primary">Filter</button>
-                        <a href="{% url 'project_vulnerabilities' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default">Clear</a>
+                <form method="get">
+                    <div class="row">
+                        <div class="col-md-2 col-sm-6 form-group">
+                            <label for="id_assignee">Assignee:</label>
+                            {{ filter_form.assignee }}
+                        </div>
+                        <div class="col-md-2 col-sm-6 form-group">
+                            <label for="id_status">Status:</label>
+                            {{ filter_form.status }}
+                        </div>
+                        <div class="col-md-2 col-sm-6 form-group">
+                            <label for="id_view">View:</label>
+                            {{ filter_form.view }}
+                        </div>
+                        <div class="col-md-4 col-sm-12 form-group">
+                            <label for="id_query">Query:</label>
+                            {{ filter_form.query }}
+                            {% if filter_form.query.errors %}
+                            <div class="text-danger" style="font-size: 12px;">
+                                {% for error in filter_form.query.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2 col-sm-12 form-group">
+                            <label>&nbsp;</label>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="submit" class="btn btn-primary" style="flex: 1;">Filter</button>
+                                <a href="{% url 'project_vulnerabilities' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default" style="flex: 1;">Clear</a>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -122,6 +142,15 @@ window.cveTrackingData = {
         {
             key: "{{ status_key|escapejs }}",
             label: "{{ status_label|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ],
+    views: [
+        {% for view in views_data %}
+        {
+            id: "{{ view.id|escapejs }}",
+            name: "{{ view.name|escapejs }}",
+            query: "{{ view.query|escapejs }}"
         }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ]
