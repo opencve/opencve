@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.3.0 - 2026-01-13
+### Added
+- Add CVE tracking with assignee and status management
+- Support filtering project CVEs via views and advanced queries
+- Add created and updated date parameters to CVE search
+- Support negative operators in CVE title and description search
+- Display advisories on CVE details page
+- Display solution and workaround information in CVE details
+- Display most recent available CVSS score in CVE details
+- Support quick vendor and product subscription from CVE view
+- Add Slack notifications support
+- Send email upon organization invitation
+- Add two-factor authentication (2FA) option for users
+- Add AI-powered report summarization using user-provided LLM
+- Add DAG to summarize reports with AI
+
+### Fixed
+- Ignore invalid CVEs during import
+- Use correct parameter name to identify the active project
+- Allow dot character in CVE search field
+
+### Changed
+- Redirect unauthenticated users to CVEs listing instead of login page
+- Improve visibility of user tags on CVE page
+- Add retry logic and configuration for LLM HTTP calls and report summarization DAG
+- Allow organization and project renaming
+- Upgrade Django from 5.2.1 to 5.2.8
+
 ## 2.2.0 - 2025-08-14
 ### Added
 - Add customizable dashboards with draggable widgets
