@@ -1,8 +1,6 @@
 import importlib
 import json
 import secrets
-from datetime import datetime
-
 import pyparsing as pp
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -31,9 +29,21 @@ from organizations.mixins import (
     OrganizationIsMemberMixin,
     OrganizationIsOwnerMixin,
 )
-from projects.forms import FORM_MAPPING, ProjectForm, CveTrackerFilterForm
+from projects.forms import (
+    AutomationForm,
+    FORM_MAPPING,
+    ProjectForm,
+    CveTrackerFilterForm,
+)
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
-from projects.models import Notification, Project, CveComment, CveTracker
+from projects.models import (
+    Automation,
+    AutomationRun,
+    CveComment,
+    CveTracker,
+    Notification,
+    Project,
+)
 from projects.notifications import run_notification_try
 from projects.utils import send_notification_confirmation_email
 from users.models import User
@@ -1175,3 +1185,319 @@ class DeleteCveCommentView(
 
         comment.delete()
         return JsonResponse({"success": True, "deleted_id": comment_id})
+
+
+class AutomationsView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
+):
+    model = Project
+    template_name = "projects/automations/list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        queryset = Automation.objects.filter(project=self.project).order_by("name")
+        filter_type = self.request.GET.get("type")
+        if filter_type == "realtime":
+            queryset = queryset.filter(trigger_type=Automation.TRIGGER_REALTIME)
+        elif filter_type == "periodic":
+            queryset = queryset.filter(trigger_type=Automation.TRIGGER_PERIODIC)
+        filter_status = self.request.GET.get("status")
+        if filter_status == "enabled":
+            queryset = queryset.filter(is_enabled=True)
+        elif filter_status == "disabled":
+            queryset = queryset.filter(is_enabled=False)
+        context["automations"] = list(queryset)
+        org_name = self.request.current_organization.name
+        context["url_add_realtime"] = reverse(
+            "create_automation",
+            kwargs={
+                "org_name": org_name,
+                "project_name": self.project.name,
+                "trigger_type": "realtime",
+            },
+        )
+        context["url_add_periodic"] = reverse(
+            "create_automation",
+            kwargs={
+                "org_name": org_name,
+                "project_name": self.project.name,
+                "trigger_type": "periodic",
+            },
+        )
+        return context
+
+
+class AutomationCreateView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    CreateView,
+):
+    model = Automation
+    form_class = AutomationForm
+    template_name = "projects/automations/save.html"
+    success_message = "The automation has been successfully created."
+
+    def get_initial(self):
+        initial = super().get_initial()
+        trigger_type = self.kwargs.get("trigger_type", "realtime")
+        if trigger_type not in (
+            Automation.TRIGGER_REALTIME,
+            Automation.TRIGGER_PERIODIC,
+        ):
+            trigger_type = Automation.TRIGGER_REALTIME
+        initial["trigger_type"] = trigger_type
+        initial["frequency"] = (
+            Automation.FREQUENCY_DAILY
+            if trigger_type == Automation.TRIGGER_PERIODIC
+            else None
+        )
+        return initial
+
+    def form_valid(self, form):
+        form.instance.project = self.project
+        return super().form_valid(form)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["project"] = self.project
+        kwargs["request"] = self.request
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        trigger_type = self.kwargs.get("trigger_type", "realtime")
+        if trigger_type not in (
+            Automation.TRIGGER_REALTIME,
+            Automation.TRIGGER_PERIODIC,
+        ):
+            trigger_type = Automation.TRIGGER_REALTIME
+        context["trigger_type"] = trigger_type
+
+        # Add context for form: notifications, users, status choices
+        context["notifications"] = (
+            Notification.objects.filter(project=self.project).order_by("name").all()
+        )
+        context["organization_members"] = (
+            User.objects.filter(
+                membership__organization=self.request.current_organization,
+                membership__date_joined__isnull=False,
+            )
+            .distinct()
+            .order_by("username")
+        )
+        context["status_choices"] = CveTracker.STATUS_CHOICES
+
+        # Add views for view_match condition
+        views = SavedView.objects.filter(
+            Q(privacy="public", organization=self.request.current_organization)
+            | Q(
+                privacy="private",
+                user=self.request.user,
+                organization=self.request.current_organization,
+            )
+        ).order_by("name")
+        context["views"] = views
+
+        # Serialize automation data for JavaScript (preserve submitted config on validation error)
+        default_config = {
+            "conditions": {"operator": "OR", "children": []},
+            "actions": [],
+        }
+        if self.request.method == "POST":
+            raw = self.request.POST.get("configuration_json")
+            if raw:
+                try:
+                    data = json.loads(raw)
+                    if (
+                        isinstance(data, dict)
+                        and "conditions" in data
+                        and "actions" in data
+                    ):
+                        context["automation_data_json"] = json.dumps(data)
+                        return context
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        context["automation_data_json"] = json.dumps(default_config)
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+
+
+class AutomationUpdateView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    UpdateView,
+):
+    model = Automation
+    form_class = AutomationForm
+    template_name = "projects/automations/detail.html"
+    success_message = "The automation has been successfully updated."
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Automation,
+            project=self.project,
+            name=self.kwargs["automation"],
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["project"] = self.project
+        kwargs["request"] = self.request
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        context["automation"] = self.object
+        context["is_periodic_automation"] = (
+            self.object.trigger_type == Automation.TRIGGER_PERIODIC
+        )
+        context["is_realtime_automation"] = (
+            self.object.trigger_type == Automation.TRIGGER_REALTIME
+        )
+        context["url_back"] = reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+        # History: AutomationRun for this automation
+        history_runs = (
+            AutomationRun.objects.filter(automation=self.object)
+            .select_related("report")
+            .order_by("-run_date")[:50]
+        )
+        context["history_events"] = []
+        for run in history_runs:
+            report_link = None
+            if run.report_id and run.report:
+                report_link = reverse(
+                    "report",
+                    kwargs={
+                        "org_name": self.request.current_organization.name,
+                        "project_name": self.project.name,
+                        "day": run.report.day,
+                    },
+                )
+            context["history_events"].append(
+                {
+                    "date": run.run_date,
+                    "matched_cves_count": run.matched_cves_count,
+                    "status": run.get_status_display(),
+                    "report_link": report_link,
+                }
+            )
+
+        # Add context for form: notifications, users, status choices
+        context["notifications"] = (
+            Notification.objects.filter(project=self.project).order_by("name").all()
+        )
+        context["organization_members"] = (
+            User.objects.filter(
+                membership__organization=self.request.current_organization,
+                membership__date_joined__isnull=False,
+            )
+            .distinct()
+            .order_by("username")
+        )
+        context["status_choices"] = CveTracker.STATUS_CHOICES
+
+        views = SavedView.objects.filter(
+            Q(privacy="public", organization=self.request.current_organization)
+            | Q(
+                privacy="private",
+                user=self.request.user,
+                organization=self.request.current_organization,
+            )
+        ).order_by("name")
+        context["views"] = views
+
+        # Use submitted configuration when form is re-displayed after validation error
+        default_config = (
+            self.object.configuration
+            if self.object and self.object.pk
+            else {"conditions": {"operator": "OR", "children": []}, "actions": []}
+        )
+        if self.request.method == "POST":
+            raw = self.request.POST.get("configuration_json")
+            if raw:
+                try:
+                    data = json.loads(raw)
+                    if (
+                        isinstance(data, dict)
+                        and "conditions" in data
+                        and "actions" in data
+                    ):
+                        context["automation_data_json"] = json.dumps(data)
+                        return context
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        context["automation_data_json"] = json.dumps(default_config)
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            "edit_automation",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+                "automation": self.object.name,
+            },
+        )
+
+
+class AutomationDeleteView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    DeleteView,
+):
+    model = Automation
+    template_name = "projects/automations/delete.html"
+    success_message = "The automation has been successfully removed."
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Automation,
+            project=self.project,
+            name=self.kwargs["automation"],
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )

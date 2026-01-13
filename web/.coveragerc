@@ -1,0 +1,18 @@
+[coverage:run]
+source =
+    .
+omit =
+    */migrations/*
+    */tests/*
+    */settings/*
+    */wsgi.py
+    */asgi.py
+    */manage.py
+    */venv/*
+    */static/*
+    */templates/*
+    */__pycache__/*
+branch = True
+
+[coverage:report]
+show_missing = True

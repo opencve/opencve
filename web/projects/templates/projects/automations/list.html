@@ -1,0 +1,141 @@
+{% extends 'projects/base_project.html' %}
+{% load static %}
+
+{% block title %}Automations - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    <!-- Left column: New Automation + Filters (mailbox-style sidebar) -->
+    <div class="col-md-3 col-sm-4">
+
+        <button type="button" class="btn btn-primary btn-block margin-bottom" data-toggle="modal" data-target="#newAutomationModal">
+            <i class="fa fa-plus"></i> New Automation
+        </button>
+
+        <!-- Modal: choose trigger type -->
+        <div class="modal fade" id="newAutomationModal" tabindex="-1" role="dialog" aria-labelledby="newAutomationModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="newAutomationModalLabel">Choose automation type</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row automation-trigger-options">
+                            <div class="col-xs-6">
+                                <a href="{{ url_add_realtime }}" class="trigger-option trigger-option-realtime">
+                                    <span class="trigger-option-icon"><i class="fa fa-bolt"></i></span>
+                                    <span class="trigger-option-title">Real-time automation</span>
+                                    <span class="trigger-option-desc">Runs when a CVE is created or updated. Notify, assign user, or change status.</span>
+                                    <span class="trigger-option-select">Select</span>
+                                </a>
+                            </div>
+                            <div class="col-xs-6">
+                                <a href="{{ url_add_periodic }}" class="trigger-option trigger-option-periodic">
+                                    <span class="trigger-option-icon"><i class="fa fa-calendar"></i></span>
+                                    <span class="trigger-option-title">Scheduled report</span>
+                                    <span class="trigger-option-desc">Runs on a schedule (daily or weekly). Send a notification with the report.</span>
+                                    <span class="trigger-option-select">Select</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title">Type</h3>
+            </div>
+            <div class="box-body no-padding">
+                <ul class="nav nav-pills nav-stacked">
+                    <li class="{% if not request.GET.type %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}"><i class="fa fa-inbox"></i> All</a></li>
+                    <li class="{% if request.GET.type == 'realtime' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?type=realtime"><i class="fa fa-bolt"></i> React to CVE</a></li>
+                    <li class="{% if request.GET.type == 'periodic' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?type=periodic"><i class="fa fa-calendar"></i> Periodic</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title">Status</h3>
+            </div>
+            <div class="box-body no-padding">
+                <ul class="nav nav-pills nav-stacked">
+                    <li class="{% if not request.GET.status %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}{% if request.GET.type %}?type={{ request.GET.type }}{% endif %}"><i class="fa fa-inbox"></i> All</a></li>
+                    <li class="{% if request.GET.status == 'enabled' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?status=enabled{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}"><i class="fa fa-check-circle text-success"></i> Enabled</a></li>
+                    <li class="{% if request.GET.status == 'disabled' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?status=disabled{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}"><i class="fa fa-ban text-danger"></i> Disabled</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="box box-primary">
+            <div class="box-header">
+                <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
+            </div>
+            <div class="box-body">
+                <p class="small"><strong>React to CVE</strong>: runs when a CVE is created or updated. Actions: notification, assign user, change status.</p>
+                <p class="small"><strong>Periodic</strong>: runs on a schedule (Daily/Weekly/Monthly). Action: send notification.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column: title + list of automations (mailbox table style) -->
+    <div class="col-md-9 col-sm-8">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Automations ({{ automations|length }})</h3>
+            </div>
+            <div class="box-body no-padding">
+                {% if automations %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 36px;"></th>
+                                <th>Name</th>
+                                <th class="text-center">Conditions</th>
+                                <th class="text-center">Actions</th>
+                                <th class="text-center" title="Enabled">Enabled</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for automation in automations %}
+                            <tr>
+                                <td>
+                                    {% if automation.trigger_type == 'periodic' %}
+                                        <i class="fa fa-calendar text-muted" title="Periodic — {{ automation.get_frequency_display }}"></i>
+                                    {% else %}
+                                        <i class="fa fa-bolt text-muted" title="Real-time"></i>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'edit_automation' org_name=request.current_organization.name project_name=project.name automation=automation.name %}"><strong>{{ automation.name }}</strong></a>
+                                </td>
+                                <td class="text-center">{{ automation.configuration.conditions|length }}</td>
+                                <td class="text-center">{{ automation.configuration.actions|length }}</td>
+                                <td class="text-center">
+                                    {% if automation.is_enabled %}
+                                        <i class="fa fa-check-circle text-success" title="Enabled"></i>
+                                    {% else %}
+                                        <i class="fa fa-times-circle text-danger" title="Disabled"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="padding: 20px;">
+                    <p class="text-muted">No automations yet. Create one using the buttons on the left.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

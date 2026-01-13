@@ -3,6 +3,10 @@ from django.urls import path, register_converter
 from opencve.utils import DateConverter
 from projects.views import (
     AssignCveUserView,
+    AutomationCreateView,
+    AutomationsView,
+    AutomationDeleteView,
+    AutomationUpdateView,
     CreateCveCommentView,
     DeleteCveCommentView,
     NotificationCreateView,
@@ -87,6 +91,26 @@ urlpatterns = [
         "org/<org_name>/projects/<project_name>/subscriptions",
         SubscriptionsView.as_view(),
         name="subscriptions",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations",
+        AutomationsView.as_view(),
+        name="automations",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/add/<str:trigger_type>/",
+        AutomationCreateView.as_view(),
+        name="create_automation",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>",
+        AutomationUpdateView.as_view(),
+        name="edit_automation",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/delete",
+        AutomationDeleteView.as_view(),
+        name="delete_automation",
     ),
     path(
         "org/<org_name>/projects/<project_name>/vulnerabilities",

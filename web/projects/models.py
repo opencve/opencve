@@ -17,6 +17,10 @@ def get_default_configuration():
     return {"cvss": 0, "events": []}
 
 
+def get_default_automation_config():
+    return {"conditions": {"operator": "OR", "children": []}, "actions": []}
+
+
 class Project(BaseModel):
     name = models.CharField(
         max_length=100,
@@ -105,6 +109,102 @@ class Notification(BaseModel):
             return False
         extras = self.configuration.get("extras") or {}
         return bool(extras.get("confirmation_token"))
+
+
+class Automation(BaseModel):
+    TRIGGER_REALTIME = "realtime"
+    TRIGGER_PERIODIC = "periodic"
+    TRIGGER_CHOICES = [
+        (TRIGGER_REALTIME, "React to CVE changes"),
+        (TRIGGER_PERIODIC, "Generate periodic reports"),
+    ]
+    FREQUENCY_DAILY = "daily"
+    FREQUENCY_WEEKLY = "weekly"
+    FREQUENCY_CHOICES = [
+        (FREQUENCY_DAILY, "Daily"),
+        (FREQUENCY_WEEKLY, "Weekly"),
+    ]
+
+    name = models.CharField(
+        max_length=256,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-zA-Z0-9\-_ ]+$",
+                message="Special characters (except dash and underscore) are not accepted",
+            ),
+        ],
+    )
+    is_enabled = models.BooleanField(default=True)
+    trigger_type = models.CharField(
+        max_length=20,
+        choices=TRIGGER_CHOICES,
+        default=TRIGGER_REALTIME,
+    )
+    frequency = models.CharField(
+        max_length=20,
+        choices=FREQUENCY_CHOICES,
+        null=True,
+        blank=True,
+    )
+    configuration = models.JSONField(default=get_default_automation_config)
+
+    # Relationships
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="automations"
+    )
+
+    class Meta:
+        db_table = "opencve_automations"
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse(
+            "edit_automation",
+            kwargs={
+                "project_name": self.project.name,
+                "org_name": self.project.organization.name,
+                "automation": self.name,
+            },
+        )
+
+
+class AutomationRun(BaseModel):
+    """History of automation runs (e.g. periodic report executions)."""
+
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_SENT, "Sent"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    run_date = models.DateField(db_index=True)
+    matched_cves_count = models.IntegerField(default=0)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_SENT,
+    )
+
+    automation = models.ForeignKey(
+        Automation, on_delete=models.CASCADE, related_name="runs"
+    )
+    report = models.ForeignKey(
+        "changes.Report",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="automation_runs",
+    )
+
+    class Meta:
+        db_table = "opencve_automation_runs"
+        ordering = ["-run_date"]
+
+    def __str__(self):
+        return f"{self.automation.name} - {self.run_date}"
 
 
 class CveTracker(BaseModel):

@@ -2335,8 +2335,236 @@ tr.auditlog-detail-row > td {
   word-break: break-word;
 }
 
+
 .try-result-code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* Automation form (create/edit/detail) */
+.automation-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+.automation-section .section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#conditions-section .section-header,
+#when-section .section-header {
+  margin-bottom: 15px;
+}
+/* THEN block: margin under its header (actions section follows #conditions-section) */
+#conditions-section + .automation-section .section-header {
+  margin-bottom: 15px;
+}
+.automation-section .section-label {
+  display: inline-block;
+  background: #8B5CF6;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.automation-section .section-description {
+  color: #666;
+  font-size: 14px;
+}
+.automation-section .condition-item,
+.automation-section .action-item {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.automation-section .condition-item-content,
+.automation-section .action-item-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.automation-section .condition-item-label,
+.automation-section .action-item-label {
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.automation-section .condition-item-label .form-control,
+.automation-section .action-item-label .form-control {
+  vertical-align: middle;
+  height: auto;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+.automation-section .remove-btn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  padding: 5px 10px;
+  font-size: 16px;
+}
+.automation-section .remove-btn:hover {
+  color: #c82333;
+}
+.add-dropdown {
+  padding: 8px 12px;
+  border: 1px solid #8B5CF6;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  max-width: 300px;
+}
+#condition-groups-container .automation-section {
+  margin-top: 20px;
+}
+.automation-section .btn-add-or-group {
+  margin-top: 12px;
+}
+.automation-section .section-header-with-remove {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.automation-section .btn-remove-or-group {
+  margin-left: auto;
+  color: #dc3545;
+  border-color: #dc3545;
+}
+.automation-section .btn-remove-or-group:hover {
+  color: #fff;
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+.add-condition-dropdown,
+#add-action-dropdown,
+#add-trigger-dropdown {
+  width: 100%;
+  max-width: none;
+}
+.add-condition-dropdown + .select2-container,
+#add-action-dropdown + .select2-container {
+  width: 100% !important;
+}
+.add-dropdown:focus {
+  outline: none;
+  border-color: #7c3aed;
+}
+/* Trigger description with inline frequency select (same line as text) */
+.automation-section .trigger-description-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 5px;
+}
+.automation-section .trigger-frequency-select {
+  display: inline-block;
+  width: 120px;
+  margin: 0 5px;
+  vertical-align: middle;
+  height: auto;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+.automation-frequency-in-when {
+  margin-top: 12px;
+}
+.automation-frequency-in-when .form-control {
+  display: inline-block;
+  width: auto;
+  min-width: 160px;
+}
+
+/* New automation modal: trigger type choice (realtime / periodic) */
+.automation-trigger-options {
+  margin: 0 -5px;
+}
+.automation-trigger-options .trigger-option {
+  display: block;
+  padding: 24px 16px;
+  margin-bottom: 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+  color: #333;
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.automation-trigger-options .trigger-option:hover {
+  border-color: #8B5CF6;
+  background: #f5f0ff;
+  color: #333;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+}
+.trigger-option-icon {
+  display: block;
+  font-size: 48px;
+  margin-bottom: 12px;
+  color: #8B5CF6;
+}
+.trigger-option-realtime .trigger-option-icon { color: #f59e0b; }
+.trigger-option-periodic .trigger-option-icon { color: #3b82f6; }
+.trigger-option-realtime:hover .trigger-option-icon { color: #d97706; }
+.trigger-option-periodic:hover .trigger-option-icon { color: #2563eb; }
+.trigger-option-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.trigger-option-desc {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.trigger-option-select {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #8B5CF6;
+}
+.trigger-option:hover .trigger-option-select {
+  text-decoration: underline;
+}
+
+/* Automation form: frequency radios (create periodic only) */
+#automation-form #id_frequency,
+#automation-form .frequency-choice ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.5em 0 0 0;
+}
+#automation-form #id_frequency li {
+  margin-bottom: 10px;
+}
+#automation-form #id_frequency label {
+  font-weight: normal;
+  cursor: pointer;
+  display: inline;
+}
+#automation-form #id_frequency input {
+  margin-right: 8px;
+}
+.automation-frequency-in-when .frequency-choice {
+  margin-top: 8px;
 }

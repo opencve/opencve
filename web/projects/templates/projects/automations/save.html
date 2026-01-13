@@ -1,0 +1,151 @@
+{% extends 'projects/base_project.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Automation - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<form method="post" id="automation-form">
+    {% csrf_token %}
+    {{ form.configuration_json }}
+    {{ form.trigger_type }}
+
+    <div class="row">
+        <div class="col-lg-4 col-md-5 col-sm-12">
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">General Settings</h3>
+                    <div class="box-tools pull-right">
+                        {{ form.is_enabled|as_crispy_field }}
+                    </div>
+                </div>
+                <div class="box-body">
+                    {{ form.name|as_crispy_field }}
+
+                    <div class="pull-right">
+                        <a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8 col-md-7 col-sm-12">
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Conditions</h3>
+                </div>
+                <div class="box-body">
+                    <!-- SCHEDULE Section (periodic only; realtime uses WHEN below) -->
+                    {% if trigger_type == 'periodic' %}
+                    <div class="automation-section">
+                        <div class="section-header">
+                            <span class="section-label">SCHEDULE</span>
+                            <span class="section-description trigger-description-inline">
+                                A periodic report is generated
+                                <select name="frequency" id="id_frequency" class="form-control trigger-frequency-select select2" required>
+                                    <option value="daily" {% if form.frequency.value == 'daily' %}selected{% endif %}>Daily</option>
+                                    <option value="weekly" {% if form.frequency.value == 'weekly' %}selected{% endif %}>Weekly</option>
+                                </select>
+                                .
+                            </span>
+                        </div>
+                        {% if form.trigger_type.errors %}<p class="text-danger">{{ form.trigger_type.errors.0 }}</p>{% endif %}
+                        {% if form.frequency.errors %}
+                            <p class="text-danger">{{ form.frequency.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- WHEN Section (event type only: which events trigger the automation) -->
+                    {% if trigger_type == 'realtime' %}
+                    <div class="automation-section" id="when-section">
+                        <div class="section-header">
+                            <span class="section-label">WHEN</span>
+                            <span class="section-description">
+                                one or more of these events occur
+                            </span>
+                        </div>
+                        <div id="triggers-container"></div>
+                        <select class="add-dropdown select2" id="add-trigger-dropdown" data-placeholder="Add optional event...">
+                            <option value="">Add optional event...</option>
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <!-- Conditions: OR groups (each group = AND of conditions) -->
+                    <div id="conditions-section">
+                        <!-- First AND group (IF / SCOPE for periodic) -->
+                        <div class="automation-section">
+                            <div class="condition-group" data-group-index="0">
+                                <div class="section-header">
+                                    <span class="section-label">{% if trigger_type == 'periodic' %}SCOPE{% else %}IF{% endif %}</span>
+                                    <span class="section-description">
+                                        all of these conditions match
+                                    </span>
+                                </div>
+                                <div class="group-conditions"></div>
+                                <select class="add-dropdown select2 add-condition-dropdown" data-placeholder="Add optional filter..." data-group-index="0">
+                                    <option value="">Add optional filter...</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-default btn-add-or-group" id="add-or-group-btn">
+                                <i class="fa fa-plus"></i> Add OR group
+                            </button>
+                        </div>
+                        <div id="condition-groups-container">
+                            <!-- OR IF groups appended here, each in their own automation-section -->
+                        </div>
+                        <template id="condition-group-or-template">
+                            <div class="automation-section">
+                                <div class="condition-group" data-group-index="">
+                                    <div class="section-header section-header-with-remove">
+                                        <span class="section-label">OR {% if trigger_type == 'periodic' %}SCOPE{% else %}IF{% endif %}</span>
+                                        <span class="section-description">all of these conditions match</span>
+                                        <button type="button" class="btn btn-sm btn-default btn-remove-or-group" title="Remove this OR group">
+                                            <i class="fa fa-trash"></i> Remove OR group
+                                        </button>
+                                    </div>
+                                    <div class="group-conditions"></div>
+                                    <select class="add-dropdown select2 add-condition-dropdown" data-placeholder="Add optional filter..." data-group-index="">
+                                        <option value="">Add optional filter...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- THEN Section -->
+                    <div class="automation-section">
+                        <div class="section-header">
+                            <span class="section-label">THEN</span>
+                            <span class="section-description">
+                                perform these actions
+                            </span>
+                        </div>
+                        <div id="actions-container">
+                            <!-- Actions will be added here dynamically -->
+                        </div>
+                        <select class="add-dropdown select2" id="add-action-dropdown" data-placeholder="Add action...">
+                            <option value="">Add action...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+var automationData = {{ automation_data_json|safe }};
+var automationOptions = {
+    notifications: [{% for n in notifications %}{id: "{{ n.id }}", name: "{{ n.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}],
+    users: [{% for u in organization_members %}{id: "{{ u.id }}", name: "{{ u.username|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}],
+    statuses: [{% for k, v in status_choices %}{id: "{{ k }}", name: "{{ v|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}],
+    views: [{% for v in views %}{id: "{{ v.id }}", name: "{{ v.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+};
+var automationTriggerType = "{{ trigger_type }}";
+</script>
+
+{% endblock %}

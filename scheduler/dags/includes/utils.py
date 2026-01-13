@@ -148,6 +148,35 @@ def group_notifications_by_project(records, subscriptions):
     return projects_notifications
 
 
+def group_automations_by_project(records, subscriptions):
+    """
+    This function groups automations by project.
+    Each record contains: (project_id, project_name, org_name, automation_id, automation_name, configuration)
+    """
+    projects_automations = {}
+    for automation in records:
+        p_id, p_name, o_name, a_id, a_name, a_conf = automation
+
+        if p_id not in projects_automations:
+            projects_automations[p_id] = []
+
+        # Extract project subscriptions
+        project_subscriptions = subscriptions.get(p_id, [])
+
+        projects_automations[p_id].append(
+            {
+                "project_id": p_id,
+                "project_name": p_name,
+                "project_subscriptions": project_subscriptions,
+                "organization_name": o_name,
+                "automation_id": a_id,
+                "automation_name": a_name,
+                "automation_conf": a_conf,
+            }
+        )
+    return projects_automations
+
+
 def get_dates_from_context(context: Dict) -> Tuple[DateTime, DateTime]:
     start = context.get("data_interval_start")
     end = context.get("data_interval_end").subtract(seconds=1)

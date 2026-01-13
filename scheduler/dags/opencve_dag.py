@@ -7,6 +7,11 @@ from airflow.operators.python import ShortCircuitOperator
 from airflow.utils.task_group import TaskGroup
 from includes.operators.fetch_operator import GitFetchOperator
 from includes.operators.process_kb_operator import ProcessKbOperator
+from includes.tasks.automations import (
+    execute_automation_actions,
+    make_automations_chunks,
+    prepare_automations,
+)
 from includes.tasks.notifications import (
     make_notifications_chunks,
     prepare_notifications,
@@ -53,7 +58,7 @@ def opencve():
         (
             list_changes()
             >> list_subscriptions()
-            >> [populate_reports(), prepare_notifications()]
+            >> [populate_reports(), prepare_notifications(), prepare_automations()]
         )
 
     should_launch_notifications = ShortCircuitOperator(
@@ -64,8 +69,17 @@ def opencve():
     with TaskGroup(group_id="notifications") as notifications_group:
         send_notifications.expand(notifications=make_notifications_chunks())
 
+    should_launch_automations = ShortCircuitOperator(
+        task_id="should_launch_automations",
+        python_callable=lambda: should_execute("launch_automations"),
+    )
+
+    with TaskGroup(group_id="automations") as automations_group:
+        execute_automation_actions.expand(action_items=make_automations_chunks())
+
     cves_group >> should_create_reports >> reports_group
     reports_group >> should_launch_notifications >> notifications_group
+    reports_group >> should_launch_automations >> automations_group
 
 
 opencve()

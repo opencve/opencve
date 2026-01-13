@@ -2894,3 +2894,366 @@ function getContrastedColor(str){
     else showStep(1);
   }
 });
+
+/* Automation form: dynamic conditions and actions (create/edit automation) */
+$(document).ready(function() {
+  if ($('#automation-form').length === 0 || $('#conditions-section').length === 0) return;
+  (function() {
+    'use strict';
+    var isEventMode = typeof automationTriggerType === 'undefined' || automationTriggerType !== 'periodic';
+    var conditionCategoriesEvent = {
+      'severity_risk': { label: 'Severity & Risk', conditions: ['cvss_gte', 'epss_gte', 'kev_added'] },
+      'scope_matching': { label: 'Scope & Matching', conditions: ['vendor_equals', 'product_equals', 'query_match', 'view_match'] },
+      'project_context': { label: 'Project Context', conditions: ['cve_newer_than', 'cve_unassigned', 'cve_status'] }
+    };
+    var conditionCategoriesScheduled = {
+      'severity_risk': { label: 'Severity & Risk', conditions: ['cvss_gte', 'epss_gte'] },
+      'scope_matching': { label: 'Scope & Matching', conditions: ['vendor_equals', 'product_equals', 'query_match', 'view_match'] },
+      'project_context': { label: 'Project Context', conditions: ['cve_newer_than', 'cve_unassigned', 'cve_status'] }
+    };
+    var conditionCategories = isEventMode ? conditionCategoriesEvent : conditionCategoriesScheduled;
+    var triggerCategories = {
+      'cve_lifecycle': { label: 'CVE Lifecycle', triggers: ['cve_created', 'cve_updated'] },
+      'score_risk': { label: 'Score & Risk Changes', triggers: ['cvss_changed', 'cvss_increased', 'cvss_decreased', 'epss_changed', 'kev_added'] },
+      'affected_scope': { label: 'Affected Scope Changes', triggers: ['new_vendor', 'new_product'] },
+      'content_changes': { label: 'Content Changes', triggers: ['description_changed', 'title_changed', 'summary_changed', 'new_reference', 'new_weakness'] },
+      'project_context_changes': { label: 'Project Context Changes', triggers: ['cve_status_changed', 'cve_assignment_changed'] }
+    };
+    var triggerTypes = {
+      cve_created: { label: 'A CVE is created' },
+      cve_updated: { label: 'A CVE is updated (any field)' },
+      cvss_changed: { label: 'The CVSS score changes' },
+      cvss_increased: { label: 'The CVSS score increases' },
+      cvss_decreased: { label: 'The CVSS score decreases' },
+      epss_changed: { label: 'The EPSS score changes' },
+      kev_added: { label: 'The CVE is added to the KEV catalog' },
+      new_vendor: { label: 'A new affected vendor is added' },
+      new_product: { label: 'A new affected product is added' },
+      description_changed: { label: 'The description changes' },
+      title_changed: { label: 'The title changes' },
+      summary_changed: { label: 'The summary changes' },
+      new_reference: { label: 'A new reference is added' },
+      new_weakness: { label: 'A new weakness is added' },
+      cve_status_changed: { label: 'The CVE status changes' },
+      cve_assignment_changed: { label: 'The CVE assignment changes' }
+    };
+    var conditionTypes = {
+      cvss_gte: { label: 'The CVSS {version} score is greater than or equal to {value}', input: 'cvss_composite', versions: ['v3.0', 'v3.1', 'v4.0'], min: 0, max: 10, step: 0.1 },
+      cvss_increased: { label: 'The CVSS {version} score has increased', input: 'cvss_version_select', versions: ['v3.0', 'v3.1', 'v4.0'] },
+      cvss_increased_by: { label: 'The CVSS {version} score has increased by at least {value} points', input: 'cvss_increase_composite', versions: ['v3.0', 'v3.1', 'v4.0'], min: 0, max: 10, step: 0.1 },
+      epss_gte: { label: 'The EPSS score is greater than or equal to {value}', input: 'number', min: 0, max: 1, step: 0.001 },
+      kev_added: { label: 'The CVE has been added to the KEV catalog', input: 'boolean' },
+      vendor_equals: { label: 'The vendor matches {value}', input: 'text', placeholder: 'e.g., apache' },
+      product_equals: { label: 'The product matches {value}', input: 'text', placeholder: 'e.g., httpd' },
+      query_match: { label: 'The CVE matches the query {value}', input: 'text', placeholder: 'e.g., kev:true AND cvss31>=8' },
+      view_match: { label: 'The CVE matches the view {value}', input: 'select', options: 'views' },
+      new_vendor: { label: 'A new vendor is affected', input: 'boolean' },
+      new_product: { label: 'A new product is affected', input: 'boolean' },
+      new_weakness: { label: 'A new weakness has been added', input: 'boolean' },
+      new_reference: { label: 'A new reference has been added', input: 'boolean' },
+      description_changed: { label: 'The CVE description has been modified', input: 'boolean' },
+      summary_changed: { label: 'The CVE summary has been modified', input: 'boolean' },
+      title_changed: { label: 'The CVE title has been modified', input: 'boolean' },
+      cve_newer_than: { label: 'The CVE is newer than {value} days', input: 'number', min: 0, max: 365, step: 1 },
+      cve_unassigned: { label: 'The CVE is unassigned', input: 'boolean' },
+      cve_status: { label: 'The CVE status is {status}', input: 'select', options: 'statuses' }
+    };
+    var allActionTypes = {
+      send_notification: { label: 'Send a notification using {notification}', input: 'select', options: 'notifications' },
+      assign_user: { label: 'Assign the CVE to the user {user}', input: 'select', options: 'users' },
+      change_status: { label: 'Change the CVE status to {status}', input: 'select', options: 'statuses' },
+      generate_pdf: { label: 'Generate a PDF report', input: 'boolean' },
+      include_ai_summary: { label: 'Include an AI summary in the report', input: 'boolean' }
+    };
+    var actionTypes = {};
+    if (typeof automationTriggerType !== 'undefined' && automationTriggerType === 'periodic') {
+      actionTypes.send_notification = allActionTypes.send_notification;
+      actionTypes.generate_pdf = allActionTypes.generate_pdf;
+      actionTypes.include_ai_summary = allActionTypes.include_ai_summary;
+    } else {
+      actionTypes.send_notification = allActionTypes.send_notification;
+      actionTypes.assign_user = allActionTypes.assign_user;
+      actionTypes.change_status = allActionTypes.change_status;
+    }
+    function populateConditionDropdown($select) {
+      $select.empty();
+      $select.append($('<option>', { value: '', text: '' }));
+      Object.keys(conditionCategories).forEach(function(categoryKey) {
+        var category = conditionCategories[categoryKey];
+        var optgroup = $('<optgroup>', { label: category.label });
+        category.conditions.forEach(function(type) {
+          var conditionDef = conditionTypes[type];
+          if (conditionDef) optgroup.append($('<option>', { value: type, text: conditionDef.label }));
+        });
+        $select.append(optgroup);
+      });
+    }
+    function populateTriggerDropdown() {
+      var $select = $('#add-trigger-dropdown');
+      if (!$select.length) return;
+      $select.empty();
+      $select.append($('<option>', { value: '', text: '' }));
+      Object.keys(triggerCategories).forEach(function(categoryKey) {
+        var category = triggerCategories[categoryKey];
+        var optgroup = $('<optgroup>', { label: category.label });
+        category.triggers.forEach(function(type) {
+          var triggerDef = triggerTypes[type];
+          if (triggerDef) optgroup.append($('<option>', { value: type, text: triggerDef.label }));
+        });
+        $select.append(optgroup);
+      });
+    }
+    function addTriggerUI(type) {
+      var triggerDef = triggerTypes[type];
+      if (!triggerDef) return;
+      if ($('#triggers-container .trigger-item[data-type="' + type + '"]').length) return;
+      var html = '<div class="trigger-item condition-item" data-type="' + type + '"><div class="trigger-item-content condition-item-content"><span class="condition-item-label">' + triggerDef.label + '</span></div><button type="button" class="remove-btn remove-trigger" title="Remove event"><i class="fa fa-trash"></i></button></div>';
+      $('#triggers-container').append(html);
+      updateConfigurationJSON();
+    }
+    var $firstGroup = $('#conditions-section .condition-group').first();
+    populateConditionDropdown($firstGroup.find('.add-condition-dropdown'));
+    if ($('#when-section').length) {
+      populateTriggerDropdown();
+      $('#add-trigger-dropdown').select2({ allowClear: false, placeholder: 'Add optional event...', minimumResultsForSearch: Infinity });
+      $('#add-trigger-dropdown').val(null).trigger('change');
+    }
+    $firstGroup.find('.add-condition-dropdown').select2({ allowClear: false, placeholder: 'Add optional filter...', minimumResultsForSearch: Infinity });
+    $firstGroup.find('.add-condition-dropdown').val(null).trigger('change');
+    var actionDropdown = $('#add-action-dropdown');
+    actionDropdown.empty();
+    actionDropdown.append($('<option>', { value: '', text: '' }));
+    Object.keys(actionTypes).forEach(function(type) {
+      var actionDef = actionTypes[type];
+      if (actionDef) actionDropdown.append($('<option>', { value: type, text: actionDef.label }));
+    });
+    actionDropdown.select2({ allowClear: false, placeholder: 'Add action...', minimumResultsForSearch: Infinity });
+    actionDropdown.val(null).trigger('change');
+    var frequencySelect = $('#id_frequency');
+    if (frequencySelect.length) {
+      frequencySelect.select2({ allowClear: false, minimumResultsForSearch: Infinity });
+    }
+    $(document).on('select2:select', '.add-condition-dropdown', function(e) {
+      var type = e.params.data.id;
+      if (type) {
+        var $group = $(this).closest('.condition-group');
+        addConditionUI(type, undefined, $group);
+        $(this).val(null).trigger('change');
+      }
+    });
+    actionDropdown.on('select2:select', function(e) {
+      var type = e.params.data.id;
+      if (type) { addActionUI(type); actionDropdown.val(null).trigger('change'); }
+    });
+    if ($('#add-trigger-dropdown').length) {
+      $('#add-trigger-dropdown').on('select2:select', function(e) {
+        var type = e.params.data.id;
+        if (type) { addTriggerUI(type); $(this).val(null).trigger('change'); }
+      });
+    }
+    $(document).on('click', '.remove-trigger', function() {
+      $(this).closest('.trigger-item').remove();
+      updateConfigurationJSON();
+    });
+    $('#conditions-section .condition-value.select2').select2({ allowClear: false });
+    $('#actions-container .action-value.select2').select2({ allowClear: false });
+    $(document).on('click', '.remove-condition', function() { $(this).closest('.condition-item').remove(); updateConfigurationJSON(); });
+    $('#add-or-group-btn').on('click', function() { addOrGroup(); });
+    $(document).on('click', '.btn-remove-or-group', function() {
+      var $sectionToRemove = $(this).closest('.automation-section');
+      $('#add-or-group-btn').appendTo($('#conditions-section .automation-section').not($sectionToRemove).last());
+      $sectionToRemove.remove();
+      updateConfigurationJSON();
+    });
+    $(document).on('click', '.remove-action', function() { $(this).closest('.action-item').remove(); updateActionDropdown(); updateConfigurationJSON(); });
+    $('#automation-form').on('submit', function() { updateConfigurationJSON(); });
+    $(document).on('change', '.condition-value, .condition-version', function() { updateConfigurationJSON(); });
+    $(document).on('change', '.action-value', function() { updateConfigurationJSON(); });
+    updateActionDropdown();
+
+    function addConditionUI(type, value, $group) {
+      var conditionDef = conditionTypes[type];
+      if (!conditionDef) return;
+      if (!$group || !$group.length) $group = $('#conditions-section .condition-group').first();
+      var $container = $group.find('.group-conditions');
+      var parsedValue = value;
+      if (typeof value === 'string' && value.startsWith('{')) { try { parsedValue = JSON.parse(value); } catch(e) { parsedValue = value; } }
+      if (typeof parsedValue !== 'object' || parsedValue === null || Array.isArray(parsedValue)) {
+        parsedValue = type === 'cve_status' ? { status: parsedValue } : { value: parsedValue };
+      }
+      var html = '<div class="condition-item" data-type="' + type + '"><div class="condition-item-content"><span class="condition-item-label">';
+      var labelParts = conditionDef.label.split(/\{(\w+)\}/);
+      for (var i = 0; i < labelParts.length; i++) {
+        if (i % 2 === 0) html += labelParts[i];
+        else {
+          var placeholder = labelParts[i];
+          if (placeholder === 'version' && (conditionDef.input === 'cvss_composite' || conditionDef.input === 'cvss_increase_composite' || conditionDef.input === 'cvss_version_select')) {
+            html += '<select class="form-control condition-version select2" style="display:inline-block;width:120px;margin:0 5px;" required>';
+            (conditionDef.versions || []).forEach(function(version) {
+              html += '<option value="' + version + '"' + (parsedValue.version === version ? ' selected' : '') + '>' + version + '</option>';
+            });
+            html += '</select>';
+          } else if (placeholder === 'status' && conditionDef.input === 'select') {
+            html += '<select class="form-control condition-value select2" style="display:inline-block;width:200px;margin:0 5px;" required><option value="">Select...</option>';
+            if (typeof automationOptions !== 'undefined' && automationOptions[conditionDef.options])
+              automationOptions[conditionDef.options].forEach(function(option) {
+                html += '<option value="' + option.id + '"' + (parsedValue.status && parsedValue.status === option.id ? ' selected' : '') + '>' + option.name + '</option>';
+              });
+            html += '</select>';
+          } else if (placeholder === 'value') {
+            if (conditionDef.input === 'cvss_composite' || conditionDef.input === 'cvss_increase_composite') {
+              html += '<input type="number" class="form-control condition-value" style="display:inline-block;width:80px;margin:0 5px;" min="' + (conditionDef.min || 0) + '" max="' + (conditionDef.max || 10) + '" step="' + (conditionDef.step || 0.1) + '" value="' + (parsedValue.value != null ? parsedValue.value : conditionDef.min || 0) + '" required>';
+            } else if (conditionDef.input === 'number') {
+              html += '<input type="number" class="form-control condition-value" style="display:inline-block;width:80px;margin:0 5px;" min="' + (conditionDef.min || 0) + '" max="' + (conditionDef.max || 10) + '" step="' + (conditionDef.step || 0.1) + '" value="' + (parsedValue.value != null ? parsedValue.value : conditionDef.min || 0) + '" required>';
+            } else if (conditionDef.input === 'text') {
+              html += '<input type="text" class="form-control condition-value" style="display:inline-block;width:200px;margin:0 5px;" placeholder="' + (conditionDef.placeholder || '') + '" value="' + (parsedValue.value || '') + '" required>';
+            } else if (conditionDef.input === 'select') {
+              html += '<select class="form-control condition-value select2" style="display:inline-block;width:200px;margin:0 5px;" required><option value="">Select...</option>';
+              if (typeof automationOptions !== 'undefined' && automationOptions[conditionDef.options])
+                automationOptions[conditionDef.options].forEach(function(option) {
+                  html += '<option value="' + option.id + '"' + (parsedValue.value && parsedValue.value === option.id ? ' selected' : '') + '>' + option.name + '</option>';
+                });
+              html += '</select>';
+            }
+          }
+        }
+      }
+      html += '</span>';
+      if (conditionDef.input === 'boolean') html += '<input type="hidden" class="condition-value" value="true">';
+      html += '</div><button type="button" class="remove-btn remove-condition" title="Remove condition"><i class="fa fa-trash"></i></button></div>';
+      $container.append(html);
+      var $new = $container.find('.condition-item').last();
+      $new.find('select.condition-value.select2, select.condition-version.select2').select2({ allowClear: false });
+      $new.find('.condition-value, .condition-version').on('change', function() { updateConfigurationJSON(); });
+      updateConfigurationJSON();
+    }
+    function addOrGroup() {
+      var template = document.getElementById('condition-group-or-template');
+      if (!template || !template.content) return;
+      var $newGroup = $(template.content.cloneNode(true));
+      var idx = $('#conditions-section .condition-group').length;
+      $newGroup.attr('data-group-index', idx);
+      $newGroup.find('.add-condition-dropdown').attr('data-group-index', idx);
+      $('#condition-groups-container').append($newGroup);
+      // After append, fragment is empty; get the newly added group from the DOM
+      var $addedGroup = $('#condition-groups-container .condition-group').last();
+      var $dropdown = $addedGroup.find('.add-condition-dropdown');
+      populateConditionDropdown($dropdown);
+      $dropdown.select2({ allowClear: false, placeholder: 'Add optional filter...', minimumResultsForSearch: Infinity });
+      $dropdown.val(null).trigger('change');
+      $('#add-or-group-btn').appendTo($('#condition-groups-container .automation-section').last());
+      updateConfigurationJSON();
+    }
+    function addActionUI(type, value) {
+      var actionDef = actionTypes[type];
+      if (!actionDef) return;
+      var html = '<div class="action-item" data-type="' + type + '"><div class="action-item-content"><span class="action-item-label">';
+      var labelParts = actionDef.label.split(/\{(\w+)\}/);
+      for (var i = 0; i < labelParts.length; i++) {
+        if (i % 2 === 0) html += labelParts[i];
+        else if (actionDef.input === 'select') {
+          html += '<select class="form-control action-value select2" style="display:inline-block;width:200px;margin:0 5px;" required><option value="">Select...</option>';
+          if (typeof automationOptions !== 'undefined' && automationOptions[actionDef.options])
+            automationOptions[actionDef.options].forEach(function(option) {
+              html += '<option value="' + option.id + '"' + (value && value === option.id ? ' selected' : '') + '>' + option.name + '</option>';
+            });
+          html += '</select>';
+        }
+      }
+      html += '</span>';
+      if (actionDef.input === 'boolean') {
+        html += '<input type="hidden" class="action-value" value="true">';
+      }
+      html += '</div><button type="button" class="remove-btn remove-action" title="Remove action"><i class="fa fa-trash"></i></button></div>';
+      $('#actions-container').append(html);
+      $('#actions-container .action-item').last().find('select.action-value.select2').select2({ allowClear: false });
+      $('#actions-container .action-item').last().find('.action-value').on('change', function() { updateConfigurationJSON(); });
+      updateActionDropdown();
+      updateConfigurationJSON();
+    }
+    function updateActionDropdown() {
+      var used = [];
+      $('.action-item').each(function() { var t = $(this).data('type'); if (t) used.push(t); });
+      $('#add-action-dropdown').find('option').each(function() {
+        var type = $(this).val();
+        if (!type) return;
+        $(this).prop('disabled', (type === 'assign_user' || type === 'change_status') && used.indexOf(type) !== -1);
+      });
+    }
+    function updateConfigurationJSON() {
+      var conditionChildren = [], actions = [];
+      $('#conditions-section .condition-group').each(function() {
+        var groupConditions = [];
+        $(this).find('.group-conditions .condition-item').each(function() {
+          var type = $(this).data('type'), conditionDef = conditionTypes[type];
+          var valueInput = $(this).find('.condition-value'), versionInput = $(this).find('.condition-version'), value;
+          if (conditionDef && (conditionDef.input === 'cvss_composite' || conditionDef.input === 'cvss_increase_composite')) {
+            var version = versionInput.val(), val = valueInput.attr('type') === 'number' ? parseFloat(valueInput.val()) : valueInput.val();
+            if (version && val !== null && val !== undefined && val !== '') value = { version: version, value: val };
+          } else if (conditionDef && conditionDef.input === 'cvss_version_select') { if (versionInput.val()) value = { version: versionInput.val() }; }
+          else if (conditionDef && type === 'cve_status') { var sv = valueInput.val(); if (sv) value = sv; }
+          else if (valueInput.attr('type') === 'hidden') value = valueInput.val() === 'true';
+          else if (valueInput.attr('type') === 'number') value = parseFloat(valueInput.val());
+          else value = valueInput.val();
+          if (value !== null && value !== undefined && value !== '') groupConditions.push({ type: type, value: value });
+        });
+        conditionChildren.push({ operator: 'AND', children: groupConditions });
+      });
+      $('.action-item').each(function() {
+        var type = $(this).data('type'), value = $(this).find('.action-value').val();
+        if (value) actions.push({ type: type, value: value });
+      });
+      var conditionsTree = { operator: 'OR', children: conditionChildren };
+      var config = { conditions: conditionsTree, actions: actions };
+      if ($('#when-section').length) {
+        var triggers = [];
+        $('#triggers-container .trigger-item').each(function() {
+          var type = $(this).data('type');
+          if (type) triggers.push(type);
+        });
+        config.triggers = triggers;
+      }
+      $('#id_configuration_json').val(JSON.stringify(config));
+    }
+    if (typeof automationData !== 'undefined') {
+      if ($('#when-section').length && automationData.triggers && Array.isArray(automationData.triggers)) {
+        automationData.triggers.forEach(function(type) { addTriggerUI(type); });
+      }
+      var condTree = automationData.conditions;
+      var allowedConditionTypes = [];
+      Object.keys(conditionCategories).forEach(function(k) {
+        conditionCategories[k].conditions.forEach(function(t) { allowedConditionTypes.push(t); });
+      });
+      if (condTree && condTree.operator === 'OR' && Array.isArray(condTree.children)) {
+        var $groups = $('#conditions-section .condition-group');
+        condTree.children.forEach(function(child, idx) {
+          var $group = $groups.eq(idx);
+          if (!$group.length) {
+            addOrGroup();
+            $groups = $('#conditions-section .condition-group');
+            $group = $groups.eq(idx);
+          }
+          var conditionsToAdd = child.operator === 'AND' && Array.isArray(child.children) ? child.children : (child.type ? [child] : []);
+          conditionsToAdd.forEach(function(condition) {
+            var type = condition.type, value = condition.value;
+            if (allowedConditionTypes.indexOf(type) === -1) return;
+            if (type === 'cvss31_gte') { type = 'cvss_gte'; value = { version: 'v3.1', value: value }; }
+            else if (type === 'cvss40_gte') { type = 'cvss_gte'; value = { version: 'v4.0', value: value }; }
+            else if (type === 'cvss30_increased') { type = 'cvss_increased'; value = { version: 'v3.0' }; }
+            else if (type === 'cvss40_increased_by') { type = 'cvss_increased_by'; value = { version: 'v4.0', value: value }; }
+            addConditionUI(type, value, $group);
+          });
+        });
+      }
+      if (automationData.actions && Array.isArray(automationData.actions)) {
+        automationData.actions.forEach(function(action) { addActionUI(action.type, action.value); });
+      }
+    }
+
+    window.addConditionUI = addConditionUI;
+    window.addActionUI = addActionUI;
+    window.updateConfigurationJSON = updateConfigurationJSON;
+    window.updateActionDropdown = updateActionDropdown;
+
+  })();
+});

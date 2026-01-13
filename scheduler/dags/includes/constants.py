@@ -329,3 +329,43 @@ WHERE r.id = e.id;
 """.format(
     expired_select=REPORTS_EXPIRED_SELECT.strip()
 )
+
+SQL_PROJECT_WITH_AUTOMATIONS = """
+SELECT
+  projects.id,
+  projects.name,
+  organizations.name,
+  automations.id,
+  automations.name,
+  automations.configuration
+FROM
+  opencve_automations AS automations
+  JOIN opencve_projects AS projects ON projects.id = automations.project_id
+  JOIN opencve_organizations AS organizations ON organizations.id = projects.organization_id
+WHERE
+  automations.is_enabled = 't'
+  AND projects.id IN %(projects)s;
+"""
+
+SQL_CVE_ID_BY_CVE_ID = """
+SELECT id, cve_id, created_at
+FROM opencve_cves
+WHERE cve_id IN %(cve_ids)s;
+"""
+
+SQL_CVE_TRACKER_STATUS = """
+SELECT cves.cve_id, trackers.status, trackers.assignee_id
+FROM opencve_cve_trackers AS trackers
+JOIN opencve_cves AS cves ON trackers.cve_id = cves.id
+WHERE trackers.project_id = %(project_id)s
+  AND cves.cve_id IN %(cve_ids)s;
+"""
+
+SQL_UPSERT_CVE_TRACKER = """
+INSERT INTO opencve_cve_trackers (id, cve_id, project_id, assignee_id, status, assigned_at, created_at, updated_at)
+VALUES (%(id)s, %(cve_id)s, %(project_id)s, %(assignee_id)s, %(status)s, NOW(), NOW(), NOW())
+ON CONFLICT ON CONSTRAINT ix_unique_cve_project_tracker DO UPDATE SET
+  assignee_id = COALESCE(EXCLUDED.assignee_id, opencve_cve_trackers.assignee_id),
+  status = COALESCE(EXCLUDED.status, opencve_cve_trackers.status),
+  updated_at = NOW();
+"""
