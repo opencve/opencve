@@ -13,6 +13,8 @@ from psycopg2.errors import ForeignKeyViolation
 from includes.constants import (
     PRODUCT_SEPARATOR,
     REPORT_UPSERT_PROCEDURE,
+    REPORTS_RETENTION_MONTHS,
+    SQL_DELETE_EXPIRED_REPORTS,
     SQL_CHANGE_WITH_VENDORS,
     SQL_PROJECT_WITH_SUBSCRIPTIONS,
     SQL_REPORTS_CVES_BY_DAY,
@@ -243,3 +245,17 @@ def summarize_reports(**context):
             sql=SQL_UPDATE_REPORT_AI_SUMMARY,
             parameters={"report_id": report_id, "ai_summary": response},
         )
+
+
+def clean_reports():
+    """
+    Delete expired reports and their related changes.
+    """
+    logger.info(
+        "Cleaning expired reports older than %s months", REPORTS_RETENTION_MONTHS
+    )
+    hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    hook.run(
+        sql=SQL_DELETE_EXPIRED_REPORTS,
+        parameters={"retention_months": REPORTS_RETENTION_MONTHS},
+    )

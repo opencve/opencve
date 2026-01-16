@@ -1299,3 +1299,6 @@ notification_smtp_timeout = 30
 llm_api_key = sk-proj-1234567890
 llm_api_url = https://api.example.com
 llm_model = Mistral-7B-Instruct-v0.3
+
+# Reports retention (in months)
+reports_retention = 12
