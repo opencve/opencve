@@ -8,6 +8,8 @@ REDHAT_LOCAL_REPO = pathlib.Path(conf.get("opencve", "redhat_repo_path"))
 VULNRICHMENT_LOCAL_REPO = pathlib.Path(conf.get("opencve", "vulnrichment_repo_path"))
 KB_LOCAL_REPO = pathlib.Path(conf.get("opencve", "kb_repo_path"))
 
+REPORTS_RETENTION_MONTHS = int(conf.get("opencve", "reports_retention", fallback="12"))
+
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
 CVE_UPSERT_PROCEDURE = """
@@ -301,3 +303,29 @@ UPDATE opencve_reports
 SET ai_summary = %(ai_summary)s
 WHERE id = %(report_id)s;
 """
+
+REPORTS_EXPIRED_SELECT = """
+SELECT
+  r.id
+FROM
+  opencve_reports r
+WHERE
+  r.created_at < now() - make_interval(months => %(retention_months)s)
+"""
+
+SQL_DELETE_EXPIRED_REPORTS = """
+WITH expired AS (
+  {expired_select}
+),
+deleted_changes AS (
+  DELETE FROM opencve_reports_changes rc
+  USING expired e
+  WHERE rc.report_id = e.id
+  RETURNING rc.report_id
+)
+DELETE FROM opencve_reports r
+USING expired e
+WHERE r.id = e.id;
+""".format(
+    expired_select=REPORTS_EXPIRED_SELECT.strip()
+)

@@ -1,4 +1,5 @@
 from unittest.mock import patch, mock_open
+import importlib
 
 import pytest
 import pendulum
@@ -536,3 +537,103 @@ def test_summarize_reports_none_response(tests_path, tmp_path_factory):
 
         # Check DB update was NOT called (report skipped)
         mock_hook_instance.run.assert_not_called()
+
+
+@pytest.mark.web_db
+def test_clean_reports_deletes_expired(web_pg_hook, override_conf):
+    override_conf("opencve", "reports_retention", "1")
+
+    import includes.constants as constants
+    import includes.tasks.reports as reports_module
+
+    importlib.reload(constants)
+    importlib.reload(reports_module)
+
+    org_id = "11111111-1111-1111-1111-111111111111"
+    project_id = "22222222-2222-2222-2222-222222222222"
+    cve_uuid = "33333333-3333-3333-3333-333333333333"
+    old_change_id = "44444444-4444-4444-4444-444444444444"
+    new_change_id = "55555555-5555-5555-5555-555555555555"
+    old_report_id = "66666666-6666-6666-6666-666666666666"
+    new_report_id = "77777777-7777-7777-7777-777777777777"
+
+    # Create the organization, project, CVE, change, report and report_change
+    # An old report from 2 months ago and a new report from 10 days ago
+    # The old report should be deleted and the new report should be kept
+    web_pg_hook.run(
+        f"""
+        INSERT INTO opencve_organizations (id, created_at, updated_at, name)
+        VALUES ('{org_id}', now(), now(), 'orga1');
+
+        INSERT INTO opencve_projects (
+            id, created_at, updated_at, name, description, subscriptions, organization_id, active
+        )
+        VALUES (
+            '{project_id}', now(), now(), 'orga1-project1', '',
+            '{{"vendors": [], "products": []}}'::jsonb, '{org_id}', 't'
+        );
+
+        INSERT INTO opencve_cves (
+            id, created_at, updated_at, cve_id, title, description, vendors, weaknesses, metrics
+        )
+        VALUES (
+            '{cve_uuid}', now(), now(), 'CVE-2024-0001', NULL, NULL,
+            '[]'::jsonb, '[]'::jsonb, '{{}}'::jsonb
+        );
+
+        INSERT INTO opencve_changes (
+            id, created_at, updated_at, path, commit, types, cve_id
+        )
+        VALUES
+            (
+                '{old_change_id}', now() - interval '2 months',
+                now() - interval '2 months', '0001/CVE-2024-0001.json',
+                '0000000000000000000000000000000000000000', '[]'::jsonb, '{cve_uuid}'
+            ),
+            (
+                '{new_change_id}', now() - interval '10 days',
+                now() - interval '10 days', '0001/CVE-2024-0001.json',
+                '1111111111111111111111111111111111111111', '[]'::jsonb, '{cve_uuid}'
+            );
+
+        INSERT INTO opencve_reports (
+            id, created_at, updated_at, seen, day, project_id, ai_summary
+        )
+        VALUES
+            (
+                '{old_report_id}', now() - interval '2 months',
+                now() - interval '2 months', 'f', (now() - interval '2 months')::date,
+                '{project_id}', NULL
+            ),
+            (
+                '{new_report_id}', now() - interval '10 days',
+                now() - interval '10 days', 'f', (now() - interval '10 days')::date,
+                '{project_id}', NULL
+            );
+
+        INSERT INTO opencve_reports_changes (report_id, change_id)
+        VALUES
+            ('{old_report_id}', '{old_change_id}'),
+            ('{new_report_id}', '{new_change_id}');
+        """
+    )
+
+    # Check that the old and new reports are present
+    remaining_reports = web_pg_hook.get_records(
+        "SELECT id FROM opencve_reports ORDER BY id;"
+    )
+    assert remaining_reports == [(old_report_id,), (new_report_id,)]
+
+    # Clean the reports
+    reports_module.clean_reports()
+
+    # Check that the old report has been deleted and the new report has been kept
+    remaining_reports = web_pg_hook.get_records(
+        "SELECT id FROM opencve_reports ORDER BY id;"
+    )
+    assert remaining_reports == [(new_report_id,)]
+
+    remaining_links = web_pg_hook.get_records(
+        "SELECT report_id FROM opencve_reports_changes ORDER BY report_id;"
+    )
+    assert remaining_links == [(new_report_id,)]
