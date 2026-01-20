@@ -10,7 +10,6 @@ from projects.serializers import ProjectDetailSerializer, ProjectSerializer
 
 class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProjectSerializer
-    permission_classes = (permissions.IsAuthenticated,)
     lookup_field = "name"
     lookup_url_kwarg = "name"
 
@@ -20,11 +19,22 @@ class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
     }
 
     def get_queryset(self):
-        organization = get_object_or_404(
-            Organization,
-            members=self.request.user,
-            name=self.kwargs["organization_name"],
-        )
+
+        # Auth with organization token set the organization on the request
+        if hasattr(self.request, "authenticated_organization"):
+            organization = get_object_or_404(
+                Organization,
+                id=self.request.authenticated_organization.id,
+                name=self.kwargs["organization_name"],
+            )
+
+        # Auth with user
+        else:
+            organization = get_object_or_404(
+                Organization,
+                members=self.request.user,
+                name=self.kwargs["organization_name"],
+            )
         return Project.objects.filter(organization=organization).order_by("name").all()
 
     def get_serializer_class(self):
@@ -33,14 +43,24 @@ class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProjectCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
-    permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
-        organization = get_object_or_404(
-            Organization,
-            members=self.request.user,
-            name=self.kwargs["organization_name"],
-        )
+
+        # Auth with organization token set the organization on the request
+        if hasattr(self.request, "authenticated_organization"):
+            organization = get_object_or_404(
+                Organization,
+                id=self.request.authenticated_organization.id,
+                name=self.kwargs["organization_name"],
+            )
+
+        # Auth with user
+        else:
+            organization = get_object_or_404(
+                Organization,
+                members=self.request.user,
+                name=self.kwargs["organization_name"],
+            )
         project = get_object_or_404(
             Project, organization=organization, name=self.kwargs["project_name"]
         )

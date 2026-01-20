@@ -1566,4 +1566,43 @@ function getContrastedColor(str){
     }
   }
 
+  // Copy token functionality
+  $(document).on('click', '.copy-token-btn', function() {
+    var $button = $(this);
+    var $tokenInput = $('#new-token');
+    var originalText = $button.text();
+    var tokenValue = $tokenInput.val();
+
+    // Use modern Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(tokenValue).then(function() {
+        $button.text('Copied!');
+        setTimeout(function() {
+          $button.text(originalText);
+        }, 2000);
+      }).catch(function(err) {
+        $button.text('Failed');
+        setTimeout(function() {
+          $button.text(originalText);
+        }, 2000);
+      });
+    } else {
+      // Fallback for older browsers
+      $tokenInput.select();
+      $tokenInput[0].setSelectionRange(0, 99999);
+      try {
+        document.execCommand('copy');
+        $button.text('Copied!');
+        setTimeout(function() {
+          $button.text(originalText);
+        }, 2000);
+      } catch (err) {
+        $button.text('Failed');
+        setTimeout(function() {
+          $button.text(originalText);
+        }, 2000);
+      }
+    }
+  });
+
 });

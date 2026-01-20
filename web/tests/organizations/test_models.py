@@ -1,11 +1,12 @@
 from datetime import date
 
 import pytest
+from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
 from freezegun import freeze_time
 
-from organizations.models import Membership, Organization
+from organizations.models import Membership, Organization, OrganizationAPIToken
 
 
 def test_organization_model(create_user, create_organization):
@@ -141,3 +142,140 @@ def test_organization_get_members(create_user, create_organization):
     # Verify results are ordered by username
     usernames = [user.username for user in active_members]
     assert usernames == sorted(usernames)
+
+
+@pytest.mark.django_db
+def test_organization_api_token_create_token(create_user, create_organization):
+    """Test that create_token generates a valid token."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user)
+    token_string = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="Test Token",
+        description="Test description",
+        created_by=user,
+    )
+
+    # Verify token format
+    assert token_string.startswith("opc_org.")
+    parts = token_string.split(".", 2)
+    assert len(parts) == 3
+    assert parts[0] == "opc_org"
+    token_id = parts[1]
+    secret = parts[2]
+
+    # Verify token was created
+    token = OrganizationAPIToken.objects.get(token_id=token_id)
+    assert token.organization == organization
+    assert token.name == "Test Token"
+    assert token.description == "Test description"
+    assert token.created_by == user
+    assert token.is_active is True
+    assert token.last_used_at is None
+
+    # Verify secret hash
+    assert check_password(secret, token.token_hash)
+
+
+@pytest.mark.django_db
+def test_organization_api_token_verify_token(create_user, create_organization):
+    """Test that verify_token correctly validates secrets and rejects revoked tokens."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user)
+    token_string = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="Test Token",
+        description=None,
+        created_by=user,
+    )
+
+    parts = token_string.split(".", 2)
+    token_id = parts[1]
+    secret = parts[2]
+
+    token = OrganizationAPIToken.objects.get(token_id=token_id)
+
+    # Verify correct secret
+    assert token.verify_token(secret) is True
+
+    # Verify incorrect secret
+    assert token.verify_token("wrong_secret") is False
+
+    # Revoke and verify it fails
+    token.revoke()
+    assert token.verify_token(secret) is False
+
+
+@pytest.mark.django_db
+def test_organization_api_token_revoke_token(create_user, create_organization):
+    """Test that revoke sets is_active to False."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user)
+
+    token_string = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="Test Token",
+        description=None,
+        created_by=user,
+    )
+
+    parts = token_string.split(".", 2)
+    token_id = parts[1]
+
+    token = OrganizationAPIToken.objects.get(token_id=token_id)
+    assert token.is_active is True
+
+    token.revoke()
+    token.refresh_from_db()
+    assert token.is_active is False
+
+
+@pytest.mark.django_db
+def test_organization_api_token_update_last_used(create_user, create_organization):
+    """Test that update_last_used sets the last_used_at timestamp."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user)
+    token_string = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="Test Token",
+        description=None,
+        created_by=user,
+    )
+
+    parts = token_string.split(".", 2)
+    token_id = parts[1]
+
+    token = OrganizationAPIToken.objects.get(token_id=token_id)
+    assert token.last_used_at is None
+
+    token.update_last_used()
+    token.refresh_from_db()
+    assert token.last_used_at is not None
+    assert token.last_used_at <= now()
+
+
+@pytest.mark.django_db
+def test_organization_api_token_unique_id(create_user, create_organization):
+    """Test that each token has a unique token_id."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user)
+
+    token1 = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="Token 1",
+        description=None,
+        created_by=user,
+    )
+
+    token2 = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="Token 2",
+        description=None,
+        created_by=user,
+    )
+
+    parts1 = token1.split(".", 2)
+    parts2 = token2.split(".", 2)
+
+    # Token IDs should be different
+    assert parts1[1] != parts2[1]

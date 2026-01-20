@@ -602,6 +602,20 @@ pre.plainJSON{
     color: #003100;
 }
 
+.alert.alert-warning,
+.callout.callout-warning {
+    background-color: #FFF3E0 !important;
+    border-color: #FF9800;
+    color: #E65100 !important;
+}
+
+.alert.alert-warning p,
+.alert.alert-warning a,
+.callout.callout-warning p,
+.callout.callout-warning a{
+    color: #E65100;
+}
+
 .subscribed-projects .checkbox {
     margin-top: 0;
     margin-bottom: 0;

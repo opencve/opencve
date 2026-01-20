@@ -198,6 +198,7 @@ AUDITLOG_INCLUDE_TRACKING_MODELS = (
     "dashboards.Dashboard",
     "organizations.Organization",
     "organizations.Membership",
+    {"model": "organizations.OrganizationAPIToken", "mask_fields": ["token_hash"]},
     "projects.Project",
     "projects.Notification",
     "users.UserTag",
@@ -212,7 +213,12 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # Internal IPs
 INTERNAL_IPS = ["127.0.0.1"]
 REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "opencve.api.OrganizationTokenAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": ["opencve.api.IsAuthenticatedOrOrganizationToken"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,

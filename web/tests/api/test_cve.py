@@ -1,10 +1,13 @@
 import pytest
 from django.urls import reverse
 
+from organizations.models import OrganizationAPIToken
+from users.models import CveTag, UserTag
+
 
 def test_unauthenticated_user(client, auth_client):
     response = client.get(reverse("cve-list"))
-    assert response.status_code == 403
+    assert response.status_code == 401
 
     client = auth_client()
     response = client.get(reverse("cve-list"))
@@ -103,3 +106,62 @@ def test_get_cve(create_cve, open_file, auth_client):
     assert response.status_code == 200
     expected_result = open_file("serialized_cves/CVE-2021-44228.json")
     assert response.json() == expected_result
+
+
+@pytest.mark.django_db
+def test_list_cves_with_tag_filter_organization_token(
+    create_cve, create_user, create_organization, client
+):
+    """Test that tag filtering is ignored when using organization token."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user)
+    token_string = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="API Token",
+        description=None,
+        created_by=user,
+    )
+
+    # Create CVEs
+    cve1 = create_cve("CVE-2021-44228")
+    create_cve("CVE-2022-22965")
+
+    # Create a tag and assign it to only one CVE
+    tag = UserTag.objects.create(name="test-tag", user=user)
+    CveTag.objects.create(user=user, cve=cve1, tags=[tag.name])
+
+    # Request with organization token and tag filter
+    # Tag should be ignored, so both CVEs should be returned
+    response = client.get(
+        f"{reverse('cve-list')}?tag=test-tag",
+        HTTP_AUTHORIZATION=f"Bearer {token_string}",
+    )
+
+    assert response.status_code == 200
+    cve_ids = sorted(c["cve_id"] for c in response.json()["results"])
+    assert cve_ids == ["CVE-2021-44228", "CVE-2022-22965"]
+
+
+@pytest.mark.django_db
+def test_list_cves_with_tag_filter_authenticated_user(
+    create_cve, create_user, auth_client
+):
+    """Test that tag filtering works when using authenticated user."""
+    user = create_user()
+    client = auth_client(user)
+
+    # Create CVEs
+    cve1 = create_cve("CVE-2021-44228")
+    create_cve("CVE-2022-22965")
+
+    # Create a tag and assign it to only one CVE
+    tag = UserTag.objects.create(name="test-tag", user=user)
+    CveTag.objects.create(user=user, cve=cve1, tags=[tag.name])
+
+    # Request with authenticated user and tag filter
+    # Tag should filter, so only the tagged CVE should be returned
+    response = client.get(f"{reverse('cve-list')}?tag=test-tag")
+
+    assert response.status_code == 200
+    cve_ids = sorted(c["cve_id"] for c in response.json()["results"])
+    assert cve_ids == ["CVE-2021-44228"]
