@@ -10,7 +10,6 @@ from organizations.serializers import (
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = OrganizationSerializer
-    permission_classes = (permissions.IsAuthenticated,)
     lookup_field = "name"
     lookup_url_kwarg = "name"
     serializer_classes = {

@@ -27,9 +27,6 @@ class OrganizationForm(forms.ModelForm):
         self.helper.layout = Layout(
             "name",
             FormActions(
-                HTML(
-                    """<a href="{% url 'list_organizations' %}" class="btn btn-default">Cancel</a> """
-                ),
                 Submit("save", "Save"),
                 css_class="pull-right",
             ),
@@ -67,5 +64,34 @@ class MembershipForm(forms.Form):
                     Submit("save", "Add"),
                 ),
                 css_class="col-md-2",
+            ),
+        )
+
+
+class OrganizationAPITokenForm(forms.Form):
+    name = forms.CharField(
+        max_length=100,
+        required=True,
+        label="Token Name",
+        help_text="A descriptive name for this token (e.g., 'Production API', 'CI/CD Pipeline')",
+    )
+    description = forms.CharField(
+        max_length=255,
+        required=False,
+        label="Description",
+        help_text="Optional description for this token",
+    )
+
+    def __init__(self, *args, **kwargs):
+        # Pop request if passed (from RequestViewMixin)
+        kwargs.pop("request", None)
+        super(OrganizationAPITokenForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            "name",
+            "description",
+            FormActions(
+                Submit("save", "Create Token"),
+                css_class="pull-right",
             ),
         )

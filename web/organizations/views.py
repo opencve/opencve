@@ -17,9 +17,13 @@ from django.views.generic import (
 from django.views.generic.detail import SingleObjectMixin
 
 from opencve.mixins import RequestViewMixin
-from organizations.forms import MembershipForm, OrganizationForm
+from organizations.forms import (
+    MembershipForm,
+    OrganizationAPITokenForm,
+    OrganizationForm,
+)
 from organizations.mixins import OrganizationIsOwnerMixin
-from organizations.models import Membership, Organization
+from organizations.models import Membership, Organization, OrganizationAPIToken
 from organizations.utils import (
     send_organization_invitation_email,
     send_organization_signup_invitation_email,
@@ -86,6 +90,18 @@ class OrganizationEditView(
             organization=self.request.current_organization
         )
         context["members_form"] = MembershipForm(initial={"role": Membership.MEMBER})
+        context["api_tokens"] = OrganizationAPIToken.objects.filter(
+            organization=self.request.current_organization
+        ).order_by("-created_at")
+        context["token_form"] = OrganizationAPITokenForm()
+
+        # Check if there's a new token to display
+        new_token = self.request.session.pop("new_token", None)
+        new_token_name = self.request.session.pop("new_token_name", None)
+        if new_token:
+            context["new_token"] = new_token
+            context["new_token_name"] = new_token_name
+
         return context
 
     def get_success_url(self):
@@ -297,3 +313,73 @@ def change_organization(request):
     # Save this organization in session
     request.session["current_organization_id"] = str(organization.id)
     return JsonResponse({"status": "ok"})
+
+
+class OrganizationTokenCreateView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    FormView,
+):
+    form_class = OrganizationAPITokenForm
+    http_method_names = ["post"]
+
+    def form_valid(self, form):
+        organization = self.request.current_organization
+        token_string = OrganizationAPIToken.create_token(
+            organization=organization,
+            name=form.cleaned_data["name"],
+            description=form.cleaned_data["description"] or None,
+            created_by=self.request.user,
+        )
+
+        # Store token in session to display it once
+        self.request.session["new_token"] = token_string
+        self.request.session["new_token_name"] = form.cleaned_data["name"]
+
+        return redirect(
+            reverse(
+                "edit_organization",
+                kwargs={"org_name": organization.name},
+            )
+        )
+
+    def get_success_url(self):
+        return reverse(
+            "edit_organization",
+            kwargs={"org_name": self.request.current_organization.name},
+        )
+
+
+class OrganizationTokenDeleteView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    SuccessMessageMixin,
+    DeleteView,
+):
+    model = OrganizationAPIToken
+    template_name = "organizations/delete_token.html"
+    success_message = "The API token has been revoked."
+    slug_url_kwarg = "token_id"
+    slug_field = "token_id"
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            self.model,
+            token_id=self.kwargs["token_id"],
+            organization=self.request.current_organization,
+        )
+
+    def post(self, request, *args, **kwargs):
+        """Revoke the token instead of deleting it."""
+        self.object = self.get_object()
+        self.object.revoke(revoked_by=request.user)
+        messages.success(self.request, self.success_message)
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse(
+            "edit_organization",
+            kwargs={"org_name": self.request.current_organization.name},
+        )

@@ -1,3 +1,4 @@
+from django.contrib.auth.models import AnonymousUser
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, permissions, viewsets
 
@@ -16,7 +17,6 @@ from cves.utils import list_filtered_cves
 class CveViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CveListSerializer
     queryset = Cve.objects.order_by("-updated_at").all()
-    permission_classes = [permissions.IsAuthenticated]
     lookup_field = "cve_id"
 
     serializer_classes = {
@@ -27,7 +27,14 @@ class CveViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         if self.action == "retrieve":
             return self.queryset
-        return list_filtered_cves(self.request.GET, self.request.user)
+
+        # For organization tokens, use AnonymousUser to avoid tag filtering
+        user = getattr(self.request, "api_token", None)
+        if user:
+            user = AnonymousUser()
+        else:
+            user = self.request.user
+        return list_filtered_cves(self.request.GET, user)
 
     def get_serializer_class(self):
         return self.serializer_classes.get(self.action, self.serializer_class)
@@ -36,13 +43,11 @@ class CveViewSet(viewsets.ReadOnlyModelViewSet):
 class WeaknessViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = WeaknessListSerializer
     queryset = Weakness.objects.all().order_by("cwe_id")
-    permission_classes = [permissions.IsAuthenticated]
     lookup_field = "cwe_id"
 
 
 class VendorViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = VendorListSerializer
-    permission_classes = (permissions.IsAuthenticated,)
     queryset = Vendor.objects.order_by("name").all()
     lookup_field = "name"
     lookup_url_kwarg = "name"
@@ -50,7 +55,6 @@ class VendorViewSet(viewsets.ReadOnlyModelViewSet):
 
 class VendorCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
-    permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
         vendor = get_object_or_404(Vendor, name=self.kwargs["vendor_name"])
@@ -63,7 +67,6 @@ class VendorCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
 
 class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProductListSerializer
-    permission_classes = (permissions.IsAuthenticated,)
     lookup_field = "name"
     lookup_url_kwarg = "name"
 
@@ -74,7 +77,6 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProductCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
-    permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
         vendor = get_object_or_404(Vendor, name=self.kwargs["vendor_name"])
@@ -90,7 +92,6 @@ class ProductCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
 
 class WeaknessCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
-    permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
         weakness = get_object_or_404(Weakness, cwe_id=self.kwargs["weakness_cwe_id"])

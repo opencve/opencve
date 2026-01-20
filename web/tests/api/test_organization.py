@@ -4,7 +4,7 @@ from django.urls import reverse
 
 def test_unauthenticated_user(client, auth_client):
     response = client.get(reverse("organization-list"))
-    assert response.status_code == 403
+    assert response.status_code == 401
 
     auth_client = auth_client()
     response = auth_client.get(reverse("organization-list"))

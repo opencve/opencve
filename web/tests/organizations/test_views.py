@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils.timezone import now
 from freezegun import freeze_time
 
-from organizations.models import Membership, Organization
+from organizations.models import Membership, Organization, OrganizationAPIToken
 
 
 # List Organizations
@@ -772,3 +772,106 @@ def test_onboarding_shows_pending_invitations(
     assert "You have been invited to join" in response.content.decode()
     assert "orga1" in response.content.decode()
     assert "testkey123" in response.content.decode()  # Key should be in the accept URL
+
+
+# API Tokens
+
+
+def test_create_token_view(auth_client, create_user, create_organization):
+    """Test that create_token_view creates a token and stores it in session."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user, owner=True)
+    client = auth_client(user)
+
+    url = reverse("create_organization_token", kwargs={"org_name": organization.name})
+    response = client.post(
+        url,
+        {
+            "name": "My API Token",
+            "description": "Token for CI/CD",
+        },
+    )
+
+    assert response.status_code == 302
+
+    # Verify token was created
+    token = OrganizationAPIToken.objects.get(
+        organization=organization, name="My API Token"
+    )
+    assert token.description == "Token for CI/CD"
+    assert token.created_by == user
+
+    # Check session has new token
+    assert "new_token" in client.session
+    assert client.session["new_token_name"] == "My API Token"
+
+
+def test_revoke_token_view(auth_client, create_user, create_organization):
+    """Test that revoke_token_view revokes a token."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user, owner=True)
+    client = auth_client(user)
+
+    token_string = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="Test Token",
+        description=None,
+        created_by=user,
+    )
+
+    parts = token_string.split(".", 2)
+    token_id = parts[1]
+
+    url = reverse(
+        "revoke_organization_token",
+        kwargs={"org_name": organization.name, "token_id": token_id},
+    )
+    response = client.post(url)
+
+    assert response.status_code == 302
+
+    token = OrganizationAPIToken.objects.get(token_id=token_id)
+    assert token.is_active is False
+    assert token.revoked_by == user
+    assert token.revoked_at is not None
+
+
+def test_revoke_token_not_owner(auth_client, create_user, create_organization):
+    """Test that non-owners cannot revoke tokens."""
+    owner = create_user(username="owner")
+    member = create_user(username="member")
+    organization = create_organization(name="test-org", user=owner, owner=True)
+
+    # Add member
+    Membership.objects.create(
+        user=member,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    token_string = OrganizationAPIToken.create_token(
+        organization=organization,
+        name="Test Token",
+        description=None,
+        created_by=owner,
+    )
+
+    parts = token_string.split(".", 2)
+    token_id = parts[1]
+
+    # Member tries to revoke (should fail)
+    client = auth_client(member)
+    url = reverse(
+        "revoke_organization_token",
+        kwargs={"org_name": organization.name, "token_id": token_id},
+    )
+    response = client.post(url)
+
+    # Should redirect to list (not owner)
+    assert response.status_code == 302
+
+    # Token should still be active
+    token = OrganizationAPIToken.objects.get(token_id=token_id)
+    assert token.is_active is True

@@ -7,6 +7,8 @@ from organizations.views import (
     OrganizationInvitationView,
     OrganizationMemberDeleteView,
     OrganizationMembersFormView,
+    OrganizationTokenCreateView,
+    OrganizationTokenDeleteView,
     OrganizationsListView,
     change_organization,
 )
@@ -37,5 +39,15 @@ urlpatterns = [
         "org/<org_name>/invitation/<key>",
         OrganizationInvitationView.as_view(),
         name="accept_organization_invitation",
+    ),
+    path(
+        "org/<org_name>/tokens/create",
+        OrganizationTokenCreateView.as_view(),
+        name="create_organization_token",
+    ),
+    path(
+        "org/<org_name>/tokens/<token_id>/revoke",
+        OrganizationTokenDeleteView.as_view(),
+        name="revoke_organization_token",
     ),
 ]
