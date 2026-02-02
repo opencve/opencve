@@ -1220,3 +1220,13 @@ pre.plainJSON{
   max-height: 20em;
   overflow: hidden;
 }
+
+.nav-tab-has-data {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background-color: #337ab7;
+}

@@ -4,16 +4,16 @@
 <div class="nav-tabs-custom nav-tabs-primary">
     <ul class="nav nav-tabs">
         <li class="active">
-            <a href="#mitre" data-toggle="tab"> <img src="{% static 'img/cve-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> Mitre Data</a>
+            <a href="#mitre" data-toggle="tab"> <img src="{% static 'img/cve-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> Mitre Data{% if cve.mitre_json and cve.mitre_json.containers.cna.affected %} <span class="nav-tab-has-data"></span>{% endif %}</a>
         </li>
         <li>
-            <a href="#nvd" data-toggle="tab"> <img src="{% static 'img/nvd-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> CPE Configurations</a>
+            <a href="#nvd" data-toggle="tab"> <img src="{% static 'img/nvd-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> CPE Configurations{% if cve.nvd_json and cve.nvd_json.configurations %} <span class="nav-tab-has-data"></span>{% endif %}</a>
         </li>
         <li>
-            <a href="#redhat" data-toggle="tab"> <img src="{% static 'img/redhat-icon.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> Affected Packages</a>
+            <a href="#redhat" data-toggle="tab"> <img src="{% static 'img/redhat-icon.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> Affected Packages{% if cve.redhat_json and cve.redhat_json.affected_release %} <span class="nav-tab-has-data"></span>{% endif %}</a>
         </li>
         <li>
-            <a href="#enrichment" data-toggle="tab"> <img src="{% static 'img/opencve_32.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> OpenCVE Enrichment</a>
+            <a href="#enrichment" data-toggle="tab"> <img src="{% static 'img/opencve_32.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> OpenCVE Enrichment{% if cve.enrichment_json %} <span class="nav-tab-has-data"></span>{% endif %}</a>
         </li>
     </ul>
     <div class="tab-content">
