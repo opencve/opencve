@@ -1,15 +1,10 @@
 {% load static %}
 {% load opencve_extras %}
 
-<h2 class="page-header">Affected Vendors & Products</h2>
-
 <div class="nav-tabs-custom nav-tabs-primary">
     <ul class="nav nav-tabs">
         <li class="active">
-            <a href="#all" data-toggle="tab">All</a>
-        </li>
-        <li>
-            <a href="#mitre" data-toggle="tab"> <img src="{% static 'img/cve-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> Mitre</a>
+            <a href="#mitre" data-toggle="tab"> <img src="{% static 'img/cve-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> Mitre Data</a>
         </li>
         <li>
             <a href="#nvd" data-toggle="tab"> <img src="{% static 'img/nvd-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> CPE Configurations</a>
@@ -22,10 +17,7 @@
         </li>
     </ul>
     <div class="tab-content">
-        <div class="tab-pane active" id="all">
-            {% include "cves/includes/vendors_products_table.html" with vendors_dict=vendors vendors_data_dict=vendors_data %}
-        </div>
-        <div class="tab-pane" id="mitre">
+        <div class="tab-pane active" id="mitre">
             {% if cve.mitre_json and cve.mitre_json.containers.cna.affected %}
             <p class="text-muted small mb-3">
               <strong>Default status</strong> is the baseline for the product, each <strong>version</strong> can override it (e.g. patched versions marked unaffected).
@@ -161,10 +153,19 @@
             <p class="alert alert-info">
                 <strong>OpenCVE Enrichment</strong> is a feature of OpenCVE that uses AI to automatically link vendors and products to CVEs. <a href="https://github.com/opencve/opencve-enrichment/tree/main" target="_blank" rel="noopener">Learn more on GitHub</a>.
             </p>
-            {% include "cves/includes/vendors_products_table.html" with vendors_dict=enrichment_vendors vendors_data_dict=enrichment_vendors_data %}
+            {% include "cves/includes/subscriptions.html" with vendors_dict=enrichment_vendors vendors_data_dict=enrichment_vendors_data %}
             {% else %}
             <p class="alert alert-info">No data.</p>
             {% endif %}
         </div>
     </div>
+</div>
+
+<div class="box box-primary">
+  <div class="box-header">
+    <h3 class="box-title">Project Subscriptions</h3>
+  </div>
+  <div class="box-body">
+    {% include "cves/includes/subscriptions.html" with vendors_dict=vendors vendors_data_dict=vendors_data %}
+  </div>
 </div>
