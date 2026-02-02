@@ -9,6 +9,9 @@
             <a href="#all" data-toggle="tab">All</a>
         </li>
         <li>
+            <a href="#mitre" data-toggle="tab"> <img src="{% static 'img/cve-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> Mitre</a>
+        </li>
+        <li>
             <a href="#nvd" data-toggle="tab"> <img src="{% static 'img/nvd-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> CPE Configurations</a>
         </li>
         <li>
@@ -22,6 +25,70 @@
         <div class="tab-pane active" id="all">
             {% include "cves/includes/vendors_products_table.html" with vendors_dict=vendors vendors_data_dict=vendors_data %}
         </div>
+        <div class="tab-pane" id="mitre">
+            {% if cve.mitre_json and cve.mitre_json.containers.cna.affected %}
+            <p class="text-muted small mb-3">
+              <strong>Default status</strong> is the baseline for the product, each <strong>version</strong> can override it (e.g. patched versions marked unaffected).
+            </p>
+            <table class="table table-hover table-condensed">
+              <thead>
+                <tr>
+                  <th>Vendor</th>
+                  <th>Product</th>
+                  <th>Default status</th>
+                  <th>Versions</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for affected in cve.mitre_json.containers.cna.affected %}
+                <tr>
+                  <td>{{ affected.vendor }}</td>
+                  <td>{{ affected.product }}</td>
+                  <td>
+                    <span class="label
+                      {% if affected.defaultStatus|default:"affected"|slugify == 'affected' %}label-danger
+                      {% elif affected.defaultStatus|default:"affected"|slugify == 'unaffected' %}label-success
+                      {% else %}label-default{% endif %}">
+                      {{ affected.defaultStatus|default:"affected" }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if affected.versions %}
+                      <table class="table table-sm table-borderless mb-0 small">
+                        <thead class="table-light">
+                          <tr>
+                            <th>Version</th>
+                            <th>Status</th>
+                            <th>Constraints</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                        {% for version in affected.versions %}
+                          <tr>
+                            <td class="text-break"><code>{{ version.version }}</code></td>
+                            <td>
+                              <span class="label {% if version.status|default:''|slugify == 'affected' %}label-danger{% elif version.status|default:''|slugify == 'unaffected' %}label-success{% else %}label-default{% endif %}">{{ version.status }}</span>
+                            </td>
+                            <td class="text-muted">
+                              {% if version.lessThan %}< {{ version.lessThan }}{% endif %}
+                              {% if version.lessThanOrEqual %}≤ {{ version.lessThanOrEqual }}{% endif %}
+                              {% if not version.lessThan and not version.lessThanOrEqual %}—{% endif %}
+                            </td>
+                          </tr>
+                        {% endfor %}
+                        </tbody>
+                      </table>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+            {% endif %}
+        </div>
+
         <div class="tab-pane" id="nvd">
             {% if cve.nvd_json and cve.nvd_json.configurations %}
 
