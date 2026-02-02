@@ -22,62 +22,67 @@
             <p class="text-muted small mb-3">
               <strong>Default status</strong> is the baseline for the product, each <strong>version</strong> can override it (e.g. patched versions marked unaffected).
             </p>
-            <table class="table table-hover table-condensed">
-              <thead>
-                <tr>
-                  <th>Vendor</th>
-                  <th>Product</th>
-                  <th>Default status</th>
-                  <th>Versions</th>
-                </tr>
-              </thead>
-              <tbody>
-              {% for affected in cve.mitre_json.containers.cna.affected %}
-                <tr>
-                  <td>{{ affected.vendor }}</td>
-                  <td>{{ affected.product }}</td>
-                  <td>
-                    <span class="label
-                      {% if affected.defaultStatus|default:"affected"|slugify == 'affected' %}label-danger
-                      {% elif affected.defaultStatus|default:"affected"|slugify == 'unaffected' %}label-success
-                      {% else %}label-default{% endif %}">
-                      {{ affected.defaultStatus|default:"affected" }}
-                    </span>
-                  </td>
-                  <td>
-                    {% if affected.versions %}
-                      <table class="table table-sm table-borderless mb-0 small">
-                        <thead class="table-light">
-                          <tr>
-                            <th>Version</th>
-                            <th>Status</th>
-                            <th>Constraints</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                        {% for version in affected.versions %}
-                          <tr>
-                            <td class="text-break"><code>{{ version.version }}</code></td>
-                            <td>
-                              <span class="label {% if version.status|default:''|slugify == 'affected' %}label-danger{% elif version.status|default:''|slugify == 'unaffected' %}label-success{% else %}label-default{% endif %}">{{ version.status }}</span>
-                            </td>
-                            <td class="text-muted">
-                              {% if version.lessThan %}< {{ version.lessThan }}{% endif %}
-                              {% if version.lessThanOrEqual %}≤ {{ version.lessThanOrEqual }}{% endif %}
-                              {% if not version.lessThan and not version.lessThanOrEqual %}—{% endif %}
-                            </td>
-                          </tr>
-                        {% endfor %}
-                        </tbody>
-                      </table>
-                    {% else %}
-                      <span class="text-muted">—</span>
-                    {% endif %}
-                  </td>
-                </tr>
-              {% endfor %}
-              </tbody>
-            </table>
+            <div id="mitre-affected-wrapper" class="mitre-affected-wrapper" data-initial-rows="5">
+              <table class="table table-condensed" id="mitre-affected-table">
+                <thead>
+                  <tr>
+                    <th>Vendor</th>
+                    <th>Product</th>
+                    <th>Default status</th>
+                    <th>Versions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {% for affected in cve.mitre_json.containers.cna.affected %}
+                  <tr class="mitre-affected-row">
+                    <td>{{ affected.vendor }}</td>
+                    <td>{{ affected.product }}</td>
+                    <td>
+                      <span class="label
+                        {% if affected.defaultStatus|default:"affected"|slugify == 'affected' %}label-danger
+                        {% elif affected.defaultStatus|default:"affected"|slugify == 'unaffected' %}label-success
+                        {% else %}label-default{% endif %}">
+                        {{ affected.defaultStatus|default:"affected" }}
+                      </span>
+                    </td>
+                    <td>
+                      {% if affected.versions %}
+                        <table class="table table-sm table-borderless mb-0 small">
+                          <thead class="table-light">
+                            <tr>
+                              <th>Version</th>
+                              <th>Status</th>
+                              <th>Constraints</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                          {% for version in affected.versions %}
+                            <tr>
+                              <td class="text-break"><code>{{ version.version }}</code></td>
+                              <td>
+                                <span class="label {% if version.status|default:''|slugify == 'affected' %}label-danger{% elif version.status|default:''|slugify == 'unaffected' %}label-success{% else %}label-default{% endif %}">{{ version.status }}</span>
+                              </td>
+                              <td class="text-muted">
+                                {% if version.lessThan %}< {{ version.lessThan }}{% endif %}
+                                {% if version.lessThanOrEqual %}≤ {{ version.lessThanOrEqual }}{% endif %}
+                                {% if not version.lessThan and not version.lessThanOrEqual %}—{% endif %}
+                              </td>
+                            </tr>
+                          {% endfor %}
+                          </tbody>
+                        </table>
+                      {% else %}
+                        <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+              <div class="text-center mitre-see-more-wrap" id="mitre-see-more-wrap" style="display: none;">
+                <button type="button" class="btn btn-default btn-sm mitre-see-more-btn" id="mitre-see-more-btn" data-label-more="See more" data-label-less="See less">See more</button>
+              </div>
+            </div>
             {% endif %}
         </div>
 

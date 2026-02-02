@@ -16,7 +16,14 @@
         <div class="col-md-9">
             <div class="box box-primary">
                 <div class="box-body">
-                    {{ cve.description|linebreaksbr }}
+                    <div class="cve-description-wrapper" id="cve-description-wrapper">
+                        <div class="cve-description-text" id="cve-description-text">
+                            {{ cve.description|linebreaksbr }}
+                        </div>
+                        <div class="text-center cve-description-see-more-wrap" id="cve-description-see-more-wrap" style="display: none;">
+                            <button type="button" class="btn btn-default btn-sm" id="cve-description-see-more-btn" data-label-more="See more" data-label-less="See less">See more</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
