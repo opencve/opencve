@@ -1605,4 +1605,51 @@ function getContrastedColor(str){
     }
   });
 
+  // Mitre affected products: "See more" / "See less"
+  if ($('#mitre-affected-wrapper').length) {
+    var $mitreWrapper = $('#mitre-affected-wrapper');
+    var $mitreTable = $('#mitre-affected-table');
+    var $mitreRows = $mitreTable.find('tbody > tr.mitre-affected-row');
+    var mitreLimit = parseInt($mitreWrapper.data('initial-rows') || 5, 10);
+    if ($mitreRows.length > mitreLimit) {
+      $mitreRows.each(function(i) { if (i >= mitreLimit) { $(this).addClass('mitre-affected-row--overflow'); } });
+      $mitreWrapper.addClass('mitre-collapsed');
+      $('#mitre-see-more-wrap').show();
+    }
+    $(document).on('click', '#mitre-see-more-btn', function() {
+      var $btn = $(this);
+      if ($mitreWrapper.hasClass('mitre-collapsed')) {
+        $mitreWrapper.removeClass('mitre-collapsed');
+        $btn.text($btn.data('label-less'));
+      } else {
+        $mitreWrapper.addClass('mitre-collapsed');
+        $btn.text($btn.data('label-more'));
+      }
+    });
+  }
+
+  // CVE description: "See more" / "See less" when text is long
+  var $descWrapper = $('#cve-description-wrapper');
+  var $descText = $('#cve-description-text');
+  if ($descWrapper.length && $descText.length) {
+    $descWrapper.addClass('cve-description--collapsed');
+    var el = $descText[0];
+    var hasOverflow = el.scrollHeight > el.clientHeight;
+    if (hasOverflow) {
+      $('#cve-description-see-more-wrap').show();
+    } else {
+      $descWrapper.removeClass('cve-description--collapsed');
+    }
+    $(document).on('click', '#cve-description-see-more-btn', function() {
+      var $btn = $(this);
+      if ($descWrapper.hasClass('cve-description--collapsed')) {
+        $descWrapper.removeClass('cve-description--collapsed');
+        $btn.text($btn.data('label-less'));
+      } else {
+        $descWrapper.addClass('cve-description--collapsed');
+        $btn.text($btn.data('label-more'));
+      }
+    });
+  }
+
 });

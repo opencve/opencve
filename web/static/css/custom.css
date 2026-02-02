@@ -1209,3 +1209,14 @@ pre.plainJSON{
   padding: 0 15px;
   color: #999;
 }
+
+/* Mitre affected products: "See more" collapsed state */
+.mitre-affected-wrapper.mitre-collapsed .mitre-affected-row.mitre-affected-row--overflow {
+  display: none;
+}
+
+/* CVE description: "See more" collapsed state */
+.cve-description-wrapper.cve-description--collapsed .cve-description-text {
+  max-height: 20em;
+  overflow: hidden;
+}
