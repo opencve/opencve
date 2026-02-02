@@ -22,13 +22,13 @@
 
             {% include "cves/metrics/base.html" %}
 
-            {% include "cves/_configurations.html" %}
+            {% include "cves/includes/configurations.html" %}
 
-            {% include "cves/_advisories.html" %}
+            {% include "cves/includes/advisories.html" %}
 
-            {% include "cves/_fixes.html" %}
+            {% include "cves/includes/fixes.html" %}
 
-            {% include "cves/_references.html" %}
+            {% include "cves/includes/references.html" %}
 
             <div class="box box-primary">
                 <div class="box-header">
@@ -92,10 +92,10 @@
                                 </div>
                                 <div class="project-assignment-item-badges">
                                     <div>
-                                        {% include "cves/_assignee_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
+                                        {% include "cves/includes/assignee_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
                                     </div>
                                     <div>
-                                        {% include "cves/_status_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
+                                        {% include "cves/includes/status_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
                                     </div>
                                 </div>
                                 {% if not forloop.last %}<hr />{% endif %}
