@@ -84,12 +84,12 @@
 
                         <!-- Assignee Column -->
                         <td class="col-md-1 text-center">
-                            {% include "cves/_assignee_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
+                            {% include "cves/includes/assignee_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
                         </td>
 
                         <!-- Status Column -->
                         <td class="col-md-1 text-center">
-                            {% include "cves/_status_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
+                            {% include "cves/includes/status_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
                         </td>
                     </tr>
                     <tr class="cve-summary">
