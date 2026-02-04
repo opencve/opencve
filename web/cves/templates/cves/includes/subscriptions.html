@@ -11,7 +11,7 @@
     <tr>
         <td>
             <div class="vendor-item">
-                <span class="vendor-name">{{ vendor | humanize }}</span>
+                <span class="vendor-name">{{ vendor | humanize }}{% if vendor|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}</span>
                 {% if user.is_authenticated and vendors_data_dict %}
                     {% with vendor_data=vendors_data_dict|get:vendor %}
                     <button class="btn btn-default btn-xs subscribe-vendor"
@@ -32,7 +32,14 @@
             <div class="product-list">
                 {% for product in products %}
                 <div class="product-item">
-                    <span class="product-name">{{ product | humanize }}</span>
+                    <span class="product-name">
+                        {{ product | humanize }}
+                        {% with vendor_product_key=vendor|stringformat:"s"|add:"$PRODUCT$"|add:product %}
+                            {% if vendor_product_key|is_top_vendor_or_product %}
+                                <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>
+                            {% endif %}
+                        {% endwith %}
+                    </span>
                     {% if user.is_authenticated and vendors_data_dict %}
                         {% with vendor_data=vendors_data_dict|get:vendor %}
                             {% with products_dict=vendor_data.products %}

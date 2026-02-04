@@ -20,6 +20,7 @@ from cves.constants import (
 )
 from cves.utils import get_metric_from_vector
 from cves.utils import humanize as _humanize
+from cves.utils import is_top_vendor_product
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,12 @@ def products_excerpt(s):
 @register.filter
 def humanize(s):
     return _humanize(s)
+
+
+@register.filter
+def is_top_vendor_or_product(name):
+    """Return True if the vendor/product is in the static warning list (many CVEs)."""
+    return is_top_vendor_product(name)
 
 
 @register.filter

@@ -18,7 +18,7 @@
                         <tbody>
                         {% for vendor in project.subscriptions.vendors %}
                         <tr {% if loop.first %}style="border-top: 0px;" {% endif %}>
-                            <td style="border-top: 0px;">{{ vendor | humanize }}</td>
+                            <td style="border-top: 0px;">{{ vendor | humanize }}{% if vendor|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}</td>
                             <td class="pull-right" style="border-top: 0px;">
                                 <a class="btn btn-default btn-xs" href="{% search_vendor_url vendor %}"><i class="fa fa-bell-o"></i> Manage subscriptions</a>
                             </td>
@@ -46,7 +46,12 @@
                         <tbody>
                         {% for product in project.subscriptions.products %}
                         <tr {% if loop.first %}style="border-top: 0px;" {% endif %}>
-                            <td style="border-top: 0px;">{{ product | remove_product_separator | humanize }}</td>
+                            <td style="border-top: 0px;">
+                                {{ product | remove_product_separator | humanize }}
+                                {% if product|is_top_vendor_or_product %}
+                                    <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>
+                                {% endif %}
+                            </td>
                             <td class="pull-right" style="border-top: 0px;">
                                 <a class="btn btn-default btn-xs" href="{% search_vendor_url product %}"><i class="fa fa-bell-o"></i> Manage subscriptions</a>
                             </td>
