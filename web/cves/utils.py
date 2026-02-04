@@ -2,7 +2,11 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from nested_lookup import nested_lookup
 
-from cves.constants import CVSS_VECTORS_MAPPING, PRODUCT_SEPARATOR
+from cves.constants import (
+    CVSS_VECTORS_MAPPING,
+    PRODUCT_SEPARATOR,
+    TOP_VENDORS_PRODUCTS,
+)
 
 
 def convert_cpes(conf):
@@ -241,3 +245,13 @@ def list_filtered_cves(params, user):
         query = query.filter(cve_tags__tags__contains=tag.name, cve_tags__user=user)
 
     return query.all()
+
+
+def is_top_vendor_product(name):
+    """
+    Return True if the vendor or product is in the static warning list,
+    i.e. frequently associated with CVEs (users may receive numerous notifications).
+    """
+    if name in TOP_VENDORS_PRODUCTS:
+        return True
+    return False

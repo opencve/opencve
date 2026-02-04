@@ -185,3 +185,44 @@ CVSS_HUMAN_SCORE = {
     "danger": "high",
     "critical": "critical",
 }
+
+# Vendors and products frequently associated with a high number of CVEs.
+# A warning icon is displayed in the UI when subscribing to these entries.
+#
+# This list has been curated by the OpenCVE team by analyzing the vendors and
+# products most frequently associated with CVEs (currently top 30 entries)
+
+TOP_VENDORS_PRODUCTS = frozenset(
+    [
+        "redhat",
+        "microsoft",
+        "linux",
+        "linux$PRODUCT$linux_kernel",
+        "redhat$PRODUCT$enterprise_linux",
+        "google",
+        "apple",
+        "oracle",
+        "debian",
+        "debian$PRODUCT$debian_linux",
+        "wordpress",
+        "wordpress$PRODUCT$wordpress",
+        "microsoft$PRODUCT$windows",
+        "google$PRODUCT$android",
+        "ibm",
+        "adobe",
+        "cisco",
+        "apple$PRODUCT$mac_os_x",
+        "fedoraproject",
+        "fedoraproject$PRODUCT$fedora",
+        "apple$PRODUCT$macos",
+        "microsoft$PRODUCT$windows_server_2016",
+        "microsoft$PRODUCT$windows_server_2019",
+        "canonical",
+        "microsoft$PRODUCT$windows_10",
+        "apple$PRODUCT$iphone_os",
+        "canonical$PRODUCT$ubuntu_linux",
+        "microsoft$PRODUCT$windows_server_2008",
+        "microsoft$PRODUCT$windows_server_2012",
+        "google$PRODUCT$chrome",
+    ]
+)

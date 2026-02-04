@@ -47,8 +47,8 @@ def test_list_vendors_case_insensitive(db, create_cve, auth_client):
     content = soup.find("table", {"id": "table-vendors"}).find_all("td")
     assert content[0].text == "Git-scm"
     content = soup.find("table", {"id": "table-products"}).find_all("td")
-    assert content[0].text == "Git"
-    assert content[1].text == "Git-scm"
+    assert content[0].text.strip() == "Git"
+    assert content[1].text.strip() == "Git-scm"
 
 
 @override_settings(ENABLE_ONBOARDING=False)
