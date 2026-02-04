@@ -2,47 +2,170 @@
 
 {% load static %}
 {% load opencve_extras %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_filters %}
 
 {% block title %}Onboarding - {{ block.super }}{% endblock %}
-{% block navbar_title%}Onboarding{% endblock %}
 
 {% block content %}
 
 <div class="onboarding-wrapper">
-    <div class="onboarding-content">
-      {% include "messages.html" %}
-      <div class="onboarding-logo">
-        <img width="250px" src="{% static 'img/logo_opencve.svg' %}" alt="Logo">
-      </div>
+  <div class="onboarding-content">
+    <div class="onboarding-logo">
+      <img width="250px" src="{% static 'img/logo_opencve.svg' %}" alt="Logo">
+    </div>
 
-      <div class="onboarding-description help-block text-center">
-        <p><strong>Welcome to OpenCVE {{ request.user.username }} (<a href="{% url 'account_logout' %}">logout</a>)!</strong></p>
-        {% if not pending_invitations %}
-        <p>Complete your setup by entering the information below.</p>
-        {% endif %}
-      </div>
+    <div class="onboarding-description help-block text-center">
+      <p><strong>Welcome to OpenCVE {{ request.user.username }} (<a href="{% url 'account_logout' %}">logout</a>)!</strong></p>
+      {% if not pending_invitations %}
+      <p>Complete your setup by following the steps below.</p>
+      {% endif %}
+    </div>
 
-      {% if pending_invitations %}
-      <div class="onboarding-description help-block text-center pending-invitations-box">
-        <p>You have been invited to join the following organizations:</p>
-        {% for invitation in pending_invitations %}
-        <p>
-          <strong>{{ invitation.organization.name }}</strong> ({{ invitation.role }})
-          <a href="{% url 'accept_organization_invitation' org_name=invitation.organization.name key=invitation.key %}" class="btn btn-primary btn-sm">Accept</a>
-        </p>
-        {% endfor %}
-      </div>
+    {% if pending_invitations %}
+    <div class="onboarding-description help-block text-center pending-invitations-box">
+      <p>You have been invited to join the following organizations:</p>
+      {% for invitation in pending_invitations %}
+      <p>
+        <strong>{{ invitation.organization.name }}</strong> ({{ invitation.role }})
+        <a href="{% url 'accept_organization_invitation' org_name=invitation.organization.name key=invitation.key %}" class="btn btn-primary btn-sm">Accept</a>
+      </p>
+      {% endfor %}
+    </div>
+    <div class="divider-with-text">
+      <hr>
+      <span>Or create a new organization below:</span>
+    </div>
+    {% endif %}
 
-      <div class="divider-with-text">
-        <hr>
-        <span>Or create a new organization below:</span>
+    <!-- Stepper -->
+    <div class="onboarding-stepper">
+      <div class="onboarding-stepper-step onboarding-stepper-step-active" data-step="1">
+        <div class="onboarding-stepper-circle">1</div>
+        <div class="onboarding-stepper-label">Organization and project</div>
+        <div class="onboarding-stepper-sublabel">Set up your workspace</div>
       </div>
+      <div class="onboarding-stepper-connector"></div>
+      <div class="onboarding-stepper-step" data-step="2">
+        <div class="onboarding-stepper-circle">2</div>
+        <div class="onboarding-stepper-label">Vendors and products</div>
+        <div class="onboarding-stepper-sublabel">Choose what to track</div>
+      </div>
+      <div class="onboarding-stepper-connector"></div>
+      <div class="onboarding-stepper-step" data-step="3">
+        <div class="onboarding-stepper-circle">3</div>
+        <div class="onboarding-stepper-label">Notifications</div>
+        <div class="onboarding-stepper-sublabel">Receive vulnerability email alerts</div>
+      </div>
+    </div>
+
+    <form method="post" action="" id="onboarding-form" class="form-horizontal" data-onboarding-search-url="{% url 'onboarding_search_vendors_products' %}" data-initial-subscriptions="{{ form.selected_subscriptions.value|default:'[]' }}">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
       {% endif %}
 
-      {% crispy form %}
+      <!-- Step 1 -->
+      <div id="onboarding-step-1" class="onboarding-step-content">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="form-group">
+              <label for="id_organization">Organization <span class="onboarding-required-star">*</span></label>
+              <input type="text" name="organization" id="id_organization" class="form-control" placeholder="Acme" value="{{ form.organization.value|default:'' }}" maxlength="100" required>
+              <p class="help-block">Your organization is the main place to manage members and projects.</p>
+              {% if form.organization.errors %}<p class="text-danger">{{ form.organization.errors.0 }}</p>{% endif %}
+              <p id="onboarding-org-error" class="text-danger onboarding-step1-error" style="display:none;"></p>
+            </div>
+            <div class="form-group">
+              <label for="id_project">Project <span class="onboarding-required-star">*</span></label>
+              <input type="text" name="project" id="id_project" class="form-control" placeholder="Default" value="{{ form.project.value|default:'' }}" maxlength="100" required>
+              <p class="help-block">Your project lets you organize your subscriptions (the technologies you want to track) and notifications (how you want to be alerted).</p>
+              {% if form.project.errors %}<p class="text-danger">{{ form.project.errors.0 }}</p>{% endif %}
+              <p id="onboarding-project-error" class="text-danger onboarding-step1-error" style="display:none;"></p>
+            </div>
+            <div class="form-group">
+              <a href="{% url 'settings_profile' %}" class="btn btn-default">Settings</a>
+              <button type="button" class="btn btn-primary pull-right" id="onboarding-next-1">Next step</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    </div>
+      <!-- Step 2 -->
+      <div id="onboarding-step-2" class="onboarding-step-content" style="display:none;">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="form-group">
+              <label for="onboarding-search-q">Search vendors or products</label>
+              <div class="input-group">
+                <input type="text" id="onboarding-search-q" class="form-control" placeholder="e.g. django, fortinet, cisco, wordpress, terraform">
+                <span class="input-group-btn">
+                  <button type="button" class="btn btn-primary" id="onboarding-search-btn">Search</button>
+                </span>
+              </div>
+              <p id="onboarding-search-empty-message" class="text-danger onboarding-search-empty-message" style="display:none;"></p>
+              <p class="help-block">Select up to 5 vendors or products to start tracking vulnerabilities. Search for a technology you use and select what matters most to you. You can update your selection at any time after onboarding.</p>
+            </div>
+            <div id="onboarding-selected-count-wrapper" class="onboarding-selected-count-wrapper" style="display:none;">
+              <span id="onboarding-selected-count" class="onboarding-selected-count">0 / 5 selected</span>
+            </div>
+            <div id="onboarding-selected-tags" class="onboarding-selected-tags"></div>
+            <div id="onboarding-search-results" class="onboarding-search-results-wrapper">
+              <div id="onboarding-search-results-vendors" class="onboarding-search-results-block" style="display:none;">
+                <h5 class="onboarding-search-results-title">Vendors</h5>
+                <div id="onboarding-search-results-vendors-list" class="onboarding-search-results-list"></div>
+              </div>
+              <div id="onboarding-search-results-products" class="onboarding-search-results-block" style="display:none;">
+                <h5 class="onboarding-search-results-title">Products</h5>
+                <div id="onboarding-search-results-products-list" class="onboarding-search-results-list"></div>
+              </div>
+            </div>
+            <input type="hidden" name="selected_subscriptions" id="id_selected_subscriptions" value="{{ form.selected_subscriptions.value|default:'' }}">
+            {% if form.selected_subscriptions.errors %}<p class="text-danger">{{ form.selected_subscriptions.errors.0 }}</p>{% endif %}
+            <div class="form-group">
+              <button type="button" class="btn btn-default" id="onboarding-prev-2">Previous</button>
+              <button type="button" class="btn btn-primary pull-right" id="onboarding-next-2">Next step</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div id="onboarding-step-3" class="onboarding-step-content" style="display:none;">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="form-group">
+              <div class="checkbox">
+                <label>
+                  <input type="checkbox" name="enable_email_notification" id="id_enable_email_notification" value="1" {% if form.enable_email_notification.value %}checked{% endif %}>
+                  Enable email notifications?
+                </label>
+                <p class="help-block">You’ll receive an email whenever a new CVE affects the vendors or products you track.</p>
+              </div>
+            </div>
+            <div id="onboarding-notification-fields" class="onboarding-notification-fields onboarding-notification-fields-disabled">
+              <div class="form-group">
+                <label for="id_notification_email">Email address</label>
+                <input type="email" name="notification_email" id="id_notification_email" class="form-control" value="{{ form.notification_email.value|default:'' }}" disabled>
+                {% if form.notification_email.errors %}<p class="text-danger">{{ form.notification_email.errors.0 }}</p>{% endif %}
+              </div>
+              <div class="form-group">
+                <label for="id_cvss31_min">Minimum CVSS v3.1 score to be alerted</label>
+                <select name="cvss31_min" id="id_cvss31_min" class="form-control" disabled>
+                  {% for value, label in form.fields.cvss31_min.choices %}
+                  <option value="{{ value }}" {% if form.cvss31_min.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <button type="button" class="btn btn-default" id="onboarding-prev-3">Previous</button>
+              <button type="submit" class="btn btn-primary pull-right" name="save">Finish account creation</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
   </div>
+</div>
 
 {% endblock %}

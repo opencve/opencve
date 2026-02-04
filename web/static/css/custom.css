@@ -651,7 +651,7 @@ pre.plainJSON{
 .onboarding-wrapper {
   max-width: 550px;
   margin: 0 auto;
-  margin-top: 10%;
+  margin-top: 6%;
 }
 
 .onboarding-content {
@@ -684,6 +684,269 @@ pre.plainJSON{
   padding: 20px;
   border-radius: 4px;
   border: 1px solid #e0e0e0;
+}
+
+/* Onboarding stepper */
+.onboarding-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin: 30px auto;
+  padding: 0 10px;
+  max-width: 520px;
+  width: 100%;
+}
+
+.onboarding-stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+}
+
+.onboarding-stepper-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  background-color: #fff;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.onboarding-stepper-step-active .onboarding-stepper-circle {
+  border-color: #5648D8;
+  background-color: #5648D8;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(86, 72, 216, 0.25);
+}
+
+.onboarding-stepper-step-completed .onboarding-stepper-circle {
+  border-color: #5648D8;
+  background-color: #5648D8;
+  color: #fff;
+}
+
+.onboarding-stepper-label {
+  font-weight: 600;
+  color: #253841;
+  font-size: 13px;
+  text-align: center;
+}
+
+.onboarding-stepper-step:not(.onboarding-stepper-step-active):not(.onboarding-stepper-step-completed) .onboarding-stepper-label {
+  color: #999;
+}
+
+.onboarding-stepper-sublabel {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.onboarding-stepper-connector {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 2px;
+  background-color: #ddd;
+  margin-top: 17px;
+  margin-left: 6px;
+  margin-right: 6px;
+  align-self: flex-start;
+}
+
+.onboarding-stepper-connector-active {
+  background-color: #5648D8;
+}
+
+/* Step content: same width as stepper, centered; padding for Bootstrap row negative margins */
+.onboarding-step-content {
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.onboarding-step-content .form-group {
+  margin-bottom: 20px;
+}
+
+/* Step 2: search field same width as helper text, no overflow */
+.onboarding-step-content .input-group {
+  max-width: 100%;
+}
+
+.onboarding-step-content .input-group .form-control {
+  min-width: 0;
+}
+
+.onboarding-step-content .help-block {
+  max-width: 100%;
+  margin-bottom: 12px;
+}
+
+.onboarding-required-star {
+  color: #dd4b39;
+}
+
+.onboarding-search-results-wrapper {
+  margin: 15px 0;
+}
+
+.onboarding-search-empty-message {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.onboarding-search-results-block {
+  margin-bottom: 20px;
+}
+
+.onboarding-search-results-block:last-child {
+  margin-bottom: 0;
+}
+
+.onboarding-search-results-title {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #253841;
+}
+
+.onboarding-search-results-list {
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #fafafa;
+}
+
+.onboarding-search-results-list p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Legacy single block (kept for any inline fallback) */
+.onboarding-search-results {
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 15px 0;
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background-color: #fafafa;
+}
+
+.onboarding-search-results h5 {
+  margin-top: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.onboarding-search-results h5:first-child {
+  margin-top: 0;
+}
+
+.onboarding-checkbox-item {
+  display: block;
+  margin: 6px 0;
+}
+
+.onboarding-selected-count-wrapper {
+  margin: 10px 0;
+  text-align: center;
+}
+
+.onboarding-selected-count {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.onboarding-selected-tags {
+  margin: 12px 0;
+  min-height: 28px;
+}
+
+.onboarding-selected-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 10px;
+  margin: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #685aeb;
+  border-radius: 10px;
+  background: #F4F3FF;
+  border: 1px solid #5648D8;
+  transition: background-color 0.1s ease;
+}
+
+.onboarding-selected-tag:hover {
+  background-color: #e3e0ff;
+  border-color: #3225ac;
+}
+
+.onboarding-selected-tag-label {
+  white-space: nowrap;
+}
+
+.onboarding-selected-tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  margin-left: 2px;
+  font-size: 16px;
+  line-height: 1;
+  color: #5648D8;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.onboarding-selected-tag-remove:hover {
+  background-color: rgba(86, 72, 216, 0.2);
+  color: #3225ac;
+}
+
+.onboarding-notification-fields {
+  margin-left: 0;
+  margin-top: 15px;
+}
+
+.onboarding-notification-fields-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.onboarding-notification-fields-disabled input,
+.onboarding-notification-fields-disabled select {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
 }
 
 .organizations-list .product-info,

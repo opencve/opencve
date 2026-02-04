@@ -1652,4 +1652,253 @@ function getContrastedColor(str){
     });
   }
 
+  // Onboarding multi-step form
+  if ($('#onboarding-form').length) {
+    var $form = $('#onboarding-form');
+    if (!$form.length) return;
+    var searchUrl = $form.attr('data-onboarding-search-url');
+    if (!searchUrl) return;
+
+    var MAX_SUBSCRIPTIONS = 5;
+    var selectedSubscriptions = new Set();
+    var selectedLabels = new Map();
+    var PRODUCT_SEP = '$PRODUCT$';
+
+    function getDisplayLabel(value) {
+      if (selectedLabels.has(value)) return selectedLabels.get(value);
+      if (value.indexOf(PRODUCT_SEP) !== -1) {
+        var parts = value.split(PRODUCT_SEP);
+        return (parts[0] || '') + ' / ' + (parts[1] || '');
+      }
+      return value;
+    }
+
+    function updateSelectedTags() {
+      var $container = $('#onboarding-selected-tags');
+      if (!$container.length) return;
+      $container.empty();
+      selectedSubscriptions.forEach(function(value) {
+        var label = $('<span class="onboarding-selected-tag-label">').text(getDisplayLabel(value));
+        var $tag = $('<span class="onboarding-selected-tag">')
+          .append(label)
+          .append(' ')
+          .append($('<button type="button" class="onboarding-selected-tag-remove" aria-label="Remove">').text('×'));
+        $tag.find('.onboarding-selected-tag-remove').on('click', function() {
+          selectedSubscriptions.delete(value);
+          selectedLabels.delete(value);
+          $('#onboarding-search-results input[type="checkbox"]').each(function() {
+            if ($(this).val() === value) $(this).prop('checked', false);
+          });
+          updateSelectedCount();
+        });
+        $container.append($tag);
+      });
+    }
+
+    function showStep(step) {
+      $('.onboarding-step-content').hide();
+      $('#onboarding-step-' + step).show();
+      $('.onboarding-stepper-step').each(function() {
+        var n = parseInt($(this).data('step'), 10);
+        $(this).removeClass('onboarding-stepper-step-active onboarding-stepper-step-completed');
+        if (n < step) $(this).addClass('onboarding-stepper-step-completed');
+        else if (n === step) $(this).addClass('onboarding-stepper-step-active');
+      });
+      $('.onboarding-stepper-connector').removeClass('onboarding-stepper-connector-active');
+      $('.onboarding-stepper-connector').slice(0, step - 1).addClass('onboarding-stepper-connector-active');
+    }
+
+    function updateSelectedCount() {
+      $('#onboarding-selected-count').text(selectedSubscriptions.size + ' / ' + MAX_SUBSCRIPTIONS + ' selected');
+      $('#onboarding-selected-count-wrapper').toggle(selectedSubscriptions.size >= 1);
+      $('#onboarding-search-results input[type="checkbox"]').each(function() {
+        var key = $(this).val();
+        var disabled = !selectedSubscriptions.has(key) && selectedSubscriptions.size >= MAX_SUBSCRIPTIONS;
+        $(this).prop('disabled', disabled);
+      });
+      updateSelectedTags();
+    }
+
+    function syncHiddenSubscriptions() {
+      $('#id_selected_subscriptions').val(JSON.stringify(Array.from(selectedSubscriptions)));
+    }
+
+    $('#onboarding-next-1').on('click', function() {
+      var org = $('#id_organization').val().trim();
+      var project = $('#id_project').val().trim();
+      $('#onboarding-org-error, #onboarding-project-error').hide().text('');
+
+      var hasError = false;
+      if (!org) {
+        $('#onboarding-org-error').text('This field is required.').show();
+        hasError = true;
+      }
+      if (!project) {
+        $('#onboarding-project-error').text('This field is required.').show();
+        hasError = true;
+      }
+      if (!hasError) showStep(2);
+    });
+
+    $('#id_organization').on('input', function() {
+      if ($(this).val().trim()) $('#onboarding-org-error').hide().text('');
+    });
+    $('#id_project').on('input', function() {
+      if ($(this).val().trim()) $('#onboarding-project-error').hide().text('');
+    });
+
+    $('#onboarding-prev-2').on('click', function() { showStep(1); });
+    $('#onboarding-next-2').on('click', function() {
+      syncHiddenSubscriptions();
+      showStep(3);
+    });
+    $('#onboarding-prev-3').on('click', function() { showStep(2); });
+
+    // Prevent Enter from submitting the form unless we're on step 3 (final step)
+    $form.on('submit', function(e) {
+      if (!$('#onboarding-step-3').is(':visible')) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    $('#onboarding-search-q').on('keydown', function(e) {
+      if (e.which !== 13) return;
+      e.preventDefault();
+      var q = $(this).val().trim();
+      var $msg = $('#onboarding-search-empty-message');
+      if (q) {
+        $msg.hide().text('');
+        $('#onboarding-search-btn').trigger('click');
+      } else {
+        $msg.text('Please enter text to search for vendors or products.').show();
+      }
+    });
+    $('#onboarding-search-q').on('input', function() {
+      $('#onboarding-search-empty-message').hide().text('');
+    });
+
+    $('#onboarding-search-btn').on('click', function() {
+      var q = $('#onboarding-search-q').val().trim();
+      var $vendorsList = $('#onboarding-search-results-vendors-list');
+      var $productsList = $('#onboarding-search-results-products-list');
+      var $vendorsBlock = $('#onboarding-search-results-vendors');
+      var $productsBlock = $('#onboarding-search-results-products');
+      var $emptyBlock = $('#onboarding-search-results-empty');
+
+      if (!q) {
+        $emptyBlock.html('<p class="text-muted">Enter a search term and click Search.</p>').show();
+        $vendorsBlock.add($productsBlock).hide();
+        return;
+      }
+
+      $emptyBlock.html('<p class="text-muted">Loading...</p>').show();
+      $vendorsBlock.add($productsBlock).hide();
+      $vendorsList.empty();
+      $productsList.empty();
+
+      $.getJSON(searchUrl, { q: q })
+        .done(function(data) {
+          $vendorsList.empty();
+          $productsList.empty();
+
+          if (data.vendors && data.vendors.length) {
+            $.each(data.vendors, function(_, v) {
+              var $label = $('<label class="checkbox-inline onboarding-checkbox-item">');
+              var $cb = $('<input type="checkbox">').attr({ value: v.name, 'data-human-name': v.human_name });
+              if (selectedSubscriptions.has(v.name)) $cb.prop('checked', true);
+              $cb.on('change', function() {
+                if (this.checked) {
+                  if (selectedSubscriptions.size >= MAX_SUBSCRIPTIONS) { $cb.prop('checked', false); return; }
+                  selectedSubscriptions.add(v.name);
+                  selectedLabels.set(v.name, v.human_name);
+                } else {
+                  selectedSubscriptions.delete(v.name);
+                  selectedLabels.delete(v.name);
+                }
+                updateSelectedCount();
+              });
+              $label.append($cb).append(' ' + v.human_name);
+              $vendorsList.append($label).append('<br>');
+            });
+          }
+
+          if (data.products && data.products.length) {
+            $.each(data.products, function(_, p) {
+              var displayName = p.human_name + ' (' + p.vendor + ')';
+              var $label = $('<label class="checkbox-inline onboarding-checkbox-item">');
+              var $cb = $('<input type="checkbox">').attr({ value: p.vendored_name, 'data-human-name': displayName });
+              if (selectedSubscriptions.has(p.vendored_name)) $cb.prop('checked', true);
+              $cb.on('change', function() {
+                if (this.checked) {
+                  if (selectedSubscriptions.size >= MAX_SUBSCRIPTIONS) { $cb.prop('checked', false); return; }
+                  selectedSubscriptions.add(p.vendored_name);
+                  selectedLabels.set(p.vendored_name, displayName);
+                } else {
+                  selectedSubscriptions.delete(p.vendored_name);
+                  selectedLabels.delete(p.vendored_name);
+                }
+                updateSelectedCount();
+              });
+              $label.append($cb).append(' ' + displayName);
+              $productsList.append($label).append('<br>');
+            });
+          }
+
+          var hasVendors = data.vendors && data.vendors.length;
+          var hasProducts = data.products && data.products.length;
+          if (hasVendors || hasProducts) {
+            $emptyBlock.hide();
+            if (hasVendors) $vendorsBlock.show();
+            if (hasProducts) $productsBlock.show();
+          } else {
+            $emptyBlock.html('<p class="text-muted">No vendors or products found. Try another term.</p>').show();
+            $vendorsBlock.add($productsBlock).hide();
+          }
+          updateSelectedCount();
+        })
+        .fail(function() {
+          $emptyBlock.html('<p class="text-danger">Search failed. Please try again.</p>').show();
+          $vendorsBlock.add($productsBlock).hide();
+        });
+    });
+
+    function setNotificationFieldsEnabled(enabled) {
+      $('#id_notification_email, #id_cvss31_min').prop('disabled', !enabled);
+      $('#onboarding-notification-fields').toggleClass('onboarding-notification-fields-disabled', !enabled);
+    }
+    $('#id_enable_email_notification').on('change', function() {
+      setNotificationFieldsEnabled(this.checked);
+    });
+    setNotificationFieldsEnabled($('#id_enable_email_notification').is(':checked'));
+
+    // Restore selected subscriptions from form (e.g. after validation error)
+    // Decode a minimal set of HTML entities without reinterpreting the string as HTML.
+    // This avoids using $('<textarea>').html(...).text(), which can reintroduce XSS risks.
+    function decodeHtmlEntities(str) {
+      if (!str) return str;
+      return str
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;|&apos;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+    }
+    var initialSubscriptions = $form.attr('data-initial-subscriptions');
+    if (initialSubscriptions) {
+      var tmp = decodeHtmlEntities(initialSubscriptions);
+      try {
+        var arr = JSON.parse(tmp);
+        if (Array.isArray(arr)) arr.forEach(function(k) { selectedSubscriptions.add(k); });
+      } catch (e) {}
+    }
+    syncHiddenSubscriptions();
+    updateSelectedCount();
+
+    var step2Errors = $('#onboarding-step-2 .text-danger').not('.onboarding-search-empty-message').length;
+    var step3Errors = $('#onboarding-step-3 .text-danger').length;
+    if (step2Errors) showStep(2);
+    else if (step3Errors) showStep(3);
+    else showStep(1);
+  }
 });
