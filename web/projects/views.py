@@ -1,12 +1,14 @@
 import importlib
 import json
+from datetime import datetime
 
 import pyparsing as pp
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
     CreateView,
@@ -18,6 +20,7 @@ from django.views.generic import (
 )
 
 from changes.models import Change, Report
+from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
 from cves.models import Cve
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from opencve.mixins import RequestViewMixin
@@ -323,6 +326,36 @@ class ProjectVulnerabilitiesView(
         ]
 
         return context
+
+
+class ProjectVulnerabilitiesCsvExportView(ProjectVulnerabilitiesView):
+    """
+    Export the current project vulnerabilities list (same queryset as
+    ProjectVulnerabilitiesView) as CSV. Redirects with an error message if the
+    result set exceeds CVE_CSV_EXPORT_MAX_ROWS.
+    """
+
+    def get(self, request, *args, **kwargs):
+        self.object_list = self.get_queryset()
+        count = self.object_list.count()
+        if count > CVE_CSV_EXPORT_MAX_ROWS:
+            messages.error(
+                request,
+                f"Export limit exceeded: {count} CVEs match your query. "
+                "Please refine your search to export 10,000 CVEs or fewer.",
+            )
+            url = reverse(
+                "project_vulnerabilities",
+                kwargs={
+                    "org_name": kwargs["org_name"],
+                    "project_name": kwargs["project_name"],
+                },
+            )
+            if request.GET:
+                url += "?" + request.GET.urlencode()
+            return redirect(url)
+        filename = f"project-{self.project.name}-cves-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        return build_cve_csv_response(self.object_list, filename)
 
 
 class ReportsView(

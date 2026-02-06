@@ -770,6 +770,85 @@ def test_project_vulnerabilities_view_pagination(
 
 
 @override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_export_csv_returns_csv(
+    create_organization, create_user, create_project, create_cve, auth_client
+):
+    """Export CSV returns 200, text/csv, and contains header + CVE rows."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(
+        name="project1",
+        organization=org,
+        vendors=["git-scm"],
+    )
+    create_cve("CVE-2023-22490")
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities_export_csv",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        )
+    )
+    assert response.status_code == 200
+    assert "text/csv" in response["Content-Type"]
+    content = b"".join(response.streaming_content).decode("utf-8")
+    lines = content.strip().split("\r\n")
+    assert len(lines) == 2  # header + 1 CVE
+    assert (
+        lines[0]
+        == "cve_id,title,description,vendors,weaknesses,created_at,updated_at,kev,epss,cvss_v4_0,cvss_v3_1,cvss_v3_0,cvss_v2_0"
+    )
+    assert (
+        lines[1]
+        == 'CVE-2023-22490,Git vulnerable to local clone-based data exfiltration with non-local transports,"Git is a revision control system. Using a specially-crafted repository, Git prior to versions 2.39.2, 2.38.4, 2.37.6, 2.36.5, 2.35.7, 2.34.7, 2.33.7, 2.32.6, 2.31.7, and 2.30.8 can be tricked into using its local clone optimization even when using a non-local transport. Though Git will abort local clones whose source `$GIT_DIR/objects` directory contains symbolic links, the `objects` directory itself may still be a symbolic link. These two may be combined to include arbitrary files based on known paths on the victim\'s filesystem within the malicious repository\'s working copy, allowing for data exfiltration in a similar manner as CVE-2022-39253. A fix has been prepared and will appear in v2.39.2 v2.38.4 v2.37.6 v2.36.5 v2.35.7 v2.34.7 v2.33.7 v2.32.6, v2.31.7 and v2.30.8. If upgrading is impractical, two short-term workarounds are available. Avoid cloning repositories from untrusted sources with `--recurse-submodules`. Instead, consider cloning repositories without recursively cloning their submodules, and instead run `git submodule update` at each layer. Before doing so, inspect each new `.gitmodules` file to ensure that it does not contain suspicious module URLs.","git-scm (git), redhat (enterprise_linux, rhel_eus)","CWE-402, CWE-59",2023-02-14T00:00:00Z,2024-08-02T10:13:48Z,false,,,5.5,,'
+    )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_export_csv_redirects_when_over_limit(
+    create_organization, create_user, create_project, create_cve, auth_client
+):
+    """When result count exceeds limit, redirect with error message."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(
+        name="project1",
+        organization=org,
+        vendors=["git-scm"],
+    )
+    create_cve("CVE-2023-22490")
+    client = auth_client(user)
+    with patch("projects.views.CVE_CSV_EXPORT_MAX_ROWS", 0):
+        response = client.get(
+            reverse(
+                "project_vulnerabilities_export_csv",
+                kwargs={"org_name": "org1", "project_name": "project1"},
+            ),
+            follow=False,
+        )
+    assert response.status_code == 302
+    expected_redirect = reverse(
+        "project_vulnerabilities",
+        kwargs={"org_name": "org1", "project_name": "project1"},
+    )
+    assert response.url.startswith(expected_redirect)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities_export_csv",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        follow=True,
+    )
+    messages_list = list(get_messages(response.wsgi_request))
+
+    # First message is "You are now connected to the organization org1."
+    assert (
+        messages_list[1].message
+        == "Export limit exceeded: 1 CVEs match your query. Please refine your search to export 10,000 CVEs or fewer."
+    )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
 def test_reports_view_requires_authentication(client):
     """Test that ReportsView requires authentication"""
     response = client.get(

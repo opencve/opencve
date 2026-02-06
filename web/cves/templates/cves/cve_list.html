@@ -12,6 +12,9 @@
 
 <section class="content">
     <div class="row">
+        <div class="col-md-12">
+            {% include "messages.html" %}
+        </div>
         <div class="col-md-7">
             <div class="box box-primary">
                 <div class="box-header with-border">
@@ -76,6 +79,9 @@
             <div class="box box-primary">
                 <div class="box-header with-border">
                     <h3 class="box-title">Search Results <small>({{ page_obj.paginator.count }} CVEs found)</small></h3>
+                    <div class="box-tools pull-right">
+                        <a href="{% url 'cves_export_csv' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-default btn-xs"><i class="fa fa-download"></i> Export CSV</a>
+                    </div>
                 </div>
                 <div class="box-body table-responsive no-padding">
                     {% include "cves/includes/cve_table.html" %}
