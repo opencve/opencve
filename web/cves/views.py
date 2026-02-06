@@ -1,14 +1,18 @@
 import json
+from datetime import datetime
 
 import pyparsing as pp
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db import models
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.generic import DetailView, ListView, TemplateView
 
 from cves.constants import PRODUCT_SEPARATOR
+from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
 from cves.forms import SearchForm
 from cves.models import Cve, Product, Variable, Vendor, Weakness
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
@@ -191,6 +195,29 @@ class CveListView(ListView):
             ).order_by("-created_at")
 
         return context
+
+
+class CveCsvExportView(CveListView):
+    """
+    Export the current CVE list (same queryset as CveListView) as CSV.
+    Redirects with an error message if the result set exceeds CVE_CSV_EXPORT_MAX_ROWS.
+    """
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        count = queryset.count()
+        if count > CVE_CSV_EXPORT_MAX_ROWS:
+            messages.error(
+                request,
+                f"Export limit exceeded: {count} CVEs match your query. "
+                "Please refine your search to export 10,000 CVEs or fewer.",
+            )
+            url = reverse("cves") + (
+                "?" + request.GET.urlencode() if request.GET else ""
+            )
+            return redirect(url)
+        filename = f"cves-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        return build_cve_csv_response(queryset, filename)
 
 
 class CveDetailView(DetailView):

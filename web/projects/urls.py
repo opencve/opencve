@@ -12,6 +12,7 @@ from projects.views import (
     ProjectDetailView,
     ProjectEditView,
     ProjectsListView,
+    ProjectVulnerabilitiesCsvExportView,
     ProjectVulnerabilitiesView,
     ReportsView,
     ReportView,
@@ -82,6 +83,11 @@ urlpatterns = [
         "org/<org_name>/projects/<project_name>/vulnerabilities",
         ProjectVulnerabilitiesView.as_view(),
         name="project_vulnerabilities",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/vulnerabilities/export/csv",
+        ProjectVulnerabilitiesCsvExportView.as_view(),
+        name="project_vulnerabilities_export_csv",
     ),
     path(
         "org/<org_name>/projects/<project_name>/assign-cve-user",

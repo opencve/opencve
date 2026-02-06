@@ -52,6 +52,12 @@
 
         {% if cves %}
         <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Vulnerabilities <small>({{ page_obj.paginator.count }} CVEs)</small></h3>
+                <div class="box-tools pull-right">
+                    <a href="{% url 'project_vulnerabilities_export_csv' org_name=request.current_organization.name project_name=project.name %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-default btn-xs"><i class="fa fa-download"></i> Export CSV</a>
+                </div>
+            </div>
             <div class="box-body table-responsive no-padding">
                 <table class="table" id="cves-tracking-list">
                     <thead>
