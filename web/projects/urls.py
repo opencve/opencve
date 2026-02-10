@@ -6,6 +6,7 @@ from projects.views import (
     NotificationCreateView,
     NotificationsView,
     NotificationDeleteView,
+    NotificationResendConfirmationView,
     NotificationUpdateView,
     ProjectCreateView,
     ProjectDeleteView,
@@ -58,6 +59,11 @@ urlpatterns = [
         "org/<org_name>/projects/<project_name>/notifications/<notification>",
         NotificationUpdateView.as_view(),
         name="edit_notification",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/notifications/<notification>/resend-confirmation",
+        NotificationResendConfirmationView.as_view(),
+        name="resend_notification_confirmation",
     ),
     path(
         "org/<org_name>/projects/<project_name>/notifications/<notification>/delete",

@@ -9,5 +9,11 @@ This email has been sent from the {{ notification }} notification of the {{ orga
 Changes: {{ vulnerability.changes|join(', ') }}
 Subscriptions: {{ vulnerability.subscriptions|join(', ') }}
 {% endfor %}{% endif %}
+{% if created_by_email %}
+This notification was created by {{ created_by_email }}
+{% endif %}
+{% if unsubscribe_url %}
+Unsubscribe from this notification: {{ unsubscribe_url }}
+{% endif %}
+Manage notification settings: {{ notification_url }}
 {% endfor %}&copy; {{ year }} OpenCVE, All rights reserved
-Update your notifications to unsubscribe this notification: {{ notification_url }}

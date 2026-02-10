@@ -1,5 +1,6 @@
 import importlib
 import json
+import secrets
 from datetime import datetime
 
 import pyparsing as pp
@@ -8,13 +9,15 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import Count, Prefetch, Q
 from django.http import Http404, JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
     CreateView,
     DeleteView,
     DetailView,
     ListView,
+    TemplateView,
     UpdateView,
     View,
 )
@@ -31,6 +34,7 @@ from organizations.mixins import (
 from projects.forms import FORM_MAPPING, ProjectForm, CveTrackerFilterForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
 from projects.models import Notification, Project, CveTracker
+from projects.utils import send_notification_confirmation_email
 from users.models import User
 from views.models import View as SavedView
 
@@ -509,16 +513,27 @@ class NotificationCreateView(
         for field in custom_fields:
             extras[field] = form.cleaned_data[field]
 
+        notification_type = self.request.GET["type"]
+        if notification_type == "email":
+            form.instance.is_enabled = False
+            extras["created_by_email"] = self.request.user.email
+            extras["confirmation_token"] = secrets.token_urlsafe(32)
+        else:
+            form.instance.is_enabled = True
+
         # Create the notification
         form.instance.project = self.project
-        form.instance.type = self.request.GET["type"]
+        form.instance.type = notification_type
         form.instance.configuration = {
             "types": types,
             "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
             "extras": extras,
         }
 
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        if notification_type == "email":
+            send_notification_confirmation_email(form.instance, self.request)
+        return response
 
     def get_form_class(self):
         return getattr(
@@ -569,6 +584,22 @@ class NotificationUpdateView(
         for field in custom_fields:
             extras[field] = form.cleaned_data[field]
 
+        # Preserve email-specific extras; re-trigger confirmation if email changed
+        email_changed_send_confirm = False
+        if form.instance.type == "email":
+            existing_extras = form.instance.configuration.get("extras") or {}
+            # Preserve tokens: confirmation_token (pending) or unsubscribe_token (confirmed)
+            for key in ("created_by_email", "confirmation_token", "unsubscribe_token"):
+                if key in existing_extras:
+                    extras[key] = existing_extras[key]
+            new_email = form.cleaned_data.get("email")
+            old_email = existing_extras.get("email")
+            if new_email and new_email != old_email:
+                form.instance.is_enabled = False
+                extras["confirmation_token"] = secrets.token_urlsafe(32)
+                extras.pop("unsubscribe_token", None)
+                email_changed_send_confirm = True
+
         # Create the notification
         form.instance.project = self.project
         form.instance.configuration = {
@@ -577,7 +608,10 @@ class NotificationUpdateView(
             "extras": extras,
         }
 
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        if email_changed_send_confirm:
+            send_notification_confirmation_email(form.instance, self.request)
+        return response
 
     def get_form_class(self):
         return getattr(
@@ -594,6 +628,10 @@ class NotificationUpdateView(
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
         context["type"] = self.object.type
+        extras = self.object.configuration.get("extras") or {}
+        context["email_pending_confirmation"] = self.object.type == "email" and bool(
+            extras.get("confirmation_token")
+        )
 
         # Transform JSON field into dedicated fields
         context["form"].initial["cvss31_score"] = self.object.configuration["metrics"][
@@ -635,6 +673,150 @@ class NotificationDeleteView(
                 "org_name": self.request.current_organization.name,
                 "project_name": self.project.name,
             },
+        )
+
+
+class NotificationResendConfirmationView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    View,
+):
+    """Resend the confirmation email for an email notification pending validation."""
+
+    def get(self, request, *args, **kwargs):
+        notification = get_object_or_404(
+            Notification,
+            project=self.project,
+            name=self.kwargs["notification"],
+        )
+        if notification.type != "email":
+            messages.error(request, "This notification is not an email notification.")
+            return redirect(
+                "edit_notification",
+                org_name=request.current_organization.name,
+                project_name=self.project.name,
+                notification=notification.name,
+            )
+        extras = notification.configuration.get("extras") or {}
+        if not extras.get("confirmation_token"):
+            messages.info(
+                request,
+                "This notification is already confirmed or does not require confirmation.",
+            )
+            return redirect(
+                "edit_notification",
+                org_name=request.current_organization.name,
+                project_name=self.project.name,
+                notification=notification.name,
+            )
+        send_notification_confirmation_email(notification, request)
+        messages.success(
+            request,
+            "A new confirmation email has been sent to %s."
+            % extras.get("email", "the configured address"),
+        )
+        return redirect(
+            "edit_notification",
+            org_name=request.current_organization.name,
+            project_name=self.project.name,
+            notification=notification.name,
+        )
+
+
+class NotificationConfirmView(TemplateView):
+    """
+    Public view to confirm an email notification subscription (no auth required).
+    """
+
+    template_name = "projects/notifications/confirm_success.html"
+
+    def get(self, request, *args, **kwargs):
+        token = kwargs.get("token")
+        notification = Notification.objects.filter(
+            type="email",
+            configuration__extras__confirmation_token=token,
+        ).first()
+
+        if not notification:
+            return render(
+                request,
+                "projects/notifications/confirm_error.html",
+                status=404,
+            )
+
+        notification.is_enabled = True
+        config = dict(notification.configuration)
+        extras = dict(config.get("extras", {}))
+        extras.pop("confirmation_token", None)
+        extras["unsubscribe_token"] = secrets.token_urlsafe(32)
+        config["extras"] = extras
+        notification.configuration = config
+        notification.save(update_fields=["is_enabled", "configuration"])
+
+        return render(
+            request,
+            self.template_name,
+            {"notification": notification},
+        )
+
+
+class NotificationUnsubscribeView(TemplateView):
+    """
+    Public view to unsubscribe from an email notification (no auth required).
+    First shows a confirmation page, then processes the unsubscribe on POST.
+    """
+
+    template_name = "projects/notifications/unsubscribe_confirm.html"
+
+    def get_notification(self, token):
+        return Notification.objects.filter(
+            configuration__extras__unsubscribe_token=token,
+        ).first()
+
+    def get(self, request, *args, **kwargs):
+        token = kwargs.get("token")
+        notification = self.get_notification(token)
+
+        if not notification:
+            return render(
+                request,
+                "projects/notifications/unsubscribe_error.html",
+                status=404,
+            )
+
+        # Show confirmation page; actual unsubscribe happens on POST
+        return render(
+            request,
+            self.template_name,
+            {"notification": notification},
+        )
+
+    def post(self, request, *args, **kwargs):
+        token = kwargs.get("token")
+        notification = self.get_notification(token)
+
+        if not notification:
+            return render(
+                request,
+                "projects/notifications/unsubscribe_error.html",
+                status=404,
+            )
+
+        notification.is_enabled = False
+        config = dict(notification.configuration)
+        extras = dict(config.get("extras", {}))
+        extras.pop("unsubscribe_token", None)
+        extras["confirmation_token"] = secrets.token_urlsafe(32)
+        config["extras"] = extras
+        notification.configuration = config
+        notification.save(update_fields=["is_enabled", "configuration"])
+
+        return render(
+            request,
+            "projects/notifications/unsubscribe_success.html",
+            {"notification": notification},
         )
 
 

@@ -8,11 +8,14 @@ from django.utils.timezone import now
 from django.views import View
 from django.views.generic import FormView
 
+import secrets
+
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Product, Vendor
 from onboarding.forms import OnboardingForm
 from organizations.models import Membership, Organization
 from projects.models import Notification, Project
+from projects.utils import send_notification_confirmation_email
 
 
 class OnboardingMixin:
@@ -92,6 +95,17 @@ class OnboardingFormView(
         "and stay updated on vulnerabilities."
     )
 
+    def get_success_message(self, cleaned_data):
+        if cleaned_data.get("enable_email_notification") and cleaned_data.get(
+            "notification_email"
+        ):
+            return (
+                "A confirmation email has been sent to %s. "
+                "Click the link in the email to activate notifications."
+                % cleaned_data["notification_email"]
+            )
+        return super().get_success_message(cleaned_data)
+
     def get_initial(self):
         initial = super().get_initial()
         initial["notification_email"] = self.request.user.email
@@ -134,16 +148,22 @@ class OnboardingFormView(
         )
 
         if data.get("enable_email_notification"):
-            Notification.objects.create(
+            extras = {
+                "email": data["notification_email"],
+                "created_by_email": self.request.user.email,
+                "confirmation_token": secrets.token_urlsafe(32),
+            }
+            notification = Notification.objects.create(
                 name="Email notifications",
                 type="email",
-                is_enabled=True,
+                is_enabled=False,
                 project=project,
                 configuration={
                     "types": ["created", "first_time"],
-                    "extras": {"email": data["notification_email"]},
+                    "extras": extras,
                     "metrics": {"cvss31": str(data["cvss31_min"])},
                 },
             )
+            send_notification_confirmation_email(notification, self.request)
 
         return super().form_valid(form)

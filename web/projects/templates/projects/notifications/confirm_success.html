@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Confirm notification subscription - {{ block.super }}{% endblock %}
+
+{% block navbar_title%}Confirm notification subscription{% endblock %}
+
+{% block content %}
+<section class="content">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="col-md-8 col-md-offset-2">
+        <div class="box box-primary">
+          <div class="box-body">
+            <p>Your notification <strong><a href="{% url 'edit_notification' org_name=notification.project.organization.name project_name=notification.project.name notification=notification.name %}">{{ notification.name }}</a></strong> has been confirmed.</p>
+            <p>You will now receive notifications on <strong>{{ notification.configuration.extras.email }}</strong>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

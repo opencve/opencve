@@ -300,6 +300,70 @@ def test_generate_email_previews(tests_path, tmp_path_factory):
     print(f"\nEmail previews generated in: {previews_dir.resolve()}")
 
 
+def test_email_notifier_template_context_created_by_and_unsubscribe_url(
+    tests_path, tmp_path_factory
+):
+    """EmailNotifier get_template_context includes created_by_email and unsubscribe_url from extras."""
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "notification_type": "email",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "types": ["created"],
+            "extras": {
+                "email": "target@example.com",
+                "created_by_email": "creator@example.com",
+                "unsubscribe_token": "my-unsubscribe-token",
+            },
+            "metrics": {"cvss31": "0"},
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "change_types": ["created"],
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {
+                "cvssV3_1": {
+                    "data": {"score": 8.8},
+                    "provider": "mitre",
+                }
+            },
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    notif = EmailNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=list(change_details.keys()),
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path), patch(
+        "includes.notifiers.conf"
+    ) as mock_conf:
+        mock_conf.get.return_value = "https://opencve.example.com"
+        context = notif.get_template_context()
+
+    assert context["created_by_email"] == "creator@example.com"
+    assert context["unsubscribe_url"] == (
+        "https://opencve.example.com/notifications/unsubscribe/my-unsubscribe-token"
+    )
+
+
 # Tests for BaseNotifier utility methods
 
 

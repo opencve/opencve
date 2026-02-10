@@ -13,6 +13,7 @@ from cves.resources import (
 )
 from organizations.resources import OrganizationViewSet
 from projects.resources import ProjectCveViewSet, ProjectViewSet
+from projects.views import NotificationConfirmView, NotificationUnsubscribeView
 from users.views import CustomLoginView, CustomSignupView
 
 # API Router
@@ -64,6 +65,16 @@ urlpatterns = [
     path("settings/", include("users.urls")),
     path("admin/", admin.site.urls),
     path("hijack/", include("hijack.urls")),
+    path(
+        "notifications/confirm/<str:token>/",
+        NotificationConfirmView.as_view(),
+        name="notification_confirm",
+    ),
+    path(
+        "notifications/unsubscribe/<str:token>/",
+        NotificationUnsubscribeView.as_view(),
+        name="notification_unsubscribe",
+    ),
     # API routes
     path("api/", include(router.urls)),
     path("api/", include(organizations_router.urls)),

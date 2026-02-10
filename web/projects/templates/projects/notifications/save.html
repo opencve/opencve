@@ -13,10 +13,18 @@
                 <div class="box-header with-border">
                     <h3 class="box-title">General Settings</h3>
                     <div class="box-tools pull-right">
+                        {% if "is_enabled" in form.fields %}
                         {{ form.is_enabled|as_crispy_field }}
+                        {% endif %}
                     </div>
                 </div>
                 <div class="box-body">
+                    {% if email_pending_confirmation %}
+                    <div class="alert alert-warning">
+                        This notification will be enabled once the recipient confirms the subscription by clicking the link in the confirmation email.
+                        <a href="{% url 'resend_notification_confirmation' org_name=request.current_organization.name project_name=project.name notification=object.name %}">Resend the confirmation email</a>.
+                    </div>
+                    {% endif %}
                     {{ form.name|as_crispy_field }}
                     <div class="extras">
                         {% with template_name="projects/notifications/_"|add:type|add:".html" %}

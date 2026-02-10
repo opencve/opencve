@@ -2,6 +2,7 @@ import json
 from datetime import date, timedelta
 from unittest.mock import Mock, PropertyMock, patch
 
+import pytest
 from django.contrib.messages import get_messages
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
@@ -1225,14 +1226,21 @@ def test_notification_create_view_invalid_type(
     assert response.status_code == 404
 
 
-@override_settings(ENABLE_ONBOARDING=False)
+@override_settings(
+    ENABLE_ONBOARDING=False,
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
 def test_notification_create_view_email(
     create_organization, create_user, create_project, auth_client
 ):
-    """Test creating an email notification"""
-    user = create_user()
+    """Test creating an email notification: disabled until confirmed, sends confirmation email."""
+    user = create_user(email="owner@example.com")
     org = create_organization(name="org1", user=user)
     project = create_project(name="project1", organization=org)
+
+    from django.core.mail import outbox
+
+    outbox.clear()
 
     client = auth_client(user)
     response = client.post(
@@ -1255,8 +1263,72 @@ def test_notification_create_view_email(
 
     notification = Notification.objects.get(name="my-email-notif", project=project)
     assert notification.type == "email"
+    assert notification.is_enabled is False
     assert "extras" in notification.configuration
     assert notification.configuration["extras"]["email"] == "test@example.com"
+    assert (
+        notification.configuration["extras"]["created_by_email"] == "owner@example.com"
+    )
+    assert "confirmation_token" in notification.configuration["extras"]
+    assert "unsubscribe_token" not in notification.configuration["extras"]
+
+    assert len(outbox) == 1
+    assert outbox[0].to == ["test@example.com"]
+    assert "Notification subscription confirmation" in outbox[0].subject
+    assert "owner@example.com" in outbox[0].body
+    assert "notifications/confirm/" in outbox[0].body
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_notification_create_view_webhook_and_slack_enabled_without_tokens(
+    create_organization, create_user, create_project, auth_client
+):
+    """Webhook and Slack notifications are created enabled and have no confirmation/unsubscribe tokens."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    base_url = reverse(
+        "create_notification",
+        kwargs={"org_name": "org1", "project_name": "project1"},
+    )
+    common_data = {"cvss31_score": 5, "created": True}
+
+    response_webhook = client.post(
+        base_url + "?type=webhook",
+        data={
+            "name": "my-webhook-notif",
+            "url": "https://example.com/webhook",
+            "headers": "{}",
+            **common_data,
+        },
+        follow=True,
+    )
+    assert response_webhook.status_code == 200
+    notif_webhook = Notification.objects.get(name="my-webhook-notif", project=project)
+    assert notif_webhook.type == "webhook"
+    assert notif_webhook.is_enabled is True
+    extras_webhook = notif_webhook.configuration.get("extras", {})
+    assert "confirmation_token" not in extras_webhook
+    assert "unsubscribe_token" not in extras_webhook
+
+    response_slack = client.post(
+        base_url + "?type=slack",
+        data={
+            "name": "my-slack-notif",
+            "webhook_url": "https://hooks.slack.com/services/T00/B00/xxx",
+            **common_data,
+        },
+        follow=True,
+    )
+    assert response_slack.status_code == 200
+    notif_slack = Notification.objects.get(name="my-slack-notif", project=project)
+    assert notif_slack.type == "slack"
+    assert notif_slack.is_enabled is True
+    extras_slack = notif_slack.configuration.get("extras", {})
+    assert "confirmation_token" not in extras_slack
+    assert "unsubscribe_token" not in extras_slack
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1337,7 +1409,7 @@ def test_notification_update_view_requires_owner(
 def test_notification_update_view_valid_form(
     create_organization, create_user, create_project, create_notification, auth_client
 ):
-    """Test updating a notification with valid form data"""
+    """Test updating a notification with valid form data; preserves created_by_email and unsubscribe_token."""
     user = create_user()
     org = create_organization(name="org1", user=user)
     project = create_project(name="project1", organization=org)
@@ -1348,7 +1420,11 @@ def test_notification_update_view_valid_form(
         configuration={
             "types": ["created"],
             "metrics": {"cvss31": 5},
-            "extras": {"email": "old@example.com"},
+            "extras": {
+                "email": "old@example.com",
+                "created_by_email": "creator@example.com",
+                "unsubscribe_token": "some-unsubscribe-token",
+            },
         },
     )
 
@@ -1364,7 +1440,7 @@ def test_notification_update_view_valid_form(
         ),
         data={
             "name": "notif1",
-            "email": "new@example.com",
+            "email": "old@example.com",
             "cvss31_score": 7,
         },
         follow=True,
@@ -1372,8 +1448,360 @@ def test_notification_update_view_valid_form(
 
     assert response.status_code == 200
     notification.refresh_from_db()
-    assert notification.configuration["extras"]["email"] == "new@example.com"
+    assert notification.configuration["extras"]["email"] == "old@example.com"
     assert notification.configuration["metrics"]["cvss31"] == "7"
+    assert (
+        notification.configuration["extras"]["created_by_email"]
+        == "creator@example.com"
+    )
+    assert (
+        notification.configuration["extras"]["unsubscribe_token"]
+        == "some-unsubscribe-token"
+    )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_notification_resend_confirmation_view_requires_authentication(db, client):
+    """Require authentication."""
+    response = client.get(
+        reverse(
+            "resend_notification_confirmation",
+            kwargs={
+                "org_name": "test-org",
+                "project_name": "test-project",
+                "notification": "test-notif",
+            },
+        ),
+        follow=True,
+    )
+    assert response.status_code == 200
+    assert response.redirect_chain == [
+        (
+            reverse("account_login")
+            + "?next="
+            + reverse(
+                "resend_notification_confirmation",
+                kwargs={
+                    "org_name": "test-org",
+                    "project_name": "test-project",
+                    "notification": "test-notif",
+                },
+            ),
+            302,
+        )
+    ]
+
+
+@override_settings(
+    ENABLE_ONBOARDING=False,
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+def test_notification_resend_confirmation_view_sends_email(
+    create_organization, create_user, create_project, create_notification, auth_client
+):
+    """Send confirmation email and redirect with success message."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_notification(
+        name="notif1",
+        project=project,
+        type="email",
+        is_enabled=False,
+        configuration={
+            "types": ["created"],
+            "metrics": {"cvss31": "5"},
+            "extras": {
+                "email": "recipient@example.com",
+                "created_by_email": "owner@example.com",
+                "confirmation_token": "resend-test-token",
+            },
+        },
+    )
+
+    from django.core.mail import outbox
+
+    outbox.clear()
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "resend_notification_confirmation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "notification": "notif1",
+            },
+        ),
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert response.redirect_chain[-1][0] == reverse(
+        "edit_notification",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "notification": "notif1",
+        },
+    )
+    assert len(outbox) == 1
+    assert outbox[0].to == ["recipient@example.com"]
+    assert "confirmation" in outbox[0].subject.lower()
+    assert "resend-test-token" in outbox[0].body
+    messages = list(get_messages(response.wsgi_request))
+    assert any("new confirmation email" in str(m).lower() for m in messages)
+    assert any("recipient@example.com" in str(m) for m in messages)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_notification_resend_confirmation_view_not_email_type(
+    create_organization, create_user, create_project, create_notification, auth_client
+):
+    """Return error when notification is not email type."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_notification(
+        name="notif1",
+        project=project,
+        type="webhook",
+        configuration={
+            "types": [],
+            "metrics": {"cvss31": "0"},
+            "extras": {
+                "url": "https://example.com/hook",
+                "headers": {},
+            },
+        },
+    )
+
+    from django.core.mail import outbox
+
+    outbox.clear()
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "resend_notification_confirmation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "notification": "notif1",
+            },
+        ),
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert len(outbox) == 0
+    messages = list(get_messages(response.wsgi_request))
+    assert any("not an email notification" in str(m).lower() for m in messages)
+
+
+@override_settings(
+    ENABLE_ONBOARDING=False,
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+def test_notification_resend_confirmation_view_already_confirmed(
+    create_organization, create_user, create_project, create_notification, auth_client
+):
+    """Do not send email when notification is already confirmed."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_notification(
+        name="notif1",
+        project=project,
+        type="email",
+        is_enabled=True,
+        configuration={
+            "types": ["created"],
+            "metrics": {"cvss31": "5"},
+            "extras": {
+                "email": "recipient@example.com",
+                "unsubscribe_token": "unsub-token",
+            },
+        },
+    )
+
+    from django.core.mail import outbox
+
+    outbox.clear()
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "resend_notification_confirmation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "notification": "notif1",
+            },
+        ),
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    assert len(outbox) == 0
+    messages = list(get_messages(response.wsgi_request))
+    assert any("already confirmed" in str(m).lower() for m in messages)
+
+
+def test_notification_confirm_view_valid_token(
+    create_organization, create_user, create_project, create_notification, client
+):
+    """NotificationConfirmView: valid token enables the notification and removes confirmation_token."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    notification = create_notification(
+        name="notif1",
+        project=project,
+        type="email",
+        is_enabled=False,
+        configuration={
+            "types": ["created"],
+            "metrics": {"cvss31": "5"},
+            "extras": {
+                "email": "target@example.com",
+                "confirmation_token": "valid-confirm-token",
+            },
+        },
+    )
+
+    response = client.get(
+        reverse("notification_confirm", kwargs={"token": "valid-confirm-token"})
+    )
+
+    assert response.status_code == 200
+    notification.refresh_from_db()
+    assert notification.is_enabled is True
+
+    # confirmation_token has been removed
+    assert "confirmation_token" not in notification.configuration.get("extras", {})
+
+    # unsubscribe_token has been created
+    assert "unsubscribe_token" in notification.configuration.get("extras", {})
+
+
+@pytest.mark.django_db
+def test_notification_confirm_view_invalid_token(client):
+    """NotificationConfirmView: invalid token returns 404."""
+    response = client.get(
+        reverse("notification_confirm", kwargs={"token": "invalid-token"})
+    )
+    assert response.status_code == 404
+
+
+def test_notification_confirm_view_accessible_without_authentication(
+    create_organization, create_user, create_project, create_notification, client
+):
+    """NotificationConfirmView: confirm URL is accessible without authentication."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_notification(
+        name="notif1",
+        project=project,
+        type="email",
+        is_enabled=False,
+        configuration={
+            "types": ["created"],
+            "metrics": {"cvss31": "5"},
+            "extras": {
+                "email": "target@example.com",
+                "confirmation_token": "public-confirm-token",
+                "unsubscribe_token": "unsub-token",
+            },
+        },
+    )
+
+    response = client.get(
+        reverse(
+            "notification_confirm",
+            kwargs={"token": "public-confirm-token"},
+        )
+    )
+
+    assert response.status_code == 200
+
+
+def test_notification_unsubscribe_view_valid_token(
+    create_organization, create_user, create_project, create_notification, client
+):
+    """NotificationUnsubscribeView: valid token disables the notification (on POST)."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    notification = create_notification(
+        name="notif1",
+        project=project,
+        type="email",
+        is_enabled=True,
+        configuration={
+            "types": ["created"],
+            "metrics": {"cvss31": "5"},
+            "extras": {
+                "email": "target@example.com",
+                "unsubscribe_token": "valid-unsub-token",
+            },
+        },
+    )
+
+    response = client.post(
+        reverse("notification_unsubscribe", kwargs={"token": "valid-unsub-token"})
+    )
+
+    assert response.status_code == 200
+    notification.refresh_from_db()
+    assert notification.is_enabled is False
+
+    # unsubscribe_token has been removed
+    assert "unsubscribe_token" not in notification.configuration.get("extras", {})
+
+    # confirmation_token has been created
+    assert "confirmation_token" in notification.configuration.get("extras", {})
+
+
+@pytest.mark.django_db
+def test_notification_unsubscribe_view_invalid_token(client):
+    """NotificationUnsubscribeView: invalid token returns 404."""
+    response = client.get(
+        reverse("notification_unsubscribe", kwargs={"token": "invalid-token"})
+    )
+    assert response.status_code == 404
+
+
+def test_notification_unsubscribe_view_accessible_without_authentication(
+    create_organization, create_user, create_project, create_notification, client
+):
+    """NotificationUnsubscribeView: unsubscribe URL (GET and POST) is accessible without authentication."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_notification(
+        name="notif1",
+        project=project,
+        type="email",
+        is_enabled=True,
+        configuration={
+            "types": ["created"],
+            "metrics": {"cvss31": "5"},
+            "extras": {
+                "email": "target@example.com",
+                "unsubscribe_token": "public-unsub-token",
+            },
+        },
+    )
+
+    url = reverse(
+        "notification_unsubscribe",
+        kwargs={"token": "public-unsub-token"},
+    )
+
+    get_response = client.get(url)
+    assert get_response.status_code == 200
+
+    post_response = client.post(url)
+    assert post_response.status_code == 200
 
 
 @override_settings(ENABLE_ONBOARDING=False)

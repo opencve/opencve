@@ -257,8 +257,16 @@
                     <tbody>
                       <tr>
                         <td align="center" style="font-size:0px;padding:10px 25px;word-break:break-word;">
-                          <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:14px;font-weight:400;line-height:20px;text-align:center;color:#93999f;"> &copy; {{ year }} OpenCVE, All rights reserved </div>
-                          <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:14px;font-weight:400;line-height:20px;text-align:center;color:#93999f;"> Update your <a href="{{ notification_url }}" style="color:#ccc6c6;font-weight:bold;">notifications</a> to unsubscribe this notification </div>
+                          {% if created_by_email %}
+                          <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:14px;font-weight:400;line-height:20px;text-align:center;color:#93999f;padding-bottom:10px;">
+                            <em>This notification was created by {{ created_by_email }}</em>
+                          </div>
+                          {% endif %}
+                          {% if unsubscribe_url %}
+                          <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:14px;font-weight:400;line-height:20px;text-align:center;color:#93999f;"> <a href="{{ unsubscribe_url }}" style="color:#ccc6c6;font-weight:bold;">Unsubscribe</a> from this notification </div>
+                          {% endif %}
+                          <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:14px;font-weight:400;line-height:20px;text-align:center;color:#93999f;"> <a href="{{ notification_url }}" style="color:#ccc6c6;font-weight:bold;">Manage</a> notification settings </div>
+                          <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:14px;font-weight:400;line-height:20px;text-align:center;color:#93999f;padding-top:15px;"> &copy; {{ year }} OpenCVE, All rights reserved </div>
                         </td>
                       </tr>
                     </tbody>

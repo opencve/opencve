@@ -403,3 +403,43 @@ def test_cve_tracker_relationships(
 
     # Test reverse lookup from User
     assert tracker in user.assigned_cves.all()
+
+
+def test_notification_is_pending_email_confirmation(
+    create_organization, create_project, create_notification
+):
+    """is_pending_email_confirmation is True only for email type with confirmation_token in extras."""
+    org = create_organization(name="org1")
+    project = create_project(name="project1", organization=org)
+
+    email_pending = create_notification(
+        name="pending",
+        project=project,
+        type="email",
+        configuration={
+            "types": [],
+            "metrics": {},
+            "extras": {"email": "a@b.com", "confirmation_token": "abc123"},
+        },
+    )
+    assert email_pending.is_pending_email_confirmation is True
+
+    email_confirmed = create_notification(
+        name="confirmed",
+        project=project,
+        type="email",
+        configuration={
+            "types": [],
+            "metrics": {},
+            "extras": {"email": "b@c.com", "unsubscribe_token": "xyz"},
+        },
+    )
+    assert email_confirmed.is_pending_email_confirmation is False
+
+    webhook_notif = create_notification(
+        name="webhook",
+        project=project,
+        type="webhook",
+        configuration={"types": [], "metrics": {}, "extras": {"url": "https://x.com"}},
+    )
+    assert webhook_notif.is_pending_email_confirmation is False
