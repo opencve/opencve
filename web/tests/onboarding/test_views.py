@@ -3,6 +3,8 @@ from datetime import date
 
 import pytest
 from bs4 import BeautifulSoup
+from django.contrib.messages import get_messages
+from django.test import override_settings
 from django.urls import reverse
 from freezegun import freeze_time
 
@@ -228,16 +230,22 @@ def test_onboarding_form_valid_notification_linked_to_project(auth_client, creat
     notification = Notification.objects.first()
     assert notification is not None
     assert notification.project == project
+    assert notification.is_enabled is False
     assert notification.configuration["extras"]["email"] == "alerts@example.com"
     assert notification.configuration["metrics"]["cvss31"] == "7"
 
 
 @freeze_time("2024-01-01")
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 def test_onboarding_valid_form_with_notification(auth_client, create_user):
-    """Onboarding with email notification enabled."""
+    """Onboarding with email notification: created disabled, confirmation email sent."""
     user = create_user(username="john", email="john@doe.com")
     client = auth_client(user)
     url = reverse("onboarding")
+
+    from django.core.mail import outbox
+
+    outbox.clear()
 
     response = client.post(
         url,
@@ -257,12 +265,19 @@ def test_onboarding_valid_form_with_notification(auth_client, create_user):
     assert notification is not None
     assert notification.name == "Email notifications"
     assert notification.type == "email"
-    assert notification.is_enabled is True
-    assert notification.configuration == {
-        "types": ["created", "first_time"],
-        "extras": {"email": "alerts@example.com"},
-        "metrics": {"cvss31": "7"},
-    }
+    assert notification.is_enabled is False
+    assert notification.configuration["types"] == ["created", "first_time"]
+    assert notification.configuration["extras"]["email"] == "alerts@example.com"
+    assert notification.configuration["extras"]["created_by_email"] == "john@doe.com"
+    assert "confirmation_token" in notification.configuration["extras"]
+    assert notification.configuration["metrics"]["cvss31"] == "7"
+
+    assert len(outbox) == 1
+    assert outbox[0].to == ["alerts@example.com"]
+    assert "confirmation" in outbox[0].subject.lower()
+
+    messages = list(get_messages(response.wsgi_request))
+    assert any("confirmation email" in str(m).lower() for m in messages)
 
 
 @pytest.mark.django_db

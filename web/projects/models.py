@@ -98,6 +98,14 @@ class Notification(BaseModel):
             },
         )
 
+    @property
+    def is_pending_email_confirmation(self):
+        """True when type is email and subscription is not yet confirmed."""
+        if self.type != "email":
+            return False
+        extras = self.configuration.get("extras") or {}
+        return bool(extras.get("confirmation_token"))
+
 
 class CveTracker(BaseModel):
     """Track CVE assignments and status within projects"""

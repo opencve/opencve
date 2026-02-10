@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Unsubscribe from CVE notifications - {{ block.super }}{% endblock %}
+
+{% block navbar_title%}Unsubscribe from CVE notifications{% endblock %}
+
+{% block content %}
+<section class="content">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="col-md-8 col-md-offset-2">
+        <div class="box box-primary">
+          <div class="box-body">
+            <p>Are you sure you want to stop receiving CVE notifications for <a href="{% url 'notifications' org_name=notification.project.organization.name project_name=notification.project.name %}">{{ notification.name }}</a>?</p>
+            <p>This notification is associated with the <a href="{% url 'project' org_name=notification.project.organization.name project_name=notification.project.name %}">{{ notification.project.name }}</a> project in the <strong>{{ notification.project.organization.name }}</strong> organization.</p>
+            <form method="post">
+              {% csrf_token %}
+              <a href="{% url 'notifications' org_name=notification.project.organization.name project_name=notification.project.name %}" class="btn btn-default">Cancel</a>
+              <button type="submit" class="btn btn-primary">Unsubscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

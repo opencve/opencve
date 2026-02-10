@@ -1,0 +1,12 @@
+Hello,
+
+The user {{ created_by_email }} has created a notification in the organization "{{ organization }}" / project "{{ project }}" on OpenCVE.
+
+To confirm this subscription and start receiving CVE notifications at this email address, please click the link below:
+
+{{ confirm_url }}
+
+If you did not request this, you can safely ignore this email. The notification will not be activated until you confirm.
+
+Best regards,
+The OpenCVE Team

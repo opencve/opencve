@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Unsubscribe from CVE notifications - {{ block.super }}{% endblock %}
+
+{% block navbar_title%}Unsubscribe from CVE notifications{% endblock %}
+
+{% block content %}
+<section class="content">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="col-md-8 col-md-offset-2">
+        <div class="box box-primary">
+          <div class="box-body">
+            <p>You have been unsubscribed.</p>
+            <p>You will no longer receive CVE notifications for <strong>{{ notification.name }}</strong> (project <strong>{{ notification.project.organization.name }}/{{ notification.project.name }}</strong>).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

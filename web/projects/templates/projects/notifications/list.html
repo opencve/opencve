@@ -23,6 +23,8 @@
                                 <a href="{% url 'edit_notification' org_name=request.current_organization.name project_name=project.name notification=notification.name %}" class="product-title">{{ notification.name }}
                                     {% if notification.is_enabled %}
                                     <span class="label label-success pull-right">Enabled</span>
+                                    {% elif notification.is_pending_email_confirmation %}
+                                    <span class="label label-warning pull-right">Pending validation</span>
                                     {% else %}
                                     <span class="label label-danger pull-right">Disabled</span>
                                     {% endif %}

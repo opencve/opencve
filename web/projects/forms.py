@@ -76,6 +76,14 @@ class NotificationForm(forms.ModelForm):
         self.request = kwargs.pop("request")
         self.project = kwargs.pop("project")
         super(NotificationForm, self).__init__(*args, **kwargs)
+        # Hide "Enabled" on create; on edit, hide for email until confirmation
+        # Use _state.adding because UUID primary key is set before save()
+        if self.instance._state.adding:
+            self.fields.pop("is_enabled", None)
+        elif self.instance.type == "email":
+            extras = self.instance.configuration.get("extras") or {}
+            if extras.get("confirmation_token"):
+                self.fields.pop("is_enabled", None)
 
     created = forms.BooleanField(required=False)
     description = forms.BooleanField(required=False)

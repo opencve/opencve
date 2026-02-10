@@ -348,11 +348,20 @@ class EmailNotifier(BaseNotifier):
         notification_url = (
             f"{project_url}/notifications/{urllib.parse.quote(notification)}"
         )
+        extras = self.config.get("extras") or {}
+        unsubscribe_token = extras.get("unsubscribe_token")
+        unsubscribe_url = (
+            f"{web_url}/notifications/unsubscribe/{unsubscribe_token}"
+            if unsubscribe_token
+            else ""
+        )
 
         context = {
             "web_url": web_url,
             "project_url": project_url,
             "notification_url": notification_url,
+            "unsubscribe_url": unsubscribe_url,
+            "created_by_email": extras.get("created_by_email") or "",
             "title": payload["title"],
             "total": len(payload["changes"]),
             "organization": organization,
