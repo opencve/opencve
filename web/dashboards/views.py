@@ -25,25 +25,77 @@ class DashboardView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["widgets"] = sorted(list_widgets().values(), key=lambda x: x["name"])
+
+        # Retrieve the list of dashboards
+        dashboards_qs = Dashboard.objects.filter(
+            organization=self.request.current_organization,
+            user=self.request.user,
+        ).order_by("-is_default", "created_at")
+
+        # If no default dashboard, create one
+        default = dashboards_qs.filter(is_default=True).first()
+        if not default and dashboards_qs.exists():
+            default = dashboards_qs.first()
+            default.is_default = True
+            default.save()
+
+        # Create a default dashboard
+        elif not default:
+            default = Dashboard.objects.create(
+                organization=self.request.current_organization,
+                user=self.request.user,
+                name="Default",
+                is_default=True,
+                config=Dashboard.get_default_config(self.request),
+            )
+            dashboards_qs = Dashboard.objects.filter(
+                organization=self.request.current_organization,
+                user=self.request.user,
+            ).order_by("-is_default", "created_at")
+
+        context["dashboards"] = [
+            {"id": str(d.id), "name": d.name, "is_default": d.is_default}
+            for d in dashboards_qs
+        ]
+        context["default_dashboard_id"] = str(default.id)
+
+        context["dashboards_data"] = {
+            "dashboards": context["dashboards"],
+            "default_dashboard_id": context["default_dashboard_id"],
+        }
         return context
 
 
 class LoadDashboardView(LoginRequiredMixin, View):
     def get(self, request):
-        dashboard = Dashboard.objects.filter(
-            organization=request.current_organization,
-            user=request.user,
-            is_default=True,
-        ).first()
+        if not request.current_organization:
+            return JsonResponse({"error": "No organization selected"}, status=400)
 
-        if not dashboard:
-            dashboard = Dashboard.objects.create(
+        dashboard_id = request.GET.get("dashboard_id")
+
+        # Get the dashboard config
+        if dashboard_id:
+            dashboard = Dashboard.objects.filter(
                 organization=request.current_organization,
                 user=request.user,
-                name="Default",
+                id=dashboard_id,
+            ).first()
+            if not dashboard:
+                return JsonResponse({"error": "Dashboard not found"}, status=404)
+        else:
+            dashboard = Dashboard.objects.filter(
+                organization=request.current_organization,
+                user=request.user,
                 is_default=True,
-                config=Dashboard.get_default_config(request),
-            )
+            ).first()
+            if not dashboard:
+                dashboard = Dashboard.objects.create(
+                    organization=request.current_organization,
+                    user=request.user,
+                    name="Default",
+                    is_default=True,
+                    config=Dashboard.get_default_config(request),
+                )
 
         return JsonResponse(dashboard.config)
 
@@ -77,21 +129,184 @@ class SaveDashboardView(LoginRequiredMixin, View):
         return True, cleaned_config
 
     def post(self, request):
-        widgets = json.loads(request.body)
-        is_clean, result = self.validate_widgets_config(request, widgets)
+        body = json.loads(request.body)
+        widgets = body.get("widgets", [])
+        dashboard_id = body.get("dashboard_id")
 
+        is_clean, result = self.validate_widgets_config(request, widgets)
         if not is_clean:
             return JsonResponse({"error": result}, status=400)
 
-        dashboard_config, _ = Dashboard.objects.get_or_create(
-            organization=request.current_organization,
-            user=request.user,
-            is_default=True,
-        )
+        # Get or create dashboard
+        if dashboard_id:
+            dashboard_config = Dashboard.objects.filter(
+                organization=request.current_organization,
+                user=request.user,
+                id=dashboard_id,
+            ).first()
+            if not dashboard_config:
+                return JsonResponse({"error": "Dashboard not found"}, status=404)
+        else:
+            dashboard_config = Dashboard.objects.filter(
+                organization=request.current_organization,
+                user=request.user,
+                is_default=True,
+            ).first()
+            if not dashboard_config:
+                dashboard_config = Dashboard.objects.create(
+                    organization=request.current_organization,
+                    user=request.user,
+                    name="Default",
+                    is_default=True,
+                    config={"widgets": []},
+                )
+
         dashboard_config.config = {"widgets": result}
         dashboard_config.save()
 
         return JsonResponse({"message": "dashboard saved"}, status=200)
+
+
+class CreateDashboardView(LoginRequiredMixin, View):
+    def _get_name(self, request):
+        base_name = "New Dashboard"
+        existing_names = set(
+            Dashboard.objects.filter(
+                organization=request.current_organization,
+                user=request.user,
+            ).values_list("name", flat=True)
+        )
+        name = base_name
+        counter = 0
+        while name in existing_names:
+            counter += 1
+            name = f"{base_name} ({counter})"
+
+        return name
+
+    def post(self, request):
+        if not request.current_organization:
+            return JsonResponse({"error": "No organization selected"}, status=400)
+
+        name = self._get_name(request)
+        dashboard = Dashboard.objects.create(
+            organization=request.current_organization,
+            user=request.user,
+            name=name,
+            is_default=False,
+            config={"widgets": []},
+        )
+        return JsonResponse(
+            {"id": str(dashboard.id), "name": dashboard.name}, status=201
+        )
+
+
+class UpdateDashboardView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+
+        dashboard_id = body.get("dashboard_id")
+        if not dashboard_id:
+            return JsonResponse({"error": "dashboard_id required"}, status=400)
+
+        dashboard = Dashboard.objects.filter(
+            organization=request.current_organization,
+            user=request.user,
+            id=dashboard_id,
+        ).first()
+        if not dashboard:
+            return JsonResponse({"error": "Dashboard not found"}, status=404)
+
+        # Set dashboard as default
+        if body.get("set_default") is True:
+            Dashboard.objects.filter(
+                organization=request.current_organization,
+                user=request.user,
+            ).update(is_default=False)
+            dashboard.is_default = True
+            dashboard.save()
+            return JsonResponse({"message": "Dashboard set as default"})
+
+        # Update dashboard name
+        new_name = body.get("name")
+        if new_name is not None:
+            new_name = new_name.strip()
+            if not new_name:
+                return JsonResponse({"error": "Name cannot be empty"}, status=400)
+            exists = (
+                Dashboard.objects.filter(
+                    organization=request.current_organization,
+                    user=request.user,
+                    name=new_name,
+                )
+                .exclude(id=dashboard.id)
+                .exists()
+            )
+            if exists:
+                return JsonResponse(
+                    {"error": "A dashboard with this name already exists"},
+                    status=400,
+                )
+            dashboard.name = new_name
+            dashboard.save()
+            return JsonResponse({"message": "Dashboard updated", "name": new_name})
+
+        return JsonResponse({"error": "Nothing to update"}, status=400)
+
+
+class DeleteDashboardView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+
+        dashboard_id = body.get("dashboard_id")
+        if not dashboard_id:
+            return JsonResponse({"error": "dashboard_id required"}, status=400)
+
+        dashboard = Dashboard.objects.filter(
+            organization=request.current_organization,
+            user=request.user,
+            id=dashboard_id,
+        ).first()
+        if not dashboard:
+            return JsonResponse({"error": "Dashboard not found"}, status=404)
+
+        # Check if there is only one dashboard
+        dashboards_count = Dashboard.objects.filter(
+            organization=request.current_organization,
+            user=request.user,
+        ).count()
+        if dashboards_count <= 1:
+            return JsonResponse(
+                {"error": "Cannot delete the last dashboard"},
+                status=400,
+            )
+
+        was_default = dashboard.is_default
+        dashboard.delete()
+        response_data = {"message": "Dashboard deleted"}
+
+        # Set a new default dashboard
+        if was_default:
+            new_default = (
+                Dashboard.objects.filter(
+                    organization=request.current_organization,
+                    user=request.user,
+                )
+                .order_by("created_at")
+                .first()
+            )
+            if new_default:
+                new_default.is_default = True
+                new_default.save()
+                response_data["new_default_id"] = str(new_default.id)
+
+        return JsonResponse(response_data, status=200)
 
 
 class BaseWidgetDataView(LoginRequiredMixin, View):
@@ -119,16 +334,28 @@ class BaseWidgetDataView(LoginRequiredMixin, View):
 
 class LoadWidgetDataView(BaseWidgetDataView):
     def get(self, request, widget_id):
-        dashboard = Dashboard.objects.filter(
-            organization=request.current_organization,
-            user=request.user,
-            is_default=True,
-        ).first()
+        dashboard_id = request.GET.get("dashboard_id")
+
+        # Get the dashboard config
+        if dashboard_id:
+            dashboard = Dashboard.objects.filter(
+                organization=request.current_organization,
+                user=request.user,
+                id=dashboard_id,
+            ).first()
+        else:
+            dashboard = Dashboard.objects.filter(
+                organization=request.current_organization,
+                user=request.user,
+                is_default=True,
+            ).first()
+
         if not dashboard:
             return JsonResponse({"error": "Dashboard not found"}, status=404)
 
         widget_config = next(
-            (w for w in dashboard.config["widgets"] if w["id"] == widget_id), None
+            (w for w in dashboard.config.get("widgets", []) if w["id"] == widget_id),
+            None,
         )
         if not widget_config:
             return JsonResponse({"error": "Widget not found"}, status=404)
