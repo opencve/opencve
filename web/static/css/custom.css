@@ -1493,3 +1493,32 @@ pre.plainJSON{
   border-radius: 50%;
   background-color: #337ab7;
 }
+
+/* Dashboard styles */
+#dashboard-tabs-container {
+  margin-left: 10px;
+  margin-bottom: 18px;
+}
+.dashboard-tab-inner .dashboard-tab-dropdown {
+  display: inline-flex;
+  align-items: stretch;
+}
+#dashboard-tabs-container .dropdown-menu.dropdown-menu-right {
+  margin-top: 1px;
+  margin-right: -2px;
+  border-top-left-radius: 4px;
+}
+.dashboard-tab-default-icon {
+  font-size: 11px;
+  opacity: 0.85;
+  margin-left: 4px;
+}
+.btn-add-widget {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: 6px;
+  padding: 5px 10px;
+  margin-left: 12px;
+  display: inline-flex;
+  align-items: center;
+}

@@ -531,12 +531,133 @@ function getContrastedColor(str){
   const gridStackElement = document.querySelector('.grid-stack');
 
   if (gridStackElement) {
+    let currentDashboardId = null;
+    let defaultDashboardId = null;
+    let dashboardsList = [];
+
+    const dashboardsDataEl = document.getElementById('dashboards-data');
+    if (dashboardsDataEl) {
+      try {
+        const data = JSON.parse(dashboardsDataEl.textContent);
+        dashboardsList = data.dashboards || [];
+        defaultDashboardId = data.default_dashboard_id || (dashboardsList[0] && dashboardsList[0].id) || null;
+        currentDashboardId = defaultDashboardId;
+      } catch (e) {
+        console.warn('Could not parse dashboards data', e);
+      }
+    }
+
     const grid = GridStack.init({
       handle: '.drag-widget',
       float: false,
       animate: true,
       cellHeight: 100,
     });
+
+    function renderDashboardTabs() {
+      const $container = $('#dashboard-tabs-container');
+      if (!$container.length || dashboardsList.length === 0) return;
+
+      // Build tabs using DOM/jQuery APIs to avoid interpreting tainted text as HTML
+      $container.empty();
+
+      const $ul = $('<ul>', {
+        class: 'nav nav-tabs',
+        id: 'dashboards-tabs-list'
+      });
+
+      dashboardsList.forEach(function (d) {
+        const isActive = d.id === currentDashboardId;
+        const isDefault = d.is_default;
+        var tabInnerStyle = 'display:inline-flex;align-items:stretch;border:1px solid transparent;border-radius:4px 4px 0 0;margin-right:10px;';
+        tabInnerStyle += isActive ? 'background:#fff;border-bottom-color:transparent;' : 'background:#f5f5f5;border-color:transparent;';
+
+        const $li = $('<li>', {
+          class: 'dashboard-tab' + (isActive ? ' active' : '')
+        }).attr({
+          'data-dashboard-id': d.id,
+          'data-is-default': isDefault
+        });
+
+        const $innerSpan = $('<span>', {
+          class: 'dashboard-tab-inner'
+        }).attr('style', tabInnerStyle);
+
+        const $tabLink = $('<a>', {
+          href: '#',
+          class: 'tab-switch'
+        }).attr('style', 'padding:9px 12px 10px 15px;background:transparent;border:none;margin:0;border-radius:0;color:inherit;text-decoration:none;display:inline-flex;align-items:center;');
+
+        $tabLink.text(d.name);
+        if (isDefault) {
+          $tabLink.append(' ').append($('<i>', {
+            class: 'fa fa-star dashboard-tab-default-icon',
+            title: 'Default'
+          }));
+        }
+
+        const $dropdownSpan = $('<span>', {
+          class: 'dropdown dashboard-tab-dropdown'
+        });
+
+        const $chevronLink = $('<a>', {
+          href: '#',
+          class: 'tab-chevron dropdown-toggle'
+        }).attr({
+          'data-toggle': 'dropdown',
+          style: 'padding:10px 8px;background:transparent;border:none;margin:0;border-radius:0;color:inherit;text-decoration:none;line-height:1;'
+        });
+        $chevronLink.append($('<i>', { class: 'fa fa-chevron-down' }));
+
+        const $dropdownMenu = $('<ul>', {
+          class: 'dropdown-menu dropdown-menu-right'
+        });
+        $dropdownMenu.append(
+          $('<li>').append(
+            $('<a>', { href: '#', class: 'dashboard-rename' }).text('Rename')
+          )
+        );
+        if (!isDefault) {
+          $dropdownMenu.append(
+            $('<li>').append(
+              $('<a>', { href: '#', class: 'dashboard-set-default' }).text('Set as default')
+            )
+          );
+        }
+        if (dashboardsList.length > 1) {
+          $dropdownMenu.append(
+            $('<li>').append(
+              $('<a>', { href: '#', class: 'js-dashboard-remove-tab' }).attr('data-action', 'remove').text('Delete')
+            )
+          );
+        }
+
+        $dropdownSpan.append($chevronLink).append($dropdownMenu);
+        $innerSpan.append($tabLink).append($dropdownSpan);
+        $li.append($innerSpan);
+        $ul.append($li);
+      });
+
+      const $addLi = $('<li>').attr('style', 'margin-left:4px;');
+      const $addLink = $('<a>', { href: '#', id: 'dashboard-add-tab' });
+      $addLink.append($('<i>', { class: 'fa fa-plus' })).append(' Add');
+      $addLi.append($addLink);
+      $ul.append($addLi);
+
+      $container.append($ul);
+    }
+
+    function showDashboardError(message) {
+      var msg = message || 'An error occurred.';
+      var $err = $('#dashboard-ajax-error');
+      var $msg = $('#dashboard-ajax-error-message');
+      if ($err.length && $msg.length) {
+        $msg.text(msg);
+        $err.show();
+      } else {
+        alert(msg);
+      }
+    }
 
     $(".add-widget").on("click", function () {
       let widgetType = $(this).data("type");
@@ -577,9 +698,13 @@ function getContrastedColor(str){
         // Add delete functionality
         element.querySelector('.delete-btn').addEventListener('click', () => {
           grid.removeWidget(element);
+          saveDashboardToServer();
         });
 
         $('#modal-add-widget').modal('hide');
+        $(gridStackElement).find('.grid-stack-empty-state').remove();
+        $(gridStackElement).off('click', '#dashboard-add-first-widget');
+        saveDashboardToServer();
 
         // Scroll to the new element
         $('html, body').animate({
@@ -587,72 +712,57 @@ function getContrastedColor(str){
         }, 600);
     });
 
-    $("#save-dashboard").on("click", function () {
-        const widgets = [];
-        const gridItems = grid.engine.nodes;
+    function collectWidgetsFromGrid() {
+      const widgets = [];
+      const gridItems = grid.engine.nodes;
+      gridItems.forEach(node => {
+        if (node.el && node.el.dataset.config !== undefined) {
+          widgets.push({
+            x: node.x,
+            y: node.y,
+            w: node.w,
+            h: node.h,
+            id: node.id,
+            type: node.el.dataset.type,
+            config: JSON.parse(node.el.dataset.config),
+            title: node.el.dataset.title,
+          });
+        }
+      });
+      return widgets;
+    }
 
-        gridItems.forEach(node => {
-          if (node.el && node.el.dataset.config != undefined) {
+    function saveDashboardToServer() {
+      var widgets = collectWidgetsFromGrid();
+      var payload = dashboardsList.length ? { dashboard_id: currentDashboardId, widgets: widgets } : widgets;
+      $.ajax({
+        url: SAVE_DASHBOARD_URL,
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(payload),
+        error: function (error) {
+          console.error("Error saving dashboard", error);
+        }
+      });
+    }
 
-            widgets.push({
-              x: node.x,
-              y: node.y,
-              w: node.w,
-              h: node.h,
-              id: node.id,
-              type: node.el.dataset.type,
-              config: JSON.parse(node.el.dataset.config),
-              title: node.el.dataset.title,
-            });
-          }
-        });
-
-        $.ajax({
-            url: SAVE_DASHBOARD_URL,
-            type: "POST",
-            contentType: "application/json",
-            data: JSON.stringify(widgets),
-            success: function (response) {
-                var $button = $('#save-dashboard');
-                var originalText = $button.html();
-
-                // Change button text and style
-                $button.html('<i class="fa fa-check"></i> Saved!')
-                      .removeClass('btn-default')
-                      .addClass('btn-primary');
-
-                // Reset button after 2 seconds
-                setTimeout(function() {
-                    $button.html(originalText)
-                          .removeClass('btn-primary')
-                          .addClass('btn-default');
-                }, 2000);
-            },
-            error: function (error) {
-                console.error("Error saving dashboard", error);
-                var $button = $('#save-dashboard');
-                var originalText = $button.html();
-
-                // Show error state
-                $button.html('<i class="fa fa-times"></i> Error')
-                      .removeClass('btn-default')
-                      .addClass('btn-danger');
-
-                // Reset button after 2 seconds
-                setTimeout(function() {
-                    $button.html(originalText)
-                          .removeClass('btn-danger')
-                          .addClass('btn-default');
-                }, 2000);
-            }
-        });
+    var dashboardSaveTimeout;
+    grid.on('change', function () {
+      clearTimeout(dashboardSaveTimeout);
+      dashboardSaveTimeout = setTimeout(function () {
+        saveDashboardToServer();
+      }, 600);
     });
 
     function loadWidgetData(element) {
       var widgetElement = $(element);
       var widgetId = widgetElement.attr("gs-id");
+      var url = LOAD_WIDGET_DATA_URL.replace("$WIDGET_ID$", widgetId);
+      if (currentDashboardId) {
+        url += (url.indexOf('?') >= 0 ? '&' : '?') + 'dashboard_id=' + encodeURIComponent(currentDashboardId);
+      }
 
-      $.get(LOAD_WIDGET_DATA_URL.replace("$WIDGET_ID$", widgetId), function(data) {
+      $.get(url, function(data) {
           if (data.html) {
               widgetElement.find(".widget-content").html(data.html);
           } else {
@@ -665,47 +775,199 @@ function getContrastedColor(str){
       });
     }
 
-    function loadDashboard() {
-        $.getJSON(LOAD_DASHBOARD_URL, function (data) {
-            if (!data.widgets) return;
-            const widgets = data.widgets;
+    function loadDashboard(dashboardId) {
+      currentDashboardId = dashboardId || null;
+      var loadUrl = LOAD_DASHBOARD_URL;
+      if (currentDashboardId) {
+        loadUrl += (loadUrl.indexOf('?') >= 0 ? '&' : '?') + 'dashboard_id=' + encodeURIComponent(currentDashboardId);
+      }
 
-            widgets.forEach(widget => {
-              const element = document.createElement('div');
-              element.dataset.config = JSON.stringify(widget.config);
-              element.dataset.type = widget.type;
-              element.dataset.title = widget.title;
+      grid.removeAll(true);
 
-              element.innerHTML = `
-                <div class="grid-stack-item-content box box-primary">
-                  <div class="box-header">
-                      <div class="box-title"><i class="fa fa-arrows drag-widget" style="font-size: 0.80em;"></i> <span class="box-title-text">${sanitizeText(widget.title)}</span></div>
-                      <div class="box-tools pull-right">
-                          <a class="btn btn-box-tool configure-widget"><i class="fa fa-edit"></i></a>
-                          <a class="btn btn-box-tool delete-btn"><i class="fa fa-remove"></i></a>
-                      </div>
+      $.getJSON(loadUrl, function (data) {
+        $(gridStackElement).find('.grid-stack-empty-state').remove();
+        $(gridStackElement).off('click', '#dashboard-add-first-widget');
+
+        const widgets = (data && data.widgets) ? data.widgets : [];
+        if (widgets.length === 0) {
+          var emptyHtml = '<div class="grid-stack-empty-state" style="text-align:center;padding:80px 20px;">';
+          emptyHtml += '<p style="font-size:18px;margin-bottom:20px;color:#666;">Add your first widget</p>';
+          emptyHtml += '<button type="button" class="btn btn-primary btn-lg btn-add-widget" id="dashboard-add-first-widget" style="font-weight:500;letter-spacing:0.02em;border-radius:8px;padding:14px 24px;"><i class="fa fa-plus" style="margin-right:8px;"></i>Add Widget</button>';
+          emptyHtml += '</div>';
+          $(gridStackElement).append(emptyHtml);
+          $(gridStackElement).on('click', '#dashboard-add-first-widget', function () {
+            $('#modal-add-widget').modal('show');
+          });
+          return;
+        }
+
+        widgets.forEach(widget => {
+          const element = document.createElement('div');
+          element.dataset.config = JSON.stringify(widget.config);
+          element.dataset.type = widget.type;
+          element.dataset.title = widget.title;
+
+          element.innerHTML = `
+            <div class="grid-stack-item-content box box-primary">
+              <div class="box-header">
+                  <div class="box-title"><i class="fa fa-arrows drag-widget" style="font-size: 0.80em;"></i> <span class="box-title-text">${sanitizeText(widget.title)}</span></div>
+                  <div class="box-tools pull-right">
+                      <a class="btn btn-box-tool configure-widget"><i class="fa fa-edit"></i></a>
+                      <a class="btn btn-box-tool delete-btn"><i class="fa fa-remove"></i></a>
                   </div>
-                  <div class="box-body">
-                    <div class="widget-content"></div>
-                    <div class="widget-loader center">
-                      <i class="fa fa-spinner fa-spin"></i> Loading...
-                    </div>
-                  </div>
+              </div>
+              <div class="box-body">
+                <div class="widget-content"></div>
+                <div class="widget-loader center">
+                  <i class="fa fa-spinner fa-spin"></i> Loading...
                 </div>
-              `;
+              </div>
+            </div>
+          `;
 
-              grid.makeWidget(element, widget);
+          grid.makeWidget(element, widget);
 
-              element.querySelector('.delete-btn').addEventListener('click', () => {
-                grid.removeWidget(element);
-              });
+          element.querySelector('.delete-btn').addEventListener('click', () => {
+            grid.removeWidget(element);
+            saveDashboardToServer();
+          });
 
-              grid.save(true);
-              loadWidgetData(element);
-            });
+          grid.save(true);
+          loadWidgetData(element);
         });
+      });
+
+      if (dashboardsList.length) {
+        renderDashboardTabs();
+      }
     }
-    loadDashboard();
+
+    if (dashboardsList.length) {
+      renderDashboardTabs();
+    }
+    loadDashboard(currentDashboardId || defaultDashboardId);
+
+    $('#dashboard-tabs-container').on('click', '.tab-switch', function (e) {
+      e.preventDefault();
+      var id = $(this).closest('.dashboard-tab').data('dashboard-id');
+      if (id && id !== currentDashboardId) {
+        loadDashboard(id);
+      }
+    });
+
+    $('#dashboard-tabs-container').on('click', '#dashboard-add-tab', function (e) {
+      e.preventDefault();
+      $.ajax({
+        url: CREATE_DASHBOARD_URL,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({})
+      }).done(function (res) {
+        dashboardsList.push({ id: res.id, name: res.name, is_default: false });
+        renderDashboardTabs();
+        loadDashboard(res.id);
+      }).fail(function (xhr) {
+        var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : null;
+        showDashboardError(msg);
+      });
+    });
+
+    var dashboardIdToDelete = null;
+
+    $(document).on('click', '.js-dashboard-remove-tab', function (e) {
+      if (!$(this).closest('#dashboard-tabs-container').length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var $tab = $(this).closest('.dashboard-tab');
+      var id = $tab.data('dashboard-id');
+      if (!id) return;
+      dashboardIdToDelete = id;
+      $('#modal-delete-dashboard').modal('show');
+    });
+
+    $('#modal-delete-dashboard').on('click', '#dashboard-delete-confirm-btn', function () {
+      var id = dashboardIdToDelete;
+      if (!id) return;
+      $('#modal-delete-dashboard').modal('hide');
+      dashboardIdToDelete = null;
+      $.ajax({
+        url: DELETE_DASHBOARD_URL,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ dashboard_id: id })
+      }).done(function (res) {
+        dashboardsList = dashboardsList.filter(function (d) { return d.id !== id; });
+        if (res.new_default_id) {
+          dashboardsList.forEach(function (d) { d.is_default = d.id === res.new_default_id; });
+          defaultDashboardId = res.new_default_id;
+        }
+        var wasCurrent = id === currentDashboardId;
+        if (wasCurrent) {
+          currentDashboardId = defaultDashboardId || (dashboardsList[0] && dashboardsList[0].id) || null;
+          loadDashboard(currentDashboardId);
+        }
+        renderDashboardTabs();
+      }).fail(function (xhr) {
+        var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : null;
+        showDashboardError(msg);
+      });
+    });
+
+    $('#dashboard-tabs-container').on('mousedown', '.dashboard-set-default', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var id = $(this).closest('.dashboard-tab').data('dashboard-id');
+      if (!id) return;
+      $.ajax({
+        url: UPDATE_DASHBOARD_URL,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ dashboard_id: id, set_default: true })
+      }).done(function () {
+        dashboardsList.forEach(function (d) { d.is_default = d.id === id; });
+        defaultDashboardId = id;
+        renderDashboardTabs();
+      }).fail(function (xhr) {
+        var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : null;
+        showDashboardError(msg);
+      });
+    });
+
+    $('#dashboard-tabs-container').on('mousedown', '.dashboard-rename', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var $tab = $(this).closest('.dashboard-tab');
+      var id = $tab.data('dashboard-id');
+      var $label = $tab.find('.tab-switch');
+      var currentName = $label.contents().filter(function () { return this.nodeType === 3; }).text().trim().replace(/\s*Default\s*$/, '').trim();
+      var $input = $('<input type="text" class="form-control input-sm" style="width:120px;display:inline-block;">').val(currentName);
+      $label.html($input);
+      $input.focus().select().on('blur keydown', function (ev) {
+        if (ev.type === 'keydown' && ev.which !== 13) return;
+        ev.preventDefault();
+        var newName = $input.val().trim();
+        $input.off('blur keydown');
+        if (!newName) {
+          $label.html(sanitizeText(currentName) + ($tab.data('is-default') ? ' <i class="fa fa-star dashboard-tab-default-icon" title="Default"></i>' : ''));
+          return;
+        }
+        $.ajax({
+          url: UPDATE_DASHBOARD_URL,
+          type: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ dashboard_id: id, name: newName })
+        }).done(function (res) {
+          var d = dashboardsList.find(function (x) { return x.id === id; });
+          if (d) d.name = res.name || newName;
+          $tab.data('is-default', $tab.data('is-default'));
+          $label.html(sanitizeText(d ? d.name : newName) + ($tab.data('is-default') ? ' <i class="fa fa-star dashboard-tab-default-icon" title="Default"></i>' : ''));
+        }).fail(function (xhr) {
+          $label.html(sanitizeText(currentName) + ($tab.data('is-default') ? ' <i class="fa fa-star dashboard-tab-default-icon" title="Default"></i>' : ''));
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : null;
+          showDashboardError(msg);
+        });
+      });
+    });
 
     $(".grid-stack").on("click", ".configure-widget", function () {
       let widgetElement = $(this).closest(".grid-stack-item");
@@ -747,6 +1009,7 @@ function getContrastedColor(str){
           $.post(RENDER_WIDGET_DATA_URL.replace("$WIDGET_TYPE$", widgetType), {id: widgetId, config: JSON.stringify(config)}, function (renderData) {
             widgetElement.find(".box-body").html(renderData.html);
             widgetElement.attr("data-config", JSON.stringify(renderData.config));
+            saveDashboardToServer();
           });
 
         });

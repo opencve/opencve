@@ -2,6 +2,7 @@ import pytest
 from bs4 import BeautifulSoup
 from django.test import override_settings
 from django.urls import reverse
+from django.utils.timezone import now
 from unittest.mock import patch, MagicMock
 import uuid
 import json
@@ -11,15 +12,16 @@ from django.http import HttpRequest
 from dashboards.widgets import list_widgets
 from dashboards.models import Dashboard
 from dashboards.views import (
-    SaveDashboardView,
     BaseWidgetDataView,
+    DashboardView,
+    SaveDashboardView,
 )
 from organizations.models import Membership
 
 
 @override_settings(ENABLE_ONBOARDING=False)
 @pytest.mark.django_db
-def test_dashboard_view_context(client, auth_client, create_user):
+def test_dashboard_view_context(client, auth_client, create_user, create_organization):
     """
     Test that DashboardView correctly passes the sorted list of widgets to the template context.
     """
@@ -29,6 +31,7 @@ def test_dashboard_view_context(client, auth_client, create_user):
     assert reverse("cves") in response.url
 
     user = create_user()
+    create_organization(name="Test Org", user=user)
     client = auth_client(user)
     response = client.get(reverse("home"))
 
@@ -47,6 +50,79 @@ def test_dashboard_view_context(client, auth_client, create_user):
             "strong", {"class": "product-title"}
         )
     ] == [w["name"] for w in expected_widgets]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_dashboard_view_get_context_data(
+    auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    Test DashboardView.get_context_data: widgets, dashboards list, default dashboard
+    creation/selection, and dashboards_data structure.
+    """
+    user = create_user()
+    organization = create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+    request = client.get(reverse("home")).wsgi_request
+    request.user = user
+    request.current_organization = organization
+
+    view = DashboardView()
+    view.request = request
+    view.kwargs = {}
+    context = view.get_context_data()
+
+    # Widgets: sorted by name
+    expected_widgets = sorted(list_widgets().values(), key=lambda x: x["name"])
+    assert context["widgets"] == expected_widgets
+
+    # No dashboards initially -> default is created
+    assert "dashboards" in context
+    assert "default_dashboard_id" in context
+    assert "dashboards_data" in context
+    assert len(context["dashboards"]) == 1
+    assert context["dashboards"][0]["name"] == "Default"
+    assert context["dashboards"][0]["is_default"] is True
+    assert context["dashboards"][0]["id"] == context["default_dashboard_id"]
+    assert context["dashboards_data"] == {
+        "dashboards": context["dashboards"],
+        "default_dashboard_id": context["default_dashboard_id"],
+    }
+
+    default_id = context["default_dashboard_id"]
+    default_db = Dashboard.objects.get(id=default_id)
+    assert default_db.organization_id == organization.id
+    assert default_db.user_id == user.id
+    assert default_db.is_default is True
+    assert "widgets" in default_db.config
+
+    # Existing dashboards, none marked default -> first becomes default
+    create_dashboard(
+        organization=organization,
+        user=user,
+        name="Second",
+        config={"widgets": []},
+        is_default=False,
+    )
+    Dashboard.objects.filter(organization=organization, user=user).update(
+        is_default=False
+    )
+    context2 = view.get_context_data()
+    assert len(context2["dashboards"]) == 2
+    default_in_list = next(d for d in context2["dashboards"] if d["is_default"])
+    assert context2["dashboards_data"]["default_dashboard_id"] == default_in_list["id"]
+    assert (
+        Dashboard.objects.filter(
+            organization=organization, user=user, is_default=True
+        ).count()
+        == 1
+    )
+
+    # Each dashboard entry has id, name, is_default
+    for d in context2["dashboards"]:
+        assert set(d.keys()) == {"id", "name", "is_default"}
+        assert d["id"] and d["name"]
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -94,6 +170,106 @@ def test_load_dashboard_view(
         ).count()
         == 1
     )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_load_dashboard_view_no_organization(client, auth_client, create_user):
+    """
+    LoadDashboardView returns 400 when user is authenticated but has no organization.
+    """
+    user = create_user()
+    client = auth_client(user)
+    # User has no organization; middleware leaves current_organization as None
+    response = client.get(reverse("load_dashboard"))
+    assert response.status_code == 400
+    assert response.json() == {"error": "No organization selected"}
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+@patch("dashboards.models.uuid.uuid4")
+def test_load_dashboard_view_by_id(
+    mock_uuid4, client, auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    LoadDashboardView with dashboard_id: returns config for that dashboard or 404.
+    """
+    mock_uuid4.return_value = uuid.UUID("12345678-1234-5678-1234-567812345678")
+
+    user = create_user()
+    organization = create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+
+    default_dash = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Default",
+        config={
+            "widgets": [{"id": "w1", "type": "tags", "title": "Tags", "config": {}}]
+        },
+        is_default=True,
+    )
+    other_dash = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Other",
+        config={
+            "widgets": [
+                {
+                    "id": "w2",
+                    "type": "activity",
+                    "title": "Activity",
+                    "config": {"activities_view": "all"},
+                }
+            ]
+        },
+        is_default=False,
+    )
+
+    # Load by id: returns that dashboard's config
+    response = client.get(
+        reverse("load_dashboard"), {"dashboard_id": str(other_dash.id)}
+    )
+    assert response.status_code == 200
+    assert response.json() == other_dash.config
+    assert response.json()["widgets"][0]["id"] == "w2"
+
+    response_default = client.get(
+        reverse("load_dashboard"), {"dashboard_id": str(default_dash.id)}
+    )
+    assert response_default.status_code == 200
+    assert response_default.json() == default_dash.config
+
+    # Invalid id: 404
+    response_404 = client.get(
+        reverse("load_dashboard"),
+        {"dashboard_id": "00000000-0000-0000-0000-000000000000"},
+    )
+    assert response_404.status_code == 404
+    assert response_404.json() == {"error": "Dashboard not found"}
+
+    # Dashboard of another user returns 404
+    other_user = create_user(username="other_user")
+    Membership.objects.create(
+        user=other_user,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    other_user_dash = create_dashboard(
+        organization=organization,
+        user=other_user,
+        name="Other User Dashboard",
+        config={"widgets": []},
+        is_default=True,
+    )
+    response_other = client.get(
+        reverse("load_dashboard"), {"dashboard_id": str(other_user_dash.id)}
+    )
+    assert response_other.status_code == 404
+    assert response_other.json() == {"error": "Dashboard not found"}
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -201,7 +377,7 @@ def test_save_dashboard_view_post(
     ]
     response = client.post(
         reverse("save_dashboard"),
-        data=json.dumps(invalid_payload),
+        data=json.dumps({"widgets": invalid_payload}),
         content_type="application/json",
     )
     assert response.status_code == 400
@@ -216,7 +392,7 @@ def test_save_dashboard_view_post(
     ]
     response = client.post(
         reverse("save_dashboard"),
-        data=json.dumps(initial_payload),
+        data=json.dumps({"widgets": initial_payload}),
         content_type="application/json",
     )
     assert response.status_code == 200
@@ -249,7 +425,7 @@ def test_save_dashboard_view_post(
     ]
     response = client.post(
         reverse("save_dashboard"),
-        data=json.dumps(updated_payload),
+        data=json.dumps({"widgets": updated_payload}),
         content_type="application/json",
     )
     assert response.status_code == 200
@@ -280,6 +456,474 @@ def test_save_dashboard_view_post(
             },
         ]
     }
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+@patch("dashboards.models.uuid.uuid4")
+def test_save_dashboard_view_post_with_dashboard_id(
+    mock_uuid4, client, auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    SaveDashboardView POST with dashboard_id in payload saves config to that dashboard,
+    not the default one.
+    """
+    fixed_uuid_str = "12345678-1234-5678-1234-567812345678"
+    mock_uuid4.return_value = uuid.UUID(fixed_uuid_str)
+
+    user = create_user()
+    client = auth_client(user)
+    organization = create_organization(name="Test Org", user=user)
+
+    default_dash = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Default",
+        config={"widgets": []},
+        is_default=True,
+    )
+    custom_dash = create_dashboard(
+        organization=organization,
+        user=user,
+        name="My Dashboard",
+        config={
+            "widgets": [{"id": "old", "type": "tags", "title": "Old", "config": {}}]
+        },
+        is_default=False,
+    )
+
+    payload = {
+        "widgets": [
+            {
+                "id": fixed_uuid_str,
+                "type": "tags",
+                "title": "Tags on custom",
+                "config": {},
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "type": "activity",
+                "title": "Activity on custom",
+                "config": {"activities_view": "all"},
+            },
+        ],
+        "dashboard_id": str(custom_dash.id),
+    }
+    response = client.post(
+        reverse("save_dashboard"),
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    assert response.json() == {"message": "dashboard saved"}
+
+    custom_dash.refresh_from_db()
+    assert custom_dash.config["widgets"][0]["title"] == "Tags on custom"
+    assert custom_dash.config["widgets"][1]["title"] == "Activity on custom"
+    assert len(custom_dash.config["widgets"]) == 2
+
+    default_dash.refresh_from_db()
+    assert default_dash.config == {"widgets": []}
+
+    # Invalid dashboard_id returns 404
+    response_404 = client.post(
+        reverse("save_dashboard"),
+        data=json.dumps(
+            {"widgets": [], "dashboard_id": "00000000-0000-0000-0000-000000000000"}
+        ),
+        content_type="application/json",
+    )
+    assert response_404.status_code == 404
+    assert response_404.json() == {"error": "Dashboard not found"}
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_create_dashboard_view_post_no_organization(client, auth_client, create_user):
+    """
+    CreateDashboardView returns 400 when user is authenticated but has no organization.
+    """
+    user = create_user()
+    client = auth_client(user)
+    response = client.post(reverse("create_dashboard"), data={})
+    assert response.status_code == 400
+    assert response.json() == {"error": "No organization selected"}
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_create_dashboard_view_post(
+    client, auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    CreateDashboardView POST creates a new dashboard and iterate the name.
+    """
+    user = create_user()
+    organization = create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+
+    # First create: "New Dashboard"
+    response = client.post(reverse("create_dashboard"), data={})
+    assert response.status_code == 201
+    data = response.json()
+    assert "id" in data
+    assert data["name"] == "New Dashboard"
+    dash1 = Dashboard.objects.get(id=data["id"])
+    assert dash1.organization == organization
+    assert dash1.user == user
+    assert dash1.name == "New Dashboard"
+    assert dash1.is_default is False
+    assert dash1.config == {"widgets": []}
+
+    # Second create: "New Dashboard (1)"
+    response = client.post(reverse("create_dashboard"), data={})
+    assert response.status_code == 201
+    assert response.json()["name"] == "New Dashboard (1)"
+    assert Dashboard.objects.filter(organization=organization, user=user).count() == 2
+
+    # Third create: "New Dashboard (2)"
+    response = client.post(reverse("create_dashboard"), data={})
+    assert response.status_code == 201
+    assert response.json()["name"] == "New Dashboard (2)"
+
+    # One more existing name: next create gets "New Dashboard (4)"
+    create_dashboard(
+        organization=organization,
+        user=user,
+        name="New Dashboard (3)",
+        config={"widgets": []},
+        is_default=False,
+    )
+    response = client.post(reverse("create_dashboard"), data={})
+    assert response.status_code == 201
+    assert response.json()["name"] == "New Dashboard (4)"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_update_dashboard_view_validation_and_not_found(
+    client, auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    Error handling for UpdateDashboardView.
+    """
+    # Unauthenticated access
+    response_unauth = client.post(
+        reverse("update_dashboard"),
+        data=json.dumps({"dashboard_id": "00000000-0000-0000-0000-000000000000"}),
+        content_type="application/json",
+    )
+    assert response_unauth.status_code == 302
+    assert reverse("account_login") in response_unauth.url
+
+    user = create_user()
+    organization = create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+
+    dashboard = create_dashboard(
+        organization=organization,
+        user=user,
+        name="My dashboard",
+        config={"widgets": []},
+        is_default=True,
+    )
+
+    # Invalid JSON payload
+    response_invalid_json = client.post(
+        reverse("update_dashboard"),
+        data="not json",
+        content_type="text/plain",
+    )
+    assert response_invalid_json.status_code == 400
+    assert response_invalid_json.json() == {"error": "Invalid JSON payload"}
+
+    # Missing dashboard_id
+    response_missing_id = client.post(
+        reverse("update_dashboard"),
+        data=json.dumps({}),
+        content_type="application/json",
+    )
+    assert response_missing_id.status_code == 400
+    assert response_missing_id.json() == {"error": "dashboard_id required"}
+
+    # Dashboard not found
+    response_not_found = client.post(
+        reverse("update_dashboard"),
+        data=json.dumps({"dashboard_id": "00000000-0000-0000-0000-000000000000"}),
+        content_type="application/json",
+    )
+    assert response_not_found.status_code == 404
+    assert response_not_found.json() == {"error": "Dashboard not found"}
+
+    # Nothing to update (only dashboard_id provided)
+    response_nothing = client.post(
+        reverse("update_dashboard"),
+        data=json.dumps({"dashboard_id": str(dashboard.id)}),
+        content_type="application/json",
+    )
+    assert response_nothing.status_code == 400
+    assert response_nothing.json() == {"error": "Nothing to update"}
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_update_dashboard_view_set_default(
+    auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    Set the selected dashboard as default.
+    """
+    user = create_user()
+    organization = create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+
+    dash_default = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Default",
+        config={"widgets": []},
+        is_default=True,
+    )
+    dash_other = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Other",
+        config={"widgets": []},
+        is_default=False,
+    )
+
+    payload = {
+        "dashboard_id": str(dash_other.id),
+        "set_default": True,
+    }
+    response = client.post(
+        reverse("update_dashboard"),
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    assert response.json() == {"message": "Dashboard set as default"}
+
+    dash_default.refresh_from_db()
+    dash_other.refresh_from_db()
+    assert dash_default.is_default is False
+    assert dash_other.is_default is True
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_update_dashboard_view_update_name(
+    auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    Update the dashboard name.
+    """
+    user = create_user()
+    organization = create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+
+    dash1 = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Dashboard 1",
+        config={"widgets": []},
+        is_default=True,
+    )
+    dash2 = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Dashboard 2",
+        config={"widgets": []},
+        is_default=False,
+    )
+
+    # Empty name (after strip)
+    response_empty = client.post(
+        reverse("update_dashboard"),
+        data=json.dumps({"dashboard_id": str(dash1.id), "name": "   "}),
+        content_type="application/json",
+    )
+    assert response_empty.status_code == 400
+    assert response_empty.json() == {"error": "Name cannot be empty"}
+
+    # Duplicate name
+    response_duplicate = client.post(
+        reverse("update_dashboard"),
+        data=json.dumps({"dashboard_id": str(dash1.id), "name": "Dashboard 2"}),
+        content_type="application/json",
+    )
+    assert response_duplicate.status_code == 400
+    assert response_duplicate.json() == {
+        "error": "A dashboard with this name already exists"
+    }
+
+    # Valid rename
+    new_name = "Renamed Dashboard"
+    response_ok = client.post(
+        reverse("update_dashboard"),
+        data=json.dumps({"dashboard_id": str(dash1.id), "name": new_name}),
+        content_type="application/json",
+    )
+    assert response_ok.status_code == 200
+    assert response_ok.json() == {"message": "Dashboard updated", "name": new_name}
+
+    dash1.refresh_from_db()
+    assert dash1.name == new_name
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_delete_dashboard_view_validation(
+    client, auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    Error handling for DeleteDashboardView.
+    """
+    # Unauthenticated
+    response_unauth = client.post(
+        reverse("delete_dashboard"),
+        data=json.dumps({"dashboard_id": "00000000-0000-0000-0000-000000000000"}),
+        content_type="application/json",
+    )
+    assert response_unauth.status_code == 302
+    assert reverse("account_login") in response_unauth.url
+
+    user = create_user()
+    organization = create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+
+    dashboard = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Only one",
+        config={"widgets": []},
+        is_default=True,
+    )
+
+    # Invalid JSON
+    response_invalid = client.post(
+        reverse("delete_dashboard"),
+        data="not json",
+        content_type="text/plain",
+    )
+    assert response_invalid.status_code == 400
+    assert response_invalid.json() == {"error": "Invalid JSON payload"}
+
+    # Missing dashboard_id
+    response_missing = client.post(
+        reverse("delete_dashboard"),
+        data=json.dumps({}),
+        content_type="application/json",
+    )
+    assert response_missing.status_code == 400
+    assert response_missing.json() == {"error": "dashboard_id required"}
+
+    # Dashboard not found
+    response_404 = client.post(
+        reverse("delete_dashboard"),
+        data=json.dumps({"dashboard_id": "00000000-0000-0000-0000-000000000000"}),
+        content_type="application/json",
+    )
+    assert response_404.status_code == 404
+    assert response_404.json() == {"error": "Dashboard not found"}
+
+    # Cannot delete the last dashboard
+    response_last = client.post(
+        reverse("delete_dashboard"),
+        data=json.dumps({"dashboard_id": str(dashboard.id)}),
+        content_type="application/json",
+    )
+    assert response_last.status_code == 400
+    assert response_last.json() == {"error": "Cannot delete the last dashboard"}
+    assert Dashboard.objects.filter(organization=organization, user=user).count() == 1
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_delete_dashboard_view_success(
+    auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    Successfully delete a non-default dashboard.
+    """
+    user = create_user()
+    organization = create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+
+    dash_default = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Default",
+        config={"widgets": []},
+        is_default=True,
+    )
+    dash_other = create_dashboard(
+        organization=organization,
+        user=user,
+        name="Other",
+        config={"widgets": []},
+        is_default=False,
+    )
+
+    response = client.post(
+        reverse("delete_dashboard"),
+        data=json.dumps({"dashboard_id": str(dash_other.id)}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    assert response.json() == {"message": "Dashboard deleted"}
+    assert "new_default_id" not in response.json()
+
+    # Dashboard is deleted and the other is set as default
+    assert not Dashboard.objects.filter(id=dash_other.id).exists()
+    assert Dashboard.objects.filter(organization=organization, user=user).count() == 1
+    dash_default.refresh_from_db()
+    assert dash_default.is_default is True
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_delete_dashboard_view_other_user_returns_404(
+    auth_client, create_user, create_organization, create_dashboard
+):
+    """
+    Cannot delete another user's dashboard.
+    """
+    user = create_user()
+    other_user = create_user(username="other_user")
+    organization = create_organization(name="Test Org", user=user)
+    Membership.objects.create(
+        user=other_user,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    client = auth_client(user)
+
+    other_dash = create_dashboard(
+        organization=organization,
+        user=other_user,
+        name="Other user dashboard",
+        config={"widgets": []},
+        is_default=True,
+    )
+    create_dashboard(
+        organization=organization,
+        user=other_user,
+        name="Other user second",
+        config={"widgets": []},
+        is_default=False,
+    )
+
+    response = client.post(
+        reverse("delete_dashboard"),
+        data=json.dumps({"dashboard_id": str(other_dash.id)}),
+        content_type="application/json",
+    )
+    assert response.status_code == 404
+    assert response.json() == {"error": "Dashboard not found"}
+    assert Dashboard.objects.filter(id=other_dash.id).exists()
 
 
 @override_settings(ENABLE_ONBOARDING=False)
