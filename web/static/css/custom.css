@@ -191,6 +191,21 @@
 
 .panel-group-cvss .panel-title {
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-group-cvss .panel-title .panel-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.panel-group-cvss .panel-title .pull-right {
+  flex-shrink: 0;
 }
 
 .label-cvss {
