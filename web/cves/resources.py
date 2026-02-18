@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AnonymousUser
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, permissions, viewsets
+from rest_framework import mixins, permissions, viewsets, filters
 
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Cve, Product, Vendor, Weakness
@@ -51,6 +51,8 @@ class VendorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Vendor.objects.order_by("name").all()
     lookup_field = "name"
     lookup_url_kwarg = "name"
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name"]
 
 
 class VendorCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
@@ -69,6 +71,8 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProductListSerializer
     lookup_field = "name"
     lookup_url_kwarg = "name"
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name"]
 
     def get_queryset(self):
         vendor = get_object_or_404(Vendor, name=self.kwargs["vendor_name"])
