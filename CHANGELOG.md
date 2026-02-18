@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.4.0 - 2026-02-18
+### Added
+- Add support for multiple dashboards
+- Add CSV export for vulnerabilities
+- Provide confirmation and unsubscribe features in email notifications
+- Add warning for vendors and products frequently associated with CVEs
+- Enhance onboarding flow with multiple steps
+- Add blue indicator on tabs with content in CVE details
+- Truncate long MITRE tables and CVE descriptions with "see more" toggle
+- Add Mitre tab in affected vendors and products section
+- Support organization-scoped API tokens
+- Add report retention cleanup DAG
+
+### Fixed
+- Truncate CVSS panel titles with ellipsis to prevent overflow
+
+### Changed
+- Split subscriptions and data sources sections in CVE details
+- Rename and move CVE template partials
+- Improve README.md
+- Upgrade Django from 5.2.8 to 5.2.11
+
 ## 2.3.0 - 2026-01-13
 ### Added
 - Add CVE tracking with assignee and status management
