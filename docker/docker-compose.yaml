@@ -125,7 +125,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-opencve}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opencve}
       POSTGRES_DB: opencve
-      PGDATA: /var/lib/postgreqsql/data
+      PGDATA: /var/lib/postgresql/data
     restart: on-failure
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "$POSTGRES_USER"]
@@ -134,7 +134,7 @@ services:
       start_period: 5s
     volumes:
       - ./db:/docker-entrypoint-initdb.d
-      - postgres-db:/var/lib/postgreqsql/data
+      - postgres-db:/var/lib/postgresql/data
 
 volumes:
     postgres-db:
