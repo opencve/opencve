@@ -88,6 +88,18 @@ def humanize(s):
 
 
 @register.filter
+def enrichment_scores_tooltip(scores):
+    """Format enrichment.scores for HTML tooltips with one source per line."""
+    if not scores:
+        return ""
+    lines = [
+        f"{_humanize(s.get('source', '')) if s.get('source') else ''}: {s.get('score', '')}%"
+        for s in scores
+    ]
+    return mark_safe("<br />".join(lines))
+
+
+@register.filter
 def is_top_vendor_or_product(name):
     """Return True if the vendor/product is in the static warning list (many CVEs)."""
     return is_top_vendor_product(name)

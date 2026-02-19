@@ -17,7 +17,13 @@ from cves.forms import SearchForm
 from cves.models import Cve, Product, Variable, Vendor, Weakness
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from cves.templatetags.opencve_extras import needs_quotes
-from cves.utils import humanize, list_to_dict_vendors, list_weaknesses
+from cves.utils import (
+    affected_to_dict_vendors,
+    humanize,
+    list_to_dict_vendors,
+    list_weaknesses,
+    normalize_enrichment_affected,
+)
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project, CveTracker
@@ -380,9 +386,18 @@ class CveDetailView(DetailView):
         # Vendors / weaknesses
         context["vendors"] = list_to_dict_vendors(cve.vendors)
         context["weaknesses"] = list_weaknesses(cve.weaknesses)
-        context["enrichment_vendors"] = list_to_dict_vendors(
-            cve.enrichment_json.get("vendors", [])
-        )
+        affected = cve.enrichment_json.get("affected")
+        if affected:
+            context["enrichment_vendors"] = list_to_dict_vendors(
+                affected_to_dict_vendors(affected)
+            )
+            context["enrichment_affected"] = normalize_enrichment_affected(affected)
+        else:
+            # TODO: Temporary fallback while the "affected" key is being deployed to all CVEs.
+            context["enrichment_vendors"] = list_to_dict_vendors(
+                cve.enrichment_json.get("vendors", [])
+            )
+            context["enrichment_affected"] = None
 
         # Tags
         context.update(self.build_tags_context(cve))

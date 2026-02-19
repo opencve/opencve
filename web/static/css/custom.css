@@ -1509,6 +1509,30 @@ pre.plainJSON{
   background-color: #337ab7;
 }
 
+/* Enrichment table: constrain long version strings to avoid layout overflow */
+#enrichment-affected-table .enrichment-version-cell {
+  max-width: 400px;
+  vertical-align: top;
+}
+#enrichment-affected-table .enrichment-version-content {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mitre table: constrain long constraints strings to avoid layout overflow */
+#mitre-affected-table .mitre-constraints-cell {
+  max-width: 400px;
+  vertical-align: top;
+}
+#mitre-affected-table .mitre-constraints-content {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Dashboard styles */
 #dashboard-tabs-container {
   margin-left: 10px;

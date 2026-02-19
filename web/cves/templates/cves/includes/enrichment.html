@@ -1,0 +1,81 @@
+{% load opencve_extras %}
+
+<table class="table table-condensed" id="enrichment-affected-table">
+  <thead>
+    <tr>
+      <th>Vendor</th>
+      <th>Product</th>
+      <th>Confidence</th>
+      <th>Versions</th>
+    </tr>
+  </thead>
+  <tbody>
+{% if enrichment_affected %}
+{% for item in enrichment_affected %}
+    <tr class="enrichment-affected-row">
+      <td>
+        {{ item.vendor|humanize }}
+        {% if item.original %}<i class="fa fa-info-circle pointer" data-toggle="tooltip" data-html="true" title="Original from {{ item.original.source|default:'—'|upper }}<br />{{ item.original.vendor }}"></i>{% endif %}
+      </td>
+      <td>
+        {{ item.product|humanize }}
+        {% if item.original %}<i class="fa fa-info-circle pointer" data-toggle="tooltip" data-html="true" title="Original from {{ item.original.source|default:'—'|upper }}<br />{{ item.original.product }}"></i>{% endif %}
+      </td>
+      <td>
+        {% if item.enrichment %}
+        {% if item.enrichment.confidence is not None %}<span class="label {% if item.enrichment.confidence >= 80 %}label-success{% else %}label-warning{% endif %}">{{ item.enrichment.confidence }}%{% if item.enrichment.scores %} <i class="fa fa-info-circle pointer" data-toggle="tooltip" data-html="true" title="{{ item.enrichment.scores|enrichment_scores_tooltip }}"></i>{% endif %}</span>{% else %}—{% endif %}
+        {% else %}
+        <span>—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if item.configurations %}
+        <table class="table table-sm table-borderless mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th>Version</th>
+              <th>Status</th>
+              <th>Scheme</th>
+              <th>Platform</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for config in item.configurations %}
+          <tr>
+            <td class="enrichment-version-cell"><div class="enrichment-version-content"><code>{{ config.versions.value|default:"—" }}</code></div></td>
+            <td>
+              <span class="label {% if config.status|default:''|slugify == 'affected' %}label-danger{% elif config.status|default:''|slugify == 'unaffected' %}label-success{% else %}label-default{% endif %}">{{ config.status|default:"—" }}</span>
+            </td>
+            <td class="text-muted">{{ config.versions.scheme|default:"—" }}</td>
+            <td class="text-muted">{{ config.platform|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
+{% endfor %}
+{% else %}
+{% for vendor, products in enrichment_vendors.items %}
+{% for product in products %}
+    <tr class="enrichment-affected-row">
+      <td>{{ vendor|humanize }}</td>
+      <td>{{ product|humanize }}</td>
+      <td><span class="text-muted">—</span></td>
+      <td><span class="text-muted">—</span></td>
+    </tr>
+{% empty %}
+    <tr class="enrichment-affected-row">
+      <td>{{ vendor|humanize }}</td>
+      <td><span class="text-muted">—</span></td>
+      <td><span class="text-muted">—</span></td>
+      <td><span class="text-muted">—</span></td>
+    </tr>
+{% endfor %}
+{% endfor %}
+{% endif %}
+  </tbody>
+</table>

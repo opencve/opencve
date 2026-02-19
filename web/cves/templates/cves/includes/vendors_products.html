@@ -13,7 +13,7 @@
             <a href="#redhat" data-toggle="tab"> <img src="{% static 'img/redhat-icon.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> Affected Packages{% if cve.redhat_json and cve.redhat_json.affected_release %} <span class="nav-tab-has-data"></span>{% endif %}</a>
         </li>
         <li>
-            <a href="#enrichment" data-toggle="tab"> <img src="{% static 'img/opencve_32.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> OpenCVE Enrichment{% if cve.enrichment_json %} <span class="nav-tab-has-data"></span>{% endif %}</a>
+            <a href="#enrichment" data-toggle="tab"> <img src="{% static 'img/opencve_32.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> OpenCVE Enrichment{% if cve.enrichment_json and cve.enrichment_json.affected or cve.enrichment_json and cve.enrichment_json.vendors %} <span class="nav-tab-has-data"></span>{% endif %}</a>
         </li>
     </ul>
     <div class="tab-content">
@@ -62,10 +62,12 @@
                               <td>
                                 <span class="label {% if version.status|default:''|slugify == 'affected' %}label-danger{% elif version.status|default:''|slugify == 'unaffected' %}label-success{% else %}label-default{% endif %}">{{ version.status }}</span>
                               </td>
-                              <td class="text-muted">
+                              <td class="mitre-constraints-cell">
+                                <div class="mitre-constraints-content text-muted">
                                 {% if version.lessThan %}< {{ version.lessThan }}{% endif %}
                                 {% if version.lessThanOrEqual %}≤ {{ version.lessThanOrEqual }}{% endif %}
                                 {% if not version.lessThan and not version.lessThanOrEqual %}—{% endif %}
+                                </div>
                               </td>
                             </tr>
                           {% endfor %}
@@ -117,7 +119,7 @@
             {% endfor %}
 
             {% else %}
-            <p class="alert alert-info">No data.</p>
+            <p class="text-muted"><em>No data.</em></p>
             {% endif %}
         </div>
         <div class="tab-pane" id="redhat">
@@ -145,23 +147,20 @@
                     {% endfor %}
                     {% endfor %}
                 </tbody>
-
-
-                </tbody>
             </table>
             {% else %}
-            <p class="alert alert-info">No data.</p>
+            <p class="text-muted"><em>No data.</em></p>
             {% endif %}
         </div>
         <div class="tab-pane" id="enrichment">
-            {% if cve.enrichment_json %}
+          {% if cve.enrichment_json and cve.enrichment_json.affected or cve.enrichment_json and cve.enrichment_json.vendors %}
+            {% include "cves/includes/enrichment.html" %}
             <p class="alert alert-info">
-                <strong>OpenCVE Enrichment</strong> is a feature of OpenCVE that uses AI to automatically link vendors and products to CVEs. <a href="https://github.com/opencve/opencve-enrichment/tree/main" target="_blank" rel="noopener">Learn more on GitHub</a>.
+              Found an issue or want to improve our Enrichment? You can suggest it directly by opening an issue on our <a href="https://github.com/opencve/opencve-enrichment/" target="_blank" rel="noopener">dedicated GitHub repository <i class="fa fa-external-link"></i></a>.
             </p>
-            {% include "cves/includes/subscriptions.html" with vendors_dict=enrichment_vendors vendors_data_dict=enrichment_vendors_data %}
-            {% else %}
-            <p class="alert alert-info">No data.</p>
-            {% endif %}
+          {% else %}
+            <p class="text-muted"><em>No data.</em></p>
+          {% endif %}
         </div>
     </div>
 </div>
