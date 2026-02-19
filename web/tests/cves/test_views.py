@@ -614,6 +614,7 @@ def test_cve_detail_get_context_data_unauthenticated(
     assert "vendors" in context
     assert "weaknesses" in context
     assert "enrichment_vendors" in context
+    assert "enrichment_affected" in context
     assert context["user_tags"] == []
     assert context["tags"] == []
     assert "projects" not in context
@@ -673,10 +674,49 @@ def test_cve_detail_get_context_data_authenticated(
     assert "projects_json" in context
     assert "vendors_data" in context
     assert "enrichment_vendors_data" in context
+    assert "enrichment_affected" in context
     assert "filtered_projects" in context
     assert "filtered_projects" in context
     assert "organization_members" in context
     assert "status_choices" in context
+
+
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_enrichment_affected_vs_vendors(
+    mock_vulnrichment, mock_mitre, mock_nvd, mock_enrichment, db, create_cve, client
+):
+    """Test enrichment context: uses affected when present, else vendors."""
+    mock_nvd.return_value = {}
+    mock_mitre.return_value = {}
+    mock_vulnrichment.return_value = {}
+    create_cve("CVE-2024-31331")
+
+    # With affected: enrichment_affected normalized, enrichment_vendors from affected
+    mock_enrichment.return_value = {
+        "affected": [
+            {"vendor": "ibm", "product": "mq", "enrichment": {"confidence": 100.0}},
+        ],
+        "updated": "2025-10-22T17:32:20.100000+00:00",
+    }
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    context = response.context
+    assert context["enrichment_vendors"] == {"ibm": ["mq"]}
+    assert len(context["enrichment_affected"]) == 1
+    assert context["enrichment_affected"][0]["enrichment"]["confidence"] == 100
+
+    # With vendors only: enrichment_affected None, enrichment_vendors from vendors
+    mock_enrichment.return_value = {
+        "vendors": ["linux", "linux$PRODUCT$kernel"],
+        "updated": "2025-10-22T17:32:20.100000+00:00",
+    }
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    context = response.context
+    assert context["enrichment_vendors"] == {"linux": ["kernel"]}
+    assert context["enrichment_affected"] is None
 
 
 @override_settings(ENABLE_ONBOARDING=False)

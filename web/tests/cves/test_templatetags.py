@@ -3,6 +3,7 @@ from cves.templatetags.opencve_extras import (
     get_active_cvss_tab,
     advisory_source_display,
     tracker_status_badge_class,
+    enrichment_scores_tooltip,
 )
 
 
@@ -172,6 +173,17 @@ def test_advisory_source_display():
     assert "<img src=" in result
     assert 'style="width: 22px; margin-right: 4px; vertical-align: middle;"' in result
     assert result.count("<img") == 1  # Only one image tag
+
+
+def test_enrichment_scores_tooltip():
+    """Test enrichment_scores_tooltip formats scores for tooltip display."""
+    assert enrichment_scores_tooltip([]) == ""
+    assert enrichment_scores_tooltip(None) == ""
+    scores = [
+        {"source": "inferred", "score": 95.0},
+        {"source": "matching", "score": 100.0},
+    ]
+    assert enrichment_scores_tooltip(scores) == "Inferred: 95.0%<br />Matching: 100.0%"
 
 
 @pytest.mark.parametrize(

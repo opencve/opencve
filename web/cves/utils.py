@@ -1,3 +1,5 @@
+import copy
+
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from nested_lookup import nested_lookup
@@ -27,6 +29,58 @@ def convert_cpes(conf):
         cpes[vendor].append(product)
 
     return cpes
+
+
+def float_to_int_if_whole(value):
+    """Return int when value is a float equal to its integer part (e.g. 100.0 -> 100)."""
+    if isinstance(value, float) and value == int(value):
+        return int(value)
+    return value
+
+
+def normalize_enrichment_affected(affected):
+    """
+    Return a deep copy of the affected list with confidence and score floats
+    converted to int when they are whole numbers (e.g. 100.0 -> 100).
+    """
+    if not affected:
+        return []
+    result = copy.deepcopy(affected)
+    for item in result:
+        enrichment = item.get("enrichment")
+        if enrichment is not None:
+            if "confidence" in enrichment:
+                enrichment["confidence"] = float_to_int_if_whole(
+                    enrichment["confidence"]
+                )
+            for score_item in enrichment.get("scores", []):
+                if "score" in score_item:
+                    score_item["score"] = float_to_int_if_whole(score_item["score"])
+    return result
+
+
+def affected_to_dict_vendors(affected):
+    """
+    Transform the enrichment 'affected' array into a flat list for list_to_dict_vendors.
+    Returns: [vendor, vendor$PRODUCT$product, ...]
+    """
+    if not affected:
+        return []
+    result = []
+    seen_vendors = set()
+    seen_products = set()
+    for item in affected:
+        vendor = item.get("vendor")
+        product = item.get("product")
+        if not vendor:
+            continue
+        if vendor not in seen_vendors:
+            seen_vendors.add(vendor)
+            result.append(vendor)
+        if product and (vendor, product) not in seen_products:
+            seen_products.add((vendor, product))
+            result.append(f"{vendor}{PRODUCT_SEPARATOR}{product}")
+    return result
 
 
 def list_to_dict_vendors(vendors):
