@@ -113,6 +113,23 @@ def gravatar_url(email, size=40):
     )
 
 
+@register.filter
+def format_json(value):
+    """If value is valid JSON (or already a dict/list), return it pretty-printed; otherwise return as-is."""
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, indent=2, ensure_ascii=False)
+    s = str(value).strip()
+    if not s:
+        return s
+    try:
+        obj = json.loads(s)
+        return json.dumps(obj, indent=2, ensure_ascii=False)
+    except (json.JSONDecodeError, TypeError):
+        return value
+
+
 # Filters & Tags related to the CVSS scores
 
 

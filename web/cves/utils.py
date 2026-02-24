@@ -140,6 +140,60 @@ def humanize(s):
     return " ".join(map(lambda x: x.capitalize(), s.split("_")))
 
 
+# CVSS version key (as used in cves_table_data or metrics) -> display label
+CVSS_VERSION_LABELS = {
+    "cvss_40": "v4.0",
+    "cvss_31": "v3.1",
+    "cvss_30": "v3.0",
+    "cvss_20": "v2.0",
+}
+
+
+def get_highest_cvss(scores_dict):
+    """
+    Given a dict of version_key -> score (e.g. {"cvss_31": 5.5, "cvss_40": 7.4}),
+    return the highest score and its version label.
+    Returns (score, version_label) or (None, None) if no scores.
+    """
+    if not scores_dict:
+        return (None, None)
+    best_score = None
+    best_key = None
+    for key, score in scores_dict.items():
+        if score is not None and key in CVSS_VERSION_LABELS:
+            try:
+                s = float(score)
+                if best_score is None or s > best_score:
+                    best_score = s
+                    best_key = key
+            except (TypeError, ValueError):
+                continue
+    if best_score is None:
+        return (None, None)
+    return (best_score, CVSS_VERSION_LABELS.get(best_key, best_key))
+
+
+def cvss_score_to_severity(score):
+    """
+    Map a CVSS score to severity bucket name: Critical, High, Medium, Low.
+    """
+    if score is None:
+        return None
+    try:
+        s = float(score)
+    except (TypeError, ValueError):
+        return None
+    if 9.0 <= s <= 10.0:
+        return "Critical"
+    if 7.0 <= s <= 8.9:
+        return "High"
+    if 4.0 <= s <= 6.9:
+        return "Medium"
+    if 0 <= s <= 3.9:
+        return "Low"
+    return None
+
+
 # TODO: these utils are also in scheduler. Merge the code.
 
 

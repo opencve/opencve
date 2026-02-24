@@ -1,0 +1,56 @@
+{% extends 'projects/automations/result_detail_base.html' %}
+{% load opencve_extras %}
+
+{% block result_content %}
+<p class="result-notification-title">
+    {% if result.details.status_code is not None %}
+    <span class="result-http-status-tab-badge"><span class="result-http-status-dot result-http-status-dot--{% if result.details.status_code >= 200 and result.details.status_code < 300 %}success{% else %}danger{% endif %}"></span> HTTP {{ result.details.status_code }}</span>
+    {% endif %}
+    <strong>Notification sent</strong>
+</p>
+{% if result.details.channel %}<p class="text-muted">Channel: {{ result.details.channel }}{% if result.details.status %} — {{ result.details.status }}{% endif %}</p>{% endif %}
+
+<div class="nav-tabs-custom">
+    <ul class="nav nav-tabs">
+        <li class="active"><a href="#request-tab" data-toggle="tab">Request</a></li>
+        <li><a href="#response-tab" data-toggle="tab">Response</a></li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane active" id="request-tab">
+            {% if result.details.request_headers %}
+            <p><strong>Headers</strong></p>
+            <pre class="result-detail-code-block result-detail-code-block--headers">{% for key, value in result.details.request_headers.items %}{{ key }}: {{ value }}
+{% endfor %}</pre>
+            {% endif %}
+            {% if result.details.request_payload %}
+            <p><strong>Payload</strong></p>
+            <pre class="result-detail-code-block result-detail-code-block--body">{{ result.details.request_payload|format_json }}</pre>
+            {% endif %}
+            {% if not result.details.request_headers and not result.details.request_payload %}
+            <p class="text-muted">No request data available.</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane" id="response-tab">
+            {% if result.details.response_headers %}
+            <p><strong>Headers</strong></p>
+            <pre class="result-detail-code-block result-detail-code-block--headers">{% for key, value in result.details.response_headers.items %}{{ key }}: {{ value }}
+{% endfor %}</pre>
+            {% endif %}
+            {% if result.details.response_body %}
+            <p><strong>Body</strong></p>
+            <pre class="result-detail-code-block result-detail-code-block--body">{{ result.details.response_body|format_json }}</pre>
+            {% endif %}
+            {% if result.details.response_url and result.details.status_code >= 200 and result.details.status_code < 300 %}
+            <p><a href="{{ result.details.response_url }}" target="_blank" rel="noopener noreferrer">See response <i class="fa fa-external-link"></i></a></p>
+            {% endif %}
+            {% if not result.details.response_headers and not result.details.response_body and not result.details.response_url %}
+            <p class="text-muted">No response data available.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if not result.details.status_code and not result.details.request_headers and not result.details.response_body %}
+<p class="text-muted result-detail-no-data">No HTTP details recorded for this notification.</p>
+{% endif %}
+{% endblock %}

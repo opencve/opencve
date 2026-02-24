@@ -21,6 +21,20 @@ def get_default_automation_config():
     return {"conditions": {"operator": "OR", "children": []}, "actions": []}
 
 
+def count_conditions_tree(node):
+    """
+    Count leaf conditions in a conditions tree.
+    Nodes with "children" are groups (OR/AND); nodes with "type" are actual conditions.
+    """
+    if not node:
+        return 0
+    if "children" in node:
+        return sum(count_conditions_tree(c) for c in node.get("children", []))
+    if "type" in node:
+        return 1
+    return 0
+
+
 class Project(BaseModel):
     name = models.CharField(
         max_length=100,
@@ -113,10 +127,10 @@ class Notification(BaseModel):
 
 class Automation(BaseModel):
     TRIGGER_REALTIME = "realtime"
-    TRIGGER_PERIODIC = "periodic"
+    TRIGGER_SCHEDULED = "scheduled"
     TRIGGER_CHOICES = [
-        (TRIGGER_REALTIME, "React to CVE changes"),
-        (TRIGGER_PERIODIC, "Generate periodic reports"),
+        (TRIGGER_REALTIME, "Real-time monitoring"),
+        (TRIGGER_SCHEDULED, "Scheduled report"),
     ]
     FREQUENCY_DAILY = "daily"
     FREQUENCY_WEEKLY = "weekly"
@@ -161,7 +175,7 @@ class Automation(BaseModel):
 
     def get_absolute_url(self):
         return reverse(
-            "edit_automation",
+            "automation_overview",
             kwargs={
                 "project_name": self.project.name,
                 "org_name": self.project.organization.name,
@@ -169,42 +183,162 @@ class Automation(BaseModel):
             },
         )
 
+    @property
+    def conditions_count(self):
+        """Number of leaf conditions (recursive count, ignoring groups/operators)."""
+        conditions = self.configuration.get("conditions") or {}
+        return count_conditions_tree(conditions)
 
-class AutomationRun(BaseModel):
-    """History of automation runs (e.g. periodic report executions)."""
 
-    STATUS_SENT = "sent"
-    STATUS_FAILED = "failed"
-    STATUS_CHOICES = [
-        (STATUS_SENT, "Sent"),
-        (STATUS_FAILED, "Failed"),
-    ]
+class AutomationExecution(BaseModel):
+    """Activity executions for an automation (execution time, window, results)."""
 
-    run_date = models.DateField(db_index=True)
+    executed_at = models.DateTimeField(db_index=True)
+    window_start = models.DateTimeField()
+    window_end = models.DateTimeField()
     matched_cves_count = models.IntegerField(default=0)
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default=STATUS_SENT,
-    )
 
     automation = models.ForeignKey(
-        Automation, on_delete=models.CASCADE, related_name="runs"
+        Automation, on_delete=models.CASCADE, related_name="executions"
     )
     report = models.ForeignKey(
         "changes.Report",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="automation_runs",
+        related_name="automation_executions",
     )
+    impact_summary = models.JSONField(null=True, blank=True, default=None)
+    cves_table_data = models.JSONField(null=True, blank=True, default=None)
 
     class Meta:
-        db_table = "opencve_automation_runs"
-        ordering = ["-run_date"]
+        db_table = "opencve_automation_executions"
+        ordering = ["-executed_at"]
 
     def __str__(self):
-        return f"{self.automation.name} - {self.run_date}"
+        return f"{self.automation.name} - {self.executed_at}"
+
+    @property
+    def slug(self):
+        """URL slug from execution time (e.g. 2026-02-18-14-00)."""
+        return self.executed_at.strftime("%Y-%m-%d-%H-%M")
+
+
+class AutomationRunResult(BaseModel):
+    """Single result from an automation execution (report, notification, PDF, etc.).
+    All result-specific data (report day, file path, url, etc.) is in details (JSONB).
+    """
+
+    STATUS_SUCCESS = "success"
+    STATUS_SKIPPED = "skipped"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_SUCCESS, "Success"),
+        (STATUS_SKIPPED, "Skipped"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    automation_execution = models.ForeignKey(
+        AutomationExecution, on_delete=models.CASCADE, related_name="results"
+    )
+    output_type = models.CharField(max_length=64)
+    label = models.CharField(max_length=256)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_SUCCESS,
+    )
+    details = models.JSONField(null=True, blank=True, default=dict)  # noqa: B008
+
+    class Meta:
+        db_table = "opencve_automation_execution_results"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.label} ({self.automation_execution_id})"
+
+    @property
+    def summary_display(self):
+        """Human-readable one-line summary from details (e.g. "Slack #infra (sent)", "13 CVEs assigned to \"bob@...\"")."""
+        details = self.details or {}
+        if self.output_type == "notification_sent":
+            channel = details.get("channel")
+            status = details.get("status")
+            if channel:
+                return f"{channel} ({status})" if status else channel
+            return self.label
+        if self.output_type == "report":
+            cve_count = details.get("cve_count")
+            if cve_count is not None:
+                return f"{cve_count} CVE(s) included"
+            return self.label
+        if self.output_type == "pdf":
+            size_mb = details.get("size_mb")
+            if size_mb is not None:
+                return f"Size: {size_mb} MB"
+            return self.label
+        if self.output_type == "ai_summary":
+            preview = details.get("preview")
+            if preview:
+                words = preview.split()
+                return " ".join(words[:15]) + ("..." if len(words) > 15 else "")
+            return self.label
+        if self.output_type == "assignment":
+            summary = details.get("summary")
+            if summary:
+                return summary
+            assigned_count = details.get("assigned_count")
+            assignee = details.get("assignee")
+            if assigned_count is not None:
+                base = f"{assigned_count} CVEs assigned"
+                return f'{base} to "{assignee}"' if assignee else base
+            return self.label
+        if self.output_type == "status_change":
+            summary = details.get("summary")
+            if summary:
+                return summary
+            from_status = details.get("from_status")
+            to_status = details.get("to_status")
+            updated_count = details.get("updated_count")
+            if from_status and to_status and updated_count is not None:
+                return (
+                    f'{updated_count} CVEs moved from "{from_status}" → "{to_status}"'
+                )
+            if updated_count is not None:
+                return f"{updated_count} CVE(s) updated"
+            return self.label
+        return details.get("summary") or "—"
+
+    OUTPUT_TYPE_ICONS = {
+        "notification_sent": "fa-envelope",
+        "report": "fa-file-text-o",
+        "assignment": "fa-users",
+        "status_change": "fa-check-circle",
+        "pdf": "fa-file-pdf-o",
+        "ai_summary": "fa-lightbulb-o",
+    }
+
+    @property
+    def detail_icon_class(self):
+        """Font Awesome icon class for this result type (e.g. for the detail box title)."""
+        return self.OUTPUT_TYPE_ICONS.get(self.output_type, "fa-file-o")
+
+    @property
+    def detail_action_label(self):
+        """Label for the action button linking to this result's detail page."""
+        if self.output_type == "notification_sent":
+            return "See response"
+        if self.output_type == "report":
+            return "See report"
+        if self.output_type == "pdf":
+            return "Download PDF"
+        if self.output_type == "ai_summary":
+            return "See Summary"
+        if self.output_type == "assignment":
+            return "Assignments"
+        if self.output_type == "status_change":
+            return "Status changes"
+        return "View"
 
 
 class CveTracker(BaseModel):

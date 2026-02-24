@@ -1,0 +1,16 @@
+{% extends 'projects/automations/result_detail_base.html' %}
+
+{% block result_content %}
+<p><strong>Status changes</strong></p>
+{% if result.details.summary %}
+    <p>{{ result.details.summary }}</p>
+{% endif %}
+<dl class="dl-horizontal">
+    {% if result.details.updated_count is not None %}<dt>CVEs updated</dt><dd>{{ result.details.updated_count }}</dd>{% endif %}
+    {% if result.details.from_status %}<dt>From</dt><dd>{{ result.details.from_status }}</dd>{% endif %}
+    {% if result.details.to_status %}<dt>To</dt><dd>{{ result.details.to_status }}</dd>{% endif %}
+</dl>
+{% if not result.details.summary and result.details.updated_count is None and not result.details.from_status and not result.details.to_status %}
+    <p class="text-muted">No status change details available.</p>
+{% endif %}
+{% endblock %}

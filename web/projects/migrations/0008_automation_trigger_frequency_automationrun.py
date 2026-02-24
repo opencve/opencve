@@ -19,8 +19,8 @@ class Migration(migrations.Migration):
             name="trigger_type",
             field=models.CharField(
                 choices=[
-                    ("realtime", "React to CVE changes"),
-                    ("periodic", "Generate periodic reports"),
+                    ("realtime", "Real-time monitoring"),
+                    ("scheduled", "Scheduled report"),
                 ],
                 default="realtime",
                 max_length=20,

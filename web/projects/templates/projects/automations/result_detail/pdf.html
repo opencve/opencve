@@ -1,0 +1,12 @@
+{% extends 'projects/automations/result_detail_base.html' %}
+
+{% block result_content %}
+<p><strong>PDF generated</strong></p>
+{% if result.details.size_mb %}<p>Size: <strong>{{ result.details.size_mb }} MB</strong></p>{% endif %}
+{% if result.details.filename %}<p>Filename: <code>{{ result.details.filename }}</code></p>{% endif %}
+{% if result.details.file_path %}
+    <a href="{% url 'automation_execution_result_download' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=result.automation_execution.id result_id=result.id %}" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fa fa-download"></i> Download PDF</a>
+{% else %}
+    <p class="text-muted">File is not available for download.</p>
+{% endif %}
+{% endblock %}

@@ -257,18 +257,16 @@ def evaluate_condition_tree(tree, change_details, cve_trackers=None):
 
 # Map WHEN trigger types (event automations) to change_types from the pipeline
 TRIGGER_TO_CHANGE_TYPES = {
-    "cve_created": ["created"],
-    "cve_updated": None,  # None = match any change
-    "cvss_changed": ["metrics"],
+    "cve_enters_project": ["created"],
     "cvss_increased": ["metrics"],
     "cvss_decreased": ["metrics"],
-    "epss_changed": ["metrics"],
+    "epss_increased": ["metrics"],
+    "epss_decreased": ["metrics"],
     "kev_added": ["kev"],
     "new_vendor": ["vendors"],
     "new_product": ["cpes"],
     "description_changed": ["description"],
     "title_changed": ["title"],
-    "summary_changed": ["summary"],
     "new_reference": ["references"],
     "new_weakness": ["weaknesses"],
     "cve_status_changed": ["tracker_status"],
@@ -287,7 +285,7 @@ def change_matches_triggers(change_details, triggers):
     for trigger in triggers:
         mapped = TRIGGER_TO_CHANGE_TYPES.get(trigger)
         if mapped is None:
-            return True  # e.g. cve_updated = match any
+            return True  # match any change
         if any(ct in change_types for ct in mapped):
             return True
     return False

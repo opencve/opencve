@@ -219,6 +219,28 @@ class SlackForm(NotificationForm):
     )
 
 
+class AutomationOverviewForm(forms.ModelForm):
+    """Form for updating only name and is_enabled from the Overview page."""
+
+    class Meta:
+        model = Automation
+        fields = ["name", "is_enabled"]
+
+    def __init__(self, *args, **kwargs):
+        self.project = kwargs.pop("project", None)
+        kwargs.pop("request", None)
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        if name in ("add",):
+            raise forms.ValidationError("This name is reserved.")
+        if self.project and (not self.instance.pk or self.instance.name != name):
+            if Automation.objects.filter(project=self.project, name=name).exists():
+                raise forms.ValidationError("This name already exists.")
+        return name
+
+
 class AutomationForm(forms.ModelForm):
     class Meta:
         model = Automation
@@ -265,9 +287,9 @@ class AutomationForm(forms.ModelForm):
         data = super().clean()
         trigger = data.get("trigger_type")
         frequency = data.get("frequency")
-        if trigger == Automation.TRIGGER_PERIODIC and not frequency:
+        if trigger == Automation.TRIGGER_SCHEDULED and not frequency:
             self.add_error(
-                "frequency", "Frequency is required when trigger type is periodic."
+                "frequency", "Frequency is required when trigger type is scheduled."
             )
         if trigger == Automation.TRIGGER_REALTIME:
             data["frequency"] = None

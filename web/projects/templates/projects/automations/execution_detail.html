@@ -1,0 +1,118 @@
+{% extends 'projects/base_project.html' %}
+{% load static %}
+
+{% block title %}Execution {% if automation.trigger_type == 'realtime' %}{{ execution.executed_at|date:"Y-m-d" }} {{ execution.window_start|time:"H:i" }}→{{ execution.window_end|time:"H:i" }}{% else %}{{ execution.executed_at|date:"Y-m-d H:i" }}{% endif %} - {{ automation.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    <!-- Left column: Activity list -->
+    <div class="col-md-4">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Activity</h3>
+            </div>
+            <div class="box-body no-padding">
+                <ul class="nav nav-pills nav-stacked">
+                    {% for e in activity_executions %}
+                    <li class="{% if e.id == execution.id %}active{% endif %}">
+                        <a href="{% url 'automation_execution_detail' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=e.id %}">
+                            <span>{% if automation.trigger_type == 'realtime' %}{{ e.executed_at|date:"Y-m-d" }}  [{{ e.window_start|time:"H:i" }} → {{ e.window_end|time:"H:i" }}]{% else %}{{ e.executed_at|date:"Y-m-d H:i" }}{% endif %}</span>
+                            <span class="pull-right activity-execution-result-icons">
+                                {% for o in e.results.all %}
+                                {% if o.output_type == 'report' %}<i class="fa fa-file-text-o" title="{{ o.label }}"></i>
+                                {% elif o.output_type == 'pdf' %}<i class="fa fa-file-pdf-o" title="{{ o.label }}"></i>
+                                {% elif o.output_type == 'notification_sent' %}<i class="fa fa-envelope-o" title="{{ o.label }}"></i>
+                                {% elif o.output_type == 'assignment' %}<i class="fa fa-user" title="{{ o.label }}"></i>
+                                {% elif o.output_type == 'status_change' %}<i class="fa fa-flag-o" title="{{ o.label }}"></i>
+                                {% else %}<i class="fa fa-circle-o" title="{{ o.label }}"></i>
+                                {% endif %}
+                                {% endfor %}
+                            </span>
+                        </a>
+                    </li>
+                    {% empty %}
+                    <li><span class="text-muted">No executions yet.</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column: Execution details -->
+    <div class="col-md-8">
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Execution details</h3>
+            </div>
+            <div class="box-body">
+                <dl class="dl-horizontal">
+                    <dt>Execution time</dt>
+                    <dd>{% if automation.trigger_type == 'realtime' %}{{ execution.executed_at|date:"Y-m-d" }}  {{ execution.window_start|time:"H:i" }} → {{ execution.window_end|time:"H:i" }}{% else %}{{ execution.executed_at|date:"Y-m-d H:i" }}{% endif %}</dd>
+                    <dt>Window</dt>
+                    <dd>{{ execution.window_start|date:"Y-m-d H:i" }} – {{ execution.window_end|date:"Y-m-d H:i" }}</dd>
+                    <dt>CVEs matched</dt>
+                    <dd>{{ execution.matched_cves_count }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Results</h3>
+            </div>
+            <div class="box-body">
+                {% if results %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Result</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr>
+                            <td>{{ result.label }}</td>
+                            <td>
+                                {% if result.status == 'success' %}<span class="text-success">✓ {{ result.get_status_display }}</span>
+                                {% elif result.status == 'skipped' %}<span class="text-muted">⊘ {{ result.get_status_display }}</span>
+                                {% else %}<span class="text-danger">✗ {{ result.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if result.details.report_day %}
+                                <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" class="btn btn-sm btn-default">View report</a>
+                                {% elif result.details.file_path %}
+                                <a href="{% url 'automation_execution_result_download' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=execution.id result_id=result.id %}" class="btn btn-sm btn-default">Download</a>
+                                {% elif result.details.url %}
+                                <a href="{{ result.details.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">Open link</a>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted">No results for this execution.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <p>
+            <a href="{{ url_back }}" class="btn btn-default">Back to {{ automation.name }}</a>
+        </p>
+    </div>
+</div>
+
+<style>
+.nav-pills.nav-stacked li.active a { background-color: #d2d6de; color: #333; }
+.nav-pills.nav-stacked li a:hover { background-color: #ecf0f5; }
+.activity-execution-result-icons .fa { margin-left: 2px; }
+</style>
+
+{% endblock %}

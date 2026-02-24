@@ -3,10 +3,15 @@ from django.urls import path, register_converter
 from opencve.utils import DateConverter
 from projects.views import (
     AssignCveUserView,
+    AutomationConfigurationView,
     AutomationCreateView,
-    AutomationsView,
     AutomationDeleteView,
-    AutomationUpdateView,
+    AutomationExecutionDrawerView,
+    AutomationOverviewView,
+    AutomationResultDetailView,
+    AutomationResultsView,
+    AutomationRunResultDownloadView,
+    AutomationsView,
     CreateCveCommentView,
     DeleteCveCommentView,
     NotificationCreateView,
@@ -104,8 +109,33 @@ urlpatterns = [
     ),
     path(
         "org/<org_name>/projects/<project_name>/automations/<automation>",
-        AutomationUpdateView.as_view(),
-        name="edit_automation",
+        AutomationOverviewView.as_view(),
+        name="automation_overview",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/configuration",
+        AutomationConfigurationView.as_view(),
+        name="automation_configuration",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/results",
+        AutomationResultsView.as_view(),
+        name="automation_results",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/results/<uuid:result_id>",
+        AutomationResultDetailView.as_view(),
+        name="automation_result_detail",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/executions/<uuid:execution_id>/drawer",
+        AutomationExecutionDrawerView.as_view(),
+        name="automation_execution_drawer",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/executions/<uuid:execution_id>/results/<uuid:result_id>/download",
+        AutomationRunResultDownloadView.as_view(),
+        name="automation_execution_result_download",
     ),
     path(
         "org/<org_name>/projects/<project_name>/automations/<automation>/delete",

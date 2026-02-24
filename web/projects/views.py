@@ -1,13 +1,17 @@
 import importlib
 import json
+import os
 import secrets
 import pyparsing as pp
+from datetime import datetime
+
+from django.core.files.storage import default_storage
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.paginator import Paginator
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
-from django.http import Http404, JsonResponse
-from django.contrib import messages
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
@@ -24,6 +28,7 @@ from changes.models import Change, Report
 from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
 from cves.models import Cve
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
+from cves.utils import cvss_score_to_severity, get_highest_cvss
 from opencve.mixins import RequestViewMixin
 from organizations.mixins import (
     OrganizationIsMemberMixin,
@@ -31,6 +36,7 @@ from organizations.mixins import (
 )
 from projects.forms import (
     AutomationForm,
+    AutomationOverviewForm,
     FORM_MAPPING,
     ProjectForm,
     CveTrackerFilterForm,
@@ -38,7 +44,8 @@ from projects.forms import (
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
 from projects.models import (
     Automation,
-    AutomationRun,
+    AutomationExecution,
+    AutomationRunResult,
     CveComment,
     CveTracker,
     Notification,
@@ -1204,8 +1211,8 @@ class AutomationsView(
         filter_type = self.request.GET.get("type")
         if filter_type == "realtime":
             queryset = queryset.filter(trigger_type=Automation.TRIGGER_REALTIME)
-        elif filter_type == "periodic":
-            queryset = queryset.filter(trigger_type=Automation.TRIGGER_PERIODIC)
+        elif filter_type == "scheduled":
+            queryset = queryset.filter(trigger_type=Automation.TRIGGER_SCHEDULED)
         filter_status = self.request.GET.get("status")
         if filter_status == "enabled":
             queryset = queryset.filter(is_enabled=True)
@@ -1221,12 +1228,12 @@ class AutomationsView(
                 "trigger_type": "realtime",
             },
         )
-        context["url_add_periodic"] = reverse(
+        context["url_add_scheduled"] = reverse(
             "create_automation",
             kwargs={
                 "org_name": org_name,
                 "project_name": self.project.name,
-                "trigger_type": "periodic",
+                "trigger_type": "scheduled",
             },
         )
         return context
@@ -1251,15 +1258,20 @@ class AutomationCreateView(
         trigger_type = self.kwargs.get("trigger_type", "realtime")
         if trigger_type not in (
             Automation.TRIGGER_REALTIME,
-            Automation.TRIGGER_PERIODIC,
+            Automation.TRIGGER_SCHEDULED,
         ):
             trigger_type = Automation.TRIGGER_REALTIME
         initial["trigger_type"] = trigger_type
-        initial["frequency"] = (
-            Automation.FREQUENCY_DAILY
-            if trigger_type == Automation.TRIGGER_PERIODIC
-            else None
-        )
+        if trigger_type == Automation.TRIGGER_SCHEDULED:
+            template = self.request.GET.get("template") or ""
+            if template in ("weekly_summary", "weekly_kev", "weekly_pdf"):
+                initial["frequency"] = Automation.FREQUENCY_WEEKLY
+            elif template == "daily_ai_summary":
+                initial["frequency"] = Automation.FREQUENCY_DAILY
+            else:
+                initial["frequency"] = Automation.FREQUENCY_DAILY
+        else:
+            initial["frequency"] = None
         return initial
 
     def form_valid(self, form):
@@ -1278,7 +1290,7 @@ class AutomationCreateView(
         trigger_type = self.kwargs.get("trigger_type", "realtime")
         if trigger_type not in (
             Automation.TRIGGER_REALTIME,
-            Automation.TRIGGER_PERIODIC,
+            Automation.TRIGGER_SCHEDULED,
         ):
             trigger_type = Automation.TRIGGER_REALTIME
         context["trigger_type"] = trigger_type
@@ -1327,8 +1339,137 @@ class AutomationCreateView(
                         return context
                 except (json.JSONDecodeError, TypeError):
                     pass
-        context["automation_data_json"] = json.dumps(default_config)
+        # Pre-fill from template (GET ?template=...)
+        if self.request.method == "GET":
+            template_config = self._get_template_config()
+            context["automation_data_json"] = (
+                json.dumps(template_config)
+                if template_config
+                else json.dumps(default_config)
+            )
         return context
+
+    def _get_template_config(self):
+        """Build configuration JSON for automation templates."""
+        template = self.request.GET.get("template") or ""
+
+        notifications = list(
+            Notification.objects.filter(project=self.project).order_by("name")[:1]
+        )
+        members = list(
+            User.objects.filter(
+                membership__organization=self.request.current_organization,
+                membership__date_joined__isnull=False,
+            )
+            .distinct()
+            .order_by("username")[:1]
+        )
+        first_notification_id = str(notifications[0].id) if notifications else ""
+        first_user_id = str(members[0].id) if members else ""
+
+        # One AND group with no conditions
+        empty_and_group = {"operator": "AND", "children": []}
+
+        if template == "recently_published":
+            return {
+                "triggers": ["cve_enters_project"],
+                "conditions": {"operator": "OR", "children": [empty_and_group]},
+                "actions": [
+                    {"type": "send_notification", "value": first_notification_id}
+                ],
+            }
+        if template == "kev_alert":
+            return {
+                "triggers": ["cve_enters_project", "kev_added"],
+                "conditions": {
+                    "operator": "OR",
+                    "children": [
+                        {
+                            "operator": "AND",
+                            "children": [
+                                {"type": "kev_present", "value": True},
+                            ],
+                        }
+                    ],
+                },
+                "actions": [
+                    {"type": "send_notification", "value": first_notification_id}
+                ],
+            }
+        if template == "critical_cve":
+            return {
+                "triggers": ["cve_enters_project"],
+                "conditions": {
+                    "operator": "OR",
+                    "children": [
+                        {
+                            "operator": "AND",
+                            "children": [
+                                {
+                                    "type": "cvss_gte",
+                                    "value": {"version": "v3.1", "value": 7},
+                                },
+                            ],
+                        },
+                        {
+                            "operator": "AND",
+                            "children": [
+                                {
+                                    "type": "cvss_gte",
+                                    "value": {"version": "v4.0", "value": 7},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                "actions": [
+                    {"type": "send_notification", "value": first_notification_id}
+                ],
+            }
+        if template == "auto_triage":
+            actions = []
+            if first_user_id:
+                actions.append({"type": "assign_user", "value": first_user_id})
+            actions.append({"type": "change_status", "value": "to_evaluate"})
+            return {
+                "triggers": ["cve_enters_project"],
+                "conditions": {"operator": "OR", "children": [empty_and_group]},
+                "actions": actions,
+            }
+
+        if template == "weekly_summary":
+            return {
+                "conditions": {"operator": "OR", "children": [empty_and_group]},
+                "actions": [{"type": "generate_report", "value": True}],
+            }
+        if template == "weekly_kev":
+            return {
+                "conditions": {
+                    "operator": "OR",
+                    "children": [
+                        {
+                            "operator": "AND",
+                            "children": [
+                                {"type": "kev_present", "value": True},
+                            ],
+                        }
+                    ],
+                },
+                "actions": [
+                    {"type": "send_notification", "value": first_notification_id}
+                ],
+            }
+        if template == "daily_ai_summary":
+            return {
+                "conditions": {"operator": "OR", "children": [empty_and_group]},
+                "actions": [{"type": "include_ai_summary", "value": True}],
+            }
+        if template == "weekly_pdf":
+            return {
+                "conditions": {"operator": "OR", "children": [empty_and_group]},
+                "actions": [{"type": "generate_pdf", "value": True}],
+            }
+        return None
 
     def get_success_url(self):
         return reverse(
@@ -1340,7 +1481,110 @@ class AutomationCreateView(
         )
 
 
-class AutomationUpdateView(
+# Map automation result output_type to Font Awesome icon class (for Overview "Recent Executions" and Results page)
+RESULT_TYPE_ICONS = {
+    "notification_sent": "fa-envelope",
+    "report": "fa-file-text-o",
+    "assignment": "fa-users",
+    "status_change": "fa-check-circle",
+    "pdf": "fa-file-pdf-o",
+    "ai_summary": "fa-lightbulb-o",
+}
+
+# Result type filter choices for the Results page (output_type, label)
+RESULT_TYPE_FILTER_CHOICES = [
+    ("notification_sent", "Notification"),
+    ("pdf", "PDF"),
+    ("report", "Report"),
+    ("ai_summary", "AI Summary"),
+    ("assignment", "Assignment"),
+    ("status_change", "Status"),
+]
+
+
+def _build_activity_events(automation, limit=10):
+    """Build activity_events list for an automation (for Overview or context)."""
+    activity_executions = (
+        AutomationExecution.objects.filter(automation=automation)
+        .prefetch_related("results")
+        .order_by("-executed_at")[:limit]
+    )
+    return [
+        {
+            "execution_id": execution.id,
+            "execution_slug": execution.slug,
+            "executed_at": execution.executed_at,
+            "window_start": execution.window_start,
+            "window_end": execution.window_end,
+            "matched_cves_count": execution.matched_cves_count,
+            "result_entries": [
+                {
+                    "label": r.label,
+                    "icon": RESULT_TYPE_ICONS.get(r.output_type, "fa-file-o"),
+                    "status": r.status,
+                    "status_display": r.get_status_display(),
+                }
+                for r in execution.results.all()
+            ],
+        }
+        for execution in activity_executions
+    ]
+
+
+class AutomationOverviewView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    UpdateView,
+):
+    """Overview page for an automation: header, summary, recent executions (drawer on click)."""
+
+    model = Automation
+    form_class = AutomationOverviewForm
+    template_name = "projects/automations/overview.html"
+    success_message = "The automation has been successfully updated."
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Automation,
+            project=self.project,
+            name=self.kwargs["automation"],
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["project"] = self.project
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        context["automation"] = self.object
+        context["activity_events"] = _build_activity_events(self.object, limit=10)
+        context["url_back"] = reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+                "automation": self.object.name,
+            },
+        )
+
+
+class AutomationConfigurationView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
@@ -1351,7 +1595,7 @@ class AutomationUpdateView(
 ):
     model = Automation
     form_class = AutomationForm
-    template_name = "projects/automations/detail.html"
+    template_name = "projects/automations/configuration.html"
     success_message = "The automation has been successfully updated."
 
     def get_object(self, queryset=None):
@@ -1371,8 +1615,8 @@ class AutomationUpdateView(
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
         context["automation"] = self.object
-        context["is_periodic_automation"] = (
-            self.object.trigger_type == Automation.TRIGGER_PERIODIC
+        context["is_scheduled_automation"] = (
+            self.object.trigger_type == Automation.TRIGGER_SCHEDULED
         )
         context["is_realtime_automation"] = (
             self.object.trigger_type == Automation.TRIGGER_REALTIME
@@ -1384,32 +1628,8 @@ class AutomationUpdateView(
                 "project_name": self.project.name,
             },
         )
-        # History: AutomationRun for this automation
-        history_runs = (
-            AutomationRun.objects.filter(automation=self.object)
-            .select_related("report")
-            .order_by("-run_date")[:50]
-        )
-        context["history_events"] = []
-        for run in history_runs:
-            report_link = None
-            if run.report_id and run.report:
-                report_link = reverse(
-                    "report",
-                    kwargs={
-                        "org_name": self.request.current_organization.name,
-                        "project_name": self.project.name,
-                        "day": run.report.day,
-                    },
-                )
-            context["history_events"].append(
-                {
-                    "date": run.run_date,
-                    "matched_cves_count": run.matched_cves_count,
-                    "status": run.get_status_display(),
-                    "report_link": report_link,
-                }
-            )
+        # Activity (for possible reuse in template): limit 10 for consistency
+        context["activity_events"] = _build_activity_events(self.object, limit=10)
 
         # Add context for form: notifications, users, status choices
         context["notifications"] = (
@@ -1460,12 +1680,317 @@ class AutomationUpdateView(
 
     def get_success_url(self):
         return reverse(
-            "edit_automation",
+            "automation_configuration",
             kwargs={
                 "org_name": self.request.current_organization.name,
                 "project_name": self.project.name,
                 "automation": self.object.name,
             },
+        )
+
+
+class AutomationResultsView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
+):
+    """Results page for the current automation: filter by result type and status, table of results."""
+
+    model = Automation
+    template_name = "projects/automations/results.html"
+    context_object_name = "automation"
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Automation,
+            project=self.project,
+            name=self.kwargs["automation"],
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        context["automation"] = self.object
+        filter_type = self.request.GET.get("type", "").strip()
+        filter_status = self.request.GET.get("status", "").strip()
+        context["filter_type"] = filter_type
+        context["filter_status"] = filter_status
+
+        queryset = (
+            AutomationRunResult.objects.filter(
+                automation_execution__automation=self.object
+            )
+            .select_related(
+                "automation_execution",
+                "automation_execution__automation",
+            )
+            .order_by("-automation_execution__executed_at", "created_at")
+        )
+        if filter_type:
+            queryset = queryset.filter(output_type=filter_type)
+        if filter_status:
+            queryset = queryset.filter(status=filter_status)
+
+        paginator = Paginator(queryset, 20)
+        page_number = self.request.GET.get("page", 1)
+        page = paginator.get_page(page_number)
+        context["page_obj"] = page
+        context["results"] = [
+            {
+                "result": r,
+                "icon_class": RESULT_TYPE_ICONS.get(r.output_type, "fa-file-o"),
+            }
+            for r in page.object_list
+        ]
+
+        context["result_type_choices"] = RESULT_TYPE_FILTER_CHOICES
+        context["result_type_icons"] = RESULT_TYPE_ICONS
+        context["result_status_choices"] = AutomationRunResult.STATUS_CHOICES
+        context["url_back"] = reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+        return context
+
+
+def _get_automation_for_results(project, automation_name):
+    """Return Automation for the given project and name, or None."""
+    return get_object_or_404(
+        Automation,
+        project=project,
+        name=automation_name,
+    )
+
+
+class AutomationResultDetailView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    TemplateView,
+):
+    """Detail page for a single automation result; template depends on result output_type."""
+
+    def get(self, request, *args, **kwargs):
+        self.automation = _get_automation_for_results(
+            self.project,
+            kwargs["automation"],
+        )
+        self.result = get_object_or_404(
+            AutomationRunResult.objects.select_related(
+                "automation_execution",
+                "automation_execution__automation",
+            ),
+            id=kwargs["result_id"],
+            automation_execution__automation=self.automation,
+        )
+        return super().get(request, *args, **kwargs)
+
+    def get_template_names(self):
+        return [
+            f"projects/automations/result_detail/{self.result.output_type}.html",
+            "projects/automations/result_detail/default.html",
+        ]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        context["automation"] = self.automation
+        context["result"] = self.result
+        context["url_results"] = reverse(
+            "automation_results",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+                "automation": self.automation.name,
+            },
+        )
+        return context
+
+
+def build_impact_chart_data_from_cves_table(cves_table_data):
+    """
+    Build the impact summary dict from cves_table_data for the drawer (and for
+    pre-computation in the scheduler / fake data). Returns a dict to store in
+    execution.impact_summary, or None if no data. Used by the web view only for
+    reading execution.impact_summary; this function is called by the fake data
+    command and later by the scheduler.
+    """
+    if not cves_table_data:
+        return None
+    cvss_version_keys = ("cvss_40", "cvss_31", "cvss_30", "cvss_20")
+    distribution = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+    highest_cvss = None
+    highest_cvss_version = None
+    cvss_scores = []
+    epss_values = []
+    epss_distribution = {"high": 0, "medium": 0, "low": 0}  # >0.9, 0.7-0.9, <0.7
+    kev_count = 0
+    vendor_counts = {}
+
+    for row in cves_table_data:
+        scores_dict = {
+            k: row.get(k) for k in cvss_version_keys if row.get(k) is not None
+        }
+        if not scores_dict and row.get("cvss_31") is not None:
+            scores_dict = {"cvss_31": row["cvss_31"]}
+        score, version = get_highest_cvss(scores_dict) if scores_dict else (None, None)
+        if score is not None:
+            severity = cvss_score_to_severity(score)
+            if severity and severity in distribution:
+                distribution[severity] += 1
+            cvss_scores.append(score)
+            if highest_cvss is None or score > highest_cvss:
+                highest_cvss = score
+                highest_cvss_version = version
+        if row.get("epss") is not None:
+            try:
+                v = float(row["epss"])
+                epss_values.append(v)
+                if v > 0.9:
+                    epss_distribution["high"] += 1
+                elif v >= 0.7:
+                    epss_distribution["medium"] += 1
+                else:
+                    epss_distribution["low"] += 1
+            except (TypeError, ValueError):
+                pass
+        if row.get("kev"):
+            kev_count += 1
+        vp = row.get("matched_vendor_or_product")
+        if vp and str(vp).strip():
+            vendor_counts[vp] = vendor_counts.get(vp, 0) + 1
+
+    epss_avg = round(sum(epss_values) / len(epss_values), 2) if epss_values else None
+    epss_max = round(max(epss_values), 2) if epss_values else None
+    if highest_cvss is not None:
+        highest_cvss = round(highest_cvss, 1)
+    average_cvss = (
+        round(sum(cvss_scores) / len(cvss_scores), 1) if cvss_scores else None
+    )
+    cves_count = len(cves_table_data)
+    kev_percent = int(round(100 * kev_count / cves_count)) if cves_count else 0
+    top_vendors_products = [
+        {"name": name, "count": count}
+        for name, count in sorted(vendor_counts.items(), key=lambda x: -x[1])[:5]
+    ]
+
+    return {
+        "cvss_distribution": distribution,
+        "highest_cvss": highest_cvss,
+        "highest_cvss_version": highest_cvss_version,
+        "average_cvss": average_cvss,
+        "epss_distribution": epss_distribution,
+        "epss_avg": epss_avg,
+        "epss_max": epss_max,
+        "kev_count": kev_count,
+        "cves_count": cves_count,
+        "kev_percent": kev_percent,
+        "top_vendors_products": top_vendors_products,
+    }
+
+
+class AutomationExecutionDrawerView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    View,
+):
+    """Returns HTML fragment for the execution detail drawer (execution info, CVEs, results in cards)."""
+
+    def get(self, request, *args, **kwargs):
+        execution = _get_automation_execution_by_id(
+            self.project,
+            kwargs["automation"],
+            kwargs["execution_id"],
+        )
+        if execution is None:
+            raise Http404("No execution found.")
+        results = list(
+            AutomationRunResult.objects.filter(automation_execution=execution)
+        )
+        for res in results:
+            if res.details is None:
+                res.details = {}
+        cves_table_data = (
+            execution.cves_table_data if execution.cves_table_data is not None else []
+        )
+        impact_chart_data = execution.impact_summary
+        return render(
+            request,
+            "projects/automations/execution_drawer.html",
+            {
+                "project": self.project,
+                "automation": execution.automation,
+                "execution": execution,
+                "results": results,
+                "cves_table_data": cves_table_data,
+                "impact_chart_data": impact_chart_data,
+                "impact_chart_data_json": (
+                    json.dumps(impact_chart_data) if impact_chart_data else "null"
+                ),
+            },
+        )
+
+
+def _get_automation_execution_by_id(project, automation_name, execution_id):
+    """Resolve an AutomationExecution by primary key (unique per execution)."""
+    return (
+        AutomationExecution.objects.filter(
+            pk=execution_id,
+            automation__project=project,
+            automation__name=automation_name,
+        )
+        .prefetch_related("results")
+        .select_related("automation", "automation__project")
+        .first()
+    )
+
+
+class AutomationRunResultDownloadView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    View,
+):
+    """Securely serve an automation execution result file (e.g. PDF)."""
+
+    def get(self, request, *args, **kwargs):
+        execution = _get_automation_execution_by_id(
+            self.project,
+            kwargs["automation"],
+            kwargs["execution_id"],
+        )
+        if execution is None:
+            raise Http404("No execution found.")
+        result = get_object_or_404(
+            AutomationRunResult.objects.select_related(
+                "automation_execution",
+                "automation_execution__automation",
+                "automation_execution__automation__project",
+            ),
+            id=kwargs["result_id"],
+            automation_execution=execution,
+        )
+        file_path = result.details.get("file_path") if result.details else None
+        if not file_path:
+            raise Http404("No file attached to this result.")
+        if not default_storage.exists(file_path):
+            raise Http404("File not found.")
+        filename = (
+            result.details.get("filename") or os.path.basename(file_path) or "download"
+        )
+        return FileResponse(
+            default_storage.open(file_path, "rb"),
+            as_attachment=True,
+            filename=filename,
         )
 
 

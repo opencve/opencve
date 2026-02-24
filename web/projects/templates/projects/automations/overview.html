@@ -1,0 +1,412 @@
+{% extends 'projects/base_project.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ automation.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    {% include 'projects/automations/_menu.html' with active_section='overview' %}
+
+    <!-- Right column: main content -->
+    <div class="col-md-9 col-sm-8">
+        <form method="post" action="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation.name %}">
+            {% csrf_token %}
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">General</h3>
+                </div>
+                <div class="box-body">
+                    {{ form.name|as_crispy_field }}
+                    {{ form.is_enabled|as_crispy_field }}
+                    <div class="clearfix" style="margin-top: 12px;">
+                        <a href="{% url 'delete_automation' org_name=request.current_organization.name project_name=project.name automation=automation.name %}" class="btn btn-danger btn-sm pull-left">Delete</a>
+                        <button type="submit" class="btn btn-primary btn-sm pull-right">Save</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Recent Executions</h3>
+            </div>
+            <div class="box-body no-padding">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Execution time</th>
+                                <th>Scope</th>
+                                <th>CVEs</th>
+                                <th>Results</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in activity_events %}
+                            <tr class="automation-execution-row" data-execution-id="{{ event.execution_id }}" style="cursor: pointer;">
+                                <td>{{ event.executed_at|date:"Y-m-d H:i" }}</td>
+                                <td>{{ event.window_start|time:"H:i" }}–{{ event.window_end|time:"H:i" }}</td>
+                                <td>{{ event.matched_cves_count }}</td>
+                                <td>
+                                    {% if event.result_entries %}
+                                        {% for entry in event.result_entries %}
+                                            <i class="fa {{ entry.icon }} automation-result-icon {% if entry.status == 'success' %}text-success{% elif entry.status == 'skipped' %}text-muted{% else %}text-danger{% endif %}" data-toggle="tooltip" data-placement="top" data-container="body" title="{{ entry.label }} ({{ entry.status_display }})" aria-label="{{ entry.label }}"></i>
+                                        {% endfor %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-muted">No activity yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Drawer (overlay + panel). Style first to avoid FOUC on first paint. -->
+<style>
+.automation-result-icon {
+  margin-left: 6px;
+}
+td .automation-result-icon:first-of-type {
+  margin-left: 0;
+}
+.automation-drawer-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.3); z-index: 1040;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.automation-drawer-overlay.open {
+  opacity: 1; pointer-events: auto;
+}
+.automation-drawer {
+  position: fixed; top: 0; right: 0; width: 860px; max-width: 92%; height: 100%;
+  background: #fff; box-shadow: -2px 0 12px rgba(0,0,0,0.2); z-index: 1050;
+  overflow: hidden; display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-out;
+}
+.automation-drawer.open {
+  transform: translateX(0);
+}
+.automation-drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 15px; border-bottom: 1px solid #eee; }
+.automation-drawer-title { margin: 0; font-size: 22px; font-weight: 600; color: #090031; }
+.automation-drawer-body { flex: 1; overflow-y: auto; padding: 0; min-height: 0; }
+.drawer-with-nav { display: flex; height: 100%; min-height: 0; }
+.drawer-nav {
+  flex-shrink: 0; width: 48px; background: #f4f4f4; border-right: 1px solid #ddd;
+  display: flex; flex-direction: column; align-items: center; padding: 12px 0;
+  overflow: visible;
+}
+.drawer-nav-item {
+  display: flex; align-items: center; justify-content: center; width: 100%; height: 40px;
+  color: #777; text-decoration: none; position: relative; margin-bottom: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.drawer-nav-item:hover { color: #333; background: #e8e8e8; }
+.drawer-nav-item.active { color: #5648D8; background: #ede9fc; }
+.drawer-nav-item.active::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: #5648D8;
+}
+.drawer-nav-badge {
+  position: absolute; top: 4px; right: 4px;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  font-size: 10px; font-weight: 600; line-height: 16px; text-align: center;
+  color: #fff; background: #d9534f; border-radius: 8px;
+  box-sizing: border-box;
+}
+.drawer-nav-tooltip {
+  position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+  margin-left: 10px; padding: 6px 12px;
+  background: #333; color: #fff; font-size: 12px; white-space: nowrap;
+  border-radius: 6px; pointer-events: none;
+  opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.drawer-nav-item:hover .drawer-nav-tooltip,
+.drawer-nav-item:focus .drawer-nav-tooltip {
+  opacity: 1; visibility: visible;
+}
+.drawer-content { flex: 1; overflow-y: auto; padding: 15px; min-height: 0; }
+.drawer-result-card-body { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.drawer-result-card-text { flex: 1; min-width: 0; }
+.drawer-result-card-action { flex-shrink: 0; }
+.drawer-cve-row { cursor: pointer; }
+.drawer-reason-cell { width: 1%; white-space: nowrap; text-align: right; padding-right: 12px !important; }
+.drawer-reason-arrow { color: #999; font-size: 12px; transition: transform 0.2s ease; }
+.drawer-reason-expanded-row td { vertical-align: top; border-top: none; background: #f9f9f9; }
+.drawer-reason-expanded-cell { padding: 12px 15px !important; }
+.drawer-reason-expanded-content { font-size: 13px; color: #555; }
+.drawer-reason-expanded-content ul li { margin-bottom: 4px; padding-left: 12px; position: relative; }
+.drawer-reason-expanded-content ul li::before { content: "•"; position: absolute; left: 0; color: #888; }
+.drawer-impact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 10px; }
+.drawer-impact-block { min-height: 140px; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fafafa; }
+.drawer-impact-block-title { font-size: 12px; font-weight: 600; margin: 0 0 8px 0; color: #555; }
+.drawer-impact-subtext { font-size: 11px; color: #666; margin: 2px 0 0 0; }
+.drawer-impact-canvas { display: block; max-height: 72px; }
+.drawer-impact-canvas-vendors { max-height: 80px; }
+.drawer-impact-kev-block { margin-top: 4px; display: flex; align-items: center; gap: 10px; }
+.drawer-impact-kev-donut-wrap { flex-shrink: 0; position: relative; width: 72px; height: 72px; }
+.drawer-impact-kev-donut { display: block; width: 72px; height: 72px; }
+.drawer-impact-kev-text { min-width: 0; }
+.drawer-impact-kev-main { font-size: 13px; color: #333; margin: 0 0 4px 0; }
+.drawer-section {
+  padding-top: 24px; margin-top: 24px; border-top: 1px solid #e0e0e0;
+}
+.drawer-section:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+.drawer-section h5 {
+  font-size: 17px; font-weight: 600; margin: 0 0 10px 0; color: #253841;
+  padding: 4px 8px; margin-left: -8px; margin-right: 0;
+  border-radius: 3px;
+}
+.drawer-section.highlight-from-menu h5 {
+  animation: drawer-title-highlight 1.5s ease;
+}
+@keyframes drawer-title-highlight {
+  0% { background-color: #ede9fc; box-shadow: inset 3px 0 0 #5648D8; }
+  70% { background-color: #ede9fc; box-shadow: inset 3px 0 0 #5648D8; }
+  100% { background-color: transparent; box-shadow: inset 3px 0 0 transparent; }
+}
+</style>
+<div id="automation-drawer-overlay" class="automation-drawer-overlay" aria-hidden="true"></div>
+<div id="automation-drawer" class="automation-drawer" aria-hidden="true">
+    <div class="automation-drawer-header">
+        <h4 class="automation-drawer-title">Execution details</h4>
+        <button type="button" class="btn btn-sm btn-default automation-drawer-close" aria-label="Close">&times;</button>
+    </div>
+    <div id="automation-drawer-body" class="automation-drawer-body"></div>
+</div>
+
+<script>
+(function() {
+    var drawerUrlBase = "{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id='00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', '');
+    var overlay = document.getElementById('automation-drawer-overlay');
+    var drawer = document.getElementById('automation-drawer');
+    var body = document.getElementById('automation-drawer-body');
+    var drawerChartInstances = [];
+
+    function openDrawer(executionId) {
+        drawerChartInstances.forEach(function(ch) {
+            if (ch) ch.destroy();
+        });
+        drawerChartInstances = [];
+        body.innerHTML = '<p class="text-muted">Loading...</p>';
+        overlay.setAttribute('aria-hidden', 'false');
+        drawer.setAttribute('aria-hidden', 'false');
+        overlay.classList.add('open');
+        drawer.classList.add('open');
+        var url = "{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id='00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', executionId);
+        fetch(url).then(function(r) { return r.text(); }).then(function(html) {
+            body.innerHTML = html;
+            initDrawerNav(body);
+            initImpactCharts(body);
+        }).catch(function() {
+            body.innerHTML = '<p class="text-danger">Failed to load execution details.</p>';
+        });
+    }
+    function initImpactCharts(container) {
+        var scriptEl = container.querySelector('#drawer-impact-chart-data');
+        if (!scriptEl || typeof Chart === 'undefined') return;
+        var data;
+        try {
+            data = JSON.parse(scriptEl.textContent);
+        } catch (e) {
+            return;
+        }
+        if (!data) return;
+
+        var cvssCanvas = container.querySelector('#drawer-cvss-distribution-chart');
+        if (cvssCanvas && data.cvss_distribution) {
+            var dist = data.cvss_distribution;
+            var cvssLabels = ['Critical', 'High', 'Medium', 'Low'];
+            var cvssValues = [dist.Critical || 0, dist.High || 0, dist.Medium || 0, dist.Low || 0];
+            var cvssColors = ['rgb(5, 3, 45)', 'rgb(50, 39, 151)', 'rgb(56, 117, 203)', 'rgb(16, 202, 249)'];
+            drawerChartInstances.push(new Chart(cvssCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: cvssLabels,
+                    datasets: [{ data: cvssValues, backgroundColor: cvssColors, borderWidth: 0 }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                    scales: {
+                        x: { beginAtZero: true, max: Math.max(1, Math.max.apply(null, cvssValues) + 1), ticks: { stepSize: 1, font: { size: 9 }, maxTicksLimit: 6 } },
+                        y: { ticks: { font: { size: 10 } } }
+                    }
+                }
+            }));
+        }
+
+        var epssCanvas = container.querySelector('#drawer-epss-distribution-chart');
+        if (epssCanvas && data.epss_distribution) {
+            var ed = data.epss_distribution;
+            var epssLabels = ['>0.9', '0.7-0.9', '<0.7'];
+            var epssValues = [ed.high || 0, ed.medium || 0, ed.low || 0];
+            var epssColors = ['rgb(180, 60, 60)', 'rgb(230, 160, 50)', 'rgb(70, 140, 200)'];
+            if (epssValues.some(function(v) { return v > 0; })) {
+                drawerChartInstances.push(new Chart(epssCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: epssLabels,
+                        datasets: [{ data: epssValues, backgroundColor: epssColors, borderWidth: 0 }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                        scales: {
+                            x: { beginAtZero: true, max: Math.max(1, Math.max.apply(null, epssValues) + 1), ticks: { stepSize: 1, font: { size: 9 }, maxTicksLimit: 6 } },
+                            y: { ticks: { font: { size: 10 } } }
+                        }
+                    }
+                }));
+            }
+        }
+
+        var kevCanvas = container.querySelector('#drawer-kev-donut-chart');
+        if (kevCanvas && typeof data.kev_percent === 'number') {
+            var kevPct = Math.min(100, Math.max(0, data.kev_percent));
+            drawerChartInstances.push(new Chart(kevCanvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['In KEV', 'Other'],
+                    datasets: [{
+                        data: [kevPct, 100 - kevPct],
+                        backgroundColor: ['rgb(34, 197, 94)', 'rgb(229, 231, 235)'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    cutout: '58%',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                },
+                plugins: [{
+                    afterDraw: function(chart) {
+                        var ctx = chart.ctx;
+                        var width = chart.width;
+                        var height = chart.height;
+                        var pct = chart.data.datasets[0].data[0];
+                        ctx.save();
+                        ctx.font = '600 12px sans-serif';
+                        ctx.fillStyle = '#374151';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(pct + '%', width / 2, height / 2);
+                        ctx.restore();
+                    }
+                }]
+            }));
+        }
+
+        var vendorsCanvas = container.querySelector('#drawer-vendors-chart');
+        if (vendorsCanvas && data.top_vendors_products && data.top_vendors_products.length > 0) {
+            var vLabels = data.top_vendors_products.map(function(v) { return v.name; });
+            var vValues = data.top_vendors_products.map(function(v) { return v.count; });
+            var vColors = ['rgb(50, 39, 151)', 'rgb(56, 117, 203)', 'rgb(16, 202, 249)', 'rgb(100, 180, 180)', 'rgb(180, 120, 80)'];
+            drawerChartInstances.push(new Chart(vendorsCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: vLabels,
+                    datasets: [{ data: vValues, backgroundColor: vColors.slice(0, vLabels.length), borderWidth: 0 }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                    scales: {
+                        x: { beginAtZero: true, max: Math.max(1, Math.max.apply(null, vValues) + 1), ticks: { stepSize: 1, font: { size: 9 }, maxTicksLimit: 6 } },
+                        y: { ticks: { font: { size: 10 } } }
+                    }
+                }
+            }));
+        }
+    }
+    function initDrawerNav(container) {
+        var content = container.querySelector('.drawer-content');
+        var navItems = container.querySelectorAll('.drawer-nav-item');
+        if (!content || !navItems.length) return;
+        navItems.forEach(function(a) {
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                var id = this.getAttribute('data-section');
+                var section = container.querySelector('#' + id);
+                if (section) {
+                    content.scrollTop = section.offsetTop - content.offsetTop;
+                    navItems.forEach(function(n) { n.classList.remove('active'); });
+                    this.classList.add('active');
+                    section.classList.remove('highlight-from-menu');
+                    section.offsetHeight;
+                    section.classList.add('highlight-from-menu');
+                    setTimeout(function() { section.classList.remove('highlight-from-menu'); }, 1500);
+                }
+            });
+        });
+        content.addEventListener('scroll', function() {
+            var top = content.scrollTop;
+            var sections = container.querySelectorAll('.drawer-section');
+            var activeId = null;
+            sections.forEach(function(s) {
+                if (s.offsetTop - content.offsetTop <= top + 60) activeId = s.id;
+            });
+            navItems.forEach(function(n) {
+                n.classList.toggle('active', n.getAttribute('data-section') === activeId);
+            });
+        });
+        function toggleReasonRow(targetId) {
+            var expandedRow = targetId ? document.getElementById(targetId) : null;
+            if (!expandedRow) return;
+            var isHidden = expandedRow.style.display === 'none';
+            expandedRow.style.display = isHidden ? '' : 'none';
+            var cveRow = container.querySelector('.drawer-cve-row[data-target="' + targetId + '"]');
+            var arrow = cveRow ? cveRow.querySelector('.drawer-reason-arrow') : null;
+            if (arrow) {
+                arrow.classList.remove('fa-chevron-right', 'fa-chevron-down');
+                arrow.classList.add(isHidden ? 'fa-chevron-down' : 'fa-chevron-right');
+            }
+        }
+        container.querySelectorAll('.drawer-cve-row').forEach(function(tr) {
+            tr.addEventListener('click', function(e) {
+                if (e.target.closest('a')) return;
+                toggleReasonRow(this.getAttribute('data-target'));
+            });
+        });
+    }
+    function closeDrawer() {
+        overlay.classList.remove('open');
+        drawer.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        drawer.setAttribute('aria-hidden', 'true');
+    }
+    overlay.addEventListener('click', closeDrawer);
+    if (drawer) {
+        var closeBtn = drawer.querySelector('.automation-drawer-close');
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    }
+    document.querySelectorAll('.automation-execution-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+            var executionId = this.getAttribute('data-execution-id');
+            if (executionId) openDrawer(executionId);
+        });
+    });
+})();
+</script>
+
+{% endblock %}

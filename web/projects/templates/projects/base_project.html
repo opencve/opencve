@@ -24,7 +24,7 @@
                 <li class="{% is_active_link 'subscriptions' %}">
                     <a href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}">Subscriptions</a>
                 </li>
-                <li class="{% is_active_link 'automations' 'create_automation' 'edit_automation' %}">
+                <li class="{% is_active_link 'automations' 'create_automation' 'automation_overview' 'automation_configuration' 'automation_results' 'automation_result_detail' 'automation_execution_detail' %}">
                     <a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}">Automations</a>
                 </li>
                 <li class="{% is_active_link 'notifications' 'create_notification' 'edit_notification' %}">

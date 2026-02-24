@@ -1,0 +1,42 @@
+<div class="col-md-3 col-sm-4">
+    <div class="box box-solid">
+        <div class="box-header with-border">
+            <h3 class="box-title">Menu</h3>
+        </div>
+        <div class="box-body no-padding">
+            <ul class="nav nav-pills nav-stacked">
+                <li class="{% if active_section == 'overview' %}active{% endif %}">
+                    <a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation.name %}"><i class="fa fa-dashboard"></i> Overview</a>
+                </li>
+                <li class="{% if active_section == 'config' %}active{% endif %}">
+                    <a href="{% url 'automation_configuration' org_name=request.current_organization.name project_name=project.name automation=automation.name %}"><i class="fa fa-cog"></i> Configuration</a>
+                </li>
+                <li class="{% if active_section == 'results' %}active{% endif %}">
+                    <a href="{% url 'automation_results' org_name=request.current_organization.name project_name=project.name automation=automation.name %}"><i class="fa fa-file-text-o"></i> Results</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="box box-primary">
+        <div class="box-header with-border">
+            <h3 class="box-title">Info</h3>
+        </div>
+        <div class="box-body">
+            <p>
+                <strong>Type:</strong>
+                <span class="label label-primary">
+                    {% if automation.trigger_type == "realtime" %}
+                        <i class="fa fa-bolt"></i>
+                    {% elif automation.trigger_type == "scheduled" %}
+                        <i class="fa fa-calendar"></i>
+                    {% else %}
+                        <i class="fa fa-question-circle"></i>
+                    {% endif %}
+                    {{ automation.get_trigger_type_display }}
+                </span>
+            </p>
+            <p><strong>Created:</strong> {{ automation.created_at|date:"d M Y H:i" }}</p>
+            <p><strong>Updated:</strong> {{ automation.updated_at|date:"d M Y H:i" }}</p>
+        </div>
+    </div>
+</div>

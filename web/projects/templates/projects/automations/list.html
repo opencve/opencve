@@ -13,7 +13,7 @@
             <i class="fa fa-plus"></i> New Automation
         </button>
 
-        <!-- Modal: choose trigger type -->
+        <!-- Modal: choose trigger type then template -->
         <div class="modal fade" id="newAutomationModal" tabindex="-1" role="dialog" aria-labelledby="newAutomationModalLabel">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -22,23 +22,91 @@
                         <h4 class="modal-title" id="newAutomationModalLabel">Choose automation type</h4>
                     </div>
                     <div class="modal-body">
-                        <div class="row automation-trigger-options">
-                            <div class="col-xs-6">
-                                <a href="{{ url_add_realtime }}" class="trigger-option trigger-option-realtime">
-                                    <span class="trigger-option-icon"><i class="fa fa-bolt"></i></span>
-                                    <span class="trigger-option-title">Real-time automation</span>
-                                    <span class="trigger-option-desc">Runs when a CVE is created or updated. Notify, assign user, or change status.</span>
-                                    <span class="trigger-option-select">Select</span>
+                        <!-- Step 1: trigger type (realtime / scheduled) -->
+                        <div id="newAutomationStepTrigger" class="new-automation-step">
+                            <div class="row automation-trigger-options">
+                                <div class="col-xs-6">
+                                    <a href="#" class="trigger-option trigger-option-realtime" data-trigger="realtime">
+                                        <span class="trigger-option-icon"><i class="fa fa-bolt"></i></span>
+                                        <span class="trigger-option-title">Real-time monitoring</span>
+                                        <span class="trigger-option-desc">Processes new or updated CVEs hourly and triggers actions automatically.</span>
+                                        <span class="trigger-option-select">Select</span>
+                                    </a>
+                                </div>
+                                <div class="col-xs-6">
+                                    <a href="#" class="trigger-option trigger-option-scheduled" data-trigger="scheduled">
+                                        <span class="trigger-option-icon"><i class="fa fa-calendar"></i></span>
+                                        <span class="trigger-option-title">Scheduled report</span>
+                                        <span class="trigger-option-desc">Aggregates matching CVEs daily or weekly into a consolidated report.</span>
+                                        <span class="trigger-option-select">Select</span>
+                                    </a>
+                                </div>
+                            </div>
+                            <p class="text-center" style="margin-top: 1em;">
+                                <a href="https://docs.opencve.io" target="_blank" rel="noopener noreferrer">What's the difference?</a>
+                            </p>
+                        </div>
+
+                        <!-- Step 2: template list (shown after choosing trigger type) -->
+                        <div id="newAutomationStepTemplates" class="new-automation-step" style="display: none;">
+                            <h4 id="newAutomationTemplatesTitle" class="automation-templates-step-title text-center"></h4>
+                            <div id="newAutomationTemplatesRealtime" class="automation-template-list" style="display: none;">
+                                <a href="{{ url_add_realtime }}?template=recently_published" class="automation-template-option">
+                                    <span class="automation-template-title">🆕 Recently published CVEs</span>
+                                    <span class="automation-template-desc">Notify when new CVEs are published</span>
+                                </a>
+                                <a href="{{ url_add_realtime }}?template=kev_alert" class="automation-template-option">
+                                    <span class="automation-template-title">🔥 High severity KEV alert</span>
+                                    <span class="automation-template-desc">Notify when a CVE in KEV enters the project</span>
+                                </a>
+                                <a href="{{ url_add_realtime }}?template=critical_cve" class="automation-template-option">
+                                    <span class="automation-template-title">🚨 Critical CVE alert</span>
+                                    <span class="automation-template-desc">Notify when CVSS ≥ 9.0</span>
+                                </a>
+                                <a href="{{ url_add_realtime }}?template=auto_triage" class="automation-template-option">
+                                    <span class="automation-template-title">👤 New CVE auto-triage</span>
+                                    <span class="automation-template-desc">Assign new CVEs to a specific user</span>
+                                </a>
+                                <div class="automation-template-or-divider">
+                                    <span class="automation-template-or-divider-line"></span>
+                                    <span class="automation-template-or-divider-text">OR</span>
+                                    <span class="automation-template-or-divider-line"></span>
+                                </div>
+                                <a href="{{ url_add_realtime }}" class="automation-template-option">
+                                    <span class="automation-template-title">📌 Custom automation</span>
+                                    <span class="automation-template-desc">Start from scratch</span>
                                 </a>
                             </div>
-                            <div class="col-xs-6">
-                                <a href="{{ url_add_periodic }}" class="trigger-option trigger-option-periodic">
-                                    <span class="trigger-option-icon"><i class="fa fa-calendar"></i></span>
-                                    <span class="trigger-option-title">Scheduled report</span>
-                                    <span class="trigger-option-desc">Runs on a schedule (daily or weekly). Send a notification with the report.</span>
-                                    <span class="trigger-option-select">Select</span>
+                            <div id="newAutomationTemplatesScheduled" class="automation-template-list" style="display: none;">
+                                <a href="{{ url_add_scheduled }}?template=weekly_summary" class="automation-template-option">
+                                    <span class="automation-template-title">📅 Weekly security summary</span>
+                                    <span class="automation-template-desc">Report of all CVEs added this week</span>
+                                </a>
+                                <a href="{{ url_add_scheduled }}?template=weekly_kev" class="automation-template-option">
+                                    <span class="automation-template-title">🛡️ Weekly KEV CVEs alert</span>
+                                    <span class="automation-template-desc">Send a notification every week with newly added CVEs in the KEV list.</span>
+                                </a>
+                                <a href="{{ url_add_scheduled }}?template=daily_ai_summary" class="automation-template-option">
+                                    <span class="automation-template-title">🧠 Daily AI summary</span>
+                                    <span class="automation-template-desc">AI-generated overview of new CVEs</span>
+                                </a>
+                                <a href="{{ url_add_scheduled }}?template=weekly_pdf" class="automation-template-option">
+                                    <span class="automation-template-title">📄 Weekly PDF report</span>
+                                    <span class="automation-template-desc">PDF including severity breakdown</span>
+                                </a>
+                                <div class="automation-template-or-divider">
+                                    <span class="automation-template-or-divider-line"></span>
+                                    <span class="automation-template-or-divider-text">OR</span>
+                                    <span class="automation-template-or-divider-line"></span>
+                                </div>
+                                <a href="{{ url_add_scheduled }}" class="automation-template-option">
+                                    <span class="automation-template-title">📌 Custom report</span>
+                                    <span class="automation-template-desc">Start from scratch</span>
                                 </a>
                             </div>
+                            <p class="text-center" style="margin-top: 1.25em; margin-bottom: 0;">
+                                <a href="#" class="new-automation-back-link"><i class="fa fa-arrow-left"></i> Change type</a>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -52,8 +120,8 @@
             <div class="box-body no-padding">
                 <ul class="nav nav-pills nav-stacked">
                     <li class="{% if not request.GET.type %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}"><i class="fa fa-inbox"></i> All</a></li>
-                    <li class="{% if request.GET.type == 'realtime' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?type=realtime"><i class="fa fa-bolt"></i> React to CVE</a></li>
-                    <li class="{% if request.GET.type == 'periodic' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?type=periodic"><i class="fa fa-calendar"></i> Periodic</a></li>
+                    <li class="{% if request.GET.type == 'realtime' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?type=realtime"><i class="fa fa-bolt"></i> Real-time monitoring</a></li>
+                    <li class="{% if request.GET.type == 'scheduled' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?type=scheduled"><i class="fa fa-calendar"></i> Scheduled report</a></li>
                 </ul>
             </div>
         </div>
@@ -71,15 +139,6 @@
             </div>
         </div>
 
-        <div class="box box-primary">
-            <div class="box-header">
-                <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
-            </div>
-            <div class="box-body">
-                <p class="small"><strong>React to CVE</strong>: runs when a CVE is created or updated. Actions: notification, assign user, change status.</p>
-                <p class="small"><strong>Periodic</strong>: runs on a schedule (Daily/Weekly/Monthly). Action: send notification.</p>
-            </div>
-        </div>
     </div>
 
     <!-- Right column: title + list of automations (mailbox table style) -->
@@ -105,16 +164,16 @@
                             {% for automation in automations %}
                             <tr>
                                 <td>
-                                    {% if automation.trigger_type == 'periodic' %}
-                                        <i class="fa fa-calendar text-muted" title="Periodic — {{ automation.get_frequency_display }}"></i>
+                                    {% if automation.trigger_type == 'scheduled' %}
+                                        <i class="fa fa-calendar text-muted" title="Scheduled — {{ automation.get_frequency_display }}"></i>
                                     {% else %}
                                         <i class="fa fa-bolt text-muted" title="Real-time"></i>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{% url 'edit_automation' org_name=request.current_organization.name project_name=project.name automation=automation.name %}"><strong>{{ automation.name }}</strong></a>
+                                    <a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation.name %}"><strong>{{ automation.name }}</strong></a>
                                 </td>
-                                <td class="text-center">{{ automation.configuration.conditions|length }}</td>
+                                <td class="text-center">{{ automation.conditions_count }}</td>
                                 <td class="text-center">{{ automation.configuration.actions|length }}</td>
                                 <td class="text-center">
                                     {% if automation.is_enabled %}
@@ -137,5 +196,45 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    var modal = document.getElementById('newAutomationModal');
+    if (!modal) return;
+    var stepTrigger = document.getElementById('newAutomationStepTrigger');
+    var stepTemplates = document.getElementById('newAutomationStepTemplates');
+    var templatesTitle = document.getElementById('newAutomationTemplatesTitle');
+    var listRealtime = document.getElementById('newAutomationTemplatesRealtime');
+    var listScheduled = document.getElementById('newAutomationTemplatesScheduled');
+
+    function showTriggerStep() {
+        stepTrigger.style.display = 'block';
+        stepTemplates.style.display = 'none';
+        listRealtime.style.display = 'none';
+        listScheduled.style.display = 'none';
+    }
+
+    function showTemplatesStep(trigger) {
+        stepTrigger.style.display = 'none';
+        stepTemplates.style.display = 'block';
+        listRealtime.style.display = trigger === 'realtime' ? 'block' : 'none';
+        listScheduled.style.display = trigger === 'scheduled' ? 'block' : 'none';
+        templatesTitle.textContent = trigger === 'realtime' ? 'Choose a template (real-time)' : 'Choose a template (scheduled)';
+    }
+
+    var openBtn = document.querySelector('[data-target="#newAutomationModal"]');
+    if (openBtn) openBtn.addEventListener('click', showTriggerStep);
+
+    [].forEach.call(modal.querySelectorAll('.trigger-option[data-trigger]'), function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            showTemplatesStep(el.getAttribute('data-trigger'));
+        });
+    });
+
+    var backLink = modal.querySelector('.new-automation-back-link');
+    if (backLink) backLink.addEventListener('click', function(e) { e.preventDefault(); showTriggerStep(); });
+})();
+</script>
 
 {% endblock %}

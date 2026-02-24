@@ -37,18 +37,17 @@
                     <h3 class="box-title">Conditions</h3>
                 </div>
                 <div class="box-body">
-                    <!-- SCHEDULE Section (periodic only; realtime uses WHEN below) -->
-                    {% if trigger_type == 'periodic' %}
+                    <!-- SCHEDULE Section (scheduled only; realtime uses WHEN below) -->
+                    {% if trigger_type == 'scheduled' %}
                     <div class="automation-section">
                         <div class="section-header">
                             <span class="section-label">SCHEDULE</span>
                             <span class="section-description trigger-description-inline">
-                                A periodic report is generated
+                                A scheduled report is generated
                                 <select name="frequency" id="id_frequency" class="form-control trigger-frequency-select select2" required>
                                     <option value="daily" {% if form.frequency.value == 'daily' %}selected{% endif %}>Daily</option>
                                     <option value="weekly" {% if form.frequency.value == 'weekly' %}selected{% endif %}>Weekly</option>
                                 </select>
-                                .
                             </span>
                         </div>
                         {% if form.trigger_type.errors %}<p class="text-danger">{{ form.trigger_type.errors.0 }}</p>{% endif %}
@@ -76,11 +75,11 @@
 
                     <!-- Conditions: OR groups (each group = AND of conditions) -->
                     <div id="conditions-section">
-                        <!-- First AND group (IF / SCOPE for periodic) -->
+                        <!-- First AND group (IF / SCOPE for scheduled) -->
                         <div class="automation-section">
                             <div class="condition-group" data-group-index="0">
                                 <div class="section-header">
-                                    <span class="section-label">{% if trigger_type == 'periodic' %}SCOPE{% else %}IF{% endif %}</span>
+                                    <span class="section-label">{% if trigger_type == 'scheduled' %}SCOPE{% else %}IF{% endif %}</span>
                                     <span class="section-description">
                                         all of these conditions match
                                     </span>
@@ -101,7 +100,7 @@
                             <div class="automation-section">
                                 <div class="condition-group" data-group-index="">
                                     <div class="section-header section-header-with-remove">
-                                        <span class="section-label">OR {% if trigger_type == 'periodic' %}SCOPE{% else %}IF{% endif %}</span>
+                                        <span class="section-label">OR {% if trigger_type == 'scheduled' %}SCOPE{% else %}IF{% endif %}</span>
                                         <span class="section-description">all of these conditions match</span>
                                         <button type="button" class="btn btn-sm btn-default btn-remove-or-group" title="Remove this OR group">
                                             <i class="fa fa-trash"></i> Remove OR group

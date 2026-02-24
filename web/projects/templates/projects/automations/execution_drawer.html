@@ -1,0 +1,178 @@
+{% load static %}
+<div class="drawer-with-nav">
+    <nav class="drawer-nav" aria-label="Sections">
+        <a href="#drawer-section-executioninfo" class="drawer-nav-item active" data-section="drawer-section-executioninfo"><i class="fa fa-info-circle"></i><span class="drawer-nav-tooltip">Execution info</span></a>
+        <a href="#drawer-section-impact" class="drawer-nav-item" data-section="drawer-section-impact"><i class="fa fa-bar-chart"></i><span class="drawer-nav-tooltip">Impact summary</span></a>
+        <a href="#drawer-section-results" class="drawer-nav-item" data-section="drawer-section-results"><i class="fa fa-file-text-o"></i><span class="drawer-nav-badge">{{ results|length }}</span><span class="drawer-nav-tooltip">Results</span></a>
+        <a href="#drawer-section-cves" class="drawer-nav-item" data-section="drawer-section-cves"><i class="fa fa-shield"></i><span class="drawer-nav-badge">{{ cves_table_data|length }}</span><span class="drawer-nav-tooltip">CVEs</span></a>
+    </nav>
+    <div class="drawer-content">
+        <div id="drawer-section-executioninfo" class="drawer-section drawer-execution-info">
+            <h5>Execution info</h5>
+            <dl class="dl-horizontal" style="margin-bottom: 0;">
+                <dt>Execution time</dt>
+                <dd>{% if automation.trigger_type == 'realtime' %}{{ execution.executed_at|date:"Y-m-d" }} {{ execution.window_start|time:"H:i" }} → {{ execution.window_end|time:"H:i" }}{% else %}{{ execution.executed_at|date:"Y-m-d H:i" }}{% endif %}</dd>
+                <dt>Window</dt>
+                <dd>{{ execution.window_start|date:"Y-m-d H:i" }} – {{ execution.window_end|date:"Y-m-d H:i" }}</dd>
+                <dt>CVEs matched</dt>
+                <dd>{{ execution.matched_cves_count }}</dd>
+                <dt>Duration</dt>
+                <dd>—</dd>
+            </dl>
+        </div>
+
+        <div id="drawer-section-impact" class="drawer-section drawer-impact">
+            <h5>Impact summary</h5>
+            {% if impact_chart_data %}
+            <script type="application/json" id="drawer-impact-chart-data">{{ impact_chart_data_json|safe }}</script>
+            <div class="drawer-impact-grid">
+                <div class="drawer-impact-block">
+                    <h6 class="drawer-impact-block-title">CVSS Severity Distribution</h6>
+                    <canvas id="drawer-cvss-distribution-chart" class="drawer-impact-canvas" width="240" height="72"></canvas>
+                    <p class="drawer-impact-subtext">Highest: {{ impact_chart_data.highest_cvss|default:"—" }}{% if impact_chart_data.highest_cvss_version %} ({{ impact_chart_data.highest_cvss_version }}){% endif %}</p>
+                    <p class="drawer-impact-subtext">Average: {{ impact_chart_data.average_cvss|default:"—" }}</p>
+                </div>
+                <div class="drawer-impact-block">
+                    <h6 class="drawer-impact-block-title">EPSS Distribution</h6>
+                    <canvas id="drawer-epss-distribution-chart" class="drawer-impact-canvas" width="240" height="72"></canvas>
+                    <p class="drawer-impact-subtext">Highest: {{ impact_chart_data.epss_max|default:"—" }}</p>
+                    <p class="drawer-impact-subtext">Average: {{ impact_chart_data.epss_avg|default:"—" }}</p>
+                </div>
+                <div class="drawer-impact-block">
+                    <h6 class="drawer-impact-block-title">KEV Statistics</h6>
+                    <div class="drawer-impact-kev-block">
+                        <div class="drawer-impact-kev-donut-wrap">
+                            <canvas id="drawer-kev-donut-chart" class="drawer-impact-kev-donut" width="72" height="72"></canvas>
+                        </div>
+                        <div class="drawer-impact-kev-text">
+                            <p class="drawer-impact-kev-main"><strong>{{ impact_chart_data.kev_count }}/{{ impact_chart_data.cves_count }}</strong> CVEs in KEV</p>
+                            <p class="drawer-impact-subtext">{{ impact_chart_data.kev_percent }}% exposure rate</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer-impact-block">
+                    <h6 class="drawer-impact-block-title">Top Vendors / Products</h6>
+                    <canvas id="drawer-vendors-chart" class="drawer-impact-canvas drawer-impact-canvas-vendors" width="240" height="72"></canvas>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted">No impact summary available.</p>
+            {% endif %}
+        </div>
+
+        <div id="drawer-section-results" class="drawer-section drawer-results">
+            <h5>Results ({{ results|length }})</h5>
+            {% if results %}
+            <div class="drawer-result-cards">
+                {% for result in results %}
+                <div class="panel panel-default drawer-result-card drawer-result-card--{{ result.status }}" style="margin-bottom: 10px;">
+                    <div class="panel-body drawer-result-card-body">
+                        <div class="drawer-result-card-text">
+                        {% if result.output_type == 'notification_sent' %}
+                            <p style="margin: 0 0 4px 0;"><strong>🔔 Notification sent</strong></p>
+                        {% elif result.output_type == 'report' %}
+                            <p style="margin: 0 0 4px 0;"><strong>📄 Report generated</strong></p>
+                        {% elif result.output_type == 'pdf' %}
+                            <p style="margin: 0 0 4px 0;"><strong>📥 PDF generated</strong></p>
+                        {% elif result.output_type == 'ai_summary' %}
+                            <p style="margin: 0 0 4px 0;"><strong>🤖 AI Summary created</strong></p>
+                        {% elif result.output_type == 'assignment' %}
+                            <p style="margin: 0 0 4px 0;"><strong>📋 Assignments</strong></p>
+                        {% elif result.output_type == 'status_change' %}
+                            <p style="margin: 0 0 4px 0;"><strong>🔄 Status changes</strong></p>
+                        {% else %}
+                            <p style="margin: 0 0 4px 0;"><strong>{{ result.label }}</strong></p>
+                        {% endif %}
+                            <p class="text-muted" style="margin: 0;">{{ result.summary_display }}</p>
+                        </div>
+                        <div class="drawer-result-card-action">
+                        {% if result.output_type == 'notification_sent' %}
+                            {% if result.details.response_url %}
+                            <a href="{{ result.details.response_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See response</a>
+                            {% endif %}
+                        {% elif result.output_type == 'report' %}
+                            {% if result.details.report_day %}
+                            <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See report</a>
+                            {% endif %}
+                        {% elif result.output_type == 'pdf' %}
+                            {% if result.details.file_path %}
+                            <a href="{% url 'automation_execution_result_download' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=execution.id result_id=result.id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">Download PDF</a>
+                            {% endif %}
+                        {% elif result.output_type == 'ai_summary' %}
+                            {% if result.details.report_day %}
+                            <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See Summary</a>
+                            {% elif result.details.url %}
+                            <a href="{{ result.details.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See Summary</a>
+                            {% endif %}
+                        {% else %}
+                            {% if result.details.report_day %}
+                            <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">View report</a>
+                            {% elif result.details.file_path %}
+                            <a href="{% url 'automation_execution_result_download' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=execution.id result_id=result.id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">Download</a>
+                            {% elif result.details.url %}
+                            <a href="{{ result.details.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">Open link</a>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No results for this execution.</p>
+            {% endif %}
+        </div>
+
+        <div id="drawer-section-cves" class="drawer-section drawer-cves">
+            <h5>CVEs</h5>
+            {% if cves_table_data %}
+            <div class="table-responsive">
+                <table class="table table-condensed table-hover">
+                    <thead>
+                        <tr>
+                            <th>CVE ID</th>
+                            <th>CVSS 3.1</th>
+                            <th>EPSS</th>
+                            <th>KEV</th>
+                            <th>Vendor / Product</th>
+                            <th>Reason matched</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in cves_table_data %}
+                        <tr {% if row.reason_matched %}class="drawer-cve-row" data-target="drawer-reason-{{ forloop.counter }}"{% endif %}>
+                            <td><a href="{% url 'cve' cve_id=row.cve_id %}" target="_blank" rel="noopener noreferrer">{{ row.cve_id }}</a></td>
+                            <td>{% if row.cvss_31 != None %}{{ row.cvss_31 }}{% else %}—{% endif %}</td>
+                            <td>{% if row.epss != None %}{{ row.epss }}{% else %}—{% endif %}</td>
+                            <td>{% if row.kev %}<span class="label label-danger">Yes</span>{% else %}<span class="label label-success">No</span>{% endif %}</td>
+                            <td>{% if row.matched_vendor_or_product %}{{ row.matched_vendor_or_product }}{% else %}—{% endif %}</td>
+                            <td class="drawer-reason-cell">
+                                {% if row.reason_matched %}
+                                <i class="fa fa-chevron-right drawer-reason-arrow" aria-hidden="true"></i>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% if row.reason_matched %}
+                        <tr id="drawer-reason-{{ forloop.counter }}" class="drawer-reason-expanded-row" style="display: none;">
+                            <td colspan="6" class="drawer-reason-expanded-cell">
+                                <div class="drawer-reason-expanded-content">
+                                    <strong>Matched because:</strong>
+                                    <ul class="list-unstyled" style="margin: 8px 0 0 0; padding-left: 0;">
+                                        {% for r in row.reason_matched %}
+                                        <li>{{ r }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No CVE list available for this execution.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

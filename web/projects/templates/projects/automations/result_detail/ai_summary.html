@@ -1,0 +1,16 @@
+{% extends 'projects/automations/result_detail_base.html' %}
+
+{% block result_content %}
+<p><strong>AI Summary</strong></p>
+{% if result.details.preview %}
+    <div class="well" style="white-space: pre-wrap;">{{ result.details.preview }}</div>
+{% endif %}
+{% if result.details.report_day %}
+    <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fa fa-file-text-o"></i> See Summary</a>
+{% elif result.details.url %}
+    <a href="{{ result.details.url }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fa fa-external-link"></i> See Summary</a>
+{% endif %}
+{% if not result.details.preview and not result.details.report_day and not result.details.url %}
+    <p class="text-muted">No summary content or link available.</p>
+{% endif %}
+{% endblock %}

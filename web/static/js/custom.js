@@ -2900,81 +2900,188 @@ $(document).ready(function() {
   if ($('#automation-form').length === 0 || $('#conditions-section').length === 0) return;
   (function() {
     'use strict';
-    var isEventMode = typeof automationTriggerType === 'undefined' || automationTriggerType !== 'periodic';
-    var conditionCategoriesEvent = {
-      'severity_risk': { label: 'Severity & Risk', conditions: ['cvss_gte', 'epss_gte', 'kev_added'] },
-      'scope_matching': { label: 'Scope & Matching', conditions: ['vendor_equals', 'product_equals', 'query_match', 'view_match'] },
-      'project_context': { label: 'Project Context', conditions: ['cve_newer_than', 'cve_unassigned', 'cve_status'] }
+    var conditionCategories = {
+      'severity_scoring': { 
+        label: 'Severity & scoring', 
+        conditions: ['cvss_gte', 'epss_gte'] 
+      },
+      'threat_context': { 
+        label: 'Threat context', 
+        conditions: ['kev_present'] 
+      },
+      'targeting_filters': { 
+        label: 'Targeting filters', 
+        conditions: ['vendor_equals', 'product_equals', 'query_match', 'view_match'] 
+      },
+      'project_state': { 
+        label: 'Project state', 
+        conditions: ['cve_newer_than', 'cve_unassigned', 'cve_status'] 
+      }
     };
-    var conditionCategoriesScheduled = {
-      'severity_risk': { label: 'Severity & Risk', conditions: ['cvss_gte', 'epss_gte'] },
-      'scope_matching': { label: 'Scope & Matching', conditions: ['vendor_equals', 'product_equals', 'query_match', 'view_match'] },
-      'project_context': { label: 'Project Context', conditions: ['cve_newer_than', 'cve_unassigned', 'cve_status'] }
-    };
-    var conditionCategories = isEventMode ? conditionCategoriesEvent : conditionCategoriesScheduled;
+        
     var triggerCategories = {
-      'cve_lifecycle': { label: 'CVE Lifecycle', triggers: ['cve_created', 'cve_updated'] },
-      'score_risk': { label: 'Score & Risk Changes', triggers: ['cvss_changed', 'cvss_increased', 'cvss_decreased', 'epss_changed', 'kev_added'] },
-      'affected_scope': { label: 'Affected Scope Changes', triggers: ['new_vendor', 'new_product'] },
-      'content_changes': { label: 'Content Changes', triggers: ['description_changed', 'title_changed', 'summary_changed', 'new_reference', 'new_weakness'] },
-      'project_context_changes': { label: 'Project Context Changes', triggers: ['cve_status_changed', 'cve_assignment_changed'] }
+      'project_lifecycle': { 
+        label: 'Project lifecycle', 
+        triggers: ['cve_enters_project'] 
+      },
+      'scoring_changes': { 
+        label: 'Scoring changes', 
+        triggers: ['cvss_increased', 'cvss_decreased', 'epss_increased', 'epss_decreased'] 
+      },
+      'threat_intelligence': { 
+        label: 'Threat intelligence', 
+        triggers: ['kev_added'] 
+      },
+      'affected_components': { 
+        label: 'Affected components', 
+        triggers: ['new_vendor', 'new_product'] 
+      },
+      'content_updates': { 
+        label: 'Content updates', 
+        triggers: ['description_changed', 'title_changed', 'new_reference', 'new_weakness'] 
+      }
     };
+    
     var triggerTypes = {
-      cve_created: { label: 'A CVE is created' },
-      cve_updated: { label: 'A CVE is updated (any field)' },
-      cvss_changed: { label: 'The CVSS score changes' },
-      cvss_increased: { label: 'The CVSS score increases' },
-      cvss_decreased: { label: 'The CVSS score decreases' },
-      epss_changed: { label: 'The EPSS score changes' },
-      kev_added: { label: 'The CVE is added to the KEV catalog' },
-      new_vendor: { label: 'A new affected vendor is added' },
-      new_product: { label: 'A new affected product is added' },
-      description_changed: { label: 'The description changes' },
-      title_changed: { label: 'The title changes' },
-      summary_changed: { label: 'The summary changes' },
-      new_reference: { label: 'A new reference is added' },
-      new_weakness: { label: 'A new weakness is added' },
-      cve_status_changed: { label: 'The CVE status changes' },
-      cve_assignment_changed: { label: 'The CVE assignment changes' }
+      cve_enters_project: { 
+        label: 'A CVE enters this project' 
+      },
+      cvss_increased: { 
+        label: 'The CVSS score increases' 
+      },
+      cvss_decreased: { 
+        label: 'The CVSS score decreases' 
+      },
+      epss_increased: { 
+        label: 'The EPSS score increases' 
+      },
+      epss_decreased: { 
+        label: 'The EPSS score decreases' 
+      },
+      kev_added: { 
+        label: 'The CVE is added to the CISA KEV catalog' 
+      },
+      new_vendor: { 
+        label: 'A new affected vendor is added' 
+      },
+      new_product: { 
+        label: 'A new affected product is added' 
+      },
+      description_changed: { 
+        label: 'The description changes' 
+      },
+      title_changed: { 
+        label: 'The title changes' 
+      },
+      new_reference: { 
+        label: 'A new reference is added' 
+      },
+      new_weakness: { 
+        label: 'A new weakness is added' 
+      }
     };
+    
     var conditionTypes = {
-      cvss_gte: { label: 'The CVSS {version} score is greater than or equal to {value}', input: 'cvss_composite', versions: ['v3.0', 'v3.1', 'v4.0'], min: 0, max: 10, step: 0.1 },
-      cvss_increased: { label: 'The CVSS {version} score has increased', input: 'cvss_version_select', versions: ['v3.0', 'v3.1', 'v4.0'] },
-      cvss_increased_by: { label: 'The CVSS {version} score has increased by at least {value} points', input: 'cvss_increase_composite', versions: ['v3.0', 'v3.1', 'v4.0'], min: 0, max: 10, step: 0.1 },
-      epss_gte: { label: 'The EPSS score is greater than or equal to {value}', input: 'number', min: 0, max: 1, step: 0.001 },
-      kev_added: { label: 'The CVE has been added to the KEV catalog', input: 'boolean' },
-      vendor_equals: { label: 'The vendor matches {value}', input: 'text', placeholder: 'e.g., apache' },
-      product_equals: { label: 'The product matches {value}', input: 'text', placeholder: 'e.g., httpd' },
-      query_match: { label: 'The CVE matches the query {value}', input: 'text', placeholder: 'e.g., kev:true AND cvss31>=8' },
-      view_match: { label: 'The CVE matches the view {value}', input: 'select', options: 'views' },
-      new_vendor: { label: 'A new vendor is affected', input: 'boolean' },
-      new_product: { label: 'A new product is affected', input: 'boolean' },
-      new_weakness: { label: 'A new weakness has been added', input: 'boolean' },
-      new_reference: { label: 'A new reference has been added', input: 'boolean' },
-      description_changed: { label: 'The CVE description has been modified', input: 'boolean' },
-      summary_changed: { label: 'The CVE summary has been modified', input: 'boolean' },
-      title_changed: { label: 'The CVE title has been modified', input: 'boolean' },
-      cve_newer_than: { label: 'The CVE is newer than {value} days', input: 'number', min: 0, max: 365, step: 1 },
-      cve_unassigned: { label: 'The CVE is unassigned', input: 'boolean' },
-      cve_status: { label: 'The CVE status is {status}', input: 'select', options: 'statuses' }
+      cvss_gte: { 
+        label: 'The CVSS {version} score is greater than or equal to {value}', 
+        input: 'cvss_composite', 
+        versions: ['v4.0', 'v3.1', 'v3.0', 'v2.0'], 
+        min: 0, 
+        max: 10, 
+        step: 0.1 
+      },
+      epss_gte: { 
+        label: 'The EPSS score is greater than or equal to {value}', 
+        input: 'number', 
+        min: 0, 
+        max: 1, 
+        step: 0.001 
+      },
+      kev_present: { 
+        label: 'The CVE is listed in the CISA KEV catalog', 
+        input: 'boolean' 
+      },
+      vendor_equals: { 
+        label: 'The vendor matches {value}', 
+        input: 'text', 
+        placeholder: 'e.g., apache' 
+      },
+      product_equals: { 
+        label: 'The product matches {value}', 
+        input: 'text', 
+        placeholder: 'e.g., httpd' 
+      },
+      query_match: { 
+        label: 'The CVE matches the query {value}', 
+        input: 'text', 
+        placeholder: 'e.g., kev:true AND cvss31>=8' 
+      },
+      view_match: { 
+        label: 'The CVE matches the view {value}',
+        input: 'select', 
+        options: 'views' 
+      },
+      cve_newer_than: { 
+        label: 'The CVE was published less than {value} days ago', 
+        input: 'number', 
+        min: 0, 
+        max: 365, 
+        step: 1 
+      },
+      cve_unassigned: { 
+        label: 'The CVE is unassigned', 
+        input: 'boolean' 
+      },
+      cve_status: { 
+        label: 'The CVE status is {status}', 
+        input: 'select', 
+        options: 'statuses' 
+      }
     };
+    
     var allActionTypes = {
-      send_notification: { label: 'Send a notification using {notification}', input: 'select', options: 'notifications' },
-      assign_user: { label: 'Assign the CVE to the user {user}', input: 'select', options: 'users' },
-      change_status: { label: 'Change the CVE status to {status}', input: 'select', options: 'statuses' },
-      generate_pdf: { label: 'Generate a PDF report', input: 'boolean' },
-      include_ai_summary: { label: 'Include an AI summary in the report', input: 'boolean' }
+      send_notification: { 
+        label: 'Send a notification using {notification}', 
+        input: 'select', 
+        options: 'notifications' 
+      },
+      assign_user: { 
+        label: 'Assign the CVE to the user {user}', 
+        input: 'select', 
+        options: 'users' 
+      },
+      change_status: { 
+        label: 'Change the CVE status to {status}', 
+        input: 'select', 
+        options: 'statuses' 
+      },
+      generate_report: { 
+        label: 'Generate a report', 
+        input: 'boolean' 
+      },
+      generate_pdf: { 
+        label: 'Generate a PDF report', 
+        input: 'boolean' 
+      },
+      include_ai_summary: { 
+        label: 'Generate an AI summary', 
+        input: 'boolean' 
+      }
     };
+    
     var actionTypes = {};
-    if (typeof automationTriggerType !== 'undefined' && automationTriggerType === 'periodic') {
+    
+    if (typeof automationTriggerType !== 'undefined' && automationTriggerType === 'scheduled') {
       actionTypes.send_notification = allActionTypes.send_notification;
       actionTypes.generate_pdf = allActionTypes.generate_pdf;
+      actionTypes.generate_report = allActionTypes.generate_report;
       actionTypes.include_ai_summary = allActionTypes.include_ai_summary;
     } else {
       actionTypes.send_notification = allActionTypes.send_notification;
       actionTypes.assign_user = allActionTypes.assign_user;
       actionTypes.change_status = allActionTypes.change_status;
     }
+    
     function populateConditionDropdown($select) {
       $select.empty();
       $select.append($('<option>', { value: '', text: '' }));
@@ -3045,12 +3152,10 @@ $(document).ready(function() {
       var type = e.params.data.id;
       if (type) { addActionUI(type); actionDropdown.val(null).trigger('change'); }
     });
-    if ($('#add-trigger-dropdown').length) {
-      $('#add-trigger-dropdown').on('select2:select', function(e) {
-        var type = e.params.data.id;
-        if (type) { addTriggerUI(type); $(this).val(null).trigger('change'); }
-      });
-    }
+    $(document).on('select2:select', '#add-trigger-dropdown', function(e) {
+      var type = e.params.data.id;
+      if (type) { addTriggerUI(type); $(this).val(null).trigger('change'); }
+    });
     $(document).on('click', '.remove-trigger', function() {
       $(this).closest('.trigger-item').remove();
       updateConfigurationJSON();
@@ -3237,8 +3342,10 @@ $(document).ready(function() {
           conditionsToAdd.forEach(function(condition) {
             var type = condition.type, value = condition.value;
             if (allowedConditionTypes.indexOf(type) === -1) return;
-            if (type === 'cvss31_gte') { type = 'cvss_gte'; value = { version: 'v3.1', value: value }; }
+            if (type === 'cvss20_gte') { type = 'cvss_gte'; value = { version: 'v2.0', value: value }; }
+            else if (type === 'cvss31_gte') { type = 'cvss_gte'; value = { version: 'v3.1', value: value }; }
             else if (type === 'cvss40_gte') { type = 'cvss_gte'; value = { version: 'v4.0', value: value }; }
+            else if (type === 'cvss20_increased') { type = 'cvss_increased'; value = { version: 'v2.0' }; }
             else if (type === 'cvss30_increased') { type = 'cvss_increased'; value = { version: 'v3.0' }; }
             else if (type === 'cvss40_increased_by') { type = 'cvss_increased_by'; value = { version: 'v4.0', value: value }; }
             addConditionUI(type, value, $group);

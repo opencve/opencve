@@ -1,0 +1,15 @@
+{% extends 'projects/automations/result_detail_base.html' %}
+
+{% block result_content %}
+<p><strong>Assignments</strong></p>
+{% if result.details.summary %}
+    <p>{{ result.details.summary }}</p>
+{% endif %}
+<dl class="dl-horizontal">
+    {% if result.details.assigned_count is not None %}<dt>CVEs assigned</dt><dd>{{ result.details.assigned_count }}</dd>{% endif %}
+    {% if result.details.assignee %}<dt>Assignee</dt><dd>{{ result.details.assignee }}</dd>{% endif %}
+</dl>
+{% if not result.details.summary and result.details.assigned_count is None and not result.details.assignee %}
+    <p class="text-muted">No assignment details available.</p>
+{% endif %}
+{% endblock %}

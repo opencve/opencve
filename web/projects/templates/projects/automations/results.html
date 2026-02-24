@@ -1,0 +1,102 @@
+{% extends 'projects/base_project.html' %}
+{% load static %}
+{% load opencve_extras %}
+
+{% block title %}Results - {{ automation.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    {% include 'projects/automations/_menu.html' with active_section='results' %}
+
+    <!-- Right column: Filter box + Results box -->
+    <div class="col-md-9 col-sm-8">
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title">Filter</h3>
+            </div>
+            <div class="box-body">
+                <form method="get" action="{% url 'automation_results' org_name=request.current_organization.name project_name=project.name automation=automation.name %}" class="form-inline">
+                    <div class="form-group">
+                        <label for="result-type-select" class="control-label">Result type</label>
+                        <select name="type" id="result-type-select" class="form-control select2 select2-result-type" data-placeholder="All types">
+                            <option value="" {% if not filter_type %}selected{% endif %}>All</option>
+                            {% for type_key, type_label in result_type_choices %}
+                            <option value="{{ type_key }}" {% if filter_type == type_key %}selected{% endif %}>{{ type_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-left: 15px;">
+                        <label for="result-status-select" class="control-label">Status</label>
+                        <select name="status" id="result-status-select" class="form-control select2 select2-result-status" data-placeholder="All statuses">
+                            <option value="" {% if not filter_status %}selected{% endif %}>All</option>
+                            {% for status_key, status_label in result_status_choices %}
+                            <option value="{{ status_key }}" {% if filter_status == status_key %}selected{% endif %}>{{ status_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-left: 15px;">
+                        <button type="submit" class="btn btn-primary"><i class="fa fa-search"></i> Search</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Results <small>({{ page_obj.paginator.count }} total)</small></h3>
+            </div>
+            <div class="box-body no-padding">
+                {% if results %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 36px;"></th>
+                                <th>Type</th>
+                                <th>Execution</th>
+                                <th>Result</th>
+                                <th class="text-right"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in results %}
+                            <tr>
+                                <td>
+                                    <i class="fa {{ item.icon_class }} {% if item.result.status == 'success' %}text-success{% elif item.result.status == 'skipped' %}text-muted{% else %}text-danger{% endif %}" title="{{ item.result.get_status_display }}" data-toggle="tooltip" data-placement="top"></i>
+                                </td>
+                                <td>{{ item.result.label }}</td>
+                                <td>{{ item.result.automation_execution.executed_at|date:"Y-m-d H:i" }}</td>
+                                <td>{{ item.result.summary_display }}</td>
+                                <td class="text-right">
+                                    <a href="{% url 'automation_result_detail' org_name=request.current_organization.name project_name=project.name automation=automation.name result_id=item.result.id %}" class="btn btn-sm btn-default">{{ item.result.detail_action_label }}</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if page_obj.paginator.num_pages > 1 %}
+                <div class="box-footer text-center">
+                    <ul class="pagination pagination-sm no-margin">
+                        {% if page_obj.has_previous %}
+                        <li><a href="{% url 'automation_results' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' 1 %}">&laquo; first</a></li>
+                        <li><a href="{% url 'automation_results' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.previous_page_number %}">&lsaquo; prev</a></li>
+                        {% endif %}
+                        <li class="disabled"><span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                        {% if page_obj.has_next %}
+                        <li><a href="{% url 'automation_results' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.next_page_number %}">next &rsaquo;</a></li>
+                        <li><a href="{% url 'automation_results' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted" style="padding: 15px;">No results yet.{% if filter_type or filter_status %} Try changing the filters.{% endif %}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
