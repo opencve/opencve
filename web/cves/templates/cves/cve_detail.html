@@ -7,83 +7,43 @@
 
 {% block meta_description %}{{ cve.description }}{% endblock %}
 
-{% block navbar_title%}{{ cve.cve_id }}{% if cve.title %}<small><i> - {{ cve.title }}</i></small>{% endif %}{% endblock %}
+{% block navbar_title%}<a href="{% url 'cve' cve_id=cve.cve_id %}" class="navbar-title-cve-link">{{ cve.cve_id }}</a>{% if cve.title %}<small><i> - {{ cve.title }}</i></small>{% endif %}{% endblock %}
 
 {% block content %}
 
 <section class="content">
     <div class="row">
         <div class="col-md-9">
-            <div class="box box-primary">
-                <div class="box-body">
-                    <div class="cve-description-wrapper" id="cve-description-wrapper">
-                        <div class="cve-description-text" id="cve-description-text">
-                            {{ cve.description|linebreaksbr }}
-                        </div>
-                        <div class="text-center cve-description-see-more-wrap" id="cve-description-see-more-wrap" style="display: none;">
-                            <button type="button" class="btn btn-default btn-sm" id="cve-description-see-more-btn" data-label-more="See more" data-label-less="See less">See more</button>
-                        </div>
+            <div class="cve-description-summary-wrapper" id="cve-overview">
+                <div class="row cve-description-summary-row">
+                    <div class="col-md-8 cve-description-col">
+                        {% include "cves/includes/description.html" %}
+                    </div>
+                    <div class="col-md-4 cve-summary-col">
+                        {% include "cves/includes/summary.html" %}
                     </div>
                 </div>
             </div>
 
-            {% include "cves/metrics/base.html" %}
+            {% include "cves/includes/analysis.html" %}
 
             {% include "cves/includes/vendors_products.html" %}
+
+            {% include "cves/includes/remediation.html" %}
 
             {% include "cves/includes/tracking.html" %}
 
             {% include "cves/includes/advisories.html" %}
 
-            {% include "cves/includes/fixes.html" %}
+            {% include "cves/metrics/base.html" %}
 
             {% include "cves/includes/references.html" %}
 
-            <div class="box box-primary">
-                <div class="box-header">
-                    <div class="box-title">History</div>
-                    <div class="box-tools pull-right">
-                        <button type="button" class="btn btn-box-tool" data-widget="collapse"><iclass="fa fa-minus"></i></button>
-                    </div>
-                </div>
-
-                {% if cve.kb_json.opencve.changes %}
-                <div class="box-body">
-                    <div class="row">
-                        <div class="col-md-12">
-                            {% for change in cve.kb_json.opencve.changes reversed %}
-                            <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ change.created|convert_str_date|date:"r" }}</p>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-striped">
-                                    <thead>
-                                        <th>Type</th>
-                                        <th>Values Removed</th>
-                                        <th>Values Added</th>
-                                    </thead>
-                                    <tbody>
-
-                                    {% for event in change.data %}
-                                        {% with template_name="changes/change_"|add:event.type|add:".html" %}
-                                        {% include template_name %}
-                                        {% endwith %}
-                                    {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <hr />
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                {% else %}
-                <div class="box-body">
-                    <p class="alert alert-info">No history.</p>
-                </div>
-                {% endif %}
-            </div>
+            {% include "cves/includes/history.html" %}
         </div>
 
         <div class="col-md-3">
+            {% include "cves/includes/section_nav.html" %}
 
             {% if user.is_authenticated %}
             <div class="box box-primary">
@@ -106,6 +66,15 @@
                 </div>
             </div>
             {% endif %}
+
+            <div class="box box-primary" id="project-subscriptions-box">
+                <div class="box-header">
+                    <h3 class="box-title">Subscriptions</h3>
+                </div>
+                <div class="box-body project-subscriptions-body">
+                    {% include "cves/includes/subscriptions.html" with vendors_dict=vendors vendors_data_dict=vendors_data %}
+                </div>
+            </div>
         </div>
 
         <div class="col-md-3">
@@ -142,7 +111,7 @@
                 </div>
                 {% else %}
                 <div class="box-body">
-                    <p class="alert alert-info">No data.</p>
+                    <p class="text-muted"><em>No data.</em></p>
                 </div>
                 {% endif %}
             </div>
@@ -167,7 +136,7 @@
                 </div>
                 {% else %}
                 <div class="box-body">
-                    <p class="alert alert-info">No data.</p>
+                    <p class="text-muted"><em>No data.</em></p>
                 </div>
                 {% endif %}
             </div>
@@ -195,7 +164,7 @@
                 </div>
                 {% else %}
                 <div class="box-body">
-                    <p class="alert alert-info">No data.</p>
+                    <p class="text-muted"><em>No data.</em></p>
                 </div>
                 {% endif %}
             </div>
@@ -222,7 +191,7 @@
                 </div>
                 {% else %}
                 <div class="box-body">
-                    <p class="alert alert-info">No data.</p>
+                    <p class="text-muted"><em>No data.</em></p>
                 </div>
                 {% endif %}
             </div>
@@ -247,7 +216,7 @@
                 </div>
                 {% else %}
                 <div class="box-body">
-                    <p class="alert alert-info">No data.</p>
+                    <p class="text-muted"><em>No data.</em></p>
                 </div>
                 {% endif %}
             </div>
@@ -267,7 +236,7 @@
                         {% endfor %}
                         </ul>
                     {% else %}
-                    <p class="alert alert-info">No weakness.</p>
+                    <p class="text-muted"><em>No weakness.</em></p>
                     {% endif %}
                 </div>
             </div>

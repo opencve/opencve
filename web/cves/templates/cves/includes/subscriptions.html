@@ -1,73 +1,64 @@
 {% load opencve_extras %}
 
 {% if vendors_dict %}
-<table class="table table-striped table-bordered">
-    <thead>
-    <th>Vendors</th>
-    <th>Products</th>
-    </thead>
-    <tbody>
-    {% for vendor, products in vendors_dict.items %}
-    <tr>
-        <td>
-            <div class="vendor-item">
-                <span class="vendor-name">{{ vendor | humanize }}{% if vendor|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}</span>
-                {% if user.is_authenticated and vendors_data_dict %}
-                    {% with vendor_data=vendors_data_dict|get:vendor %}
-                    <button class="btn btn-default btn-xs subscribe-vendor"
-                            data-vendor-id="{{ vendor_data.vendor.id }}"
-                            data-vendor-name="{{ vendor }}"
-                            type="button">
-                        <i class="fa fa-bell-o"></i> {% if vendor_data.subscription_count > 0 %}Subscribed ({{ vendor_data.subscription_count }}){% else %}Subscribe{% endif %}
-                    </button>
-                    {% endwith %}
-                {% else %}
-                    <a href="{% url 'account_signup' %}" class="btn btn-default btn-xs">
-                        <i class="fa fa-bell-o"></i> Subscribe
-                    </a>
-                {% endif %}
-            </div>
-        </td>
-        <td>
-            <div class="product-list">
-                {% for product in products %}
-                <div class="product-item">
-                    <span class="product-name">
-                        {{ product | humanize }}
-                        {% with vendor_product_key=vendor|stringformat:"s"|add:"$PRODUCT$"|add:product %}
-                            {% if vendor_product_key|is_top_vendor_or_product %}
-                                <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>
-                            {% endif %}
-                        {% endwith %}
-                    </span>
-                    {% if user.is_authenticated and vendors_data_dict %}
-                        {% with vendor_data=vendors_data_dict|get:vendor %}
-                            {% with products_dict=vendor_data.products %}
-                                {% with product_obj=products_dict|get:product %}
-                                <button class="btn btn-default btn-xs subscribe-product"
-                                        data-vendor-id="{{ vendor_data.vendor.id }}"
-                                        data-vendor-name="{{ vendor }}"
-                                        data-product-id="{{ product_obj.product.id }}"
-                                        data-product-name="{{ product }}"
-                                        type="button">
-                                    <i class="fa fa-bell-o"></i> {% if product_obj.subscription_count > 0 %}Subscribed ({{ product_obj.subscription_count }}){% else %}Subscribe{% endif %}
-                                </button>
-                                {% endwith %}
-                            {% endwith %}
-                        {% endwith %}
-                    {% else %}
-                        <a href="{% url 'account_signup' %}" class="btn btn-default btn-xs">
-                            <i class="fa fa-bell-o"></i> Subscribe
-                        </a>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-        </td>
-    </tr>
+<div class="subscription-grid">
+{% for vendor, products in vendors_dict.items %}
+    <span class="subscription-vendor-name">
+        <span class="subscription-vendor-name-text">{{ vendor | humanize }}</span>{% if vendor|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" data-container="body" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}
+    </span>
+    {% if user.is_authenticated and vendors_data_dict %}
+        {% with vendor_data=vendors_data_dict|get:vendor %}
+        <button class="btn btn-default btn-xs subscribe-vendor"
+                data-vendor-id="{{ vendor_data.vendor.id }}"
+                data-vendor-name="{{ vendor }}"
+                data-vendor-name-humanized="{{ vendor|humanize }}"
+                type="button"
+                aria-label="{% if vendor_data.subscription_count > 0 %}Subscribed to {{ vendor_data.subscription_count }} project{{ vendor_data.subscription_count|pluralize }} for {{ vendor|humanize }}{% else %}Subscribe {{ vendor|humanize }} to projects{% endif %}">
+            <i class="fa fa-bell-o" aria-hidden="true"></i>{% if vendor_data.subscription_count > 0 %} <span class="subscribe-btn-count">({{ vendor_data.subscription_count }})</span> <span class="subscribe-btn-label">Subscribed ({{ vendor_data.subscription_count }})</span>{% else %} <span class="subscribe-btn-label">Subscribe</span>{% endif %}
+        </button>
+        {% endwith %}
+    {% else %}
+        <a href="{% url 'account_signup' %}" class="btn btn-default btn-xs subscribe-vendor-link" aria-label="Sign up to subscribe to {{ vendor|humanize }}">
+            <i class="fa fa-bell-o" aria-hidden="true"></i> <span class="subscribe-btn-label">Subscribe</span>
+        </a>
+    {% endif %}
+    {% for product in products %}
+    <span class="subscription-product-name{% if forloop.first %} subscription-product-name-first{% endif %}">
+        <span class="subscription-product-name-text">{{ product | humanize }}</span>
+        {% with vendor_product_key=vendor|stringformat:"s"|add:"$PRODUCT$"|add:product %}
+            {% if vendor_product_key|is_top_vendor_or_product %}
+                <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" data-container="body" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>
+            {% endif %}
+        {% endwith %}
+    </span>
+    {% if user.is_authenticated and vendors_data_dict %}
+        {% with vendor_data=vendors_data_dict|get:vendor %}
+            {% with products_dict=vendor_data.products %}
+                {% with product_obj=products_dict|get:product %}
+                <button class="btn btn-default btn-xs subscribe-product"
+                        data-vendor-id="{{ vendor_data.vendor.id }}"
+                        data-vendor-name="{{ vendor }}"
+                        data-product-id="{{ product_obj.product.id }}"
+                        data-product-name="{{ product }}"
+                        data-product-name-humanized="{{ product|humanize }}"
+                        type="button"
+                        aria-label="{% if product_obj.subscription_count > 0 %}Subscribed to {{ product_obj.subscription_count }} project{{ product_obj.subscription_count|pluralize }} for {{ product|humanize }}{% else %}Subscribe {{ product|humanize }} to projects{% endif %}">
+                    <i class="fa fa-bell-o" aria-hidden="true"></i>{% if product_obj.subscription_count > 0 %} <span class="subscribe-btn-count">({{ product_obj.subscription_count }})</span> <span class="subscribe-btn-label">Subscribed ({{ product_obj.subscription_count }})</span>{% else %} <span class="subscribe-btn-label">Subscribe</span>{% endif %}
+                </button>
+                {% endwith %}
+            {% endwith %}
+        {% endwith %}
+    {% else %}
+        <a href="{% url 'account_signup' %}" class="btn btn-default btn-xs subscribe-product-link" aria-label="Sign up to subscribe to {{ product|humanize }}">
+            <i class="fa fa-bell-o" aria-hidden="true"></i> <span class="subscribe-btn-label">Subscribe</span>
+        </a>
+    {% endif %}
     {% endfor %}
-    </tbody>
-</table>
+    {% if not forloop.last %}
+    <div class="subscription-group-divider"></div>
+    {% endif %}
+{% endfor %}
+</div>
 {% else %}
-<p class="alert alert-info">No data.</p>
+<p class="text-muted"><em>No data.</em></p>
 {% endif %}

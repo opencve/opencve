@@ -1,7 +1,7 @@
 {% load static %}
 {% load opencve_extras %}
 
-<div class="nav-tabs-custom nav-tabs-primary">
+<div class="nav-tabs-custom nav-tabs-primary" id="cve-affected">
     <ul class="nav nav-tabs">
         <li class="active">
             <a href="#mitre" data-toggle="tab"> <img src="{% static 'img/cve-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> Mitre Data{% if cve.mitre_json and cve.mitre_json.containers.cna.affected %} <span class="nav-tab-has-data"></span>{% endif %}</a>
@@ -81,8 +81,19 @@
                 {% endfor %}
                 </tbody>
               </table>
-              <div class="text-center mitre-see-more-wrap" id="mitre-see-more-wrap" style="display: none;">
-                <button type="button" class="btn btn-default btn-sm mitre-see-more-btn" id="mitre-see-more-btn" data-label-more="See more" data-label-less="See less">See more</button>
+              <div class="mitre-affected-show-more-wrap" id="mitre-affected-show-more-wrap" style="display: none;">
+                <button type="button"
+                        class="mitre-affected-show-more-btn"
+                        id="mitre-affected-show-more-btn"
+                        aria-expanded="false"
+                        aria-label="Show more affected products">
+                  <span class="mitre-affected-show-more-inner">
+                    <span class="mitre-affected-show-more-label mitre-affected-show-more-label--more">Show more</span>
+                    <span class="mitre-affected-show-more-label mitre-affected-show-more-label--less">Show less</span>
+                    <span class="mitre-affected-show-more-icon mitre-affected-show-more-icon--down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+                    <span class="mitre-affected-show-more-icon mitre-affected-show-more-icon--up" aria-hidden="true"><i class="fa fa-chevron-up"></i></span>
+                  </span>
+                </button>
               </div>
             </div>
             {% endif %}
@@ -155,21 +166,12 @@
         <div class="tab-pane" id="enrichment">
           {% if cve.enrichment_json and cve.enrichment_json.affected or cve.enrichment_json and cve.enrichment_json.vendors %}
             {% include "cves/includes/enrichment.html" %}
-            <p class="alert alert-info">
+            <p class="text-muted small"><em>
               Found an issue or want to improve our Enrichment? You can suggest it directly by opening an issue on our <a href="https://github.com/opencve/opencve-enrichment/" target="_blank" rel="noopener">dedicated GitHub repository <i class="fa fa-external-link"></i></a>.
-            </p>
+            </em></p>
           {% else %}
-            <p class="text-muted"><em>No data.</em></p>
+            <p class="text-muted"><em>No data available yet.</em></p>
           {% endif %}
         </div>
     </div>
-</div>
-
-<div class="box box-primary">
-  <div class="box-header">
-    <h3 class="box-title">Subscriptions</h3>
-  </div>
-  <div class="box-body">
-    {% include "cves/includes/subscriptions.html" with vendors_dict=vendors vendors_data_dict=vendors_data %}
-  </div>
 </div>

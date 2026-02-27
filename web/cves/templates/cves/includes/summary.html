@@ -1,0 +1,72 @@
+{% load opencve_extras %}
+
+<div class="box box-primary">
+    <div class="box-body">
+        {% get_cvss_score cve as cvss_score %}
+        {% get_cvss_version_label cve as cvss_version %}
+        {% with analysis=cve.enrichment_json.analysis.en.value %}
+        <div class="cve-summary-layout">
+            <div class="cve-summary-item">
+                <span class="cve-summary-label">Published:</span>
+                <span class="cve-summary-value">
+                    {% if cve.mitre_json.cveMetadata.datePublished %}
+                    {{ cve.mitre_json.cveMetadata.datePublished|convert_str_date|date:"Y-m-d" }}
+                    {% else %}
+                    <span class="text-muted">n/a</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="cve-summary-item">
+                <span class="cve-summary-label">Score:</span>
+                <span class="cve-summary-value">
+                    {% if cvss_score != None %}
+                    <a href="#cve-metrics" class="cve-summary-cvss-link" data-toggle="tooltip" data-container="body" title="{{ cvss_version }}"><span class="label label-{{ cvss_score|cvss_level }}">{{ cvss_score }} {{ cvss_score|cvss_human_score|title }}</span></a>
+                    {% else %}
+                    <span class="text-muted">n/a</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="cve-summary-item">
+                <span class="cve-summary-label">EPSS:</span>
+                <span class="cve-summary-value">
+                    {% if cve.epss.data %}
+                    <span class="label label-{{ cve.epss.data.score|epss_level }}" data-toggle="tooltip" data-container="body" title="{{ cve.epss.data.score|epss_exact_display }}">{{ cve.epss.data.score|epss_badge_display }} {{ cve.epss.data.score|epss_human_score|title }}</span>
+                    {% else %}
+                    <span class="text-muted">n/a</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="cve-summary-item">
+                <span class="cve-summary-label">KEV:</span>
+                <span class="cve-summary-value">
+                    {% if cve.kev.data %}
+                    <span class="label label-danger" data-toggle="tooltip" data-container="body" title="Listed in the CISA Known Exploited Vulnerabilities catalog">Yes</span>
+                    {% else %}
+                    <span class="label label-default">No</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="cve-summary-item">
+                <span class="cve-summary-label">Impact:</span>
+                <span class="cve-summary-value cve-summary-value--truncate js-cve-summary-truncate-tooltip">
+                    {% if analysis.summary.impact %}
+                    <span class="cve-summary-value-text">{{ analysis.summary.impact }}</span>
+                    {% else %}
+                    <span class="text-muted">n/a</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="cve-summary-item">
+                <span class="cve-summary-label">Action:</span>
+                <span class="cve-summary-value cve-summary-value--truncate js-cve-summary-truncate-tooltip">
+                    {% if analysis.summary.action %}
+                    <span class="cve-summary-value-text">{{ analysis.summary.action }}</span>
+                    {% else %}
+                    <span class="text-muted">n/a</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        {% endwith %}
+    </div>
+</div>

@@ -136,6 +136,66 @@ def cvss_human_score(score):
     return CVSS_HUMAN_SCORE[level]
 
 
+def _epss_pct(score):
+    """Convert EPSS score (0-1) to percentage (0-100). Return None if invalid."""
+    try:
+        return float(score) * 100
+    except (TypeError, ValueError):
+        return None
+
+
+@register.filter
+def epss_badge_display(score):
+    """Format EPSS score (0-1 decimal) for the summary badge (1 decimal, < 1% if under 1%)."""
+    pct = _epss_pct(score)
+    if pct is None:
+        return ""
+    if pct < 1:
+        return "< 1%"
+    return f"{pct:.1f}%"
+
+
+@register.filter
+def epss_exact_display(score):
+    """Format EPSS score (0-1 decimal) as percentage for tooltips (3 decimals)."""
+    pct = _epss_pct(score)
+    if pct is None:
+        return ""
+    return f"{pct:.3f}%"
+
+
+@register.filter
+def epss_level(score):
+    """Map EPSS score (0-1 decimal) to a qualitative level."""
+    pct = _epss_pct(score)
+    if pct is None:
+        return "default"
+
+    if pct < 1:
+        return "default"
+    if pct < 10:
+        return "info"
+    if pct < 50:
+        return "warning"
+    return "danger"
+
+
+@register.filter
+def epss_human_score(score):
+    """Return a human label for an EPSS score."""
+    pct = _epss_pct(score)
+    if pct is None:
+        return ""
+
+    if pct < 1:
+        return "Very Low"
+    if pct < 10:
+        return "Low"
+    if pct < 50:
+        return "Moderate"
+    return "High"
+
+
 @register.simple_tag
 def cvss_chart_data(vector, score):
     metric = get_metric_from_vector(vector)
@@ -333,6 +393,37 @@ def needs_quotes(value: str) -> bool:
     special_chars = set(r""" :'"()[]{}&|=!\<>+*?^~""")
 
     return any(char in special_chars for char in value) or "\\" in value or " " in value
+
+
+_CVSS_SCORE_PRIORITY = (
+    ("cvssV4_0", "CVSS v4.0"),
+    ("cvssV3_1", "CVSS v3.1"),
+    ("cvssV3_0", "CVSS v3.0"),
+    ("cvssV2_0", "CVSS v2.0"),
+)
+
+
+def _resolve_cvss_metric(cve):
+    """Return (score, version_label) for the highest-priority CVSS metric with a score."""
+    for attr, label in _CVSS_SCORE_PRIORITY:
+        data = getattr(cve, attr, {})
+        if data and data.get("score") is not None:
+            return data["score"], label
+    return None, None
+
+
+@register.simple_tag
+def get_cvss_score(cve):
+    """Return the best available CVSS score (v4.0 > v3.1 > v3.0 > v2.0)."""
+    score, _ = _resolve_cvss_metric(cve)
+    return score
+
+
+@register.simple_tag
+def get_cvss_version_label(cve):
+    """Return the CVSS version label for the score returned by get_cvss_score (e.g. CVSS v3.1)."""
+    _, label = _resolve_cvss_metric(cve)
+    return label
 
 
 @register.simple_tag

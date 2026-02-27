@@ -1,6 +1,8 @@
 from cves.templatetags.opencve_extras import (
     get_item,
     get_active_cvss_tab,
+    get_cvss_score,
+    get_cvss_version_label,
     advisory_source_display,
     tracker_status_badge_class,
     enrichment_scores_tooltip,
@@ -126,6 +128,56 @@ def test_get_active_cvss_tab():
 
     cve_mixed_2 = MockCVE(cvssV4_0="10", cvssV3_1=None, cvssV3_0=None, cvssV2_0="10")
     assert get_active_cvss_tab(cve_mixed_2) == "cvss40"
+
+
+def test_get_cvss_score_and_version_label():
+    """get_cvss_score and get_cvss_version_label use the same priority (v4 > v3.1 > v3.0 > v2)."""
+
+    class MockCVE:
+        def __init__(self, cvssV4_0=None, cvssV3_1=None, cvssV3_0=None, cvssV2_0=None):
+            self.cvssV4_0 = cvssV4_0
+            self.cvssV3_1 = cvssV3_1
+            self.cvssV3_0 = cvssV3_0
+            self.cvssV2_0 = cvssV2_0
+
+    cve_all = MockCVE(
+        cvssV4_0={"score": 9.0},
+        cvssV3_1={"score": 8.0},
+        cvssV3_0={"score": 7.0},
+        cvssV2_0={"score": 6.0},
+    )
+    assert get_cvss_score(cve_all) == 9.0
+    assert get_cvss_version_label(cve_all) == "CVSS v4.0"
+
+    cve_v31 = MockCVE(
+        cvssV4_0=None,
+        cvssV3_1={"score": 8.0},
+        cvssV3_0={"score": 7.0},
+    )
+    assert get_cvss_score(cve_v31) == 8.0
+    assert get_cvss_version_label(cve_v31) == "CVSS v3.1"
+
+    cve_v30 = MockCVE(
+        cvssV4_0=None,
+        cvssV3_1=None,
+        cvssV3_0={"score": 5.0},
+        cvssV2_0={"score": 4.0},
+    )
+    assert get_cvss_score(cve_v30) == 5.0
+    assert get_cvss_version_label(cve_v30) == "CVSS v3.0"
+
+    cve_v2 = MockCVE(
+        cvssV4_0=None,
+        cvssV3_1=None,
+        cvssV3_0=None,
+        cvssV2_0={"score": 4.0},
+    )
+    assert get_cvss_score(cve_v2) == 4.0
+    assert get_cvss_version_label(cve_v2) == "CVSS v2.0"
+
+    cve_none = MockCVE(cvssV4_0=None, cvssV3_1=None, cvssV3_0=None, cvssV2_0=None)
+    assert get_cvss_score(cve_none) is None
+    assert get_cvss_version_label(cve_none) is None
 
 
 def test_advisory_source_display():

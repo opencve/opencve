@@ -2225,21 +2225,70 @@ function getContrastedColor(str){
                             });
                         }
 
-                        // Update button text with new count
+                        // Update button text with new count (label + compact count next to bell)
                         const iconElement = buttonElement.querySelector('i');
                         let buttonText;
+                        let countHtml = '';
                         if (count > 0) {
                             buttonText = 'Subscribed (' + count + ')';
+                            countHtml =
+                                ' <span class="subscribe-btn-count">(' + count + ')</span>';
                         } else {
                             buttonText = 'Subscribe';
                         }
 
+                        const humanizedVendor =
+                            buttonElement.getAttribute('data-vendor-name-humanized') ||
+                            buttonElement.getAttribute('data-vendor-name') ||
+                            '';
+                        const humanizedProduct = buttonElement.getAttribute('data-product-name-humanized');
+                        let ariaLabel;
+                        if (humanizedProduct) {
+                            const plural = count === 1 ? '' : 's';
+                            if (count > 0) {
+                                ariaLabel =
+                                    'Subscribed to ' +
+                                    count +
+                                    ' project' +
+                                    plural +
+                                    ' for ' +
+                                    humanizedProduct;
+                            } else {
+                                ariaLabel = 'Subscribe ' + humanizedProduct + ' to projects';
+                            }
+                        } else {
+                            const plural = count === 1 ? '' : 's';
+                            if (count > 0) {
+                                ariaLabel =
+                                    'Subscribed to ' +
+                                    count +
+                                    ' project' +
+                                    plural +
+                                    ' for ' +
+                                    humanizedVendor;
+                            } else {
+                                ariaLabel = 'Subscribe ' + humanizedVendor + ' to projects';
+                            }
+                        }
+                        buttonElement.setAttribute('aria-label', ariaLabel);
+
                         if (iconElement) {
                             const iconClass = iconElement.className;
-                            buttonElement.innerHTML = '<i class="' + iconClass + '"></i> ' + buttonText;
+                            buttonElement.innerHTML =
+                                '<i class="' +
+                                iconClass +
+                                '" aria-hidden="true"></i>' +
+                                countHtml +
+                                ' <span class="subscribe-btn-label">' +
+                                buttonText +
+                                '</span>';
                         } else {
-                            // Fallback if icon not found
-                            buttonElement.innerHTML = '<i class="fa fa-bell-o"></i> ' + buttonText;
+                            buttonElement.innerHTML =
+                                '<i class="fa fa-bell-o" aria-hidden="true"></i>' +
+                                countHtml +
+                                ' <span class="subscribe-btn-label">' +
+                                buttonText +
+                                '</span>';
                         }
 
                         // Add success flash effect
@@ -2248,6 +2297,8 @@ function getContrastedColor(str){
                             buttonElement.classList.remove('subscribe-success');
                         }, 600);
                     }
+
+                    document.dispatchEvent(new CustomEvent('opencve-subscriptions-layout-changed'));
                 }
             },
             error: function(xhr, status, error) {
@@ -2256,6 +2307,155 @@ function getContrastedColor(str){
         });
     }
   }
+
+  /*
+   Subscriptions box: bell-only buttons for all rows when any product name is ellipsized,
+   measured with full labels so layout stays stable (no viewport media query).
+   */
+  (function initSubscriptionsCompactLayout() {
+    const box = document.getElementById('project-subscriptions-box');
+    if (!box) {
+      return;
+    }
+
+    const COMPACT_CLASS = 'subscriptions-compact-actions';
+
+    function anyProductNameTruncated() {
+      const nodes = box.querySelectorAll('.subscription-product-name-text');
+      for (let i = 0; i < nodes.length; i++) {
+        const el = nodes[i];
+        if (el.scrollWidth > el.clientWidth + 1) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function applySubscriptionsCompactLayout() {
+      box.classList.remove(COMPACT_CLASS);
+      if (anyProductNameTruncated()) {
+        box.classList.add(COMPACT_CLASS);
+      }
+    }
+
+    let rafId = null;
+    function scheduleApply() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(function() {
+        rafId = null;
+        applySubscriptionsCompactLayout();
+      });
+    }
+
+    let lastObservedWidth = box.getBoundingClientRect().width;
+    function onSubscriptionsBoxResize() {
+      const w = box.getBoundingClientRect().width;
+      if (Math.abs(w - lastObservedWidth) < 0.5) {
+        return;
+      }
+      lastObservedWidth = w;
+      scheduleApply();
+    }
+
+    scheduleApply();
+    document.addEventListener('opencve-subscriptions-layout-changed', scheduleApply);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(onSubscriptionsBoxResize);
+      ro.observe(box);
+    } else {
+      window.addEventListener('resize', scheduleApply);
+    }
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(scheduleApply);
+    }
+  })();
+
+  /*
+   Bootstrap tooltip with full text only when content is ellipsized (CVE summary, subscriptions grid).
+   */
+  (function initOpencveEllipsisTooltips() {
+    const configs = [
+      {
+        root: document.querySelector('.cve-summary-layout'),
+        selector: '.js-cve-summary-truncate-tooltip',
+        skipText: 'n/a',
+      },
+      {
+        root: document.getElementById('project-subscriptions-box'),
+        selector: '.subscription-vendor-name-text, .subscription-product-name-text',
+        skipText: null,
+      },
+    ];
+
+    const activeRoots = configs.map(function(c) {
+      return c.root;
+    }).filter(Boolean);
+
+    if (!activeRoots.length) {
+      return;
+    }
+
+    function applyTruncateTooltips() {
+      configs.forEach(function(cfg) {
+        if (!cfg.root) {
+          return;
+        }
+        $(cfg.root)
+          .find(cfg.selector)
+          .each(function() {
+            const $el = $(this);
+            if ($el.data('bs.tooltip')) {
+              $el.tooltip('destroy');
+            }
+            $el.removeAttr('data-toggle data-container title data-original-title');
+            const el = this;
+            if (el.scrollWidth > el.clientWidth + 1) {
+              const text = $.trim($el.text());
+              if (!text) {
+                return;
+              }
+              if (cfg.skipText && text === cfg.skipText) {
+                return;
+              }
+              $el.attr({
+                'data-toggle': 'tooltip',
+                'data-container': 'body',
+                title: text,
+              });
+              $el.tooltip();
+            }
+          });
+      });
+    }
+
+    let rafId = null;
+    function scheduleApply() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(function() {
+        rafId = null;
+        applyTruncateTooltips();
+      });
+    }
+
+    scheduleApply();
+    window.addEventListener('resize', scheduleApply);
+    document.addEventListener('opencve-subscriptions-layout-changed', scheduleApply);
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(scheduleApply);
+      activeRoots.forEach(function(root) {
+        ro.observe(root);
+      });
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(scheduleApply);
+    }
+  })();
 
   // Audit logs: toggle inline detail row and chevron icon
   $('#table-audit-logs').on('click', 'tr.auditlog-row', function() {
@@ -2321,7 +2521,7 @@ function getContrastedColor(str){
     }
   });
 
-  // Mitre affected products: "See more" / "See less"
+  // Mitre affected products: "Show more" / "Show less"
   if ($('#mitre-affected-wrapper').length) {
     var $mitreWrapper = $('#mitre-affected-wrapper');
     var $mitreTable = $('#mitre-affected-table');
@@ -2330,40 +2530,106 @@ function getContrastedColor(str){
     if ($mitreRows.length > mitreLimit) {
       $mitreRows.each(function(i) { if (i >= mitreLimit) { $(this).addClass('mitre-affected-row--overflow'); } });
       $mitreWrapper.addClass('mitre-collapsed');
-      $('#mitre-see-more-wrap').show();
+      $('#mitre-affected-show-more-wrap').show();
     }
-    $(document).on('click', '#mitre-see-more-btn', function() {
+    $(document).on('click', '#mitre-affected-show-more-btn', function() {
       var $btn = $(this);
       if ($mitreWrapper.hasClass('mitre-collapsed')) {
         $mitreWrapper.removeClass('mitre-collapsed');
-        $btn.text($btn.data('label-less'));
+        $btn.attr({ 'aria-expanded': 'true', 'aria-label': 'Show less affected products' });
       } else {
         $mitreWrapper.addClass('mitre-collapsed');
-        $btn.text($btn.data('label-more'));
+        $btn.attr({ 'aria-expanded': 'false', 'aria-label': 'Show more affected products' });
       }
     });
   }
 
-  // CVE description: "See more" / "See less" when text is long
+  // CVE description: "Show more" if content is taller than collapsed max-height (7em)
   var $descWrapper = $('#cve-description-wrapper');
   var $descText = $('#cve-description-text');
+  var $descSeeMore = $('#cve-description-see-more-wrap');
+  var $descBtn = $('#cve-description-see-more-btn');
   if ($descWrapper.length && $descText.length) {
-    $descWrapper.addClass('cve-description--collapsed');
     var el = $descText[0];
-    var hasOverflow = el.scrollHeight > el.clientHeight;
-    if (hasOverflow) {
-      $('#cve-description-see-more-wrap').show();
-    } else {
-      $descWrapper.removeClass('cve-description--collapsed');
+    /** Avoid resetting to expanded during ResizeObserver after the user clicks "Show more". */
+    var cveDescriptionUserExpanded = false;
+    var measureCveDescriptionOverflow = function() {
+      $descWrapper.addClass('cve-description--collapsed');
+      void el.offsetHeight;
+      var cs = getComputedStyle(el);
+      var maxPx = parseFloat(cs.maxHeight);
+      if (isNaN(maxPx) || cs.maxHeight === 'none') {
+        maxPx = parseFloat(cs.fontSize) * 7;
+      }
+      el.style.maxHeight = 'none';
+      el.style.overflow = 'visible';
+      void el.offsetHeight;
+      var h = el.scrollHeight;
+      var lh = parseFloat(cs.lineHeight);
+      if (isNaN(lh) || lh === 0) {
+        lh = parseFloat(cs.fontSize) * 1.2;
+      }
+      for (var node = el.lastChild; node; ) {
+        if (node.nodeName === 'BR') {
+          h -= lh;
+          node = node.previousSibling;
+        } else if (node.nodeType === 3 && !node.textContent.trim()) {
+          node = node.previousSibling;
+        } else {
+          break;
+        }
+      }
+      if (h < 0) {
+        h = 0;
+      }
+      el.style.removeProperty('max-height');
+      el.style.removeProperty('overflow');
+      void el.offsetHeight;
+      if (h - maxPx > 2) {
+        $descSeeMore.show();
+        if (cveDescriptionUserExpanded) {
+          $descWrapper.removeClass('cve-description--collapsed');
+          $descBtn.attr({ 'aria-expanded': 'true', 'aria-label': 'Show less description' });
+        } else {
+          $descBtn.attr({ 'aria-expanded': 'false', 'aria-label': 'Show more description' });
+        }
+      } else {
+        cveDescriptionUserExpanded = false;
+        $descWrapper.removeClass('cve-description--collapsed');
+        $descSeeMore.hide();
+      }
+    };
+    measureCveDescriptionOverflow();
+    var descResizeTimer;
+    var descWrapperEl = $descWrapper[0];
+    var descResizeObserver = null;
+    var scheduleDescMeasure = function() {
+      clearTimeout(descResizeTimer);
+      descResizeTimer = setTimeout(function() {
+        if (descResizeObserver) {
+          descResizeObserver.unobserve(descWrapperEl);
+        }
+        measureCveDescriptionOverflow();
+        if (descResizeObserver) {
+          descResizeObserver.observe(descWrapperEl);
+        }
+      }, 150);
+    };
+    $(window).on('resize', scheduleDescMeasure);
+    if (typeof ResizeObserver !== 'undefined') {
+      descResizeObserver = new ResizeObserver(scheduleDescMeasure);
+      descResizeObserver.observe(descWrapperEl);
     }
     $(document).on('click', '#cve-description-see-more-btn', function() {
       var $btn = $(this);
       if ($descWrapper.hasClass('cve-description--collapsed')) {
+        cveDescriptionUserExpanded = true;
         $descWrapper.removeClass('cve-description--collapsed');
-        $btn.text($btn.data('label-less'));
+        $btn.attr({ 'aria-expanded': 'true', 'aria-label': 'Show less description' });
       } else {
+        cveDescriptionUserExpanded = false;
         $descWrapper.addClass('cve-description--collapsed');
-        $btn.text($btn.data('label-more'));
+        $btn.attr({ 'aria-expanded': 'false', 'aria-label': 'Show more description' });
       }
     });
   }
