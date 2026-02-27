@@ -41,7 +41,7 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="alert alert-info">You don't have any projects yet, do you want to <a href="{% url 'create_project' org_name=request.current_organization.name %}">create one</a>?</p>
+                    <p class="text-muted"><em>You don't have any projects yet, do you want to <a href="{% url 'create_project' org_name=request.current_organization.name %}">create one</a>?</em></p>
                     {% endif %}
                 </div>
             </div>

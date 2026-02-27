@@ -1233,7 +1233,7 @@ def test_cve_detail_advisories_panel(
     soup = BeautifulSoup(response.content, features="html.parser")
     assert soup.find("title").text == "CVE-2024-31331 - Vulnerability Details - OpenCVE"
     assert (
-        soup.find("div", {"id": "advisories-box"})
+        soup.find("div", {"id": "cve-advisories"})
         .find("div", {"class": "box-body"})
         .text.strip()
         == "No advisories yet."
@@ -1244,7 +1244,7 @@ def test_cve_detail_advisories_panel(
     response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2022-48703"}))
     soup = BeautifulSoup(response.content, features="html.parser")
     output = (
-        soup.find("div", {"id": "advisories-box"})
+        soup.find("div", {"id": "cve-advisories"})
         .find("div", {"class": "box-body"})
         .text.strip()
     )

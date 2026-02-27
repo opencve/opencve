@@ -1,0 +1,44 @@
+{% load opencve_extras %}
+
+<div class="box box-primary" id="cve-history">
+    <div class="box-header">
+        <div class="box-title">History</div>
+        <div class="box-tools pull-right">
+            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+        </div>
+    </div>
+
+    {% if cve.kb_json.opencve.changes %}
+    <div class="box-body">
+        <div class="row">
+            <div class="col-md-12">
+                {% for change in cve.kb_json.opencve.changes reversed %}
+                <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ change.created|convert_str_date|date:"r" }}</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <th>Type</th>
+                            <th>Values Removed</th>
+                            <th>Values Added</th>
+                        </thead>
+                        <tbody>
+
+                        {% for event in change.data %}
+                            {% with template_name="changes/change_"|add:event.type|add:".html" %}
+                            {% include template_name %}
+                            {% endwith %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <hr />
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="box-body">
+        <p class="text-muted"><em>No history.</em></p>
+    </div>
+    {% endif %}
+</div>

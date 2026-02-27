@@ -1,0 +1,33 @@
+<div class="box box-primary">
+    <div class="box-header">
+        <div class="box-title">Description</div>
+    </div>
+    <div class="box-body cve-description-box-body">
+        {% if cve.description %}
+        <div class="cve-description-wrapper" id="cve-description-wrapper">
+            <div class="cve-description-text-shell">
+                <div class="cve-description-text" id="cve-description-text">
+                    {{ cve.description|linebreaksbr }}
+                </div>
+                <div class="cve-description-fade-overlay" aria-hidden="true"></div>
+            </div>
+            <div class="cve-description-see-more-wrap" id="cve-description-see-more-wrap" style="display: none;">
+                <button type="button"
+                        class="cve-description-see-more-btn"
+                        id="cve-description-see-more-btn"
+                        aria-expanded="false"
+                        aria-label="Show more description">
+                    <span class="cve-description-see-more-inner">
+                        <span class="cve-description-see-more-label cve-description-see-more-label--more">Show more</span>
+                        <span class="cve-description-see-more-label cve-description-see-more-label--less">Show less</span>
+                        <span class="cve-description-see-more-icon cve-description-see-more-icon--down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+                        <span class="cve-description-see-more-icon cve-description-see-more-icon--up" aria-hidden="true"><i class="fa fa-chevron-up"></i></span>
+                    </span>
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted"><em>No description available.</em></p>
+        {% endif %}
+    </div>
+</div>

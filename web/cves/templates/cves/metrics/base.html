@@ -3,7 +3,7 @@
 {# Get the active CVSS tab #}
 {% get_active_cvss_tab cve as active_cvss_tab %}
 
-<div class="nav-tabs-custom nav-tabs-primary">
+<div class="nav-tabs-custom nav-tabs-primary" id="cve-metrics">
     <ul class="nav nav-tabs">
         <li{% if active_cvss_tab == "cvss40" %} class="active"{% endif %}>
             {% if cve.cvssV4_0 %}
@@ -60,49 +60,49 @@
             {% if cve.cvssV4_0 %}
             {% include "cves/metrics/cvssV4_0.html" with cvss=cve.cvssV4_0 %}
             {% else %}
-            <p class="alert alert-info">No CVSS v4.0</p>
+            <p class="text-muted"><em>No CVSS v4.0</em></p>
             {% endif %}
         </div>
         <div class="tab-pane{% if active_cvss_tab == 'cvss31' %} active{% endif %}" id="cvss31">
             {% if cve.cvssV3_1 %}
             {% include "cves/metrics/cvssV3_x.html" with cvss=cve.cvssV3_1 %}
             {% else %}
-            <p class="alert alert-info">No CVSS v3.1</p>
+            <p class="text-muted"><em>No CVSS v3.1</em></p>
             {% endif %}
         </div>
         <div class="tab-pane{% if active_cvss_tab == 'cvss30' %} active{% endif %}" id="cvss30">
             {% if cve.cvssV3_0 %}
             {% include "cves/metrics/cvssV3_x.html" with cvss=cve.cvssV3_0 %}
             {% else %}
-            <p class="alert alert-info">No CVSS v3.0</p>
+            <p class="text-muted"><em>No CVSS v3.0</em></p>
             {% endif %}
         </div>
         <div class="tab-pane{% if active_cvss_tab == 'cvss2' %} active{% endif %}" id="cvss2">
             {% if cve.cvssV2_0 %}
             {% include "cves/metrics/cvssV2_0.html" with cvss=cve.cvssV2_0 %}
             {% else %}
-            <p class="alert alert-info">No CVSS v2</p>
+            <p class="text-muted"><em>No CVSS v2</em></p>
             {% endif %}
         </div>
         <div class="tab-pane" id="kev">
             {% if cve.kev.data %}
             {% include "cves/metrics/kev.html" with kev=cve.kev.data %}
             {% else %}
-            <p class="alert alert-info">This CVE is not in the KEV list.</p>
+            <p class="text-muted"><em>This CVE is not in the KEV list.</em></p>
             {% endif %}
         </div>
         <div class="tab-pane" id="epss">
             {% if cve.epss.data %}
             {% include "cves/metrics/epss.html" with epss=cve.epss.data %}
             {% else %}
-            <p class="alert alert-info">No EPSS score available.</p>
+            <p class="text-muted"><em>No EPSS score available.</em></p>
             {% endif %}
         </div>
         <div class="tab-pane" id="ssvc">
             {% if cve.ssvc.data %}
             {% include "cves/metrics/ssvc.html" with ssvc=cve.ssvc.data %}
             {% else %}
-            <p class="alert alert-info">Key SSVC decision points have not yet been added.</p>
+            <p class="text-muted"><em>Key SSVC decision points have not yet been added.</em></p>
             {% endif %}
         </div>
     </div>

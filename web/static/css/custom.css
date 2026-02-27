@@ -29,6 +29,17 @@
     font-size: 16px;
   }
 
+  .skin-opencve .main-header .navbar .navbar-title a.navbar-title-cve-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .skin-opencve .main-header .navbar .navbar-title a.navbar-title-cve-link:hover,
+  .skin-opencve .main-header .navbar .navbar-title a.navbar-title-cve-link:focus {
+    color: #1F1172;
+    text-decoration: none;
+  }
+
   .skin-opencve .main-header .logo {
     background-color: #090031;
   }
@@ -1602,6 +1613,102 @@ pre.plainJSON{
   margin-left: auto;
 }
 
+/* Subscription sidebar layout */
+#project-subscriptions-box .subscription-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 10px;
+}
+
+#project-subscriptions-box .subscription-group-divider {
+  grid-column: 1 / -1;
+  border-bottom: 1px solid #e3e2ef;
+  margin: 4px 0 8px 0;
+}
+
+#project-subscriptions-box .subscription-vendor-name {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+#project-subscriptions-box .subscription-vendor-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#project-subscriptions-box .subscription-product-name {
+  padding-left: 18px;
+  font-size: 13px;
+  position: relative;
+  display: flex;
+  gap: 4px;
+}
+
+#project-subscriptions-box .subscription-product-name::before {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  width: 1px;
+  background-color: #ddd;
+}
+
+#project-subscriptions-box .subscription-product-name-first::before {
+  top: -8px;
+}
+
+#project-subscriptions-box .subscription-product-name:not(.subscription-product-name-first)::before {
+  top: -18px;
+}
+
+#project-subscriptions-box .subscription-product-name-text {
+  line-height: 1.1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#project-subscriptions-box .subscription-product-name::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  width: 10px;
+  height: 1px;
+  background-color: #ddd;
+}
+
+#project-subscriptions-box .subscription-grid .btn,
+#project-subscriptions-box .subscription-grid .btn-xs,
+#project-subscriptions-box .subscription-grid a.btn {
+  justify-self: end;
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+#project-subscriptions-box:not(.subscriptions-compact-actions) .subscribe-btn-count {
+  display: none;
+}
+
+#project-subscriptions-box.subscriptions-compact-actions .subscribe-btn-label {
+  display: none;
+}
+
+#project-subscriptions-box.subscriptions-compact-actions .subscribe-vendor,
+#project-subscriptions-box.subscriptions-compact-actions .subscribe-product,
+#project-subscriptions-box.subscriptions-compact-actions .subscribe-vendor-link,
+#project-subscriptions-box.subscriptions-compact-actions .subscribe-product-link {
+  padding-left: 7px;
+  padding-right: 7px;
+}
+
 .floating-menu-item {
   padding: 8px 12px;
   border-radius: 8px;
@@ -1742,17 +1849,361 @@ pre.plainJSON{
   color: #999;
 }
 
-/* Mitre affected products: "See more" collapsed state */
+/* Mitre affected products: "Show more" collapsed state */
 .mitre-affected-wrapper.mitre-collapsed .mitre-affected-row.mitre-affected-row--overflow {
   display: none;
 }
 
-/* CVE description: "See more" collapsed state */
+/*
+  This removes the default 10px padding set by AdminLTE for .tab-content within .nav-tabs-custom,
+  allowing elements inside to extend fully to the container edges for seamless layouts.
+*/
+#cve-affected.nav-tabs-custom .mitre-affected-show-more-wrap {
+  width: calc(100% + 20px);
+  margin-left: -10px;
+  margin-right: -10px;
+  margin-bottom: -10px;
+  margin-top: 8px;
+}
+
+#cve-affected.nav-tabs-custom .mitre-affected-show-more-btn {
+  border-radius: 0 0 3px 3px;
+}
+
+.mitre-affected-show-more-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+}
+
+.mitre-affected-show-more-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.mitre-affected-wrapper.mitre-collapsed .mitre-affected-show-more-label--more {
+  display: inline;
+}
+
+.mitre-affected-wrapper.mitre-collapsed .mitre-affected-show-more-label--less {
+  display: none;
+}
+
+.mitre-affected-wrapper:not(.mitre-collapsed) .mitre-affected-show-more-label--more {
+  display: none;
+}
+
+.mitre-affected-wrapper:not(.mitre-collapsed) .mitre-affected-show-more-label--less {
+  display: inline;
+}
+
+/* CVE detail: Description + summary box */
+.cve-description-text {
+  text-align: justify;
+}
+
+.cve-description-summary-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.cve-description-summary-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.cve-description-summary-row > [class*="col-"] {
+  float: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.cve-description-summary-row > [class*="col-"] > .box {
+  flex: 1 1 auto;
+}
+
+.cve-description-summary-row .cve-summary-col {
+  padding-left: 0;
+}
+
+/* CVE detail: Description box: column layout for description + Show more */
+.cve-description-col .box {
+  display: flex;
+  flex-direction: column;
+}
+
+.cve-description-box-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+#cve-description-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.cve-description-text-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.cve-description-wrapper.cve-description--collapsed .cve-description-text-shell {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  position: relative;
+}
+
 .cve-description-wrapper.cve-description--collapsed .cve-description-text {
-  max-height: 20em;
+  max-height: 7em;
   overflow: hidden;
 }
 
+.cve-description-fade-overlay {
+  display: none;
+}
+
+.cve-description-wrapper.cve-description--collapsed .cve-description-fade-overlay {
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1em;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #ffffff);
+}
+
+.cve-description-see-more-wrap {
+  flex-shrink: 0;
+  margin-top: auto;
+  width: calc(100% + 20px);
+  margin-left: -10px;
+  margin-right: -10px;
+  align-self: stretch;
+}
+
+.cve-description-see-more-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+}
+
+.cve-description-see-more-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.cve-description-wrapper.cve-description--collapsed .cve-description-see-more-label--more {
+  display: inline;
+}
+
+.cve-description-wrapper.cve-description--collapsed .cve-description-see-more-label--less {
+  display: none;
+}
+
+.cve-description-wrapper:not(.cve-description--collapsed) .cve-description-see-more-label--more {
+  display: none;
+}
+
+.cve-description-wrapper:not(.cve-description--collapsed) .cve-description-see-more-label--less {
+  display: inline;
+}
+
+.cve-description-see-more-btn,
+.mitre-affected-show-more-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 22px;
+  margin: 0;
+  padding: 3px 8px;
+  border: 1px solid #ebeef2;
+  border-radius: 0 0 2px 2px;
+  background-color: #f3f6f9;
+  color: #6c757d;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.cve-description-see-more-btn:hover,
+.cve-description-see-more-btn:focus,
+.mitre-affected-show-more-btn:hover,
+.mitre-affected-show-more-btn:focus {
+  border: none;
+  background-color: #dee2e6;
+  color: #444a50;
+  outline: none;
+}
+
+.cve-description-see-more-btn .fa,
+.mitre-affected-show-more-btn .fa {
+  font-size: 10px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.cve-description-wrapper.cve-description--collapsed .cve-description-see-more-icon--down,
+.mitre-affected-wrapper.mitre-collapsed .mitre-affected-show-more-icon--down {
+  display: inline-flex;
+}
+
+.cve-description-wrapper.cve-description--collapsed .cve-description-see-more-icon--up,
+.mitre-affected-wrapper.mitre-collapsed .mitre-affected-show-more-icon--up {
+  display: none;
+}
+
+.cve-description-wrapper:not(.cve-description--collapsed) .cve-description-see-more-icon--down,
+.mitre-affected-wrapper:not(.mitre-collapsed) .mitre-affected-show-more-icon--down {
+  display: none;
+}
+
+.cve-description-wrapper:not(.cve-description--collapsed) .cve-description-see-more-icon--up,
+.mitre-affected-wrapper:not(.mitre-collapsed) .mitre-affected-show-more-icon--up {
+  display: inline-flex;
+}
+
+/* CVE detail: Summary box */
+.cve-summary-layout {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+
+.cve-summary-layout .cve-summary-item {
+  display: contents;
+}
+
+.cve-summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.cve-summary-value {
+  color: #555;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.cve-summary-value--truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+a.cve-summary-cvss-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+a.cve-summary-cvss-link:hover .label,
+a.cve-summary-cvss-link:focus .label {
+  filter: brightness(0.90);
+}
+
+/* CVE detail: in-page section anchors (offset for fixed/sticky header) */
+#cve-overview,
+#cve-analysis,
+#cve-affected,
+#cve-remediation,
+#cve-tracking,
+#cve-advisories,
+#cve-metrics,
+#cve-references,
+#cve-history {
+  scroll-margin-top: 0px;
+}
+
+.cve-section-nav-body {
+  padding: 8px 10px;
+}
+
+.cve-section-nav-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+}
+
+.cve-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+a.cve-section-nav-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: #555;
+  background: none;
+  border: none;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a.cve-section-nav-item:hover,
+a.cve-section-nav-item:focus {
+  color: #3c8dbc;
+  background: none;
+}
+
+a.cve-section-nav-item i {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* CVE detail: Analysis box */
+.cve-tab-ai-icon {
+  margin-top: -8px;
+  width: 20px;
+}
+
+.cve-analysis-content {
+  overflow: auto;
+}
+
+.cve-analysis-section-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-top: 0px;
+}
+
+.cve-analysis-section-text {
+  text-align: justify;
+}
+
+.cve-analysis-footer p {
+  margin-top: 10px;
+}
+
+.cve-analysis-empty {
+  margin-bottom: 0;
+}
+
+/* CVE detail: Vendors/products tab */
 .nav-tab-has-data {
   display: inline-block;
   width: 6px;
@@ -1763,7 +2214,7 @@ pre.plainJSON{
   background-color: #337ab7;
 }
 
-/* Enrichment table: constrain long version strings to avoid layout overflow */
+/* CVE detail: Enrichment tab: constrain long version strings to avoid layout overflow */
 #enrichment-affected-table .enrichment-version-cell {
   max-width: 400px;
   vertical-align: top;
