@@ -198,7 +198,11 @@ AUDITLOG_INCLUDE_TRACKING_MODELS = (
     "dashboards.Dashboard",
     "organizations.Organization",
     "organizations.Membership",
-    {"model": "organizations.OrganizationAPIToken", "mask_fields": ["token_hash"]},
+    {
+        "model": "organizations.OrganizationAPIToken",
+        "mask_fields": ["token_hash"],
+        "exclude_fields": ["last_used_at", "updated_at"],
+    },
     "projects.Project",
     "projects.Notification",
     "users.UserTag",
