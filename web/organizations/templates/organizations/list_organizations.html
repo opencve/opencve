@@ -7,7 +7,7 @@
 
 <section class="content">
     <div class="row">
-        <div class="col-md-8 col-md-offset-2">
+        <div class="col-md-10 col-md-offset-1">
             {% include "messages.html" %}
 
             <div class="callout callout-info">
@@ -26,7 +26,7 @@
                         <li class="item">
                             <div class="product-info">
                                 <div class="product-title">
-                                    {{ membership.organization.name }}
+                                    <a href="{% url 'edit_organization' org_name=membership.organization.name %}">{{ membership.organization.name }}</a>
                                     <div class="pull-right">
                                         <div class="btn-group" role="group">
                                             {% if membership.is_invited %}

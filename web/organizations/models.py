@@ -57,7 +57,9 @@ class Membership(models.Model):
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="membership_set"
+    )
     role = models.CharField(max_length=20, choices=ROLES, default=MEMBER)
     date_invited = models.DateTimeField(default=timezone.now, db_index=True)
     date_joined = models.DateTimeField(null=True, blank=True, db_index=True)

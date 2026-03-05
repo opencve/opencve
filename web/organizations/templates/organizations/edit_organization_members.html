@@ -1,0 +1,57 @@
+{% extends "organizations/edit_organization_base.html" %}
+{% load crispy_forms_tags %}
+
+{% block tab_content %}
+<div class="row">
+    <div class="col-md-12">
+      <h4>New member</h4>
+      <form action="{% url 'edit_organization_members' org_name=request.resolver_match.kwargs.org_name %}" method="post" class="form-inline form-new-member">
+        {% crispy members_form %}
+      </form>
+    </div>
+  </div>
+  <hr>
+  <div class="row">
+    <div class="col-md-12">
+      <h4>Members</h4>
+      <div class="table-responsive no-padding">
+        <table class="table table-hover table-striped" id="table-members">
+          <tbody>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th></th>
+            </tr>
+            {% for member in members %}
+            <tr>
+              <td>{% if member.user %}{{ member.user.username }}{% else %}-{% endif %}</td>
+              <td>{% if member.user %}{{ member.user.email }}{% else %}{{ member.email }}{% endif %}</td>
+              {% if member.user %}
+                {% if member.date_joined %}
+                <td>
+                  <select class="form-control input-sm member-role-select select2-member-role" data-update-role-url="{% url 'update_organization_member_role' org_name=request.current_organization.name member_id=member.id %}">
+                    <option value="owner" {% if member.role == 'owner' %}selected{% endif %}>owner</option>
+                    <option value="member" {% if member.role == 'member' %}selected{% endif %}>member</option>
+                  </select>
+                </td>
+                {% else %}
+                <td><span class="label label-default">invited</span></td>
+                {% endif %}
+              {% else %}
+                <td><span class="label label-warning">pending signup</span></td>
+              {% endif %}
+
+              <td class="pull-right">
+                <div class="btn-group" role="group">
+                  <a href="{% url 'delete_organization_member' org_name=request.resolver_match.kwargs.org_name member_id=member.id %}" class="btn btn-danger btn-xs" type="button">Delete</a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -21,7 +21,7 @@
             </div>
             <form method="post">
                 {% csrf_token %}
-                <a href="{% url 'edit_organization' org_name=request.resolver_match.kwargs.org_name %}" class="btn btn-default">Cancel</a>
+                <a href="{% url 'edit_organization_tokens' org_name=request.resolver_match.kwargs.org_name %}" class="btn btn-default">Cancel</a>
                 <input type="submit" class="btn btn-danger" value="Revoke Token">
             </form>
           </div>

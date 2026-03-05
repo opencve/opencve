@@ -4,11 +4,11 @@ from organizations.views import (
     OrganizationCreateView,
     OrganizationDeleteView,
     OrganizationEditView,
+    OrganizationEditMembersView,
+    OrganizationEditTokensView,
     OrganizationInvitationView,
     OrganizationMemberDeleteView,
     OrganizationMemberRoleUpdateView,
-    OrganizationMembersFormView,
-    OrganizationTokenCreateView,
     OrganizationTokenDeleteView,
     OrganizationsListView,
     change_organization,
@@ -18,8 +18,11 @@ urlpatterns = [
     path("ajax/change_organization", change_organization, name="change_organization"),
     path("org/", OrganizationsListView.as_view(), name="list_organizations"),
     path("org/add", OrganizationCreateView.as_view(), name="create_organization"),
+    path("org/<org_name>", OrganizationEditView.as_view(), name="edit_organization"),
     path(
-        "org/<org_name>/edit", OrganizationEditView.as_view(), name="edit_organization"
+        "org/<org_name>/tokens",
+        OrganizationEditTokensView.as_view(),
+        name="edit_organization_tokens",
     ),
     path(
         "org/<org_name>/delete",
@@ -28,8 +31,8 @@ urlpatterns = [
     ),
     path(
         "org/<org_name>/members",
-        OrganizationMembersFormView.as_view(),
-        name="list_organization_members",
+        OrganizationEditMembersView.as_view(),
+        name="edit_organization_members",
     ),
     path(
         "org/<org_name>/members/<member_id>/delete",
@@ -45,11 +48,6 @@ urlpatterns = [
         "org/<org_name>/invitation/<key>",
         OrganizationInvitationView.as_view(),
         name="accept_organization_invitation",
-    ),
-    path(
-        "org/<org_name>/tokens/create",
-        OrganizationTokenCreateView.as_view(),
-        name="create_organization_token",
     ),
     path(
         "org/<org_name>/tokens/<token_id>/revoke",

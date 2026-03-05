@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Organization - {{ block.super }}{% endblock %}
+{% block navbar_title %}Edit Organization{% endblock %}
+
+{% block content %}
+
+<section class="content">
+  <div class="row">
+    <div class="col-md-10 col-md-offset-1">
+      {% include "messages.html" %}
+      <div id="organization-ajax-messages"></div>
+
+      <div class="nav-tabs-custom nav-tabs-primary nav-tabs-settings">
+        <ul class="nav nav-tabs">
+          <li class="{% if active_tab == 'general' %}active{% endif %}">
+            <a href="{% url 'edit_organization' org_name=organization.name %}">General</a>
+          </li>
+          <li class="{% if active_tab == 'members' %}active{% endif %}">
+            <a href="{% url 'edit_organization_members' org_name=organization.name %}">Memberships</a>
+          </li>
+          <li class="{% if active_tab == 'tokens' %}active{% endif %}">
+            <a href="{% url 'edit_organization_tokens' org_name=organization.name %}">API Tokens</a>
+          </li>
+        </ul>
+        <div class="tab-content">
+          {% block tab_content %}{% endblock %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
