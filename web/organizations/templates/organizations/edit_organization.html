@@ -57,7 +57,7 @@
           <div class="row">
             <div class="col-md-12">
               <h4>New member</h4>
-              <form action="{% url 'list_organization_members' org_name=request.resolver_match.kwargs.org_name %}" method="post" class="form-inline form-new-member">
+              <form action="{% url 'edit_organization_members' org_name=request.resolver_match.kwargs.org_name %}" method="post" class="form-inline form-new-member">
                 {% crispy members_form %}
               </form>
             </div>
@@ -117,7 +117,7 @@
         <div class="box-body">
           <div class="row">
             <div class="col-md-12">
-              <form action="{% url 'create_organization_token' org_name=request.resolver_match.kwargs.org_name %}" method="post">
+              <form action="{% url 'edit_organization_tokens' org_name=request.resolver_match.kwargs.org_name %}" method="post">
                 {% csrf_token %}
                 {% crispy token_form %}
               </form>

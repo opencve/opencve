@@ -213,7 +213,7 @@ def test_list_memberships(auth_client, create_user, create_organization):
     user = create_user(username="user1", email="user1@example.com")
     client = auth_client(user)
     create_organization(name="orga1", user=user, owner=True)
-    url = reverse("edit_organization", kwargs={"org_name": "orga1"})
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
 
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
@@ -236,7 +236,7 @@ def test_create_memberships_is_owner(auth_client, create_user, create_organizati
     create_organization(name="orga1", user=user1)
     user2 = create_user(username="user2", email="user2@example.com")
     create_user(username="user3", email="user3@example.com")
-    url = reverse("list_organization_members", kwargs={"org_name": "orga1"})
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
 
     # User2 can not add new member
     client = auth_client(user2)
@@ -268,7 +268,7 @@ def test_create_memberships(
     client = auth_client(user)
     organization = create_organization(name="orga1", user=user, owner=True)
     create_user(username="member1", email="member1@example.com")
-    url = reverse("list_organization_members", kwargs={"org_name": "orga1"})
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
 
     with freeze_time("2024-01-01"):
         response = client.post(
@@ -281,7 +281,7 @@ def test_create_memberships(
         in soup.find("div", {"class": "alert-success"}).text
     )
     assert response.redirect_chain == [
-        (reverse("edit_organization", kwargs={"org_name": "orga1"}), 302)
+        (reverse("edit_organization_members", kwargs={"org_name": "orga1"}), 302)
     ]
 
     membership = Membership.objects.filter(user__email="member1@example.com").first()
@@ -300,16 +300,14 @@ def test_create_memberships_invalid_payload(
     user = create_user(username="user1", email="user1@example.com")
     client = auth_client(user)
     create_organization(name="orga1", user=user, owner=True)
-    url = reverse("list_organization_members", kwargs={"org_name": "orga1"})
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
 
-    response = client.post(url, data={"foo": "bar"}, follow=True)
+    response = client.post(url, data={"foo": "bar"})
+    assert response.status_code == 200  # Invalid form re-renders the page, no redirect
     soup = BeautifulSoup(response.content, features="html.parser")
     error_div = soup.find("div", {"class": "alert-error"})
     assert error_div is not None, "Error message should be displayed"
     assert "Error in the form" in error_div.text
-    assert response.redirect_chain == [
-        (reverse("edit_organization", kwargs={"org_name": "orga1"}), 302)
-    ]
 
     # For non-existing users, an invitation email is sent instead of showing an error
     response = client.post(
@@ -321,7 +319,7 @@ def test_create_memberships_invalid_payload(
         in soup.find("div", {"class": "alert-success"}).text
     )
     assert response.redirect_chain == [
-        (reverse("edit_organization", kwargs={"org_name": "orga1"}), 302)
+        (reverse("edit_organization_members", kwargs={"org_name": "orga1"}), 302)
     ]
 
     # Check that membership was created with email but no user
@@ -331,14 +329,10 @@ def test_create_memberships_invalid_payload(
     assert membership is not None
     assert membership.user is None
 
-    response = client.post(
-        url, data={"email": "user1@example.com", "role": "owner"}, follow=True
-    )
+    response = client.post(url, data={"email": "user1@example.com", "role": "owner"})
+    assert response.status_code == 200  # Error re-renders the page, no redirect
     soup = BeautifulSoup(response.content, features="html.parser")
     assert "Member already exist" in soup.find("div", {"class": "alert-error"}).text
-    assert response.redirect_chain == [
-        (reverse("edit_organization", kwargs={"org_name": "orga1"}), 302)
-    ]
 
 
 # Delete Memberships
@@ -409,7 +403,7 @@ def test_delete_memberships_without_owners(
         in soup.find("div", {"class": "alert-error"}).text
     )
     assert response.redirect_chain == [
-        (reverse("edit_organization", kwargs={"org_name": "orga1"}), 302)
+        (reverse("edit_organization_members", kwargs={"org_name": "orga1"}), 302)
     ]
 
     # Another owner can do it
@@ -425,7 +419,7 @@ def test_delete_memberships_without_owners(
         in soup.find("div", {"class": "alert-success"}).text
     )
     assert response.redirect_chain == [
-        (reverse("edit_organization", kwargs={"org_name": "orga1"}), 302)
+        (reverse("edit_organization_members", kwargs={"org_name": "orga1"}), 302)
     ]
 
 
@@ -451,7 +445,7 @@ def test_delete_membership_success_url(auth_client, create_user, create_organiza
     )
     response = client.post(url, data={}, follow=True)
     assert response.redirect_chain == [
-        (reverse("edit_organization", kwargs={"org_name": "orga1"}), 302)
+        (reverse("edit_organization_members", kwargs={"org_name": "orga1"}), 302)
     ]
 
     # Removing the current user redirects to the list_organizations url
@@ -477,7 +471,7 @@ def test_organization_invitation(auth_client, create_user, create_organization):
 
     # User1 can see that User2 is invited
     client = auth_client(user1)
-    url = reverse("edit_organization", kwargs={"org_name": "orga1"})
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
     response = client.get(url, data={}, follow=True)
     soup = BeautifulSoup(response.content, features="html.parser")
     content = soup.find("table", {"id": "table-members"}).find_all("td")
@@ -520,7 +514,7 @@ def test_create_membership_existing_user_sends_email(
     organization = create_organization(name="orga1", user=owner, owner=True)
     existing_user = create_user(username="member", email="member@example.com")
     client = auth_client(owner)
-    url = reverse("list_organization_members", kwargs={"org_name": "orga1"})
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
 
     # Clear outbox
     from django.core.mail import outbox
@@ -554,7 +548,7 @@ def test_create_membership_non_existing_user_sends_email(
     owner = create_user(username="owner", email="owner@example.com")
     organization = create_organization(name="orga1", user=owner, owner=True)
     client = auth_client(owner)
-    url = reverse("list_organization_members", kwargs={"org_name": "orga1"})
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
 
     # Clear outbox
     from django.core.mail import outbox
@@ -592,7 +586,7 @@ def test_create_membership_non_existing_user_duplicate_invitation(
     owner = create_user(username="owner", email="owner@example.com")
     organization = create_organization(name="orga1", user=owner, owner=True)
     client = auth_client(owner)
-    url = reverse("list_organization_members", kwargs={"org_name": "orga1"})
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
 
     # First invitation
     response = client.post(
@@ -787,7 +781,7 @@ def test_create_token_view(auth_client, create_user, create_organization):
     organization = create_organization(name="test-org", user=user, owner=True)
     client = auth_client(user)
 
-    url = reverse("create_organization_token", kwargs={"org_name": organization.name})
+    url = reverse("edit_organization_tokens", kwargs={"org_name": organization.name})
     response = client.post(
         url,
         {

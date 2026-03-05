@@ -15,7 +15,7 @@
             <p>Do you really want to delete <strong>{{ object.user.username }}</strong> as a <strong>{{ object.role }}</strong> of this organization?</p>
             <form method="post">
                 {% csrf_token %}
-                <a href="{% url 'edit_organization' org_name=request.resolver_match.kwargs.org_name %}" class="btn btn-default">Cancel</a>
+                <a href="{% url 'edit_organization_members' org_name=request.resolver_match.kwargs.org_name %}" class="btn btn-default">Cancel</a>
                 <input type="submit" class="btn btn-danger" value="Confirm">
             </form>
           </div>

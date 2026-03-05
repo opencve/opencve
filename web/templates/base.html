@@ -89,7 +89,7 @@
                         <li class="{% is_active_link 'statistics' %}"><a href="{% url 'statistics' %}"><i class="fa fa-bar-chart"></i> <span> Statistics</span></a></li>
                         {% if user.is_authenticated %}
                         <li class="header">SETTINGS</li>
-                        <li class="{% is_active_link 'list_organizations' 'create_organization' 'edit_organization' 'delete_organization' %}"><a href="{% url 'list_organizations' %}"><i class="fa fa-group"></i> <span> Organizations</span></a></li>
+                        <li class="{% is_active_link 'list_organizations' 'create_organization' 'edit_organization' 'delete_organization' 'edit_organization_members' 'edit_organization_tokens' %}"><a href="{% url 'list_organizations' %}"><i class="fa fa-group"></i> <span> Organizations</span></a></li>
                         <li class="{% is_active_link 'tags' 'create_tag' 'edit_tag' 'delete_tag' %}"><a href="{% url 'tags' %}"><i class="fa fa-tags"></i> <span> Tags</span></a></li>
                         <li class="{% is_active_link 'settings_profile' 'settings_password' 'account_email' %}"><a href="{% url 'settings_profile' %}"><i class="fa fa-user"></i> <span> Profile</span></a></li>
                         {% if user.is_superuser %}

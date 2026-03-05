@@ -9,8 +9,8 @@ from django.utils.timezone import now
 from django.views.generic import (
     CreateView,
     DeleteView,
-    FormView,
     ListView,
+    TemplateView,
     UpdateView,
     View,
 )
@@ -78,7 +78,7 @@ class OrganizationEditView(
 ):
     model = Organization
     form_class = OrganizationForm
-    template_name = "organizations/edit_organization.html"
+    template_name = "organizations/edit_organization_general.html"
     success_message = "The organization has been successfully updated."
     slug_field = "name"
     slug_url_kwarg = "org_name"
@@ -86,22 +86,8 @@ class OrganizationEditView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["members"] = Membership.objects.filter(
-            organization=self.request.current_organization
-        )
-        context["members_form"] = MembershipForm(initial={"role": Membership.MEMBER})
-        context["api_tokens"] = OrganizationAPIToken.objects.filter(
-            organization=self.request.current_organization
-        ).order_by("-created_at")
-        context["token_form"] = OrganizationAPITokenForm()
-
-        # Check if there's a new token to display
-        new_token = self.request.session.pop("new_token", None)
-        new_token_name = self.request.session.pop("new_token_name", None)
-        if new_token:
-            context["new_token"] = new_token
-            context["new_token_name"] = new_token_name
-
+        context["active_tab"] = "general"
+        context["organization"] = self.object
         return context
 
     def get_success_url(self):
@@ -111,40 +97,33 @@ class OrganizationEditView(
         )
 
 
-class OrganizationDeleteView(
-    LoginRequiredMixin, OrganizationIsOwnerMixin, SuccessMessageMixin, DeleteView
-):
-    model = Organization
-    slug_field = "name"
-    slug_url_kwarg = "org_name"
-    template_name = "organizations/delete_organization.html"
-    success_message = "The organization has been deleted."
-    success_url = reverse_lazy("list_organizations")
-
-
-class OrganizationMembersFormView(
+class OrganizationEditMembersView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
-    SingleObjectMixin,
-    SuccessMessageMixin,
-    FormView,
+    TemplateView,
 ):
-    http_method_names = ["post"]
-    form_class = MembershipForm
-    model = Organization
-    slug_field = "name"
-    slug_url_kwarg = "org_name"
+    template_name = "organizations/edit_organization_members.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        organization = self.request.current_organization
+        context["organization"] = organization
+        context["active_tab"] = "members"
+        context["members"] = Membership.objects.filter(organization=organization)
+        context["members_form"] = kwargs.get("members_form") or MembershipForm(
+            initial={"role": Membership.MEMBER}
+        )
+        return context
 
     def post(self, request, *args, **kwargs):
         organization = request.current_organization
 
         # Check the form validity
-        form = self.get_form_class()(request.POST)
+        form = MembershipForm(request.POST)
         if not form.is_valid():
             messages.error(request, "Error in the form")
-            return redirect(
-                reverse("edit_organization", kwargs={"org_name": organization.name})
-            )
+            context = self.get_context_data(members_form=form)
+            return self.render_to_response(context)
 
         email = form.cleaned_data["email"]
 
@@ -156,9 +135,8 @@ class OrganizationMembersFormView(
             # Check if he's already a member of the organization
             if Membership.objects.filter(user=user, organization=organization).exists():
                 messages.error(request, "Member already exist")
-                return redirect(
-                    reverse("edit_organization", kwargs={"org_name": organization.name})
-                )
+                context = self.get_context_data(members_form=form)
+                return self.render_to_response(context)
 
             # Create the membership for existing user
             membership = Membership.objects.create(
@@ -185,9 +163,8 @@ class OrganizationMembersFormView(
                     request,
                     "An invitation has already been sent to this email address",
                 )
-                return redirect(
-                    reverse("edit_organization", kwargs={"org_name": organization.name})
-                )
+                context = self.get_context_data(members_form=form)
+                return self.render_to_response(context)
 
             # Create the membership with email only
             membership = Membership.objects.create(
@@ -205,13 +182,81 @@ class OrganizationMembersFormView(
                 f"Signup invitation email has been sent to {email}",
             )
 
-        return super().post(request, *args, **kwargs)
-
-    def get_success_url(self):
-        return reverse(
-            "edit_organization",
-            kwargs={"org_name": self.request.current_organization.name},
+        return redirect(
+            reverse(
+                "edit_organization_members",
+                kwargs={"org_name": organization.name},
+            )
         )
+
+
+class OrganizationEditTokensView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    RequestViewMixin,
+    TemplateView,
+):
+    template_name = "organizations/edit_organization_tokens.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        organization = self.request.current_organization
+        context["organization"] = organization
+        context["active_tab"] = "tokens"
+        context["api_tokens"] = OrganizationAPIToken.objects.filter(
+            organization=organization
+        ).order_by("-created_at")
+        context["token_form"] = kwargs.get("token_form") or OrganizationAPITokenForm()
+
+        # Retrieve the new token from the session and display it if it exists
+        new_token = self.request.session.pop("new_token", None)
+        new_token_name = self.request.session.pop("new_token_name", None)
+        if new_token:
+            context["new_token"] = new_token
+            context["new_token_name"] = new_token_name
+            messages.success(
+                self.request,
+                f"The token {new_token_name} has been created",
+            )
+
+        return context
+
+    def post(self, request, *args, **kwargs):
+        organization = request.current_organization
+        form = OrganizationAPITokenForm(request.POST)
+
+        if form.is_valid():
+            token_string = OrganizationAPIToken.create_token(
+                organization=organization,
+                name=form.cleaned_data["name"],
+                description=form.cleaned_data["description"] or None,
+                created_by=request.user,
+            )
+
+            # Store the new token in the session to display it in the template
+            request.session["new_token"] = token_string
+            request.session["new_token_name"] = form.cleaned_data["name"]
+
+            # Redirect to the tokens page to display the new token
+            return redirect(
+                reverse(
+                    "edit_organization_tokens",
+                    kwargs={"org_name": organization.name},
+                )
+            )
+        context = self.get_context_data(token_form=form)
+        return self.render_to_response(context)
+
+
+class OrganizationDeleteView(
+    LoginRequiredMixin, OrganizationIsOwnerMixin, SuccessMessageMixin, DeleteView
+):
+    model = Organization
+    slug_field = "name"
+    slug_url_kwarg = "org_name"
+    template_name = "organizations/delete_organization.html"
+    success_message = "The organization has been deleted."
+    success_url = reverse_lazy("list_organizations")
 
 
 class OrganizationMemberDeleteView(
@@ -237,7 +282,7 @@ class OrganizationMemberDeleteView(
             )
             return redirect(
                 reverse(
-                    "edit_organization",
+                    "edit_organization_members",
                     kwargs={"org_name": request.current_organization.name},
                 )
             )
@@ -259,7 +304,7 @@ class OrganizationMemberDeleteView(
             return reverse_lazy("list_organizations")
 
         return reverse_lazy(
-            "edit_organization",
+            "edit_organization_members",
             kwargs={"org_name": self.request.current_organization.name},
         )
 
@@ -400,43 +445,6 @@ def change_organization(request):
     return JsonResponse({"status": "ok"})
 
 
-class OrganizationTokenCreateView(
-    LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
-    SuccessMessageMixin,
-    RequestViewMixin,
-    FormView,
-):
-    form_class = OrganizationAPITokenForm
-    http_method_names = ["post"]
-
-    def form_valid(self, form):
-        organization = self.request.current_organization
-        token_string = OrganizationAPIToken.create_token(
-            organization=organization,
-            name=form.cleaned_data["name"],
-            description=form.cleaned_data["description"] or None,
-            created_by=self.request.user,
-        )
-
-        # Store token in session to display it once
-        self.request.session["new_token"] = token_string
-        self.request.session["new_token_name"] = form.cleaned_data["name"]
-
-        return redirect(
-            reverse(
-                "edit_organization",
-                kwargs={"org_name": organization.name},
-            )
-        )
-
-    def get_success_url(self):
-        return reverse(
-            "edit_organization",
-            kwargs={"org_name": self.request.current_organization.name},
-        )
-
-
 class OrganizationTokenDeleteView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
@@ -465,6 +473,6 @@ class OrganizationTokenDeleteView(
 
     def get_success_url(self):
         return reverse(
-            "edit_organization",
+            "edit_organization_tokens",
             kwargs={"org_name": self.request.current_organization.name},
         )
