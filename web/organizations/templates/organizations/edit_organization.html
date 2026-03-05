@@ -11,6 +11,7 @@
   <div class="row">
     <div class="col-md-8 col-md-offset-2">
       {% include "messages.html" %}
+      <div id="organization-ajax-messages"></div>
 
       {% if new_token %}
       <div class="box box-primary">
@@ -80,7 +81,12 @@
                       <td>{% if member.user %}{{ member.user.email }}{% else %}{{ member.email }}{% endif %}</td>
                       {% if member.user %}
                         {% if member.date_joined %}
-                        <td><span class="label label-primary">{{ member.role }}</span></td>
+                        <td>
+                          <select class="form-control input-sm member-role-select" data-update-role-url="{% url 'update_organization_member_role' org_name=request.current_organization.name member_id=member.id %}">
+                            <option value="owner" {% if member.role == 'owner' %}selected{% endif %}>owner</option>
+                            <option value="member" {% if member.role == 'member' %}selected{% endif %}>member</option>
+                          </select>
+                        </td>
                         {% else %}
                         <td><span class="label label-default">invited</span></td>
                         {% endif %}
