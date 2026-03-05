@@ -26,7 +26,7 @@ def test_list_cves(create_cve, auth_client):
     assert response.json()["results"] == [
         {
             "created_at": "2021-12-10T00:00:00Z",
-            "updated_at": "2024-07-24T17:08:24.167000Z",
+            "updated_at": "2024-07-24T17:08:24Z",
             "cve_id": "CVE-2021-44228",
             "description": "Apache Log4j2 2.0-beta9 through 2.15.0 (excluding security releases 2.12.2, 2.12.3, and 2.3.1) JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled. From log4j 2.15.0, this behavior has been disabled by default. From version 2.16.0 (along with 2.12.2, 2.12.3, and 2.3.1), this functionality has been completely removed. Note that this vulnerability is specific to log4j-core and does not affect log4net, log4cxx, or other Apache Logging Services projects.",
         }
@@ -38,13 +38,13 @@ def test_list_cves(create_cve, auth_client):
     assert response.json()["results"] == [
         {
             "created_at": "2022-03-30T00:00:00Z",
-            "updated_at": "2024-07-31T20:10:19.936000Z",
+            "updated_at": "2024-07-31T20:10:19Z",
             "cve_id": "CVE-2022-22965",
             "description": "A Spring MVC or Spring WebFlux application running on JDK 9+ may be vulnerable to remote code execution (RCE) via data binding. The specific exploit requires the application to run on Tomcat as a WAR deployment. If the application is deployed as a Spring Boot executable jar, i.e. the default, it is not vulnerable to the exploit. However, the nature of the vulnerability is more general, and there may be other ways to exploit it.",
         },
         {
             "created_at": "2021-12-10T00:00:00Z",
-            "updated_at": "2024-07-24T17:08:24.167000Z",
+            "updated_at": "2024-07-24T17:08:24Z",
             "cve_id": "CVE-2021-44228",
             "description": "Apache Log4j2 2.0-beta9 through 2.15.0 (excluding security releases 2.12.2, 2.12.3, and 2.3.1) JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled. From log4j 2.15.0, this behavior has been disabled by default. From version 2.16.0 (along with 2.12.2, 2.12.3, and 2.3.1), this functionality has been completely removed. Note that this vulnerability is specific to log4j-core and does not affect log4net, log4cxx, or other Apache Logging Services projects.",
         },
