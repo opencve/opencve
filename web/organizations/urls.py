@@ -6,6 +6,7 @@ from organizations.views import (
     OrganizationEditView,
     OrganizationInvitationView,
     OrganizationMemberDeleteView,
+    OrganizationMemberRoleUpdateView,
     OrganizationMembersFormView,
     OrganizationTokenCreateView,
     OrganizationTokenDeleteView,
@@ -34,6 +35,11 @@ urlpatterns = [
         "org/<org_name>/members/<member_id>/delete",
         OrganizationMemberDeleteView.as_view(),
         name="delete_organization_member",
+    ),
+    path(
+        "org/<org_name>/members/<member_id>/role",
+        OrganizationMemberRoleUpdateView.as_view(),
+        name="update_organization_member_role",
     ),
     path(
         "org/<org_name>/invitation/<key>",

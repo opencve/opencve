@@ -84,6 +84,7 @@ function getContrastedColor(str){
       allowClear: true,
       placeholder: 'Select a view',
     });
+    $('.select2-member-role').select2({allowClear: false});
   // Handle clear event to ensure it works correctly with empty value
   $('#id_assignee').on('select2:clear', function() {
       $(this).val('').trigger('change');
@@ -104,6 +105,45 @@ function getContrastedColor(str){
                 }
             }
         });
+    });
+
+    // Organization member role update (edit organization page)
+    $(document).on('change', '#table-members .member-role-select', function() {
+        var select = $(this);
+        var url = select.data('update-role-url');
+        var role = select.val();
+        var previousRole = select.data('previous-role');
+        if (previousRole === role) return;
+        select.data('previous-role', role);
+        $.ajax({
+            url: url,
+            data: { role: role },
+            dataType: 'json',
+            type: 'POST',
+            success: function(data) {
+                if (data.status === 'ok') {
+                    var msg = data.message || 'Role has been updated successfully.';
+                    var alertHtml = '<div class="alert alert-success alert-dismissible fade in">' +
+                        '<button aria-label="Close" data-dismiss="alert" class="close" type="button"><span aria-hidden="true">×</span></button>' +
+                        '<p>' + msg + '</p></div>';
+                    $('#organization-ajax-messages').prepend(alertHtml);
+                }
+            },
+            error: function(xhr) {
+                var msg = 'An error occurred while updating the role.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                var alertHtml = '<div class="alert alert-error alert-dismissible fade in">' +
+                    '<button aria-label="Close" data-dismiss="alert" class="close" type="button"><span aria-hidden="true">×</span></button>' +
+                    '<p>' + msg + '</p></div>';
+                $('#organization-ajax-messages').prepend(alertHtml);
+                select.val(previousRole).data('previous-role', previousRole);
+            }
+        });
+    });
+    $('#table-members .member-role-select').each(function() {
+        $(this).data('previous-role', $(this).val());
     });
 
     // Fill the query input before opening the Save view modal in CVEs page

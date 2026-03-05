@@ -218,9 +218,13 @@ def test_list_memberships(auth_client, create_user, create_organization):
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
     content = soup.find("table", {"id": "table-members"}).find_all("td")
-    assert content[0].text == "user1"
-    assert content[1].text == "user1@example.com"
-    assert content[2].text == "owner"
+    assert content[0].text.strip() == "user1"
+    assert content[1].text.strip() == "user1@example.com"
+    role_cell = content[2]
+    select = role_cell.find("select", class_="member-role-select")
+    assert select is not None
+    selected_option = select.find("option", {"selected": True})
+    assert selected_option is not None and selected_option["value"] == "owner"
 
 
 # Create Memberships
@@ -875,3 +879,177 @@ def test_revoke_token_not_owner(auth_client, create_user, create_organization):
     # Token should still be active
     token = OrganizationAPIToken.objects.get(token_id=token_id)
     assert token.is_active is True
+
+
+# Update Member Role
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_member_role_owner_success(
+    auth_client, create_user, create_organization
+):
+    """Test that an owner can update a member's role."""
+    owner = create_user(username="owner")
+    member = create_user(username="member")
+    organization = create_organization(name="test-org", user=owner, owner=True)
+    membership = Membership.objects.create(
+        user=member,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    client = auth_client(owner)
+    url = reverse(
+        "update_organization_member_role",
+        kwargs={"org_name": organization.name, "member_id": membership.id},
+    )
+    response = client.post(url, data={"role": Membership.OWNER})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {"status": "ok", "message": "Role has been updated successfully."}
+    membership.refresh_from_db()
+    assert membership.role == Membership.OWNER
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_member_role_not_owner(auth_client, create_user, create_organization):
+    """Test that a non-owner cannot update a member's role."""
+    owner = create_user(username="owner")
+    member = create_user(username="member")
+    organization = create_organization(name="test-org", user=owner, owner=True)
+    membership = Membership.objects.create(
+        user=member,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    client = auth_client(member)
+    url = reverse(
+        "update_organization_member_role",
+        kwargs={"org_name": organization.name, "member_id": membership.id},
+    )
+    response = client.post(url, data={"role": Membership.OWNER})
+
+    assert response.status_code == 302
+    membership.refresh_from_db()
+    assert membership.role == Membership.MEMBER
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_member_role_membership_not_joined(
+    auth_client, create_user, create_organization
+):
+    """Test that role cannot be updated for a pending invitation."""
+    owner = create_user(username="owner")
+    member = create_user(username="member")
+    organization = create_organization(name="test-org", user=owner, owner=True)
+    membership = Membership.objects.create(
+        user=member,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=None,
+    )
+
+    client = auth_client(owner)
+    url = reverse(
+        "update_organization_member_role",
+        kwargs={"org_name": organization.name, "member_id": membership.id},
+    )
+    response = client.post(url, data={"role": Membership.OWNER})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data == {
+        "status": "error",
+        "message": "Cannot change role for pending invitations.",
+    }
+    membership.refresh_from_db()
+    assert membership.role == Membership.MEMBER
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_member_role_last_owner(auth_client, create_user, create_organization):
+    """Test that the last owner cannot be demoted to member."""
+    owner = create_user(username="owner")
+    organization = create_organization(name="test-org", user=owner, owner=True)
+    membership = Membership.objects.get(user=owner, organization=organization)
+
+    client = auth_client(owner)
+    url = reverse(
+        "update_organization_member_role",
+        kwargs={"org_name": organization.name, "member_id": membership.id},
+    )
+    response = client.post(url, data={"role": Membership.MEMBER})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data == {
+        "status": "error",
+        "message": "You cannot demote the only owner of the organization.",
+    }
+    membership.refresh_from_db()
+    assert membership.role == Membership.OWNER
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_member_role_invalid_role(auth_client, create_user, create_organization):
+    """Test that an invalid role value is rejected."""
+    owner = create_user(username="owner")
+    member = create_user(username="member")
+    organization = create_organization(name="test-org", user=owner, owner=True)
+    membership = Membership.objects.create(
+        user=member,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    client = auth_client(owner)
+    url = reverse(
+        "update_organization_member_role",
+        kwargs={"org_name": organization.name, "member_id": membership.id},
+    )
+    response = client.post(url, data={"role": "invalid"})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data == {"status": "error", "message": "Invalid role."}
+    membership.refresh_from_db()
+    assert membership.role == Membership.MEMBER
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_member_role_other_organization(
+    auth_client, create_user, create_organization
+):
+    """Test that a member_id from another organization returns 404."""
+    owner1 = create_user(username="owner1")
+    owner2 = create_user(username="owner2")
+    member = create_user(username="member")
+    org1 = create_organization(name="org1", user=owner1, owner=True)
+    org2 = create_organization(name="org2", user=owner2, owner=True)
+    membership_org2 = Membership.objects.create(
+        user=member,
+        organization=org2,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    client = auth_client(owner1)
+    url = reverse(
+        "update_organization_member_role",
+        kwargs={"org_name": org1.name, "member_id": membership_org2.id},
+    )
+    response = client.post(url, data={"role": Membership.OWNER})
+
+    assert response.status_code == 404
+    membership_org2.refresh_from_db()
+    assert membership_org2.role == Membership.MEMBER

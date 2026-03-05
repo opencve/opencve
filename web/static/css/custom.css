@@ -1561,3 +1561,11 @@ pre.plainJSON{
   display: inline-flex;
   align-items: center;
 }
+
+#organization-ajax-messages:empty {
+  display: none;
+}
+
+#table-members .member-role-select {
+  max-width: 120px;
+}

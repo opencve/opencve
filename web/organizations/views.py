@@ -264,6 +264,91 @@ class OrganizationMemberDeleteView(
         )
 
 
+class OrganizationMemberRoleUpdateView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    SingleObjectMixin,
+    View,
+):
+    """Allow owners to update the role of a member who has already joined."""
+
+    model = Membership
+    http_method_names = ["post"]
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            self.model,
+            organization=self.request.current_organization,
+            id=self.kwargs["member_id"],
+        )
+
+    def check_role_update_errors(self, request, membership, new_role):
+        """
+        Checks all possible errors before updating a member's role in the organization.
+        """
+        # Check if a role has been provided in the request
+        if not new_role:
+            return JsonResponse(
+                {"status": "error", "message": "Role is required."},
+                status=400,
+            )
+
+        # Check if the provided role is valid
+        valid_roles = [r[0] for r in Membership.ROLES]
+        if new_role not in valid_roles:
+            return JsonResponse(
+                {"status": "error", "message": "Invalid role."},
+                status=400,
+            )
+
+        # Prevent changing role for members who have not yet joined
+        if not membership.date_joined:
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "Cannot change role for pending invitations.",
+                },
+                status=400,
+            )
+
+        # Get all owners in the organization
+        owners = request.current_organization.membership_set.filter(
+            role=Membership.OWNER
+        ).all()
+
+        # Prevent demoting the only owner to member
+        if (
+            membership.role == Membership.OWNER
+            and len(owners) == 1
+            and new_role == Membership.MEMBER
+        ):
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "You cannot demote the only owner of the organization.",
+                },
+                status=400,
+            )
+        return None
+
+    def post(self, request, *args, **kwargs):
+        membership = self.get_object()
+        role = request.POST.get("role")
+
+        # Run all the necessary checks before updating the role
+        errors = self.check_role_update_errors(request, membership, role)
+        if errors:
+            return errors
+
+        # All checks passed, update the role and save
+        membership.role = role
+        membership.save(update_fields=["role"])
+
+        return JsonResponse(
+            {"status": "ok", "message": "Role has been updated successfully."}
+        )
+
+
 class OrganizationInvitationView(LoginRequiredMixin, SingleObjectMixin, View):
     model = Membership
 
