@@ -273,7 +273,8 @@ class OrganizationMemberDeleteView(
     def dispatch(self, request, *args, **kwargs):
         member = self.get_object()
         owners = request.current_organization.membership_set.filter(
-            role=Membership.OWNER
+            role=Membership.OWNER,
+            date_joined__isnull=False,
         ).all()
 
         if len(owners) == 1 and owners[0] == member:

@@ -206,6 +206,43 @@ def test_delete_organization(auth_client, create_user, create_organization):
     )
 
 
+def test_delete_membership_only_owner_with_invited_owner(
+    auth_client, create_user, create_organization
+):
+    """The only owner cannot leave when an invited owner exists."""
+    user1 = create_user(username="user1")
+    organization = create_organization(name="orga1", user=user1, owner=True)
+
+    # Invited user with OWNER role but not yet accepted (date_joined=None)
+    invited_user = create_user(username="invited_owner")
+    Membership.objects.create(
+        organization=organization,
+        user=invited_user,
+        role=Membership.OWNER,
+        date_joined=None,
+    )
+
+    membership = Membership.objects.get(organization=organization, user=user1)
+    url = reverse(
+        "delete_organization_member",
+        kwargs={"org_name": "orga1", "member_id": membership.id},
+    )
+
+    # User1 is the only owner who has joined; he must not be able to leave
+    client = auth_client(user1)
+    response = client.post(url, data={}, follow=True)
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    assert (
+        "You cannot leave this organization as you are the only owner"
+        in soup.find("div", {"class": "alert-error"}).text
+    )
+    assert response.redirect_chain == [
+        (reverse("edit_organization_members", kwargs={"org_name": "orga1"}), 302)
+    ]
+    assert Membership.objects.filter(organization=organization, user=user1).exists()
+
+
 # List Memberships
 
 
