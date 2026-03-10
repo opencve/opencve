@@ -33,19 +33,24 @@ class OrganizationIsOwnerMixin:
             messages.error(request, "The requested organization does not exist.")
             return redirect("list_organizations")
 
-        # Check if user is owner
+        # Check if user is owner or member
         try:
             membership = get_object_or_404(
                 Membership,
                 user=request.user,
                 organization=request.current_organization,
-                role=Membership.OWNER,
+                role__in=[Membership.OWNER, Membership.MEMBER],
             )
         except Http404:
             messages.error(request, "The requested organization does not exist.")
             return redirect("list_organizations")
 
-        # Check if user is not just invited
+        # The user is member but not owner
+        if membership.role == Membership.MEMBER:
+            messages.error(request, "You are not an owner of the organization.")
+            return redirect("list_organizations")
+
+        # The user is invited but not yet joined the organization
         if membership.is_invited:
             messages.error(request, "The requested organization does not exist.")
             return redirect("list_organizations")

@@ -26,7 +26,11 @@
                         <li class="item">
                             <div class="product-info">
                                 <div class="product-title">
+                                    {% if membership.is_invited or not membership.is_owner %}
+                                    {{ membership.organization.name }}
+                                    {% else %}
                                     <a href="{% url 'edit_organization' org_name=membership.organization.name %}">{{ membership.organization.name }}</a>
+                                    {% endif %}
                                     <div class="pull-right">
                                         <div class="btn-group" role="group">
                                             {% if membership.is_invited %}
