@@ -85,6 +85,18 @@ function getContrastedColor(str){
       placeholder: 'Select a view',
     });
     $('.select2-member-role').select2({allowClear: false});
+    $('.select2-auditlog-users').select2({
+      allowClear: true,
+      placeholder: 'All users',
+    });
+    $('.select2-auditlog-resource').select2({
+      allowClear: true,
+      placeholder: 'All resources',
+    });
+    $('.select2-auditlog-action').select2({
+      allowClear: true,
+      placeholder: 'All actions',
+    });
   // Handle clear event to ensure it works correctly with empty value
   $('#id_assignee').on('select2:clear', function() {
       $(this).val('').trigger('change');
@@ -1868,6 +1880,31 @@ function getContrastedColor(str){
         });
     }
   }
+
+  // Audit logs: toggle inline detail row and chevron icon
+  $('#table-audit-logs').on('click', 'tr.auditlog-row', function() {
+    var $row = $(this);
+    var entryId = $row.data('entry-id');
+    var $detailRow = $('#auditlog-detail-' + entryId);
+    var $chevron = $row.find('.auditlog-chevron');
+
+    // Close other open details and reset their chevrons
+    $('#table-audit-logs tr.auditlog-row').not($row).removeClass('auditlog-row-expanded');
+    $('#table-audit-logs tr.auditlog-row').not($row).find('.auditlog-chevron')
+      .removeClass('fa-chevron-up').addClass('fa-chevron-down');
+    $('#table-audit-logs tr.auditlog-detail-row').not($detailRow).addClass('hidden');
+
+    // Toggle current detail row and chevron
+    if ($detailRow.hasClass('hidden')) {
+      $detailRow.removeClass('hidden');
+      $row.addClass('auditlog-row-expanded');
+      $chevron.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+    } else {
+      $detailRow.addClass('hidden');
+      $row.removeClass('auditlog-row-expanded');
+      $chevron.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+    }
+  });
 
   // Copy token functionality
   $(document).on('click', '.copy-token-btn', function() {

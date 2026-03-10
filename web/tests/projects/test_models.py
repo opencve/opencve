@@ -48,7 +48,7 @@ def test_cve_tracker_model(
     assert tracker.assignee == user
     assert tracker.status == "to_evaluate"
     assert tracker.assigned_at is not None
-    assert str(tracker) == f"{cve.cve_id} - {project.name}"
+    assert str(tracker) == f"{cve.cve_id} ({project.name})"
 
 
 def test_cve_tracker_unique_constraint(create_organization, create_project, create_cve):

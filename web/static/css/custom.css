@@ -1569,3 +1569,46 @@ pre.plainJSON{
 #table-members .member-role-select {
   max-width: 120px;
 }
+
+/* Audit logs */
+#table-audit-logs tr.auditlog-row {
+  cursor: pointer;
+}
+tr.auditlog-detail-row > td {
+  border-top: none;
+}
+#table-audit-logs.table-hover tbody tr.auditlog-detail-row:hover td,
+#table-audit-logs.table-hover tbody tr.auditlog-detail-row:hover th {
+  background-color: #fff !important;
+}
+#table-audit-logs tbody tr.auditlog-detail-row:hover {
+  background-color: #fff !important;
+}
+.auditlog-detail-changes {
+  background-color: #fff;
+}
+.auditlog-detail-changes .table {
+  background-color: #fff;
+}
+.auditlog-detail-changes .auditlog-modal-changes-table tbody tr {
+  background-color: #fff;
+}
+.auditlog-modal-changes-table {
+  margin-bottom: 0;
+  background-color: #fff;
+}
+.auditlog-modal-changes-table thead th {
+  background-color: #fff;
+  font-weight: 600;
+  border-bottom: 1px solid #ddd;
+}
+.auditlog-modal-changes-table tbody td:first-child {
+  font-weight: 500;
+  color: #555;
+  width: 25%;
+  vertical-align: top;
+}
+.auditlog-modal-changes-table tbody td {
+  padding: 8px 12px;
+  word-break: break-word;
+}

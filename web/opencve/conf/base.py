@@ -194,21 +194,55 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
 
 # Audit Logs
+# serialize_data=True (with serialize_auditlog_fields_only=True) for org-scoped models
+# so DELETE entries store serialized_data and can be included in organization audit log view
 AUDITLOG_INCLUDE_TRACKING_MODELS = (
-    "dashboards.Dashboard",
-    "organizations.Organization",
-    "organizations.Membership",
+    {"model": "dashboards.Dashboard", "exclude_fields": ["updated_at"]},
+    {"model": "organizations.Organization", "exclude_fields": ["updated_at"]},
+    {
+        "model": "organizations.Membership",
+        "exclude_fields": ["updated_at"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
+    },
+    {
+        "model": "projects.CveTracker",
+        "exclude_fields": ["updated_at"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
+    },
     {
         "model": "organizations.OrganizationAPIToken",
         "mask_fields": ["token_hash"],
         "exclude_fields": ["last_used_at", "updated_at"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
     },
-    "projects.Project",
-    "projects.Notification",
-    "users.UserTag",
-    "users.CveTag",
-    "views.View",
-    {"model": "users.User", "mask_fields": ["password"]},
+    {
+        "model": "projects.Project",
+        "exclude_fields": ["updated_at"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
+    },
+    {
+        "model": "projects.Notification",
+        "exclude_fields": ["updated_at"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
+    },
+    {"model": "users.UserTag", "exclude_fields": ["updated_at"]},
+    {"model": "users.CveTag", "exclude_fields": ["updated_at"]},
+    {
+        "model": "views.View",
+        "exclude_fields": ["updated_at"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
+    },
+    {
+        "model": "users.User",
+        "mask_fields": ["password"],
+        "exclude_fields": ["updated_at"],
+    },
 )
 
 # Email backend

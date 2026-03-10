@@ -166,4 +166,4 @@ class OrganizationAPIToken(BaseModel):
         self.save(update_fields=["last_used_at", "updated_at"])
 
     def __str__(self):
-        return f"{self.name} ({self.organization.name})"
+        return f"{self.name}"

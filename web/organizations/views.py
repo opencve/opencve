@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -24,6 +25,14 @@ from organizations.forms import (
 )
 from organizations.mixins import OrganizationIsOwnerMixin
 from organizations.models import Membership, Organization, OrganizationAPIToken
+from organizations.auditlog import (
+    apply_audit_log_get_filters,
+    build_audit_log_queryset,
+    extend_audit_log_pks_with_deleted,
+    get_audit_log_display_data,
+    get_audit_log_filter_choices,
+    get_organization_audit_log_pks,
+)
 from organizations.utils import (
     send_organization_invitation_email,
     send_organization_signup_invitation_email,
@@ -188,6 +197,60 @@ class OrganizationEditMembersView(
                 kwargs={"org_name": organization.name},
             )
         )
+
+
+class OrganizationEditAuditLogsView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    TemplateView,
+):
+    template_name = "organizations/edit_organization_audit_logs.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        organization = self.request.current_organization
+        request = self.request
+
+        # Collect all object primary keys related to this organization (including soft-deleted ones).
+        pks_dict = get_organization_audit_log_pks(organization)
+        pks_dict = extend_audit_log_pks_with_deleted(organization, pks_dict)
+
+        # Build the base audit log queryset for all these objects.
+        entries_qs = build_audit_log_queryset(pks_dict)
+
+        users_choices, resources_choices, action_choices = get_audit_log_filter_choices(
+            entries_qs
+        )
+
+        # Apply GET filters (user/resource/action/date range) to the queryset.
+        entries_qs, filters = apply_audit_log_get_filters(entries_qs, request.GET)
+
+        paginator = Paginator(entries_qs, 50)
+        page_obj = paginator.get_page(request.GET.get("page"))
+
+        # Precompute human-friendly display data and attach it to each entry instance.
+        display_data = get_audit_log_display_data(page_obj.object_list)
+        for entry in page_obj.object_list:
+            d = display_data[entry.id]
+            entry.display_changes_dict = d["display_changes_dict"]
+            entry.display_object_repr = d["display_object_repr"]
+            entry.resource_label = d["resource_label"]
+
+        query_params = request.GET.copy()
+        if "page" in query_params:
+            del query_params["page"]
+
+        context["organization"] = organization
+        context["active_tab"] = "audit-logs"
+        context["page_obj"] = page_obj
+        context["paginator"] = paginator
+        context["users_choices"] = users_choices
+        context["resources_choices"] = resources_choices
+        context["action_choices"] = action_choices
+        context["filters"] = filters
+        context["base_querystring"] = query_params.urlencode()
+
+        return context
 
 
 class OrganizationEditTokensView(
