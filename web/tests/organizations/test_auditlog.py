@@ -200,6 +200,7 @@ def test_get_displayable_changes_filters_and_formats_notification_configuration(
     assert "Email: b@example.com" in value.get("after", "")
 
 
+@pytest.mark.django_db
 def test_get_displayable_changes_project_subscriptions_and_hidden_fields():
     ct = ContentType.objects.get_for_model(Project)
     changes = {
@@ -225,6 +226,7 @@ def test_get_displayable_changes_project_subscriptions_and_hidden_fields():
     assert subs["after"]["vendors"] == ["v2"]
 
 
+@pytest.mark.django_db
 def test_get_displayable_changes_respects_display_fields_by_resource_action():
     ct = ContentType.objects.get_for_model(Project)
     allowed_fields = DISPLAY_FIELDS_BY_RESOURCE_ACTION["project"]
