@@ -2,6 +2,8 @@ from datetime import date
 from unittest.mock import patch
 
 from bs4 import BeautifulSoup
+from auditlog.models import LogEntry
+from django.contrib.contenttypes.models import ContentType
 from django.test import override_settings
 from django.urls import reverse
 from django.utils.timezone import now
@@ -1084,3 +1086,92 @@ def test_update_member_role_other_organization(
     assert response.status_code == 404
     membership_org2.refresh_from_db()
     assert membership_org2.role == Membership.MEMBER
+
+
+# Audit logs
+#
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_edit_organization_audit_logs_empty(
+    auth_client, create_user, create_organization
+):
+    """Audit logs view renders correctly even when only system entries exist."""
+    user = create_user(username="owner", email="owner@example.com")
+    organization = create_organization(name="orga1", user=user, owner=True)
+    client = auth_client(user)
+
+    url = reverse(
+        "edit_organization_audit_logs", kwargs={"org_name": organization.name}
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    # Heading and table should be present
+    assert soup.find("h4").text.strip() == "Audit logs"
+    table = soup.find("table", {"id": "table-audit-logs"})
+    assert table is not None
+
+    # There should be at least one row (auditlog creates system entries
+    # when the organization and membership are created).
+    tbody = table.find("tbody")
+    rows = tbody.find_all("tr", {"class": "auditlog-row"})
+    assert len(rows) >= 1
+    assert "Membership" in rows[0].text
+    assert "date_joined" in rows[0].text
+
+    # Filters should be rendered with default values
+    assert soup.find("select", {"id": "filter-user"}) is not None
+    assert soup.find("select", {"id": "filter-resource"}) is not None
+    assert soup.find("select", {"id": "filter-action"}) is not None
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_edit_organization_audit_logs_with_entry(
+    auth_client, create_user, create_organization
+):
+    """Audit logs view lists entries and exposes display fields."""
+    user = create_user(username="owner", email="owner@example.com")
+    organization = create_organization(name="orga1", user=user, owner=True)
+
+    # Create a manual log entry for this organization with a simple change dict
+    ct_org = ContentType.objects.get_for_model(Organization)
+    log_entry = LogEntry.objects.create(
+        content_type=ct_org,
+        object_pk=str(organization.pk),
+        object_repr=str(organization),
+        actor=user,
+        action=LogEntry.Action.UPDATE,
+        changes={"name": ["orga1", "orga1-renamed"]},
+    )
+
+    client = auth_client(user)
+    url = reverse(
+        "edit_organization_audit_logs", kwargs={"org_name": organization.name}
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.content, features="html.parser")
+    table = soup.find("table", {"id": "table-audit-logs"})
+    tbody = table.find("tbody")
+
+    # There should be a row corresponding to our specific entry
+    row = tbody.find(
+        "tr", {"class": "auditlog-row", "data-entry-id": str(log_entry.id)}
+    )
+    assert row is not None
+
+    # Actor username should be visible for this entry
+    assert "owner" in row.text
+    # Resource label (Organization) should appear
+    assert "Organization" in row.text
+    # Changes column lists field names (here: name)
+    changes_cell = row.find_all("td")[5]
+    assert "name" in changes_cell.text
+
+    # Detail row must also exist for this entry
+    detail_row = tbody.find("tr", {"id": f"auditlog-detail-{log_entry.id}"})
+    assert detail_row is not None

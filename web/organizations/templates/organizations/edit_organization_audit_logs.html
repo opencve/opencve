@@ -1,0 +1,396 @@
+{% extends "organizations/edit_organization_base.html" %}
+{% load humanize %}
+{% load opencve_extras %}
+
+{% block tab_content %}
+<div class="row">
+  <div class="col-md-12">
+    <h4>Audit logs</h4>
+
+    <form method="get" class="form" role="form">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label for="filter-user">User</label>
+            <select id="filter-user" name="user" class="form-control input-sm select2-auditlog-users">
+              <option value="">All users</option>
+              <option value="system"{% if filters.user == "system" %} selected{% endif %}>System</option>
+              {% for user in users_choices %}
+              <option value="{{ user.id }}"{% if filters.user == user.id %} selected{% endif %}>
+                {{ user.username }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-group">
+            <label for="filter-resource">Resource</label>
+            <select id="filter-resource" name="resource" class="form-control input-sm select2-auditlog-resource">
+              <option value="">All resources</option>
+              {% for resource in resources_choices %}
+              <option value="{{ resource.key }}"{% if filters.resource == resource.key %} selected{% endif %}>
+                {{ resource.label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-group">
+            <label for="filter-action">Action</label>
+            <select id="filter-action" name="action" class="form-control input-sm select2-auditlog-action">
+              <option value="">All actions</option>
+              {% for action in action_choices %}
+              <option value="{{ action.value }}"{% if filters.action|stringformat:"s" == action.value|stringformat:"s" %} selected{% endif %}>
+                {{ action.label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 8px;">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label for="filter-date-from">From</label>
+            <input
+              id="filter-date-from"
+              type="date"
+              name="date_from"
+              class="form-control input-sm"
+              value="{{ filters.date_from }}"
+            >
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-group">
+            <label for="filter-date-to">To</label>
+            <input
+              id="filter-date-to"
+              type="date"
+              name="date_to"
+              class="form-control input-sm"
+              value="{{ filters.date_to }}"
+            >
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-group" style="margin-top: 20px;">
+            <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <a href="?" class="btn btn-default btn-sm">Reset</a>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <hr>
+
+    <div class="table-responsive no-padding">
+      <table class="table table-hover table-striped" id="table-audit-logs">
+        <thead>
+          <tr>
+            <th style="width: 32px;"></th>
+            <th>Date</th>
+            <th>Actor</th>
+            <th>Resource</th>
+            <th>Target</th>
+            <th>Changes</th>
+            <th style="width: 32px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in page_obj.object_list %}
+          <tr
+            class="auditlog-row"
+            data-entry-id="{{ entry.id }}"
+          >
+            <td class="auditlog-action-cell text-center">
+              {% if entry.action == 0 %}
+                <i class="fa fa-plus text-green" title="Created"></i>
+              {% elif entry.action == 1 %}
+                <i class="fa fa-edit" title="Updated"></i>
+              {% elif entry.action == 2 %}
+                <i class="fa fa-trash text-red" title="Deleted"></i>
+              {% else %}
+                <i class="fa fa-info-circle text-muted" title="{{ entry.get_action_display }}"></i>
+              {% endif %}
+            </td>
+            <td>
+              <span data-toggle="tooltip" data-container="body" title="{{ entry.timestamp|date:"Y-m-d H:i:s \\U\\T\\C" }}">{{ entry.timestamp|naturaltime }}</span>
+            </td>
+            <td>
+              {% if entry.actor %}
+                {{ entry.actor.username }}
+              {% else %}
+                <span class="text-muted">system</span>
+              {% endif %}
+            </td>
+            <td>
+              {{ entry.resource_label }}
+            </td>
+            <td>{{ entry.display_object_repr }}</td>
+            <td>
+              {% if entry.action == 2 %}
+                <span class="text-muted"><em>Object deleted</em></span>
+              {% else %}
+                {% if entry.display_changes_dict %}
+                  {% for field, values in entry.display_changes_dict.items %}
+                    {{ field }}{% if not forloop.last %}, {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <span class="text-muted">No details</span>
+                {% endif %}
+              {% endif %}
+            </td>
+            <td class="auditlog-expand-cell text-center">
+              <i class="fa fa-chevron-down auditlog-chevron" aria-hidden="true"></i>
+            </td>
+          </tr>
+          <tr id="auditlog-detail-{{ entry.id }}" class="auditlog-detail-row hidden">
+            <td></td>
+            <td colspan="6">
+              <div class="auditlog-detail-changes">
+                <div class="table-responsive no-padding">
+                  <table class="table table-striped table-condensed auditlog-modal-changes-table">
+                    <thead>
+                      <tr>
+                        <th>Field</th>
+                        {# 0=create, 1=update, 2=delete #}
+                        {% if entry.action == 1 %}
+                          <th>Before</th>
+                          <th>After</th>
+                        {% elif entry.action == 2 %}
+                          <th>Value before deletion</th>
+                        {% else %}
+                          <th>Value</th>
+                        {% endif %}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% if entry.display_changes_dict %}
+                        {% if entry.action == 0 %}
+                          {# CREATE: show new value (values.1) #}
+                          {% for field, values in entry.display_changes_dict.items %}
+                          <tr>
+                            <td>{{ field }}</td>
+                            <td>
+                              {% if entry.content_type.model == "project" and field == "subscriptions" and values.is_project_subscriptions %}
+                                {% with stats=values.after %}
+                                  {% if stats.vendors %}
+                                    {{ stats.vendors|length }} vendor{% if stats.vendors|length != 1 %}s{% endif %}
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-after-vendors'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-after-vendors" style="display:none; margin-top:5px; white-space: pre;">{% for v in stats.vendors %}{{ v|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if stats.products %}
+                                    {{ stats.products|length }} product{% if stats.products|length != 1 %}s{% endif %}
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-after-products'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-after-products" style="display:none; margin-top:5px; white-space: pre;">{% for p in stats.products %}{{ p|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if not stats.vendors and not stats.products %}
+                                    <span class="text-muted">—</span>
+                                  {% endif %}
+                                {% endwith %}
+                              {% elif entry.content_type.model == "notification" and field == "configuration" and values.is_notification_configuration %}
+                                {% if values.before %}
+                                  {{ values.before|linebreaksbr }}
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
+                              {% else %}
+                                {% if values.1 %}
+                                  {{ values.1|linebreaksbr }}
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
+                              {% endif %}
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        {% elif entry.action == 2 %}
+                          {# DELETE: show previous value (values.0) in single Value column #}
+                          {% for field, values in entry.display_changes_dict.items %}
+                          <tr>
+                            <td>{{ field }}</td>
+                            <td>
+                              {% if entry.content_type.model == "project" and field == "subscriptions" and values.is_project_subscriptions %}
+                                {% with stats=values.before %}
+                                  {% if stats.vendors %}
+                                    {{ stats.vendors|length }} vendor{% if stats.vendors|length != 1 %}s{% endif %}
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-before-vendors'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-before-vendors" style="display:none; margin-top:5px; white-space: pre;">{% for v in stats.vendors %}{{ v|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if stats.products %}
+                                    {{ stats.products|length }} product{% if stats.products|length != 1 %}s{% endif %}
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-before-products'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-before-products" style="display:none; margin-top:5px; white-space: pre;">{% for p in stats.products %}{{ p|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if not stats.vendors and not stats.products %}
+                                    <span class="text-muted">—</span>
+                                  {% endif %}
+                                {% endwith %}
+                              {% elif entry.content_type.model == "notification" and field == "configuration" and values.is_notification_configuration %}
+                                {% if values.before %}
+                                  {{ values.before|linebreaksbr }}
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
+                              {% else %}
+                                {% if values.0 %}
+                                  {{ values.0|linebreaksbr }}
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
+                              {% endif %}
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        {% else %}
+                          {# UPDATE (or other 3-column actions): Before / After #}
+                          {% for field, values in entry.display_changes_dict.items %}
+                          <tr>
+                            <td>{{ field }}</td>
+                            <td>
+                              {% if entry.content_type.model == "project" and field == "subscriptions" and values.is_project_subscriptions %}
+                                {% with stats=values.before %}
+                                  {% if stats.vendors %}
+                                    {{ stats.vendors|length }} vendor{% if stats.vendors|length != 1 %}s{% endif %}
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-before-vendors'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-before-vendors" style="display:none; margin-top:5px; white-space: pre;">{% for v in stats.vendors %}{{ v|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if stats.products %}
+                                    {{ stats.products|length }} product{% if stats.products|length != 1 %}s{% endif %}
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-before-products'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-before-products" style="display:none; margin-top:5px; white-space: pre;">{% for p in stats.products %}{{ p|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if not stats.vendors and not stats.products %}
+                                    <span class="text-muted">—</span>
+                                  {% endif %}
+                                {% endwith %}
+                              {% elif entry.content_type.model == "notification" and field == "configuration" and values.is_notification_configuration %}
+                                {% if values.before %}
+                                  {{ values.before|linebreaksbr }}
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
+                              {% else %}
+                                {% if values.0 %}
+                                  {{ values.0|linebreaksbr }}
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
+                              {% endif %}
+                            </td>
+                            <td>
+                              {% if entry.content_type.model == "project" and field == "subscriptions" and values.is_project_subscriptions %}
+                                {% with diff=values.diff %}
+                                  {% if diff.vendors_added %}
+                                    + {{ diff.vendors_added|length }} vendor{% if diff.vendors_added|length != 1 %}s{% endif %} added
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-after-vendors-added'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-after-vendors-added" style="display:none; margin-top:5px; white-space: pre;">{% for v in diff.vendors_added %}{{ v|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if diff.vendors_removed %}
+                                    - {{ diff.vendors_removed|length }} vendor{% if diff.vendors_removed|length != 1 %}s{% endif %} removed
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-after-vendors-removed'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-after-vendors-removed" style="display:none; margin-top:5px; white-space: pre;">{% for v in diff.vendors_removed %}{{ v|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if diff.products_added %}
+                                    + {{ diff.products_added|length }} product{% if diff.products_added|length != 1 %}s{% endif %} added
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-after-products-added'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-after-products-added" style="display:none; margin-top:5px; white-space: pre;">{% for p in diff.products_added %}{{ p|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if diff.products_removed %}
+                                    - {{ diff.products_removed|length }} product{% if diff.products_removed|length != 1 %}s{% endif %} removed
+                                    (<a href="#" onclick="var el=document.getElementById('subs-{{ entry.id }}-after-products-removed'); if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; } return false;">display</a>)<br>
+                                    <pre id="subs-{{ entry.id }}-after-products-removed" style="display:none; margin-top:5px; white-space: pre;">{% for p in diff.products_removed %}{{ p|humanize }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}</pre>
+                                  {% endif %}
+                                  {% if not diff.vendors_added and not diff.vendors_removed and not diff.products_added and not diff.products_removed %}
+                                    <span class="text-muted">—</span>
+                                  {% endif %}
+                                {% endwith %}
+                              {% elif entry.content_type.model == "notification" and field == "configuration" and values.is_notification_configuration %}
+                                {% if values.after %}
+                                  {{ values.after|linebreaksbr }}
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
+                              {% else %}
+                                {% if values.1 %}
+                                  {{ values.1|linebreaksbr }}
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
+                              {% endif %}
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        {% endif %}
+                      {% else %}
+                        <tr>
+                          <td colspan="{% if entry.action == 1 %}3{% else %}2{% endif %}" class="text-center text-muted">
+                            No changes recorded.
+                          </td>
+                        </tr>
+                      {% endif %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center text-muted">No audit logs found for this organization.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# Inline details rows are rendered per entry above; no modal needed #}
+
+    {% if paginator.num_pages > 1 %}
+    <nav aria-label="Audit logs pagination">
+      <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li>
+          <a href="?{% if base_querystring %}{{ base_querystring }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
+            <span aria-hidden="true">&laquo;</span>
+          </a>
+        </li>
+        {% else %}
+        <li class="disabled">
+          <span aria-hidden="true">&laquo;</span>
+        </li>
+        {% endif %}
+
+        {% for num in paginator.page_range %}
+        {% if num == page_obj.number %}
+        <li class="active"><span>{{ num }}</span></li>
+        {% else %}
+        <li><a href="?{% if base_querystring %}{{ base_querystring }}&{% endif %}page={{ num }}">{{ num }}</a></li>
+        {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li>
+          <a href="?{% if base_querystring %}{{ base_querystring }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next">
+            <span aria-hidden="true">&raquo;</span>
+          </a>
+        </li>
+        {% else %}
+        <li class="disabled">
+          <span aria-hidden="true">&raquo;</span>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

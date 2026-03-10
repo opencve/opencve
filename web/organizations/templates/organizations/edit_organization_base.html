@@ -7,25 +7,49 @@
 
 <section class="content">
   <div class="row">
-    <div class="col-md-10 col-md-offset-1">
-      {% include "messages.html" %}
-      <div id="organization-ajax-messages"></div>
+    <div class="col-md-12">
 
-      <div class="nav-tabs-custom nav-tabs-primary nav-tabs-settings">
-        <ul class="nav nav-tabs">
-          <li class="{% if active_tab == 'general' %}active{% endif %}">
-            <a href="{% url 'edit_organization' org_name=organization.name %}">General</a>
-          </li>
-          <li class="{% if active_tab == 'members' %}active{% endif %}">
-            <a href="{% url 'edit_organization_members' org_name=organization.name %}">Memberships</a>
-          </li>
-          <li class="{% if active_tab == 'tokens' %}active{% endif %}">
-            <a href="{% url 'edit_organization_tokens' org_name=organization.name %}">API Tokens</a>
-          </li>
-        </ul>
-        <div class="tab-content">
-          {% block tab_content %}{% endblock %}
+      <div class="row">
+        <div class="col-md-3 col-sm-4">
+          <div class="box box-solid">
+            <div class="box-body no-padding">
+              <ul class="nav nav-pills nav-stacked">
+                <li class="{% if active_tab == 'general' %}active{% endif %}">
+                  <a href="{% url 'edit_organization' org_name=organization.name %}">
+                    <i class="fa fa-cog"></i> General
+                  </a>
+                </li>
+                <li class="{% if active_tab == 'members' %}active{% endif %}">
+                  <a href="{% url 'edit_organization_members' org_name=organization.name %}">
+                    <i class="fa fa-users"></i> Memberships
+                  </a>
+                </li>
+                <li class="{% if active_tab == 'tokens' %}active{% endif %}">
+                  <a href="{% url 'edit_organization_tokens' org_name=organization.name %}">
+                    <i class="fa fa-key"></i> API Tokens
+                  </a>
+                </li>
+                <li class="{% if active_tab == 'audit-logs' %}active{% endif %}">
+                  <a href="{% url 'edit_organization_audit_logs' org_name=organization.name %}">
+                    <i class="fa fa-list-alt"></i> Audit logs
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
+
+        <div class="col-md-9 col-sm-8">
+          {% include "messages.html" %}
+          <div id="organization-ajax-messages"></div>
+
+          <div class="box box-primary">
+            <div class="box-body">
+              {% block tab_content %}{% endblock %}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

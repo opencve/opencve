@@ -78,7 +78,7 @@ class Notification(BaseModel):
         db_table = "opencve_notifications"
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.project.name})"
 
     @property
     def notification(self):
@@ -151,7 +151,7 @@ class CveTracker(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.cve.cve_id} - {self.project.name}"
+        return f"{self.cve.cve_id} ({self.project.name})"
 
     @classmethod
     def update_tracker(cls, project, cve, assignee=Ellipsis, status=Ellipsis):
