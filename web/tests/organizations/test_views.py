@@ -618,6 +618,27 @@ def test_create_membership_non_existing_user_sends_email(
 
 
 @override_settings(ENABLE_ONBOARDING=False)
+def test_create_membership_non_existing_user_email_normalized(
+    auth_client, create_user, create_organization
+):
+    """Test that inviting with an email containing uppercase/spaces stores it normalized."""
+    owner = create_user(username="owner", email="owner@example.com")
+    organization = create_organization(name="orga1", user=owner, owner=True)
+    client = auth_client(owner)
+    url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
+
+    response = client.post(
+        url,
+        data={"email": "  John.Doe@Example.COM  ", "role": "member"},
+        follow=True,
+    )
+
+    assert response.status_code == 200
+    membership = Membership.objects.get(organization=organization, user__isnull=True)
+    assert membership.email == "john.doe@example.com"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
 def test_create_membership_non_existing_user_duplicate_invitation(
     auth_client, create_user, create_organization
 ):
