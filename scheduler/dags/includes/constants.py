@@ -337,6 +337,8 @@ SELECT
   organizations.name,
   automations.id,
   automations.name,
+  automations.trigger_type,
+  automations.frequency,
   automations.configuration
 FROM
   opencve_automations AS automations

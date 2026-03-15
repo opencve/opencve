@@ -16,6 +16,8 @@ def test_dag_opencve_loaded(dagbag):
     assert len(dag.tasks) == 15
     tasks = sorted([t.task_id for t in dag.tasks])
     assert tasks == [
+        "automations.execute_automation_actions",
+        "automations.make_automations_chunks",
         "cves.compute_statistics",
         "cves.fetch_kb",
         "cves.fetch_mitre",
@@ -23,14 +25,12 @@ def test_dag_opencve_loaded(dagbag):
         "cves.fetch_redhat",
         "cves.fetch_vulnrichment",
         "cves.process_kb",
-        "notifications.make_notifications_chunks",
-        "notifications.send_notifications",
+        "reports.prepare_automations",
         "reports.list_changes",
         "reports.list_subscriptions",
         "reports.populate_reports",
-        "reports.prepare_notifications",
         "should_create_reports",
-        "should_launch_notifications",
+        "should_launch_automations",
     ]
 
 
@@ -49,11 +49,11 @@ def test_dag_check_smtp_loaded(dagbag):
         ("should_create_reports", "create_reports", "true", True),
         ("should_create_reports", "create_reports", "false", False),
         ("should_create_reports", "create_reports", "other", False),
-        ("should_launch_notifications", "launch_notifications", "true", True),
-        ("should_launch_notifications", "launch_notifications", "false", False),
+        ("should_launch_automations", "launch_automations", "true", True),
+        ("should_launch_automations", "launch_automations", "false", False),
         (
-            "should_launch_notifications",
-            "launch_notifications",
+            "should_launch_automations",
+            "launch_automations",
             "other",
             False,
         ),
@@ -78,22 +78,20 @@ def test_shortcircuit_task_dependencies(dagbag):
     """Test that task dependencies are correct for ShortCircuitOperator tasks"""
     dag = dagbag.get_dag(dag_id="opencve")
     should_create_reports = dag.get_task("should_create_reports")
-    should_launch_notifications = dag.get_task("should_launch_notifications")
+    should_launch_automations = dag.get_task("should_launch_automations")
 
     # Verify should_create_reports has correct upstream dependencies
     upstream_task_ids = [t.task_id for t in should_create_reports.upstream_list]
     assert "cves.compute_statistics" in upstream_task_ids
 
-    # Verify should_launch_notifications has correct upstream dependencies
-    upstream_task_ids = [t.task_id for t in should_launch_notifications.upstream_list]
-    assert "reports.prepare_notifications" in upstream_task_ids
+    # Verify should_launch_automations has correct upstream dependencies
+    upstream_task_ids = [t.task_id for t in should_launch_automations.upstream_list]
+    assert "reports.prepare_automations" in upstream_task_ids
     assert "reports.populate_reports" in upstream_task_ids
 
     # Verify downstream tasks are correct
     downstream_task_ids = [t.task_id for t in should_create_reports.downstream_list]
     assert "reports.list_changes" in downstream_task_ids
 
-    downstream_task_ids = [
-        t.task_id for t in should_launch_notifications.downstream_list
-    ]
-    assert "notifications.make_notifications_chunks" in downstream_task_ids
+    downstream_task_ids = [t.task_id for t in should_launch_automations.downstream_list]
+    assert "automations.make_automations_chunks" in downstream_task_ids

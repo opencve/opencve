@@ -151,11 +151,12 @@ def group_notifications_by_project(records, subscriptions):
 def group_automations_by_project(records, subscriptions):
     """
     This function groups automations by project.
-    Each record contains: (project_id, project_name, org_name, automation_id, automation_name, configuration)
+    Each record contains:
+    (project_id, project_name, org_name, automation_id, automation_name, trigger_type, frequency, configuration)
     """
     projects_automations = {}
     for automation in records:
-        p_id, p_name, o_name, a_id, a_name, a_conf = automation
+        p_id, p_name, o_name, a_id, a_name, a_trigger, a_frequency, a_conf = automation
 
         if p_id not in projects_automations:
             projects_automations[p_id] = []
@@ -171,6 +172,8 @@ def group_automations_by_project(records, subscriptions):
                 "organization_name": o_name,
                 "automation_id": a_id,
                 "automation_name": a_name,
+                "trigger_type": a_trigger,
+                "frequency": a_frequency,
                 "automation_conf": a_conf,
             }
         )

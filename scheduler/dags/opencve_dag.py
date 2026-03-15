@@ -12,11 +12,6 @@ from includes.tasks.automations import (
     make_automations_chunks,
     prepare_automations,
 )
-from includes.tasks.notifications import (
-    make_notifications_chunks,
-    prepare_notifications,
-    send_notifications,
-)
 from includes.tasks.statistics import compute_statistics
 from includes.tasks.reports import list_changes, list_subscriptions, populate_reports
 from includes.utils import should_execute
@@ -58,16 +53,8 @@ def opencve():
         (
             list_changes()
             >> list_subscriptions()
-            >> [populate_reports(), prepare_notifications(), prepare_automations()]
+            >> [populate_reports(), prepare_automations()]
         )
-
-    should_launch_notifications = ShortCircuitOperator(
-        task_id="should_launch_notifications",
-        python_callable=lambda: should_execute("launch_notifications"),
-    )
-
-    with TaskGroup(group_id="notifications") as notifications_group:
-        send_notifications.expand(notifications=make_notifications_chunks())
 
     should_launch_automations = ShortCircuitOperator(
         task_id="should_launch_automations",
@@ -78,7 +65,6 @@ def opencve():
         execute_automation_actions.expand(action_items=make_automations_chunks())
 
     cves_group >> should_create_reports >> reports_group
-    reports_group >> should_launch_notifications >> notifications_group
     reports_group >> should_launch_automations >> automations_group
 
 
