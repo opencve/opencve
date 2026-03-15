@@ -134,7 +134,7 @@ class OrganizationEditMembersView(
             context = self.get_context_data(members_form=form)
             return self.render_to_response(context)
 
-        email = form.cleaned_data["email"]
+        email = form.cleaned_data["email"].strip().lower()
 
         # Check if the invited user exists
         user = User.objects.filter(email=email).first()
