@@ -513,10 +513,16 @@ def test_organization_invitation(auth_client, create_user, create_organization):
     url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
     response = client.get(url, data={}, follow=True)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("table", {"id": "table-members"}).find_all("td")
-    assert content[4].text == "user2"
-    assert content[5].text == "user2@example.com"
-    assert content[6].text == "invited"
+    rows = soup.find("table", {"id": "table-members"}).find("tbody").find_all("tr")
+
+    # Skip header row and look for the row corresponding to user2
+    member_rows = rows[1:]
+    assert any(
+        cells[0].text.strip() == "user2"
+        and cells[1].text.strip() == "user2@example.com"
+        and "invited" in cells[2].text
+        for cells in (row.find_all("td") for row in member_rows)
+    )
 
     # User2 can accept invitation
     client = auth_client(user2)
