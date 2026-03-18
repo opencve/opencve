@@ -33,7 +33,7 @@ from organizations.mixins import (
 )
 from projects.forms import FORM_MAPPING, ProjectForm, CveTrackerFilterForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
-from projects.models import Notification, Project, CveTracker
+from projects.models import Notification, Project, CveComment, CveTracker
 from projects.utils import send_notification_confirmation_email
 from users.models import User
 from views.models import View as SavedView
@@ -920,3 +920,160 @@ class UpdateCveStatusView(
                 "status": tracker.get_status_display() if tracker.status else None,
             }
         )
+
+
+class CreateCveCommentView(
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+):
+    """AJAX endpoint to create a comment for a CVE within a project"""
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"success": False, "error": "Invalid JSON payload"}, status=400
+            )
+
+        cve_id = data.get("cve_id")
+        body = (data.get("body") or "").strip()
+        parent_id = data.get("parent_id")
+
+        # Check if the comment body is empty
+        if not cve_id or not body:
+            return JsonResponse(
+                {"success": False, "error": "Comment body is required"}, status=400
+            )
+
+        cve = get_object_or_404(Cve, cve_id=cve_id)
+
+        # Get the parent comment if provided
+        parent = None
+        if parent_id:
+            parent = get_object_or_404(
+                CveComment,
+                id=parent_id,
+                project=self.project,
+                cve=cve,
+            )
+            # Only allow one level of replies
+            if parent.parent_id:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "You can only reply to top-level comments.",
+                    },
+                    status=400,
+                )
+
+        comment = CveComment.objects.create(
+            cve=cve,
+            project=self.project,
+            author=request.user,
+            body=body,
+            parent=parent,
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "comment": {
+                    "id": str(comment.id),
+                    "author": comment.author.username,
+                    "created_at": comment.created_at.strftime("%Y-%m-%d %H:%M"),
+                    "edited": False,
+                    "body": comment.body,
+                    "parent_id": str(parent.id) if parent else None,
+                },
+            }
+        )
+
+
+class UpdateCveCommentView(
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+):
+    """AJAX endpoint to update an existing CVE comment/reply"""
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"success": False, "error": "Invalid JSON payload"}, status=400
+            )
+
+        cve_id = data.get("cve_id")
+        comment_id = data.get("comment_id")
+        body = (data.get("body") or "").strip()
+
+        # Check if the comment body is empty
+        if not cve_id or not comment_id or not body:
+            return JsonResponse(
+                {"success": False, "error": "Comment body is required"}, status=400
+            )
+
+        cve = get_object_or_404(Cve, cve_id=cve_id)
+        comment = get_object_or_404(
+            CveComment,
+            id=comment_id,
+            project=self.project,
+            cve=cve,
+        )
+
+        # Check if the user is the author of the comment
+        if comment.author_id != request.user.id:
+            return JsonResponse({"success": False, "error": "Forbidden"}, status=403)
+
+        comment.body = body
+        comment.edited = True
+        comment.save(update_fields=["body", "edited", "updated_at"])
+
+        return JsonResponse(
+            {
+                "success": True,
+                "comment": {
+                    "id": str(comment.id),
+                    "body": comment.body,
+                    "display_at": comment.updated_at.strftime("%Y-%m-%d %H:%M"),
+                    "edited": True,
+                },
+            }
+        )
+
+
+class DeleteCveCommentView(
+    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+):
+    """AJAX endpoint to delete an existing CVE comment/reply"""
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"success": False, "error": "Invalid JSON payload"}, status=400
+            )
+
+        cve_id = data.get("cve_id")
+        comment_id = data.get("comment_id")
+
+        # Check if the comment id is provided
+        if not cve_id or not comment_id:
+            return JsonResponse(
+                {"success": False, "error": "Missing comment id"}, status=400
+            )
+
+        cve = get_object_or_404(Cve, cve_id=cve_id)
+        comment = get_object_or_404(
+            CveComment,
+            id=comment_id,
+            project=self.project,
+            cve=cve,
+        )
+
+        # Check if the user is the author of the comment
+        if comment.author_id != request.user.id:
+            return JsonResponse({"success": False, "error": "Forbidden"}, status=403)
+
+        comment.delete()
+        return JsonResponse({"success": True, "deleted_id": comment_id})

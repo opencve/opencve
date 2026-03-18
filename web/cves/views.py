@@ -26,7 +26,7 @@ from cves.utils import (
 )
 from opencve.utils import is_valid_uuid
 from organizations.mixins import OrganizationRequiredMixin
-from projects.models import Project, CveTracker
+from projects.models import Project, CveComment, CveTracker
 from users.models import CveTag, UserTag
 from views.forms import ViewForm
 from views.models import View
@@ -367,11 +367,48 @@ class CveDetailView(DetailView):
 
         trackers_by_project = {tracker.project_id: tracker for tracker in trackers}
 
-        # Build final list
-        projects_with_trackers = [
-            {"project": project, "tracker": trackers_by_project.get(project.id)}
-            for project in filtered_projects
-        ]
+        # Prefetch comments once for all filtered projects
+        comments = (
+            CveComment.objects.filter(cve=cve, project__in=filtered_projects)
+            .select_related("author", "project", "parent")
+            .order_by("created_at")
+        )
+
+        comments_by_project = {}
+        for comment in comments:
+            project_threads = comments_by_project.setdefault(comment.project_id, {})
+            if comment.parent_id:
+                replies = project_threads.setdefault(comment.parent_id, [])
+                replies.append(comment)
+            else:
+                roots = project_threads.setdefault(None, [])
+                roots.append(comment)
+
+        # Build final list with one-level threads
+        projects_with_trackers = []
+        for project in filtered_projects:
+            project_threads = comments_by_project.get(project.id, {})
+            roots = project_threads.get(None, [])
+            threaded_comments = []
+            total_comments = 0
+            for root in roots:
+                replies = project_threads.get(root.id, [])
+                total_comments += 1 + len(replies)
+                threaded_comments.append(
+                    {
+                        "comment": root,
+                        "replies": replies,
+                    }
+                )
+
+            projects_with_trackers.append(
+                {
+                    "project": project,
+                    "tracker": trackers_by_project.get(project.id),
+                    "comments": threaded_comments,
+                    "comment_count": total_comments,
+                }
+            )
 
         return projects_with_trackers
 

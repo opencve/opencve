@@ -12,7 +12,7 @@ from changes.models import Change, Report
 from cves.models import Cve
 from cves.search import BadQueryException, MaxFieldsExceededException
 from organizations.models import Membership
-from projects.models import CveTracker, Notification, Project
+from projects.models import CveComment, CveTracker, Notification, Project
 from projects.views import ProjectVulnerabilitiesView
 
 
@@ -2883,3 +2883,565 @@ def test_project_vulnerabilities_get_context_data_views_data_ordered_by_name(
     views_data = response.context["views_data"]
     view_names = [v["name"] for v in views_data]
     assert view_names == ["A View", "B View", "C View"]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_create_cve_comment_requires_authentication(db, create_user, client):
+    """CreateCveCommentView should require authentication (redirect to login)."""
+    user = create_user()
+    cve = Cve.objects.create(
+        cve_id="CVE-2024-00001",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": "org", "project_name": "project"},
+        ),
+        data=json.dumps({"cve_id": cve.cve_id, "body": "hello"}),
+        content_type="application/json",
+    )
+    assert response.status_code == 302
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_create_cve_comment_org_membership_enforced(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Only organization members can create a comment for a project."""
+    user1 = create_user()
+    create_organization(name="org1", user=user1)
+    org2 = create_organization(name="org2", user=None)
+    project = create_project(name="project", organization=org2)
+    user2 = create_user()
+    client = auth_client(user2)
+
+    cve = Cve.objects.create(
+        cve_id="CVE-2024-00002",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org2.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": cve.cve_id, "body": "hello"}),
+        content_type="application/json",
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_create_cve_comment_invalid_json(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Invalid JSON payload should return 400 with an explicit error."""
+    user = create_user()
+    org = create_organization(name="org", user=user)
+    project = create_project(name="project", organization=org)
+    client = auth_client(user)
+
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data="{not-json",
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "Invalid JSON payload"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_create_cve_comment_requires_body_and_cve_id(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Missing/blank required fields should be rejected (cve_id + body)."""
+    user = create_user()
+    org = create_organization(name="org", user=user)
+    project = create_project(name="project", organization=org)
+    client = auth_client(user)
+
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": "CVE-2024-00003", "body": ""}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "Comment body is required"
+
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"body": "hello"}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "Comment body is required"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_create_cve_comment_success_root_and_reply_one_level(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Comments can be replied to, but only one nesting level is allowed."""
+    user = create_user(username="user1")
+    org = create_organization(name="org", user=user)
+    project = create_project(name="project", organization=org)
+    client = auth_client(user)
+
+    cve = Cve.objects.create(
+        cve_id="CVE-2024-00004",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+
+    # Root comment
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": cve.cve_id, "body": "root"}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    root_id = data["comment"]["id"]
+    assert data["comment"]["author"] == "user1"
+    assert data["comment"]["body"] == "root"
+    assert data["comment"]["edited"] is False
+    assert data["comment"]["parent_id"] is None
+
+    root = CveComment.objects.get(id=root_id)
+    assert root.parent_id is None
+
+    # Reply to root
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": cve.cve_id, "body": "reply", "parent_id": root_id}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    reply_id = data["comment"]["id"]
+    assert data["comment"]["parent_id"] == root_id
+
+    reply = CveComment.objects.get(id=reply_id)
+    assert str(reply.parent_id) == root_id
+
+    # Reply to reply should be rejected (single level)
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps(
+            {"cve_id": cve.cve_id, "body": "nested", "parent_id": reply_id}
+        ),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "You can only reply to top-level comments."
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_create_cve_comment_parent_must_match_project_and_cve(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """parent_id must refer to a comment from the same project and same CVE."""
+    user = create_user()
+    org = create_organization(name="org", user=user)
+    project1 = create_project(name="project1", organization=org)
+    project2 = create_project(name="project2", organization=org)
+    client = auth_client(user)
+
+    cve1 = Cve.objects.create(
+        cve_id="CVE-2024-00005",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+    cve2 = Cve.objects.create(
+        cve_id="CVE-2024-00006",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+
+    parent_other_project = CveComment.objects.create(
+        cve=cve1, project=project2, author=user, body="parent"
+    )
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project1.name},
+        ),
+        data=json.dumps(
+            {
+                "cve_id": cve1.cve_id,
+                "body": "reply",
+                "parent_id": str(parent_other_project.id),
+            }
+        ),
+        content_type="application/json",
+    )
+    assert response.status_code == 404
+
+    parent_other_cve = CveComment.objects.create(
+        cve=cve2, project=project1, author=user, body="parent"
+    )
+    response = client.post(
+        reverse(
+            "create_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project1.name},
+        ),
+        data=json.dumps(
+            {
+                "cve_id": cve1.cve_id,
+                "body": "reply",
+                "parent_id": str(parent_other_cve.id),
+            }
+        ),
+        content_type="application/json",
+    )
+    assert response.status_code == 404
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_cve_comment_invalid_json(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Invalid JSON payload should return 400."""
+    user = create_user()
+    org = create_organization(name="org", user=user)
+    project = create_project(name="project", organization=org)
+    client = auth_client(user)
+
+    response = client.post(
+        reverse(
+            "update_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data="{not-json",
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_cve_comment_requires_fields(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Missing/blank required fields should be rejected (cve_id/comment_id/body)."""
+    user = create_user()
+    org = create_organization(name="org", user=user)
+    project = create_project(name="project", organization=org)
+    client = auth_client(user)
+
+    response = client.post(
+        reverse(
+            "update_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": "CVE-2024-00007", "comment_id": "x", "body": ""}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "Comment body is required"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_cve_comment_org_membership_enforced(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Only organization members can update a comment (membership enforced)."""
+    org = create_organization(name="org", user=None)
+    project = create_project(name="project", organization=org)
+    user = create_user()
+    client = auth_client(user)
+
+    response = client.post(
+        reverse(
+            "update_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": "CVE-2024-00008", "comment_id": "x", "body": "x"}),
+        content_type="application/json",
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_cve_comment_only_author_can_update(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """A member of the org still cannot edit someone else's comment."""
+    author = create_user()
+    org = create_organization(name="org", user=author)
+    project = create_project(name="project", organization=org)
+    member = create_user()
+    Membership.objects.create(
+        user=member,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    client = auth_client(member)
+
+    cve = Cve.objects.create(
+        cve_id="CVE-2024-00009",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+    comment = CveComment.objects.create(
+        cve=cve, project=project, author=author, body="original"
+    )
+
+    response = client.post(
+        reverse(
+            "update_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps(
+            {"cve_id": cve.cve_id, "comment_id": str(comment.id), "body": "edited"}
+        ),
+        content_type="application/json",
+    )
+    assert response.status_code == 403
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "Forbidden"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_cve_comment_success_sets_edited(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Successful edit updates body and sets edited=True in DB + response."""
+    author = create_user()
+    org = create_organization(name="org", user=author)
+    project = create_project(name="project", organization=org)
+    client = auth_client(author)
+
+    cve = Cve.objects.create(
+        cve_id="CVE-2024-00010",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+    comment = CveComment.objects.create(
+        cve=cve, project=project, author=author, body="original"
+    )
+    assert comment.edited is False
+
+    response = client.post(
+        reverse(
+            "update_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps(
+            {"cve_id": cve.cve_id, "comment_id": str(comment.id), "body": "edited"}
+        ),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["comment"]["id"] == str(comment.id)
+    assert data["comment"]["body"] == "edited"
+    assert data["comment"]["edited"] is True
+
+    comment.refresh_from_db()
+    assert comment.body == "edited"
+    assert comment.edited is True
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_delete_cve_comment_invalid_json(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Invalid JSON payload should return 400."""
+    user = create_user()
+    org = create_organization(name="org", user=user)
+    project = create_project(name="project", organization=org)
+    client = auth_client(user)
+
+    response = client.post(
+        reverse(
+            "delete_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data="{not-json",
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_delete_cve_comment_requires_fields(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Missing required fields should be rejected (cve_id + comment_id)."""
+    user = create_user()
+    org = create_organization(name="org", user=user)
+    project = create_project(name="project", organization=org)
+    client = auth_client(user)
+
+    response = client.post(
+        reverse(
+            "delete_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": "CVE-2024-00011"}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "Missing comment id"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_delete_cve_comment_org_membership_enforced(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Only organization members can delete a comment (membership enforced)."""
+    org = create_organization(name="org", user=None)
+    project = create_project(name="project", organization=org)
+    user = create_user()
+    client = auth_client(user)
+
+    response = client.post(
+        reverse(
+            "delete_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": "CVE-2024-00012", "comment_id": "x"}),
+        content_type="application/json",
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_delete_cve_comment_only_author_can_delete(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """A member of the org still cannot delete someone else's comment."""
+    author = create_user()
+    org = create_organization(name="org", user=author)
+    project = create_project(name="project", organization=org)
+    member = create_user()
+    Membership.objects.create(
+        user=member,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    client = auth_client(member)
+
+    cve = Cve.objects.create(
+        cve_id="CVE-2024-00013",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+    comment = CveComment.objects.create(
+        cve=cve, project=project, author=author, body="original"
+    )
+
+    response = client.post(
+        reverse(
+            "delete_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": cve.cve_id, "comment_id": str(comment.id)}),
+        content_type="application/json",
+    )
+    assert response.status_code == 403
+    assert response.json()["success"] is False
+    assert response.json()["error"] == "Forbidden"
+    assert CveComment.objects.filter(id=comment.id).exists() is True
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_delete_cve_comment_success_deletes_from_db(
+    db, create_user, create_organization, create_project, auth_client
+):
+    """Successful deletion removes the comment from DB and returns deleted_id."""
+    author = create_user()
+    org = create_organization(name="org", user=author)
+    project = create_project(name="project", organization=org)
+    client = auth_client(author)
+
+    cve = Cve.objects.create(
+        cve_id="CVE-2024-00014",
+        title="Test CVE",
+        description="Test description",
+        vendors=[],
+        weaknesses=[],
+        metrics={},
+    )
+    comment = CveComment.objects.create(
+        cve=cve, project=project, author=author, body="original"
+    )
+    assert CveComment.objects.count() == 1
+
+    response = client.post(
+        reverse(
+            "delete_cve_comment",
+            kwargs={"org_name": org.name, "project_name": project.name},
+        ),
+        data=json.dumps({"cve_id": cve.cve_id, "comment_id": str(comment.id)}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert str(data["deleted_id"]) == str(comment.id)
+    assert CveComment.objects.count() == 0

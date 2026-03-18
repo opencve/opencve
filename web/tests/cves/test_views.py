@@ -13,7 +13,7 @@ from cves.constants import PRODUCT_SEPARATOR
 from cves.views import CveListView, CveDetailView
 from cves.models import Vendor, Product, Cve
 from users.models import UserTag, CveTag
-from projects.models import CveTracker
+from projects.models import CveComment, CveTracker
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -541,6 +541,28 @@ def test_cve_detail_list_cve_projects(
         cve=cve, project=project2, assignee=None, status="resolved"
     )
 
+    # Create comments for some projects
+    root1 = CveComment.objects.create(
+        cve=cve, project=project1, author=user, body="root comment 1"
+    )
+    reply1 = CveComment.objects.create(
+        cve=cve,
+        project=project1,
+        author=user,
+        body="reply 1",
+        parent=root1,
+    )
+    reply2 = CveComment.objects.create(
+        cve=cve,
+        project=project1,
+        author=user,
+        body="reply 2",
+        parent=root1,
+    )
+    root2 = CveComment.objects.create(
+        cve=cve, project=project2, author=user, body="root comment 2"
+    )
+
     rf = RequestFactory()
     request = rf.get("/")
     request.user = user
@@ -558,18 +580,28 @@ def test_cve_detail_list_cve_projects(
     assert result_project1 is not None
     assert result_project1["project"] == project1
     assert result_project1["tracker"] == tracker1
+    assert result_project1["comment_count"] == 3
+    assert len(result_project1["comments"]) == 1
+    assert result_project1["comments"][0]["comment"] == root1
+    assert result_project1["comments"][0]["replies"] == [reply1, reply2]
 
     # Check project2 has a tracker
     result_project2 = next((r for r in result if r["project"] == project2), None)
     assert result_project2 is not None
     assert result_project2["project"] == project2
     assert result_project2["tracker"] == tracker2
+    assert result_project2["comment_count"] == 1
+    assert len(result_project2["comments"]) == 1
+    assert result_project2["comments"][0]["comment"] == root2
+    assert result_project2["comments"][0]["replies"] == []
 
     # Check project3 has no tracker
     result_project3 = next((r for r in result if r["project"] == project3), None)
     assert result_project3 is not None
     assert result_project3["project"] == project3
     assert result_project3["tracker"] is None
+    assert result_project3["comment_count"] == 0
+    assert result_project3["comments"] == []
 
     # Check project4 and project5 are not in results
     result_project_ids = {r["project"].id for r in result}
