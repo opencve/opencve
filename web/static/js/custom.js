@@ -1463,16 +1463,6 @@ function getContrastedColor(str){
         }
     }
 
-    function showSuccessAnimation(cveId, projectName) {
-        const target = getAnimationTarget(cveId, projectName);
-        if (target) {
-            target.style.backgroundColor = '#dafbe1';
-            setTimeout(() => {
-                target.style.backgroundColor = '';
-            }, 1500);
-        }
-    }
-
     // API functions
     function assignUser(cveId, assigneeId, projectName, orgName) {
         if (currentTippy) {
@@ -1498,7 +1488,6 @@ function getContrastedColor(str){
         .then(data => {
             if (data.success) {
                 updateAssigneeBadge(cveId, assigneeId, data.assignee_username, projectName, orgName);
-                showSuccessAnimation(cveId, projectName);
             } else {
                 console.error('Error: ' + data.error);
             }
@@ -1532,7 +1521,6 @@ function getContrastedColor(str){
         .then(data => {
             if (data.success) {
                 updateStatusBadge(cveId, status, data.status, projectName, orgName);
-                showSuccessAnimation(cveId, projectName);
             } else {
                 console.error('Error: ' + data.error);
             }
@@ -1638,6 +1626,394 @@ function getContrastedColor(str){
             });
         }
     }
+  })();
+
+  /*
+   CVE Project Comments
+  */
+  (function() {
+    function getCommentsUrl(orgName, projectName) {
+      return `/org/${orgName}/projects/${projectName}/create-cve-comment`;
+    }
+    function getUpdateCommentUrl(orgName, projectName) {
+      return `/org/${orgName}/projects/${projectName}/update-cve-comment`;
+    }
+    function getDeleteCommentUrl(orgName, projectName) {
+      return `/org/${orgName}/projects/${projectName}/delete-cve-comment`;
+    }
+
+    function updateCommentCount(projectName, delta) {
+      var $count = $('.project-comments-header[data-project-name="' + projectName + '"] .project-comments-count').first();
+      if (!$count.length) return;
+      var current = parseInt(($count.text().match(/^\s*(\d+)/) || [0, 0])[1], 10) || 0;
+      var next = Math.max(0, current + delta);
+      if (next === 0) {
+        $count.text('No comments yet');
+      } else {
+        $count.text(next + ' comment' + (next === 1 ? '' : 's'));
+      }
+    }
+
+    function setEditedIndicator($item, isEdited) {
+      var $meta = $item.children('.project-comment-card').first().children('.project-comment-meta').first();
+      var $date = $meta.find('.project-comment-date').first();
+      var $badge = $meta.find('.project-comment-edited').first();
+      if (isEdited) {
+        if (!$badge.length) {
+          $badge = $('<span class="project-comment-edited">(edited)</span>');
+          $date.after($badge);
+        }
+      } else {
+        $badge.remove();
+      }
+    }
+
+    function buildCommentHtml(comment, options) {
+      options = options || {};
+      var author = sanitizeText(comment.author || '');
+      var body = sanitizeText(comment.body || '');
+      var createdAt = sanitizeText(comment.created_at || '');
+      var edited = !!comment.edited;
+      var displayAt = sanitizeText(comment.display_at || createdAt);
+      var isReply = !!options.isReply;
+      var projectName = sanitizeText(options.projectName || '');
+
+      var itemClass = isReply ? 'project-comment-item project-comment-reply' : 'project-comment-item';
+
+      var html = '<li class="' + itemClass + '"' +
+        (comment.id ? ' data-comment-id="' + sanitizeText(comment.id) + '"' : '') +
+        (projectName ? ' data-project-name="' + projectName + '"' : '') +
+        '>' +
+        '<div class="project-comment-card">' +
+        '<div class="project-comment-meta">' +
+        '<div class="project-comment-meta-left">' +
+        '<strong>' + author + '</strong>' +
+        '<span class="text-muted project-comment-date">' + displayAt + '</span>' +
+        (edited ? '<span class="project-comment-edited">(edited)</span>' : '') +
+        '</div>' +
+        '<div class="project-comment-actions">' +
+          '<button type="button" class="project-comment-action-btn project-comment-edit-btn" title="Edit"><i class="fa fa-pencil"></i></button>' +
+          '<button type="button" class="project-comment-action-btn project-comment-delete-btn" title="Delete"><i class="fa fa-trash"></i></button>' +
+        '</div>' +
+        '</div>' +
+        '<div class="project-comment-body">' + body.replace(/\n/g, '<br>') + '</div>' +
+        '</div>';
+
+      if (!isReply) {
+        html += '<button type="button" class="btn btn-link btn-xs project-comment-reply-toggle" ' +
+          'data-comment-id="' + sanitizeText(comment.id || '') + '" ' +
+          'data-project-name="' + sanitizeText(options.projectName || '') + '">Reply</button>';
+      }
+
+      html +=
+        '</li>';
+      return html;
+    }
+
+    function initProjectCommentForms() {
+      var $forms = $('.project-comment-form');
+      if (!$forms.length) return;
+
+      $forms.on('submit', function(e) {
+        e.preventDefault();
+
+        var $form = $(this);
+        var projectName = $form.data('project-name');
+        var orgName = $form.data('org-name');
+        var cveId = $form.data('cve-id');
+        var $textarea = $form.find('.project-comment-textarea');
+        var body = ($textarea.val() || '').trim();
+        var $list = $('.project-comments-list[data-project-name="' + projectName + '"]');
+
+        if (!body) {
+          return;
+        }
+
+        var payload = {
+          cve_id: cveId,
+          body: body
+        };
+
+        fetch(getCommentsUrl(orgName, projectName), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            if (!data.success) {
+              return;
+            }
+
+            $textarea.val('');
+            $list.find('.project-comment-empty').remove();
+
+            var commentHtml = buildCommentHtml(data.comment, { projectName: projectName });
+            $list.append(commentHtml);
+            updateCommentCount(projectName, 1);
+
+            // Ensure a reply form exists for this new root comment so Reply works immediately
+            var selector = '.project-comment-item[data-comment-id="' + data.comment.id + '"]';
+            var $newItem = $list.find(selector).first();
+            if ($newItem.length) {
+              var existingForm = $newItem.find('.project-comment-reply-form').length > 0;
+              if (!existingForm) {
+                var replyFormHtml =
+                  '<form class="project-comment-reply-form" ' +
+                  'data-project-name="' + projectName + '" ' +
+                  'data-org-name="' + orgName + '" ' +
+                  'data-cve-id="' + cveId + '" ' +
+                  'data-parent-id="' + data.comment.id + '" ' +
+                  'style="display: none;">' +
+                    '<div class="project-comment-input">' +
+                      '<label class="sr-only" for="reply-' + data.comment.id + '">Reply</label>' +
+                      '<textarea id="reply-' + data.comment.id + '" ' +
+                               'class="form-control project-comment-reply-textarea" ' +
+                               'rows="1" ' +
+                               'placeholder="Reply to this comment..."></textarea>' +
+                      '<button type="submit" class="btn btn-default btn-xs project-comment-send-btn" title="Reply">' +
+                        '<i class="fa fa-paper-plane"></i>' +
+                      '</button>' +
+                    '</div>' +
+                  '</form>';
+
+                // Insert reply form just after the reply toggle button
+                var $replyToggle = $newItem.find('.project-comment-reply-toggle').first();
+                if ($replyToggle.length) {
+                  $replyToggle.after(replyFormHtml);
+                } else {
+                  $newItem.append(replyFormHtml);
+                }
+              }
+            }
+
+          })
+          .catch(function() {});
+      });
+    }
+
+    function initReplyForms() {
+      // Toggle reply form
+      $(document).on('click', '.project-comment-reply-toggle', function() {
+        var $btn = $(this);
+        var commentId = $btn.data('comment-id');
+        var projectName = $btn.data('project-name');
+        var $item = $('.project-comment-item[data-comment-id="' + commentId + '"][data-project-name="' + projectName + '"]');
+        if (!$item.length) {
+          $item = $('.project-comment-item[data-comment-id="' + commentId + '"]');
+        }
+        var $form = $item.find('.project-comment-reply-form').first();
+        if ($form.length) {
+          $form.toggle();
+          if ($form.is(':visible')) {
+            $form.find('.project-comment-reply-textarea').focus();
+          }
+        }
+      });
+
+      // Submit reply form
+      $(document).on('submit', '.project-comment-reply-form', function(e) {
+        e.preventDefault();
+
+        var $form = $(this);
+        var projectName = $form.data('project-name');
+        var orgName = $form.data('org-name');
+        var cveId = $form.data('cve-id');
+        var parentId = $form.data('parent-id');
+        var $textarea = $form.find('.project-comment-reply-textarea');
+        var body = ($textarea.val() || '').trim();
+
+        if (!body) {
+          return;
+        }
+
+        var payload = {
+          cve_id: cveId,
+          body: body,
+          parent_id: parentId
+        };
+
+        fetch(getCommentsUrl(orgName, projectName), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            if (!data.success) {
+              return;
+            }
+
+            $textarea.val('');
+
+            var replyHtml = buildCommentHtml(data.comment, { isReply: true, projectName: projectName });
+            var $rootItem = $('.project-comment-item[data-comment-id="' + data.comment.parent_id + '"]');
+            var $repliesList = $rootItem.find('.project-comment-replies').first();
+            if (!$repliesList.length) {
+              $repliesList = $('<ul class="project-comment-replies"></ul>');
+              var $replyToggle = $rootItem.find('.project-comment-reply-toggle').first();
+              if ($replyToggle.length) {
+                $repliesList.insertBefore($replyToggle);
+              } else {
+                $rootItem.append($repliesList);
+              }
+            }
+            $repliesList.append(replyHtml);
+            updateCommentCount(projectName, 1);
+
+            $form.hide();
+          })
+          .catch(function() {});
+      });
+    }
+
+    function initEditDelete() {
+      var pendingDelete = null;
+
+      $(document).off('click', '#confirm-delete-comment').on('click', '#confirm-delete-comment', function() {
+        if (!pendingDelete) return;
+
+        var payload = pendingDelete;
+        pendingDelete = null;
+
+        $('#modal-delete-comment').modal('hide');
+
+        fetch(getDeleteCommentUrl(payload.orgName, payload.projectName), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+          },
+          body: JSON.stringify({ cve_id: payload.cveId, comment_id: payload.commentId })
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (!data.success) return;
+            payload.$item.remove();
+            updateCommentCount(payload.projectName, -payload.removedCount);
+          })
+          .catch(function() {});
+      });
+
+      $(document).on('click', '.project-comment-edit-btn', function() {
+        var $btn = $(this);
+        var $item = $btn.closest('.project-comment-item');
+        var commentId = $item.data('comment-id');
+        var projectName = $item.data('project-name') || $btn.closest('.project-comments').find('.project-comments-header').data('project-name');
+        var orgName = $('.project-comment-form[data-project-name="' + projectName + '"]').data('org-name');
+        var cveId = $('.project-comment-form[data-project-name="' + projectName + '"]').data('cve-id');
+
+        if ($item.hasClass('is-editing')) return;
+        $item.addClass('is-editing');
+
+        var $body = $item.find('.project-comment-body').first();
+        var originalText = $body.text().trim();
+
+        var inputHtml =
+          '<form class="project-comment-edit-form" data-comment-id="' + sanitizeText(commentId) + '">' +
+            '<div class="project-comment-input">' +
+              '<textarea class="form-control project-comment-edit-textarea" rows="2"></textarea>' +
+              '<button type="submit" class="btn btn-default btn-xs project-comment-send-btn" title="Send">' +
+                '<i class="fa fa-paper-plane"></i>' +
+              '</button>' +
+            '</div>' +
+          '</form>';
+
+        $body.hide();
+        $body.after(inputHtml);
+        $item.find('.project-comment-edit-textarea').val(originalText).focus();
+
+        $item.find('.project-comment-edit-form').on('submit', function(e) {
+          e.preventDefault();
+          var body = ($item.find('.project-comment-edit-textarea').val() || '').trim();
+          if (!body) return;
+
+          fetch(getUpdateCommentUrl(orgName, projectName), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ cve_id: cveId, comment_id: commentId, body: body })
+          })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              if (!data.success) return;
+              $body.html(sanitizeText(data.comment.body).replace(/\n/g, '<br>'));
+              setEditedIndicator($item, !!data.comment.edited);
+              $item.find('.project-comment-edit-form').remove();
+              $body.show();
+              $item.removeClass('is-editing');
+            })
+            .catch(function() {});
+        });
+      });
+
+      $(document).on('click', '.project-comment-delete-btn', function() {
+        var $btn = $(this);
+        var $item = $btn.closest('.project-comment-item');
+        var commentId = $item.data('comment-id');
+        var projectName = $item.data('project-name') || $btn.closest('.project-comments').find('.project-comments-header').data('project-name');
+        var orgName = $('.project-comment-form[data-project-name="' + projectName + '"]').data('org-name');
+        var cveId = $('.project-comment-form[data-project-name="' + projectName + '"]').data('cve-id');
+
+        // Compute how many comments will disappear from UI (root + replies)
+        var removedCount = 1;
+        if (!$item.hasClass('project-comment-reply')) {
+          removedCount += $item.find('.project-comment-reply').length;
+        }
+
+        pendingDelete = {
+          $item: $item,
+          commentId: commentId,
+          projectName: projectName,
+          orgName: orgName,
+          cveId: cveId,
+          removedCount: removedCount
+        };
+
+        $('#modal-delete-comment').modal('show');
+      });
+    }
+
+    function initCommentsToggle() {
+      $(document).on('click', '.project-comments-header, .project-comments-toggle', function(e) {
+        // Avoid double handling when clicking directly on the button
+        if ($(e.target).closest('.project-comments-toggle').length && !$(this).hasClass('project-comments-toggle')) {
+          return;
+        }
+
+        var $header = $(this).closest('.project-comments-header');
+        var projectName = $header.data('project-name');
+        var $container = $header.closest('.project-comments');
+        var $body = $container.find('.project-comments-body[data-project-name="' + projectName + '"]').first();
+        var $toggle = $container.find('.project-comments-toggle[data-project-name="' + projectName + '"]').first();
+
+        var isCollapsed = $body.hasClass('is-collapsed');
+        if (isCollapsed) {
+          $body.removeClass('is-collapsed');
+          $toggle.attr('aria-expanded', 'true');
+          $toggle.find('i').removeClass('fa-plus').addClass('fa-minus');
+        } else {
+          $body.addClass('is-collapsed');
+          $toggle.attr('aria-expanded', 'false');
+          $toggle.find('i').removeClass('fa-minus').addClass('fa-plus');
+        }
+      });
+    }
+
+    $(document).ready(function() {
+      initProjectCommentForms();
+      initReplyForms();
+      initCommentsToggle();
+      initEditDelete();
+    });
   })();
 
   /*

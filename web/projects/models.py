@@ -176,3 +176,32 @@ class CveTracker(BaseModel):
 
         tracker.save()
         return tracker
+
+
+class CveComment(BaseModel):
+    """Comments for a CVE within a project."""
+
+    body = models.TextField()
+    edited = models.BooleanField(default=False)
+
+    # Relationships
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="replies",
+    )
+    cve = models.ForeignKey(
+        "cves.Cve", on_delete=models.CASCADE, related_name="project_comments"
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="cve_comments"
+    )
+    author = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="cve_comments"
+    )
+
+    class Meta:
+        db_table = "opencve_cve_comments"
+        ordering = ["created_at"]

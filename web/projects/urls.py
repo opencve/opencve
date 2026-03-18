@@ -3,6 +3,8 @@ from django.urls import path, register_converter
 from opencve.utils import DateConverter
 from projects.views import (
     AssignCveUserView,
+    CreateCveCommentView,
+    DeleteCveCommentView,
     NotificationCreateView,
     NotificationsView,
     NotificationDeleteView,
@@ -18,6 +20,7 @@ from projects.views import (
     ReportsView,
     ReportView,
     SubscriptionsView,
+    UpdateCveCommentView,
     UpdateCveStatusView,
 )
 
@@ -104,5 +107,20 @@ urlpatterns = [
         "org/<org_name>/projects/<project_name>/update-cve-status",
         UpdateCveStatusView.as_view(),
         name="update_cve_status",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/create-cve-comment",
+        CreateCveCommentView.as_view(),
+        name="create_cve_comment",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/update-cve-comment",
+        UpdateCveCommentView.as_view(),
+        name="update_cve_comment",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/delete-cve-comment",
+        DeleteCveCommentView.as_view(),
+        name="delete_cve_comment",
     ),
 ]

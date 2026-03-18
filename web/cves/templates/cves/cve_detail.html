@@ -31,6 +31,8 @@
 
             {% include "cves/includes/vendors_products.html" %}
 
+            {% include "cves/includes/tracking.html" %}
+
             {% include "cves/includes/advisories.html" %}
 
             {% include "cves/includes/fixes.html" %}
@@ -82,40 +84,6 @@
         </div>
 
         <div class="col-md-3">
-            <div class="box box-primary">
-                <div class="box-header">
-                    <h3 class="box-title">Projects</h3>
-                    <div class="box-tools pull-right">
-                        <i class="fa fa-info-circle" data-toggle="tooltip" data-container="body" data-placement="left" title="Projects appear here if they subscribe to at least one vendor or product affected by this CVE."></i>
-                    </div>
-                </div>
-                <div class="box-body" id="cves-tracking-list">
-                    {% if user.is_authenticated and filtered_projects %}
-                        {% for project_data in filtered_projects %}
-                            {% with project=project_data.project tracker=project_data.tracker %}
-                            <div class="project-assignment-item">
-                                <div class="project-assignment-item-header">
-                                    <strong>{{ project.name }}</strong>
-                                </div>
-                                <div class="project-assignment-item-badges">
-                                    <div>
-                                        {% include "cves/includes/assignee_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
-                                    </div>
-                                    <div>
-                                        {% include "cves/includes/status_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
-                                    </div>
-                                </div>
-                                {% if not forloop.last %}<hr />{% endif %}
-                            </div>
-                            {% endwith %}
-                        {% endfor %}
-                    {% elif user.is_authenticated %}
-                        <p class="text-muted"><em>No projects match this CVE’s vendors or products.</em></p>
-                    {% else %}
-                        <p class="text-muted"><em><a href="{% url 'account_login' %}">Sign in</a> to view the affected projects.</em></p>
-                    {% endif %}
-                </div>
-            </div>
 
             {% if user.is_authenticated %}
             <div class="box box-primary">
@@ -434,6 +402,25 @@
 {% endif %}
 
 {% if user.is_authenticated and projects_json %}
+<div class="modal fade" id="modal-delete-comment">
+    <div class="modal-dialog">
+      <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Delete comment</h4>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this comment?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-comment">Delete</button>
+            </div>
+      </div>
+    </div>
+</div>
+
 <script>
 window.vendorSubscriptionData = {
     projects: {{ projects_json|safe }},
