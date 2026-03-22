@@ -20,7 +20,7 @@ CALL cve_upsert(
 
 REPORT_UPSERT_PROCEDURE = """
 CALL report_upsert(
-    %(report)s, %(project)s, %(day)s, %(changes)s
+    %(report)s, %(project)s, %(automation)s, %(period_day)s, %(period_type)s, %(period_timezone)s, %(changes)s
 );
 """
 
@@ -339,6 +339,9 @@ SELECT
   automations.name,
   automations.trigger_type,
   automations.frequency,
+  automations.schedule_timezone,
+  automations.schedule_time,
+  automations.schedule_weekday,
   automations.configuration
 FROM
   opencve_automations AS automations
@@ -347,6 +350,38 @@ FROM
 WHERE
   automations.is_enabled = 't'
   AND projects.id IN %(projects)s;
+"""
+
+SQL_REPORT_SUMMARY_BY_ID = """
+WITH distinct_cves AS (
+  SELECT DISTINCT cves.cve_id, (cves.metrics->'cvssV3_1'->'data'->>'score')::float AS score
+  FROM
+    opencve_reports AS reports
+    JOIN opencve_reports_changes AS rc ON reports.id = rc.report_id
+    JOIN opencve_changes AS changes ON rc.change_id = changes.id
+    JOIN opencve_cves AS cves ON changes.cve_id = cves.id
+  WHERE
+    reports.id = %(report_id)s
+),
+score_distribution AS (
+  SELECT
+    JSONB_AGG(
+      jsonb_build_object(
+        'score', score,
+        'count', count
+      ) ORDER BY score DESC NULLS LAST
+    ) AS score_distribution
+  FROM (
+    SELECT
+      score,
+      COUNT(*) AS count
+    FROM distinct_cves
+    GROUP BY score
+  ) AS sub
+)
+SELECT
+  COALESCE((SELECT COUNT(*) FROM distinct_cves), 0) AS total_cve_count,
+  COALESCE((SELECT score_distribution FROM score_distribution), '[]'::jsonb) AS score_distribution;
 """
 
 SQL_CVE_ID_BY_CVE_ID = """

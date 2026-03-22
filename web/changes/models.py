@@ -59,6 +59,13 @@ class Change(BaseModel):
 
 
 class Report(BaseModel):
+    PERIOD_DAILY = "daily"
+    PERIOD_WEEKLY = "weekly"
+    PERIOD_CHOICES = [
+        (PERIOD_DAILY, "Daily"),
+        (PERIOD_WEEKLY, "Weekly"),
+    ]
+
     seen = models.BooleanField(default=False)
     ai_summary = models.TextField(
         null=True,
@@ -66,8 +73,21 @@ class Report(BaseModel):
     )
 
     day = models.DateField(default=timezone.now)
+    period_type = models.CharField(
+        max_length=20,
+        choices=PERIOD_CHOICES,
+        default=PERIOD_DAILY,
+    )
+    period_timezone = models.CharField(max_length=64, default="UTC")
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name="reports"
+    )
+    automation = models.ForeignKey(
+        "projects.Automation",
+        on_delete=models.CASCADE,
+        related_name="reports",
+        null=True,
+        blank=True,
     )
     changes = models.ManyToManyField(Change)
 
@@ -75,7 +95,8 @@ class Report(BaseModel):
         db_table = "opencve_reports"
         constraints = [
             models.UniqueConstraint(
-                fields=["day", "project_id"], name="ix_unique_project_day"
+                fields=["day", "period_type", "project_id", "automation_id"],
+                name="ix_unique_project_period_automation",
             ),
         ]
 

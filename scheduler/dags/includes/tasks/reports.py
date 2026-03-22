@@ -20,6 +20,15 @@ from includes.constants import (
     SQL_REPORTS_CVES_BY_DAY,
     SQL_UPDATE_REPORT_AI_SUMMARY,
 )
+from includes.storage import (
+    REDIS_PREFIX_CHANGES_DETAILS,
+    REDIS_PREFIX_PROJECT_CHANGES,
+    REDIS_PREFIX_SUBSCRIPTIONS,
+    REDIS_PREFIX_VENDOR_CHANGES,
+    redis_get,
+    redis_set,
+    run_interval_key,
+)
 from includes.utils import (
     format_change_details,
     list_changes_by_project,
@@ -34,8 +43,8 @@ from psycopg2.extras import Json
 logger = logging.getLogger(__name__)
 
 
-@task
-def list_changes(**context):
+@task(task_id="CollectHourlyChanges")
+def collect_hourly_changes(**context):
     start, end = get_dates_from_context(context)
 
     logger.info(
@@ -48,37 +57,25 @@ def list_changes(**context):
     if not records:
         raise AirflowSkipException("No change found")
 
-    # Save the change details in redis
-    change_details = format_change_details(records)
-    logger.debug("List of changes: %s", change_details)
-
     # Save the change by vendors in redis
     vendor_changes = group_changes_by_vendor(records)
-    logger.debug("List of changes by vendor: %s", vendor_changes)
-
     if not vendor_changes:
         raise AirflowSkipException("No vendor with change found")
 
-    key = f"changes_details_{start}_{end}"
-    logger.info("Saving %s changes in Redis (key: %s)", str(len(change_details)), key)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    redis_hook.json().set(key, "$", change_details)
-    redis_hook.expire(key, 60 * 60 * 24)
+    redis_set(redis_hook, REDIS_PREFIX_VENDOR_CHANGES, start, end, vendor_changes)
 
-    key = f"vendor_changes_{start}_{end}"
-    logger.info(
-        "Saving %s vendors/products in Redis (key: %s)", str(len(vendor_changes)), key
-    )
-    redis_hook.json().set(key, "$", vendor_changes)
-    redis_hook.expire(key, 60 * 60 * 24)
+    # Save the change details in redis
+    change_details = format_change_details(records)
+    redis_set(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end, change_details)
 
 
-@task
-def list_subscriptions(**context):
+@task(task_id="ResolveSubscriptions")
+def resolve_subscriptions(**context):
     start, end = get_dates_from_context(context)
 
     # Get the list of changes
-    changes_redis_key = f"vendor_changes_{start}_{end}"
+    changes_redis_key = run_interval_key(REDIS_PREFIX_VENDOR_CHANGES, start, end)
     logger.info(
         "Fetching changes between %s and %s using Redis (key: %s)",
         start,
@@ -98,6 +95,8 @@ def list_subscriptions(**context):
         str(len(products)),
         ", ".join(products),
     )
+    logger.debug("List of vendors: %s", vendors)
+    logger.debug("List of products: %s", products)
 
     # List the projects with subscriptions to these vendors & products
     logger.info(
@@ -114,16 +113,7 @@ def list_subscriptions(**context):
     if not subscriptions:
         raise AirflowSkipException("No subscription found")
 
-    # Save the result in redis
-    subscriptions_key = f"subscriptions_{start}_{end}"
-    logger.info(
-        "Found %s subscribed projects, saving it in Redis (key: %s)",
-        str(len(subscriptions)),
-        subscriptions_key,
-    )
-    logger.debug("List of subscriptions: %s", subscriptions)
-    redis_hook.json().set(subscriptions_key, "$", subscriptions)
-    redis_hook.expire(subscriptions_key, 60 * 60 * 24)
+    redis_set(redis_hook, REDIS_PREFIX_SUBSCRIPTIONS, start, end, subscriptions)
 
 
 @task
@@ -131,17 +121,17 @@ def populate_reports(**context):
     start, end = get_dates_from_context(context)
 
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    changes = redis_hook.json().get(f"vendor_changes_{start}_{end}")
-    subscriptions = redis_hook.json().get(f"subscriptions_{start}_{end}")
+    changes = redis_get(redis_hook, REDIS_PREFIX_VENDOR_CHANGES, start, end)
+    subscriptions = redis_get(redis_hook, REDIS_PREFIX_SUBSCRIPTIONS, start, end)
 
     # Associate each project to its changes
     project_changes = list_changes_by_project(changes, subscriptions)
     logger.info("Found %s reports to create", str(len(project_changes)))
 
-    key = f"project_changes_{start}_{end}"
-    logger.info("Saving changes by project in Redis (key: %s)", key)
-    redis_hook.json().set(key, "$", project_changes)
-    redis_hook.expire(key, 60 * 60 * 24)
+    pc_key = redis_set(
+        redis_hook, REDIS_PREFIX_PROJECT_CHANGES, start, end, project_changes
+    )
+    logger.info("Saving changes by project in Redis (key: %s)", pc_key)
 
     # Create the reports for each project
     hook = PostgresHook(postgres_conn_id="opencve_postgres")
@@ -155,14 +145,17 @@ def populate_reports(**context):
                 parameters={
                     "report": report_id,
                     "project": project_id,
-                    "day": start,
+                    "automation": None,
+                    "period_day": str(start.date()),
+                    "period_type": "daily",
+                    "period_timezone": "UTC",
                     "changes": Json(changes_id),
                 },
             )
 
         # It is possible that a user deletes a project before this task
         # runs, but after the project_id has been saved in redis by the
-        # `list_subscriptions` task.
+        # `resolve_subscriptions` task.
         except ForeignKeyViolation as e:
             error_msg = 'insert or update on table "opencve_reports" violates foreign key constraint'
             if str(e).startswith(error_msg):

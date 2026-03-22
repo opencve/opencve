@@ -4,6 +4,7 @@ from crispy_forms.layout import HTML, Button, Div, Field, Layout, Submit
 from django import forms
 from django.conf import settings
 from django.db.models import Q
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from cves.constants import CVSS_SCORES
 from projects.models import Automation, Notification, Project, CveTracker
@@ -244,7 +245,15 @@ class AutomationOverviewForm(forms.ModelForm):
 class AutomationForm(forms.ModelForm):
     class Meta:
         model = Automation
-        fields = ["name", "is_enabled", "trigger_type", "frequency"]
+        fields = [
+            "name",
+            "is_enabled",
+            "trigger_type",
+            "frequency",
+            "schedule_timezone",
+            "schedule_time",
+            "schedule_weekday",
+        ]
 
     configuration_json = forms.CharField(widget=forms.HiddenInput(), required=False)
 
@@ -254,6 +263,9 @@ class AutomationForm(forms.ModelForm):
         super(AutomationForm, self).__init__(*args, **kwargs)
         self.fields["trigger_type"].required = True
         self.fields["frequency"].required = False
+        self.fields["schedule_timezone"].required = False
+        self.fields["schedule_time"].required = False
+        self.fields["schedule_weekday"].required = False
         self.fields["frequency"].widget = forms.RadioSelect(
             choices=Automation.FREQUENCY_CHOICES
         )
@@ -265,7 +277,9 @@ class AutomationForm(forms.ModelForm):
                 self.instance.configuration
             )
             self.fields["trigger_type"].widget = forms.HiddenInput()
-            self.fields["frequency"].widget = forms.HiddenInput()
+            self.fields["frequency"].widget = forms.Select(
+                choices=Automation.FREQUENCY_CHOICES
+            )
         else:
             self.fields["trigger_type"].widget = forms.HiddenInput()
 
@@ -287,12 +301,55 @@ class AutomationForm(forms.ModelForm):
         data = super().clean()
         trigger = data.get("trigger_type")
         frequency = data.get("frequency")
+        schedule_timezone = data.get("schedule_timezone")
+        schedule_time = data.get("schedule_time")
+        schedule_weekday = data.get("schedule_weekday")
+
         if trigger == Automation.TRIGGER_SCHEDULED and not frequency:
             self.add_error(
                 "frequency", "Frequency is required when trigger type is scheduled."
             )
+        if trigger == Automation.TRIGGER_SCHEDULED and not schedule_timezone:
+            self.add_error(
+                "schedule_timezone",
+                "Timezone is required when trigger type is scheduled.",
+            )
+        if trigger == Automation.TRIGGER_SCHEDULED and not schedule_time:
+            self.add_error(
+                "schedule_time", "Run time is required when trigger type is scheduled."
+            )
+        if schedule_timezone:
+            try:
+                ZoneInfo(schedule_timezone)
+            except ZoneInfoNotFoundError:
+                self.add_error(
+                    "schedule_timezone",
+                    "Invalid timezone, please use an IANA timezone (example: Europe/Paris).",
+                )
+        if schedule_time and schedule_time.minute != 0:
+            self.add_error(
+                "schedule_time",
+                "Run time must be aligned to a full hour (HH:00) because the DAG runs hourly.",
+            )
+        if (
+            trigger == Automation.TRIGGER_SCHEDULED
+            and frequency == Automation.FREQUENCY_WEEKLY
+        ):
+            if not schedule_weekday:
+                self.add_error(
+                    "schedule_weekday",
+                    "A weekday is required for weekly scheduled automations.",
+                )
+        if (
+            trigger == Automation.TRIGGER_SCHEDULED
+            and frequency == Automation.FREQUENCY_DAILY
+        ):
+            data["schedule_weekday"] = None
         if trigger == Automation.TRIGGER_REALTIME:
             data["frequency"] = None
+            data["schedule_timezone"] = None
+            data["schedule_time"] = None
+            data["schedule_weekday"] = None
         return data
 
     def _validate_conditions_tree(self, node):

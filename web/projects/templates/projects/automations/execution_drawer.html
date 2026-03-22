@@ -91,7 +91,9 @@
                             <a href="{{ result.details.response_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See response</a>
                             {% endif %}
                         {% elif result.output_type == 'report' %}
-                            {% if result.details.report_day %}
+                            {% if result.details.report_id %}
+                            <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See report</a>
+                            {% elif result.details.report_day %}
                             <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See report</a>
                             {% endif %}
                         {% elif result.output_type == 'pdf' %}
@@ -99,13 +101,17 @@
                             <a href="{% url 'automation_execution_result_download' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=execution.id result_id=result.id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">Download PDF</a>
                             {% endif %}
                         {% elif result.output_type == 'ai_summary' %}
-                            {% if result.details.report_day %}
+                            {% if result.details.report_id %}
+                            <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See Summary</a>
+                            {% elif result.details.report_day %}
                             <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See Summary</a>
                             {% elif result.details.url %}
                             <a href="{{ result.details.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See Summary</a>
                             {% endif %}
                         {% else %}
-                            {% if result.details.report_day %}
+                            {% if result.details.report_id %}
+                            <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">View report</a>
+                            {% elif result.details.report_day %}
                             <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">View report</a>
                             {% elif result.details.file_path %}
                             <a href="{% url 'automation_execution_result_download' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=execution.id result_id=result.id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">Download</a>

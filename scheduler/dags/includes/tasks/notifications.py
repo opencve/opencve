@@ -9,6 +9,14 @@ from airflow.exceptions import AirflowSkipException
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from includes.constants import SQL_PROJECT_WITH_NOTIFICATIONS
+from includes.storage import (
+    REDIS_PREFIX_CHANGES_DETAILS,
+    REDIS_PREFIX_NOTIFICATIONS,
+    REDIS_PREFIX_PROJECT_CHANGES,
+    REDIS_PREFIX_SUBSCRIPTIONS,
+    redis_get,
+    redis_set,
+)
 from includes.utils import (
     divide_list,
     group_notifications_by_project,
@@ -22,17 +30,14 @@ logger = logging.getLogger(__name__)
 def prepare_notifications(**context):
     start, end = get_dates_from_context(context)
 
-    # Get the list of subscriptions
-    subscriptions_redis_key = f"subscriptions_{start}_{end}"
+    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
+    subscriptions = redis_get(redis_hook, REDIS_PREFIX_SUBSCRIPTIONS, start, end)
     logger.info(
-        "Fetching subscriptions between %s and %s using Redis (key: %s)",
+        "Fetching subscriptions between %s and %s (found %s projects)",
         start,
         end,
-        subscriptions_redis_key,
+        len(subscriptions),
     )
-    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    subscriptions = redis_hook.json().get(subscriptions_redis_key)
-    logger.info("Found %s subscriptions", str(len(subscriptions)))
 
     # Get the notifications and group them by project
     logger.info("Listing notifications in %s table", "opencve_notifications")
@@ -45,15 +50,14 @@ def prepare_notifications(**context):
     if not notifications:
         raise AirflowSkipException("No notification found")
 
-    # Save the result in redis
-    notifications_key = f"notifications_{start}_{end}"
+    notifications_key = redis_set(
+        redis_hook, REDIS_PREFIX_NOTIFICATIONS, start, end, notifications
+    )
     logger.info(
         "Found %s notifications, saving it in Redis (key: %s)",
         str(len(notifications)),
         notifications_key,
     )
-    redis_hook.json().set(notifications_key, "$", notifications)
-    redis_hook.expire(notifications_key, 60 * 60 * 24)
 
 
 async def execute_coroutines(notifications, change_details, period):
@@ -96,9 +100,8 @@ def send_notifications(notifications, **context):
     # Retrieve the list of change details
     start, end = get_dates_from_context(context)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
-    changes_details_key = f"changes_details_{start}_{end}"
-    changes_details = redis_hook.json().get(changes_details_key)
-    logger.debug(f"{changes_details_key}: %s", changes_details)
+    changes_details = redis_get(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end)
+    logger.debug("changes_details for %s / %s: %s", start, end, changes_details)
 
     loop = asyncio.get_event_loop()
     result = loop.run_until_complete(
@@ -114,18 +117,15 @@ def make_notifications_chunks(**context):
     start, end = get_dates_from_context(context)
     logger.info("Checking notifications to send between %s and %s", start, end)
 
-    project_changes_key = f"project_changes_{start}_{end}"
-    project_changes = redis_hook.json().get(project_changes_key)
-    logger.debug(f"{project_changes_key}: %s", project_changes)
+    project_changes = redis_get(redis_hook, REDIS_PREFIX_PROJECT_CHANGES, start, end)
+    logger.debug("project_changes: %s", project_changes)
     logger.info("Found %s projects with changes", str(len(project_changes)))
 
-    changes_details_key = f"changes_details_{start}_{end}"
-    changes_details = redis_hook.json().get(changes_details_key)
-    logger.debug(f"{changes_details_key}: %s", changes_details)
+    changes_details = redis_get(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end)
+    logger.debug("changes_details: %s", changes_details)
 
-    notifications_key = f"notifications_{start}_{end}"
-    notifications = redis_hook.json().get(notifications_key)
-    logger.debug(f"{notifications_key}: %s", notifications)
+    notifications = redis_get(redis_hook, REDIS_PREFIX_NOTIFICATIONS, start, end)
+    logger.debug("notifications: %s", notifications)
 
     # Iterate over all the projects and filter the changes to sent
     # based on notifications settings

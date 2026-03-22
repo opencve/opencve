@@ -2,7 +2,10 @@
 
 {% block result_content %}
 <p><strong>Report generated</strong></p>
-{% if result.details.report_day %}
+{% if result.details.report_id %}
+    <p>Report for <strong>{{ result.details.report_day|default:"current period" }}</strong>{% if result.details.cve_count %} — {{ result.details.cve_count }} CVE(s) included{% endif %}.</p>
+    <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fa fa-file-text-o"></i> See report</a>
+{% elif result.details.report_day %}
     <p>Report for <strong>{{ result.details.report_day }}</strong>{% if result.details.cve_count %} — {{ result.details.cve_count }} CVE(s) included{% endif %}.</p>
     <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" class="btn btn-primary" target="_blank" rel="noopener noreferrer"><i class="fa fa-file-text-o"></i> See report</a>
 {% else %}

@@ -54,5 +54,6 @@ class SendNotificationAction(ActionExecutor):
             changes=context["changes"],
             changes_details=context["item_changes_details"],
             period=context["period"],
+            scheduled_report=context.get("scheduled_report"),
         )
         await notifier.execute()

@@ -83,7 +83,9 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if result.details.report_day %}
+                                {% if result.details.report_id %}
+                                <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" class="btn btn-sm btn-default">View report</a>
+                                {% elif result.details.report_day %}
                                 <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" class="btn btn-sm btn-default">View report</a>
                                 {% elif result.details.file_path %}
                                 <a href="{% url 'automation_execution_result_download' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=execution.id result_id=result.id %}" class="btn btn-sm btn-default">Download</a>

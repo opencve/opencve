@@ -35,6 +35,52 @@
                         </select>
                     </span>
                 </div>
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-sm-5">
+                        <label for="id_schedule_timezone">Timezone</label>
+                        <input
+                            type="text"
+                            name="schedule_timezone"
+                            id="id_schedule_timezone"
+                            class="form-control"
+                            placeholder="Europe/Paris"
+                            value="{{ form.schedule_timezone.value|default:automation.schedule_timezone|default:'' }}"
+                            required
+                        >
+                        {% if form.schedule_timezone.errors %}
+                        <p class="text-danger">{{ form.schedule_timezone.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-3">
+                        <label for="id_schedule_time">Run time</label>
+                        <input
+                            type="time"
+                            name="schedule_time"
+                            id="id_schedule_time"
+                            class="form-control"
+                            value="{% if form.schedule_time.value %}{{ form.schedule_time.value }}{% elif automation.schedule_time %}{{ automation.schedule_time|time:'H:i' }}{% endif %}"
+                            step="3600"
+                            required
+                        >
+                        {% if form.schedule_time.errors %}
+                        <p class="text-danger">{{ form.schedule_time.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-4" id="weekly-day-container" {% if automation.frequency != 'weekly' and form.frequency.value != 'weekly' %}style="display:none"{% endif %}>
+                        <label for="id_schedule_weekday">Run day (weekly)</label>
+                        <select name="schedule_weekday" id="id_schedule_weekday" class="form-control select2">
+                            <option value="">Select a day...</option>
+                            {% for day_key, day_label in form.schedule_weekday.field.choices %}
+                                {% with selected_day=form.schedule_weekday.value|default:automation.schedule_weekday %}
+                                <option value="{{ day_key }}" {% if selected_day == day_key %}selected{% endif %}>{{ day_label }}</option>
+                                {% endwith %}
+                            {% endfor %}
+                        </select>
+                        {% if form.schedule_weekday.errors %}
+                        <p class="text-danger">{{ form.schedule_weekday.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
                 {% if form.frequency.errors %}
                 <p class="text-danger">{{ form.frequency.errors.0 }}</p>
                 {% endif %}

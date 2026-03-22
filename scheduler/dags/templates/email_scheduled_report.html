@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <body style="background:#f3f3f5;font-family:Arial,sans-serif;margin:0;padding:24px;">
+    <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:6px;padding:24px;">
+      <h2 style="margin-top:0;">{{ title }}</h2>
+      <p>
+        This email has been sent from the <strong>{{ notification }}</strong> automation notification
+        of the <strong>{{ organization }}/{{ project }}</strong> project.
+      </p>
+      <p>
+        Your <strong>{{ period_type }}</strong> report has been created.
+      </p>
+      <ul>
+        <li><strong>Period:</strong> {{ period_label }} ({{ period_timezone }})</li>
+        <li><strong>Total CVEs:</strong> {{ cve_count }}</li>
+      </ul>
+      {% if report_url %}
+      <p>
+        <a href="{{ report_url }}" style="display:inline-block;background:#5842DF;color:#ffffff;text-decoration:none;padding:10px 14px;border-radius:4px;">
+          Open report
+        </a>
+      </p>
+      {% endif %}
+      <p style="color:#666;font-size:12px;margin-top:24px;">
+        {% if created_by_email %}Created by {{ created_by_email }}<br>{% endif %}
+        {% if unsubscribe_url %}<a href="{{ unsubscribe_url }}">Unsubscribe</a> - {% endif %}
+        <a href="{{ notification_url }}">Manage notification settings</a>
+      </p>
+      <p style="color:#999;font-size:12px;">&copy; {{ year }} OpenCVE, All rights reserved</p>
+    </div>
+  </body>
+</html>

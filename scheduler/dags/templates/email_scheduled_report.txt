@@ -1,0 +1,17 @@
+This email has been sent from the {{ notification }} automation notification of the {{ organization }}/{{ project }} project:
+{{ project_url }}
+
+Your {{ period_type }} report has been created.
+Period: {{ period_label }} ({{ period_timezone }})
+Total CVEs in report: {{ cve_count }}
+
+{% if report_url %}Open report: {{ report_url }}{% endif %}
+
+{% if created_by_email %}
+This notification was created by {{ created_by_email }}
+{% endif %}
+{% if unsubscribe_url %}
+Unsubscribe from this notification: {{ unsubscribe_url }}
+{% endif %}
+Manage notification settings: {{ notification_url }}
+&copy; {{ year }} OpenCVE, All rights reserved

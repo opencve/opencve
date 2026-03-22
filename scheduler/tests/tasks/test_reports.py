@@ -8,8 +8,8 @@ from airflow.utils.state import TaskInstanceState
 
 from includes.operators.process_kb_operator import ProcessKbOperator
 from includes.tasks.reports import (
-    list_changes,
-    list_subscriptions,
+    collect_hourly_changes,
+    resolve_subscriptions,
     populate_reports,
     summarize_reports,
 )
@@ -17,14 +17,16 @@ from utils import TestRepo
 
 
 @pytest.mark.airflow_db
-def test_list_changes_no_change(caplog, run_dag_task, tests_path, tmp_path_factory):
+def test_collect_hourly_changes_no_change(
+    caplog, run_dag_task, tests_path, tmp_path_factory
+):
     repo = TestRepo("changes", tests_path, tmp_path_factory)
 
     # One commit found, but no change in DB
     repo.commit(["0001/CVE-2024-6962.v1.json"], hour=2, minute=00)
     with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
         task = run_dag_task(
-            task_fn=list_changes,
+            task_fn=collect_hourly_changes,
             start=pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC"),
             end=pendulum.datetime(2024, 1, 1, 3, 0, tz="UTC"),
         )
@@ -34,7 +36,9 @@ def test_list_changes_no_change(caplog, run_dag_task, tests_path, tmp_path_facto
 
 @pytest.mark.airflow_db
 @pytest.mark.web_db
-def test_list_changes_no_vendor(caplog, run_dag_task, tests_path, tmp_path_factory):
+def test_collect_hourly_changes_no_vendor(
+    caplog, run_dag_task, tests_path, tmp_path_factory
+):
     repo = TestRepo("changes", tests_path, tmp_path_factory)
 
     # One commit found with change in KB but no vendor
@@ -48,7 +52,7 @@ def test_list_changes_no_vendor(caplog, run_dag_task, tests_path, tmp_path_facto
             }
         )
         task = run_dag_task(
-            task_fn=list_changes,
+            task_fn=collect_hourly_changes,
             start=pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC"),
             end=pendulum.datetime(2024, 1, 1, 3, 0, tz="UTC"),
         )
@@ -58,7 +62,9 @@ def test_list_changes_no_vendor(caplog, run_dag_task, tests_path, tmp_path_facto
 
 @pytest.mark.airflow_db
 @pytest.mark.web_db
-def test_list_changes_write_in_redis(run_dag_task, tests_path, tmp_path_factory):
+def test_collect_hourly_changes_write_in_redis(
+    run_dag_task, tests_path, tmp_path_factory
+):
     repo = TestRepo("changes", tests_path, tmp_path_factory)
 
     # One commit found with change in DB
@@ -73,7 +79,7 @@ def test_list_changes_write_in_redis(run_dag_task, tests_path, tmp_path_factory)
         )
 
         task = run_dag_task(
-            task_fn=list_changes,
+            task_fn=collect_hourly_changes,
             start=pendulum.datetime(2024, 1, 1, 3, 0, tz="UTC"),
             end=pendulum.datetime(2024, 1, 1, 4, 0, tz="UTC"),
         )
@@ -83,7 +89,9 @@ def test_list_changes_write_in_redis(run_dag_task, tests_path, tmp_path_factory)
 @pytest.mark.airflow_db
 @pytest.mark.web_db
 @pytest.mark.web_redis
-def test_list_changes(run_dag_task, tests_path, tmp_path_factory, web_redis_hook):
+def test_collect_hourly_changes(
+    run_dag_task, tests_path, tmp_path_factory, web_redis_hook
+):
     repo = TestRepo("changes", tests_path, tmp_path_factory)
     repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
     with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
@@ -95,7 +103,7 @@ def test_list_changes(run_dag_task, tests_path, tmp_path_factory, web_redis_hook
             }
         )
         run_dag_task(
-            task_fn=list_changes,
+            task_fn=collect_hourly_changes,
             start=pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
             end=pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC"),
         )
@@ -155,7 +163,7 @@ def test_list_changes(run_dag_task, tests_path, tmp_path_factory, web_redis_hook
 @pytest.mark.airflow_db
 @pytest.mark.web_db
 @pytest.mark.web_redis
-def test_list_subscriptions(run_dag_task, web_redis_hook, web_pg_hook):
+def test_resolve_subscriptions(run_dag_task, web_redis_hook, web_pg_hook):
     web_redis_hook.json().set(
         "vendor_changes_2024-01-01 01:00:00+00:00_2024-01-01 01:59:59+00:00",
         "$",
@@ -213,7 +221,7 @@ def test_list_subscriptions(run_dag_task, web_redis_hook, web_pg_hook):
     )
 
     task = run_dag_task(
-        task_fn=list_subscriptions,
+        task_fn=resolve_subscriptions,
         start=pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
         end=pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC"),
     )
@@ -231,7 +239,7 @@ def test_list_subscriptions(run_dag_task, web_redis_hook, web_pg_hook):
 @pytest.mark.airflow_db
 @pytest.mark.web_db
 @pytest.mark.web_redis
-def test_list_subscriptions_no_subscription(
+def test_resolve_subscriptions_no_subscription(
     caplog, run_dag_task, web_redis_hook, web_pg_hook
 ):
     web_redis_hook.json().set(
@@ -244,7 +252,7 @@ def test_list_subscriptions_no_subscription(
     )
 
     task = run_dag_task(
-        task_fn=list_subscriptions,
+        task_fn=resolve_subscriptions,
         start=pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
         end=pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC"),
     )

@@ -490,13 +490,44 @@ class ReportView(
         queryset = self.model.objects.prefetch_related(changes_with_cve_prefetch)
 
         # Return the daily report
+        report = (
+            queryset.filter(project=self.project, day=self.kwargs["day"])
+            .order_by("-created_at")
+            .first()
+        )
+        if not report:
+            raise Http404()
+
+        return self.get_report_statistics(report)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        return context
+
+
+class ReportByIdView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
+):
+    model = Report
+    template_name = "projects/report.html"
+
+    def get_object(self, queryset=None):
+        changes_with_cve_prefetch = Prefetch(
+            "changes",
+            queryset=Change.objects.select_related("cve"),
+        )
+        queryset = self.model.objects.prefetch_related(changes_with_cve_prefetch)
         report = get_object_or_404(
             queryset,
             project=self.project,
-            day=self.kwargs["day"],
+            id=self.kwargs["report_id"],
         )
-
-        return self.get_report_statistics(report)
+        return ReportView.get_report_statistics(report)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1266,10 +1297,13 @@ class AutomationCreateView(
             template = self.request.GET.get("template") or ""
             if template in ("weekly_summary", "weekly_kev", "weekly_pdf"):
                 initial["frequency"] = Automation.FREQUENCY_WEEKLY
+                initial["schedule_weekday"] = Automation.WEEKDAY_MONDAY
             elif template == "daily_ai_summary":
                 initial["frequency"] = Automation.FREQUENCY_DAILY
             else:
                 initial["frequency"] = Automation.FREQUENCY_DAILY
+            initial["schedule_timezone"] = "UTC"
+            initial["schedule_time"] = "09:00"
         else:
             initial["frequency"] = None
         return initial

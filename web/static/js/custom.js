@@ -3055,10 +3055,6 @@ $(document).ready(function() {
         input: 'select', 
         options: 'statuses' 
       },
-      generate_report: { 
-        label: 'Generate a report', 
-        input: 'boolean' 
-      },
       generate_pdf: { 
         label: 'Generate a PDF report', 
         input: 'boolean' 
@@ -3074,7 +3070,6 @@ $(document).ready(function() {
     if (typeof automationTriggerType !== 'undefined' && automationTriggerType === 'scheduled') {
       actionTypes.send_notification = allActionTypes.send_notification;
       actionTypes.generate_pdf = allActionTypes.generate_pdf;
-      actionTypes.generate_report = allActionTypes.generate_report;
       actionTypes.include_ai_summary = allActionTypes.include_ai_summary;
     } else {
       actionTypes.send_notification = allActionTypes.send_notification;
@@ -3139,6 +3134,22 @@ $(document).ready(function() {
     var frequencySelect = $('#id_frequency');
     if (frequencySelect.length) {
       frequencySelect.select2({ allowClear: false, minimumResultsForSearch: Infinity });
+      var weekdayContainer = $('#weekly-day-container');
+      var weekdaySelect = $('#id_schedule_weekday');
+      if (weekdaySelect.length) {
+        weekdaySelect.select2({ allowClear: false, minimumResultsForSearch: Infinity });
+      }
+      function syncWeeklyScheduleFields() {
+        if (!weekdayContainer.length) return;
+        if (frequencySelect.val() === 'weekly') {
+          weekdayContainer.show();
+        } else {
+          weekdayContainer.hide();
+          if (weekdaySelect.length) weekdaySelect.val('').trigger('change');
+        }
+      }
+      frequencySelect.on('change', syncWeeklyScheduleFields);
+      syncWeeklyScheduleFields();
     }
     $(document).on('select2:select', '.add-condition-dropdown', function(e) {
       var type = e.params.data.id;

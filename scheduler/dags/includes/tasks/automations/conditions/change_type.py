@@ -4,6 +4,8 @@ from includes.tasks.automations.conditions.base import (
 )
 
 
+# TODO: je pense que kev_added doit tomber dans metrics
+# TODO: c'est quoi la diff avec TRIGGER_TO_CHANGE_TYPES ?
 CONDITION_TO_CHANGE_TYPES = {
     "cve_enters_project": {"created"},
     "cvss_increased": {"metrics"},

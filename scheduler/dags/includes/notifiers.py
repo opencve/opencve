@@ -27,17 +27,28 @@ class BaseNotifier:
     }
 
     def __init__(
-        self, *args, semaphore, session, notification, changes, changes_details, period
+        self,
+        *args,
+        semaphore,
+        session,
+        notification,
+        changes,
+        changes_details,
+        period,
+        scheduled_report=None,
     ):
         self.semaphore = semaphore
         self.session = session
         self.notification = notification
         self.config = notification["notification_conf"]
         self.period = period
+        self.scheduled_report = scheduled_report
         self.request_timeout = conf.getint("opencve", "notification_request_timeout")
 
         # Filter full list of changes details with the notification ones
-        self.changes = [dict(changes_details[c]) for c in changes]
+        self.changes = [
+            dict(changes_details[c]) for c in changes if c in changes_details
+        ]
 
     @staticmethod
     def humanize_subscription(name):
@@ -51,6 +62,11 @@ class BaseNotifier:
 
     @staticmethod
     def get_title(payload):
+        if payload.get("scheduled_report"):
+            total = payload["scheduled_report"].get("cve_count", 0)
+            period_type = payload["scheduled_report"].get("period_type", "period")
+            return f"Scheduled {period_type} report ready ({total} CVEs)"
+
         total = len(payload["changes"])
         change_str = "changes" if total > 1 else "change"
         title = "{count} {change_str} on {subscriptions}".format(
@@ -132,6 +148,20 @@ class BaseNotifier:
 
         return payload
 
+    def prepare_scheduled_report_payload(self):
+        start = arrow.get(self.period.get("start")).to("utc").datetime.isoformat()
+        end = arrow.get(self.period.get("end")).to("utc").datetime.isoformat()
+        scheduled = self.scheduled_report or {}
+        payload = {
+            "organization": self.notification["organization_name"],
+            "project": self.notification["project_name"],
+            "notification": self.notification["notification_name"],
+            "period": {"start": start, "end": end},
+            "scheduled_report": scheduled,
+            "title": self.get_title({"scheduled_report": scheduled}),
+        }
+        return payload
+
     @staticmethod
     def get_severity_str(score):
         if not score:
@@ -172,11 +202,16 @@ class WebhookNotifier(BaseNotifier):
             self.url,
             str(len(self.changes)),
         )
+        payload = (
+            self.prepare_scheduled_report_payload()
+            if self.scheduled_report
+            else self.prepare_payload()
+        )
 
         try:
             async with self.session.post(
                 self.url,
-                json=self.prepare_payload(),
+                json=payload,
                 headers=self.headers,
                 timeout=self.request_timeout,
             ) as response:
@@ -211,6 +246,8 @@ class SlackNotifier(BaseNotifier):
         self.webhook_url = self.config.get("extras").get("webhook_url")
 
     def format_slack_blocks(self):
+        if self.scheduled_report:
+            return self.format_slack_blocks_scheduled()
         payload = self.prepare_payload()
         title = payload["title"]
         organization = payload["organization"]
@@ -296,6 +333,43 @@ class SlackNotifier(BaseNotifier):
             for i in range(0, len(blocks), self.MAX_BLOCKS)
         ]
 
+    def format_slack_blocks_scheduled(self):
+        payload = self.prepare_scheduled_report_payload()
+        report = payload["scheduled_report"]
+        title = payload["title"]
+        organization = payload["organization"]
+        project = payload["project"]
+        period_label = report.get("report_day", "N/A")
+        cve_count = report.get("cve_count", 0)
+        report_url = report.get("report_url")
+        timezone_label = report.get("period_timezone", "UTC")
+
+        report_line = (
+            f"<{report_url}|Open report>" if report_url else "Report link unavailable"
+        )
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"🗂️ *{title}*\n_{organization} / {project}_",
+                },
+            },
+            {"type": "divider"},
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"*Period:* {period_label} ({timezone_label})\n"
+                        f"*Total CVEs:* {cve_count}\n"
+                        f"*Report:* {report_line}"
+                    ),
+                },
+            },
+        ]
+        return [{"blocks": blocks}]
+
     async def send(self):
         logger.info("Sending Slack notification to %s", self.webhook_url)
         messages = self.format_slack_blocks()
@@ -338,6 +412,9 @@ class EmailNotifier(BaseNotifier):
         self.email = self.config.get("extras").get("email")
 
     def get_template_context(self):
+        if self.scheduled_report:
+            return self.get_scheduled_template_context()
+
         payload = super().prepare_payload()
         organization = payload["organization"]
         project = payload["project"]
@@ -399,6 +476,44 @@ class EmailNotifier(BaseNotifier):
 
         return context
 
+    def get_scheduled_template_context(self):
+        payload = self.prepare_scheduled_report_payload()
+        report = payload["scheduled_report"]
+        organization = payload["organization"]
+        project = payload["project"]
+        notification = payload["notification"]
+        extras = self.config.get("extras") or {}
+        web_url = conf.get("opencve", "web_base_url")
+        project_url = f"{web_url}/org/{urllib.parse.quote(organization)}/projects/{urllib.parse.quote(project)}"
+        notification_url = (
+            f"{project_url}/notifications/{urllib.parse.quote(notification)}"
+        )
+
+        unsubscribe_token = extras.get("unsubscribe_token")
+        unsubscribe_url = (
+            f"{web_url}/notifications/unsubscribe/{unsubscribe_token}"
+            if unsubscribe_token
+            else ""
+        )
+
+        return {
+            "web_url": web_url,
+            "project_url": project_url,
+            "notification_url": notification_url,
+            "unsubscribe_url": unsubscribe_url,
+            "created_by_email": extras.get("created_by_email") or "",
+            "title": payload["title"],
+            "organization": organization,
+            "project": project,
+            "notification": notification,
+            "report_url": report.get("report_url", ""),
+            "period_label": report.get("report_day", ""),
+            "period_type": report.get("period_type", "daily"),
+            "period_timezone": report.get("period_timezone", "UTC"),
+            "cve_count": report.get("cve_count", 0),
+            "year": datetime.datetime.now().year,
+        }
+
     async def send(self):
         logger.info(
             "Sending %s notification to %s (%s changes)",
@@ -408,10 +523,13 @@ class EmailNotifier(BaseNotifier):
         )
 
         context = self.get_template_context()
+        template_name = (
+            "email_scheduled_report" if self.scheduled_report else "email_notification"
+        )
         message = await get_smtp_message(
             email_to=self.email,
             subject=f"[{context['project']}] {context['title']}",
-            template="email_notification",
+            template=template_name,
             context=context,
         )
 

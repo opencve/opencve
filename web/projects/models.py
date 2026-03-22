@@ -138,6 +138,22 @@ class Automation(BaseModel):
         (FREQUENCY_DAILY, "Daily"),
         (FREQUENCY_WEEKLY, "Weekly"),
     ]
+    WEEKDAY_MONDAY = "monday"
+    WEEKDAY_TUESDAY = "tuesday"
+    WEEKDAY_WEDNESDAY = "wednesday"
+    WEEKDAY_THURSDAY = "thursday"
+    WEEKDAY_FRIDAY = "friday"
+    WEEKDAY_SATURDAY = "saturday"
+    WEEKDAY_SUNDAY = "sunday"
+    WEEKDAY_CHOICES = [
+        (WEEKDAY_MONDAY, "Monday"),
+        (WEEKDAY_TUESDAY, "Tuesday"),
+        (WEEKDAY_WEDNESDAY, "Wednesday"),
+        (WEEKDAY_THURSDAY, "Thursday"),
+        (WEEKDAY_FRIDAY, "Friday"),
+        (WEEKDAY_SATURDAY, "Saturday"),
+        (WEEKDAY_SUNDAY, "Sunday"),
+    ]
 
     name = models.CharField(
         max_length=256,
@@ -157,6 +173,14 @@ class Automation(BaseModel):
     frequency = models.CharField(
         max_length=20,
         choices=FREQUENCY_CHOICES,
+        null=True,
+        blank=True,
+    )
+    schedule_timezone = models.CharField(max_length=64, null=True, blank=True)
+    schedule_time = models.TimeField(null=True, blank=True)
+    schedule_weekday = models.CharField(
+        max_length=20,
+        choices=WEEKDAY_CHOICES,
         null=True,
         blank=True,
     )

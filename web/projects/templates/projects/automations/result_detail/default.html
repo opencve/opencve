@@ -3,7 +3,9 @@
 {% block result_content %}
 <p><strong>{{ result.label }}</strong></p>
 {% if result.details.summary %}<p>{{ result.details.summary }}</p>{% endif %}
-{% if result.details.report_day %}
+{% if result.details.report_id %}
+    <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" class="btn btn-default" target="_blank" rel="noopener noreferrer">View report</a>
+{% elif result.details.report_day %}
     <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" class="btn btn-default" target="_blank" rel="noopener noreferrer">View report</a>
 {% endif %}
 {% if result.details.file_path %}
@@ -12,7 +14,7 @@
 {% if result.details.url %}
     <a href="{{ result.details.url }}" class="btn btn-default" target="_blank" rel="noopener noreferrer">Open link</a>
 {% endif %}
-{% if not result.details.summary and not result.details.report_day and not result.details.file_path and not result.details.url %}
+{% if not result.details.summary and not result.details.report_id and not result.details.report_day and not result.details.file_path and not result.details.url %}
     <p class="text-muted">No additional details for this result.</p>
 {% endif %}
 {% endblock %}

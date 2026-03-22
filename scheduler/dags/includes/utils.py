@@ -152,11 +152,35 @@ def group_automations_by_project(records, subscriptions):
     """
     This function groups automations by project.
     Each record contains:
-    (project_id, project_name, org_name, automation_id, automation_name, trigger_type, frequency, configuration)
+    (
+      project_id,
+      project_name,
+      org_name,
+      automation_id,
+      automation_name,
+      trigger_type,
+      frequency,
+      schedule_timezone,
+      schedule_time,
+      schedule_weekday,
+      configuration,
+    )
     """
     projects_automations = {}
     for automation in records:
-        p_id, p_name, o_name, a_id, a_name, a_trigger, a_frequency, a_conf = automation
+        (
+            p_id,
+            p_name,
+            o_name,
+            a_id,
+            a_name,
+            a_trigger,
+            a_frequency,
+            a_timezone,
+            a_time,
+            a_weekday,
+            a_conf,
+        ) = automation
 
         if p_id not in projects_automations:
             projects_automations[p_id] = []
@@ -174,6 +198,11 @@ def group_automations_by_project(records, subscriptions):
                 "automation_name": a_name,
                 "trigger_type": a_trigger,
                 "frequency": a_frequency,
+                "schedule_timezone": a_timezone,
+                "schedule_time": (
+                    a_time.strftime("%H:%M") if hasattr(a_time, "strftime") else None
+                ),
+                "schedule_weekday": a_weekday,
                 "automation_conf": a_conf,
             }
         )

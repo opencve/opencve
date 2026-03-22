@@ -27,6 +27,7 @@ from projects.views import (
     ProjectVulnerabilitiesCsvExportView,
     ProjectVulnerabilitiesView,
     ReportsView,
+    ReportByIdView,
     ReportView,
     SubscriptionsView,
     UpdateCveCommentView,
@@ -91,6 +92,11 @@ urlpatterns = [
         "org/<org_name>/projects/<project_name>/reports/<date:day>",
         ReportView.as_view(),
         name="report",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/reports/id/<uuid:report_id>",
+        ReportByIdView.as_view(),
+        name="report_by_id",
     ),
     path(
         "org/<org_name>/projects/<project_name>/subscriptions",
