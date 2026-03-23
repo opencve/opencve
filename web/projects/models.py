@@ -14,7 +14,8 @@ def get_default_subscriptions():
 
 
 def get_default_configuration():
-    return {"cvss": 0, "events": []}
+    # Kept for historical migrations that import this symbol.
+    return {"extras": {}}
 
 
 def get_default_automation_config():

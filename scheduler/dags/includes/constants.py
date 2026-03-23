@@ -352,7 +352,8 @@ FROM
   JOIN opencve_organizations AS organizations ON organizations.id = projects.organization_id
 WHERE
   automations.is_enabled = 't'
-  AND projects.id IN %(projects)s;
+  AND projects.id IN %(projects)s
+ORDER BY automations.name ASC;
 """
 
 SQL_REPORT_SUMMARY_BY_ID = """

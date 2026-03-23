@@ -56,18 +56,6 @@ from projects.utils import send_notification_confirmation_email
 from users.models import User
 from views.models import View as SavedView
 
-NOTIFICATION_TYPES = [
-    "cpes",
-    "created",
-    "description",
-    "first_time",
-    "metrics",
-    "references",
-    "title",
-    "vendors",
-    "weaknesses",
-]
-
 
 class ProjectsListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
     context_object_name = "projects"
@@ -640,10 +628,6 @@ class NotificationCreateView(
         return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
-        types = [
-            k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v
-        ]
-
         # Extra configuration
         extras = {}
         custom_fields = FORM_MAPPING.get(self.request.GET["type"], [])
@@ -661,11 +645,7 @@ class NotificationCreateView(
         # Create the notification
         form.instance.project = self.project
         form.instance.type = notification_type
-        form.instance.configuration = {
-            "types": types,
-            "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
-            "extras": extras,
-        }
+        form.instance.configuration = {"extras": extras}
 
         response = super().form_valid(form)
         if notification_type == "email":
@@ -716,10 +696,6 @@ class NotificationUpdateView(
         )
 
     def form_valid(self, form):
-        types = [
-            k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v
-        ]
-
         # Extra configuration
         extras = {}
         custom_fields = FORM_MAPPING.get(form.instance.type, [])
@@ -744,11 +720,7 @@ class NotificationUpdateView(
 
         # Create the notification
         form.instance.project = self.project
-        form.instance.configuration = {
-            "types": types,
-            "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
-            "extras": extras,
-        }
+        form.instance.configuration = {"extras": extras}
 
         response = super().form_valid(form)
         if email_changed_send_confirm:
@@ -775,16 +747,9 @@ class NotificationUpdateView(
             extras.get("confirmation_token")
         )
 
-        # Transform JSON field into dedicated fields
-        context["form"].initial["cvss31_score"] = self.object.configuration["metrics"][
-            "cvss31"
-        ]
-        for _type in self.object.configuration["types"]:
-            context["form"].initial[_type] = True
-
         custom_fields = FORM_MAPPING.get(self.object.type, [])
         for field in custom_fields:
-            context["form"].initial[field] = self.object.configuration["extras"][field]
+            context["form"].initial[field] = extras.get(field)
 
         context.setdefault("try_result", None)
         return {**context, **{"type": self.object.type}}

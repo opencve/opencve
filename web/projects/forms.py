@@ -6,7 +6,6 @@ from django.conf import settings
 from django.db.models import Q
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from cves.constants import CVSS_SCORES
 from projects.models import Automation, Notification, Project, CveTracker
 from users.models import User
 from views.models import View as SavedView
@@ -85,22 +84,6 @@ class NotificationForm(forms.ModelForm):
             extras = self.instance.configuration.get("extras") or {}
             if extras.get("confirmation_token"):
                 self.fields.pop("is_enabled", None)
-
-    created = forms.BooleanField(required=False)
-    description = forms.BooleanField(required=False)
-    title = forms.BooleanField(required=False)
-    first_time = forms.BooleanField(required=False)
-    weaknesses = forms.BooleanField(required=False)
-    cpes = forms.BooleanField(required=False)
-    vendors = forms.BooleanField(required=False)
-    references = forms.BooleanField(required=False)
-    metrics = forms.BooleanField(required=False)
-
-    cvss31_score = forms.ChoiceField(
-        choices=CVSS_SCORES,
-        label="Be alerted when the CVSSv3.1 score is greater than or equal to :",
-        initial=0,
-    )
 
     def clean_name(self):
         name = self.cleaned_data["name"]

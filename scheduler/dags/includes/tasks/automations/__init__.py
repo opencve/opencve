@@ -116,6 +116,10 @@ def get_accumulation_period_bucket(automation, context):
         .subtract(seconds=1)
     )
     frequency = automation.get("frequency")
+
+    # TODO: nous on veut à J-1 pour la semaine, et pas la semaine d'avant
+    # par exemple le user choisit Mercredi 09h, ça doit pas couvrir du Lundi au Dimanche semaine d'avant
+    # mais ça doit couvrir du Mercredi d'avant 00:00:00 jusqu'à la veille (mardi soir 23:59:59)
     if frequency == "weekly":
         period_day = str(local_anchor.start_of("week").date())
         period_type = "weekly"
