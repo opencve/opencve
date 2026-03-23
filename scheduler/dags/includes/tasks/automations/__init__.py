@@ -28,6 +28,7 @@ from includes.storage import (
 )
 from includes.tasks.automations.actions import execute_action
 from includes.tasks.automations.conditions import evaluate_condition_tree
+from includes.tasks.automations.triggers import evaluate_triggers
 from includes.utils import (
     divide_list,
     get_dates_from_context,
@@ -37,22 +38,6 @@ from includes.utils import (
 from psycopg2.extras import Json
 
 logger = logging.getLogger(__name__)
-
-TRIGGER_TO_CHANGE_TYPES = {
-    "cve_enters_project": {"created"},
-    "cvss_increased": {"metrics"},
-    "cvss_decreased": {"metrics"},
-    "epss_increased": {"metrics"},
-    "epss_decreased": {"metrics"},
-    # TODO: je pense que kev_added doit tomber dans metrics
-    "kev_added": {"kev"},
-    "new_vendor": {"vendors"},
-    "new_product": {"cpes"},
-    "description_changed": {"description"},
-    "title_changed": {"title"},
-    "new_reference": {"references"},
-    "new_weakness": {"weaknesses"},
-}
 
 WEEKDAY_TO_INT = {
     "monday": 0,
@@ -73,24 +58,6 @@ WHERE project_id = %(project_id)s
   AND period_type = %(period_type)s
 LIMIT 1;
 """
-
-
-def change_matches_triggers(change_details, triggers):
-    print("===> change_matches_triggers:")
-    print(change_details)
-    print(triggers)
-    if not triggers:
-        return True
-
-    change_types = set(change_details.get("change_types") or [])
-    for trigger in triggers:
-        mapped = TRIGGER_TO_CHANGE_TYPES.get(trigger)
-        if mapped is None:
-            logger.warning("Unknown automation trigger: %s", trigger)
-            continue
-        if change_types.intersection(mapped):
-            return True
-    return False
 
 
 def _parse_schedule_time(automation):
@@ -186,25 +153,31 @@ def get_due_period_bucket(automation, context):
 
 
 def filter_changes_for_automation(automation, changes, changes_details, cve_trackers):
-    config = automation.get("automation_conf") or {}
-    conditions_tree = config.get("conditions")
-    triggers = config.get("triggers") or []
+    conditions_tree = automation.get("automation_conf", {}).get("conditions")
+    triggers = automation.get("automation_conf", {}).get("triggers") or []
     trigger_type = automation.get("trigger_type")
+
+    print("===> conditions_tree:")
+    print(conditions_tree)
+    print("===> triggers:")
+    print(triggers)
+    print("===> trigger_type:")
+    print(trigger_type)
 
     matching_changes = []
     for change_id in changes:
         change_details = changes_details.get(change_id)
-        print("===> change_details:")
-        print(change_details)
         if not change_details:
             continue
 
-        if trigger_type == "realtime" and not change_matches_triggers(
-            change_details, triggers
+        if trigger_type == "realtime" and not evaluate_triggers(
+            triggers=triggers, change_details=change_details, automation=automation
         ):
+            print("===> not matching triggers")
             continue
 
         if not evaluate_condition_tree(conditions_tree, change_details, cve_trackers):
+            print("===> not matching conditions")
             continue
 
         matching_changes.append(change_id)
@@ -317,8 +290,14 @@ def build_realtime_work_items(**context):
             postgres_hook, project_id, changes, changes_details
         )
         for automation in realtime_automations:
+            print("===> automation:")
+            print(automation)
             print("===> changes:")
             print(changes)
+            print("===> changes_details:")
+            print(changes_details)
+            print("===> cve_trackers:")
+            print(cve_trackers)
             filtered_changes = filter_changes_for_automation(
                 automation=automation,
                 changes=changes,
@@ -332,6 +311,7 @@ def build_realtime_work_items(**context):
 
             actions = automation.get("automation_conf", {}).get("actions", [])
             if not actions:
+                print("===> no actions")
                 continue
 
             actions_to_execute.append(
@@ -342,6 +322,7 @@ def build_realtime_work_items(**context):
                 }
             )
 
+    logger.info("Found %s actions to execute", len(actions_to_execute))
     chunks = chunk_actions(actions_to_execute)
     redis_set(
         redis_hook,

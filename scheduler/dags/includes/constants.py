@@ -33,7 +33,10 @@ SELECT
   changes.path AS change_path,
   cves.vendors AS cve_vendors,
   cves.cve_id AS cve_id,
-  cves.metrics AS cve_metrics
+  cves.metrics AS cve_metrics,
+  cves.created_at AS cve_created_at,
+  cves.title AS cve_title,
+  cves.description AS cve_description
 FROM
   opencve_cves AS cves
   JOIN opencve_changes AS changes ON cves.id = changes.cve_id
@@ -406,3 +409,37 @@ ON CONFLICT ON CONSTRAINT ix_unique_cve_project_tracker DO UPDATE SET
   status = COALESCE(EXCLUDED.status, opencve_cve_trackers.status),
   updated_at = NOW();
 """
+
+SQL_NOTIFICATION_BY_ID = """
+SELECT
+    notifications.name,
+    notifications.type,
+    notifications.configuration
+FROM opencve_notifications AS notifications
+WHERE notifications.id = %(notification_id)s
+  AND notifications.is_enabled = 't'
+"""
+
+CVSS_VERSION_MAP = {
+    "v2.0": "cvssV2_0",
+    "v3.0": "cvssV3_0",
+    "v3.1": "cvssV3_1",
+    "v4.0": "cvssV4_0",
+}
+
+CONDITION_TO_CHANGE_TYPES = {
+    "cve_enters_project": {"created"},
+    "cvss_increased": {"metrics"},
+    "cvss_decreased": {"metrics"},
+    "cvss_increased_by": {"metrics"},
+    "epss_increased": {"metrics"},
+    "epss_decreased": {"metrics"},
+    "kev_added": {"kev"},
+    "new_vendor": {"vendors"},
+    "new_product": {"cpes"},
+    "description_changed": {"description"},
+    "summary_changed": {"summary"},
+    "title_changed": {"title"},
+    "new_reference": {"references"},
+    "new_weakness": {"weaknesses"},
+}

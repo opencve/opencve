@@ -3,6 +3,7 @@ import pathlib
 import json
 import uuid
 import time
+from copy import deepcopy
 
 from airflow.configuration import conf
 from airflow.decorators import task
@@ -11,6 +12,7 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from psycopg2.errors import ForeignKeyViolation
 from includes.constants import (
+    KB_LOCAL_REPO,
     PRODUCT_SEPARATOR,
     REPORT_UPSERT_PROCEDURE,
     REPORTS_RETENTION_MONTHS,
@@ -37,10 +39,49 @@ from includes.utils import (
     group_changes_by_vendor,
     call_llm,
     build_user_content_for_llm,
+    minify_change_events,
 )
 from psycopg2.extras import Json
 
 logger = logging.getLogger(__name__)
+
+
+def _load_kb_changes_index(cache, change_path):
+    if change_path in cache:
+        return cache[change_path]
+
+    file_path = pathlib.Path(KB_LOCAL_REPO) / str(change_path)
+    with open(file_path) as kb_file:
+        kb_data = json.load(kb_file)
+    changes = kb_data.get("opencve", {}).get("changes", [])
+    cache[change_path] = {
+        str(change.get("id")): change for change in changes if change.get("id")
+    }
+    return cache[change_path]
+
+
+def enrich_change_details_from_kb(change_details):
+    """
+    Return an enriched copy with compact KB payload for trigger matching.
+    """
+    kb_cache = {}
+    enriched_details = deepcopy(change_details or {})
+
+    for detail in enriched_details.values():
+        change_id = str(detail.get("change_id"))
+        change_path = detail.get("change_path")
+        if not change_id or not change_path:
+            continue
+        try:
+            changes_index = _load_kb_changes_index(kb_cache, change_path)
+            kb_change = changes_index.get(change_id)
+            if not kb_change:
+                continue
+            detail["change_payload"] = minify_change_events(kb_change.get("data"))
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            continue
+
+    return enriched_details
 
 
 @task(task_id="CollectHourlyChanges")
@@ -67,6 +108,7 @@ def collect_hourly_changes(**context):
 
     # Save the change details in redis
     change_details = format_change_details(records)
+    change_details = enrich_change_details_from_kb(change_details)
     redis_set(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end, change_details)
 
 

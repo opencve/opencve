@@ -34,7 +34,7 @@ start_date = pendulum.from_format(conf.get("opencve", "start_date"), "YYYY-MM-DD
 )
 def opencve():
     with TaskGroup(group_id="kb_refresh") as kb_refresh_group:
-        git_fetch_tasks = [
+        """git_fetch_tasks = [
             GitFetchOperator(task_id="FetchKb", kind="kb"),
             GitFetchOperator(task_id="FetchMitre", kind="mitre"),
             GitFetchOperator(task_id="FetchNvd", kind="nvd"),
@@ -45,7 +45,8 @@ def opencve():
             git_fetch_tasks
             >> ProcessKbOperator(task_id="ProcessKb")
             >> compute_statistics()
-        )
+        )"""
+        ProcessKbOperator(task_id="ProcessKb")
 
     with TaskGroup(group_id="report_inputs") as report_inputs_group:
         (
@@ -60,7 +61,7 @@ def opencve():
             execute_realtime_actions = execute_realtime_automation_actions()
             build_realtime_work >> execute_realtime_actions
 
-        with TaskGroup(group_id="scheduled") as scheduled_group:
+        """with TaskGroup(group_id="scheduled") as scheduled_group:
             build_scheduled_hourly = build_scheduled_report_content_hourly()
             upsert_scheduled_reports = upsert_scheduled_reports_and_entries()
             evaluate_scheduled_due = evaluate_scheduled_due_in_automation_timezone()
@@ -72,7 +73,7 @@ def opencve():
             build_scheduled_hourly >> upsert_scheduled_reports
             evaluate_scheduled_due >> build_scheduled_notification_payload
             upsert_scheduled_reports >> execute_scheduled_due_actions
-            build_scheduled_notification_payload >> execute_scheduled_due_actions
+            build_scheduled_notification_payload >> execute_scheduled_due_actions"""
 
     kb_refresh_group >> report_inputs_group >> automation_processing_group
 

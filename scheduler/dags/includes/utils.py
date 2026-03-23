@@ -69,9 +69,29 @@ def format_change_details(records):
             "cve_vendors": r[3],
             "cve_id": r[4],
             "cve_metrics": r[5],
+            "cve_created_at": (
+                r[6].isoformat()
+                if hasattr(r[6], "isoformat") and r[6] is not None
+                else r[6]
+            ),
+            "cve_title": r[7],
+            "cve_description": r[8],
         }
         for r in records
     }
+
+
+def minify_change_events(events):
+    """
+    Transform KB change events list into a compact payload keyed by event type.
+    """
+    payload = {}
+    for event in events or []:
+        event_type = event.get("type")
+        if not event_type:
+            continue
+        payload[event_type] = event.get("details")
+    return payload
 
 
 def merge_project_subscriptions(records):

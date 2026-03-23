@@ -46,3 +46,35 @@ def upsert_tracker_records(
             "status": status,
         }
         postgres_hook.run(sql=SQL_UPSERT_CVE_TRACKER, parameters=params)
+
+
+def as_number(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def get_metrics(change_details):
+    payload = change_details.get("change_payload") or {}
+    metrics = payload.get("metrics")
+    return metrics if isinstance(metrics, dict) else {}
+
+
+def get_updated_metric_change(metrics_details, metric_name):
+    updated = metrics_details.get("updated")
+    if not isinstance(updated, dict):
+        return None, None
+    metric_values = updated.get(metric_name) or {}
+    old_score = as_number((metric_values.get("old") or {}).get("score"))
+    new_score = as_number((metric_values.get("new") or {}).get("score"))
+    return old_score, new_score
+
+
+def has_added_values(change_details, key):
+    payload = change_details.get("change_payload") or {}
+    details = payload.get(key)
+    if not isinstance(details, dict):
+        return False
+    added = details.get("added")
+    return bool(added)
