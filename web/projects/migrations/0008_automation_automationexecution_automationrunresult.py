@@ -51,6 +51,10 @@ class Migration(migrations.Migration):
                 ),
                 ("is_enabled", models.BooleanField(default=True)),
                 (
+                    "last_execution_at",
+                    models.DateTimeField(blank=True, db_index=True, null=True),
+                ),
+                (
                     "trigger_type",
                     models.CharField(
                         choices=[

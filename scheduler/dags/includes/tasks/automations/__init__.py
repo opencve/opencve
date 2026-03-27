@@ -11,9 +11,12 @@ from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.redis.hooks.redis import RedisHook
 from includes.constants import (
     REPORT_UPSERT_PROCEDURE,
+    SQL_INSERT_AUTOMATION_EXECUTION,
+    SQL_INSERT_AUTOMATION_EXECUTION_RESULT,
     SQL_CVE_TRACKER_STATUS,
     SQL_PROJECT_WITH_AUTOMATIONS,
     SQL_REPORT_SUMMARY_BY_ID,
+    SQL_UPDATE_AUTOMATION_LAST_EXECUTION_AT,
 )
 from includes.storage import (
     REDIS_PREFIX_AUTOMATIONS,
@@ -26,7 +29,11 @@ from includes.storage import (
     redis_get,
     redis_set,
 )
-from includes.tasks.automations.actions import execute_action
+from includes.tasks.automations.actions import (
+    ACTION_TYPE_TO_OUTPUT,
+    RESULT_STATUS_FAILED,
+    execute_action,
+)
 from includes.tasks.automations.conditions import evaluate_condition_tree
 from includes.tasks.automations.triggers import evaluate_triggers
 from includes.utils import (
@@ -58,6 +65,220 @@ WHERE project_id = %(project_id)s
   AND period_type = %(period_type)s
 LIMIT 1;
 """
+
+
+def _to_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _cvss_score_to_severity(score):
+    if score is None:
+        return None
+    if score >= 9.0:
+        return "Critical"
+    if score >= 7.0:
+        return "High"
+    if score >= 4.0:
+        return "Medium"
+    return "Low"
+
+
+def _first_matching_subscription(automation, cve_vendors):
+    subscriptions = automation.get("project_subscriptions") or []
+    vendors = cve_vendors or []
+    for sub in subscriptions:
+        if sub in vendors:
+            if "$PRODUCT$" in sub:
+                return sub.split("$PRODUCT$", 1)[1]
+            return sub
+    for vendor in vendors:
+        if "$PRODUCT$" in vendor:
+            return vendor.split("$PRODUCT$", 1)[1]
+        return vendor
+    return None
+
+
+def _build_match_reasons(automation, matched_vendor_or_product):
+    reasons = ["Matched automation conditions"]
+    triggers = automation.get("automation_conf", {}).get("triggers") or []
+    if triggers:
+        reasons.append("Matched automation triggers")
+    if matched_vendor_or_product:
+        reasons.append(f"Matched subscription {matched_vendor_or_product}")
+    return reasons
+
+
+def build_cves_table_data(automation, item_changes_details):
+    cve_rows = {}
+    for _, change_details in item_changes_details.items():
+        cve_id = change_details.get("cve_id")
+        if not cve_id:
+            continue
+        metrics = change_details.get("cve_metrics") or {}
+        cvss_31 = _to_float(
+            (metrics.get("cvssV3_1") or {}).get("data", {}).get("score")
+        )
+        cvss_30 = _to_float(
+            (metrics.get("cvssV3_0") or {}).get("data", {}).get("score")
+        )
+        cvss_20 = _to_float(
+            (metrics.get("cvssV2_0") or {}).get("data", {}).get("score")
+        )
+        cvss_40 = _to_float(
+            (metrics.get("cvssV4_0") or {}).get("data", {}).get("score")
+        )
+        epss = _to_float((metrics.get("epss") or {}).get("data", {}).get("score"))
+        kev = bool((metrics.get("kev") or {}).get("data"))
+        matched_vendor_or_product = _first_matching_subscription(
+            automation, change_details.get("cve_vendors") or []
+        )
+        cve_rows[cve_id] = {
+            "cve_id": cve_id,
+            "cvss_31": cvss_31,
+            "cvss_30": cvss_30,
+            "cvss_20": cvss_20,
+            "cvss_40": cvss_40,
+            "epss": epss,
+            "kev": kev,
+            "matched_vendor_or_product": matched_vendor_or_product,
+            "reason_matched": _build_match_reasons(
+                automation, matched_vendor_or_product
+            ),
+        }
+    return list(cve_rows.values())
+
+
+def build_impact_summary_from_cves_table(cves_table_data):
+    if not cves_table_data:
+        return None
+    distribution = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+    highest_cvss = None
+    highest_cvss_version = None
+    cvss_scores = []
+    epss_values = []
+    epss_distribution = {"high": 0, "medium": 0, "low": 0}
+    kev_count = 0
+    vendor_counts = {}
+    for row in cves_table_data:
+        scores = {
+            "cvss_40": _to_float(row.get("cvss_40")),
+            "cvss_31": _to_float(row.get("cvss_31")),
+            "cvss_30": _to_float(row.get("cvss_30")),
+            "cvss_20": _to_float(row.get("cvss_20")),
+        }
+        filtered_scores = {k: v for k, v in scores.items() if v is not None}
+        if filtered_scores:
+            version, score = max(filtered_scores.items(), key=lambda item: item[1])
+            severity = _cvss_score_to_severity(score)
+            if severity:
+                distribution[severity] += 1
+            cvss_scores.append(score)
+            if highest_cvss is None or score > highest_cvss:
+                highest_cvss = score
+                highest_cvss_version = version
+        epss = _to_float(row.get("epss"))
+        if epss is not None:
+            epss_values.append(epss)
+            if epss > 0.9:
+                epss_distribution["high"] += 1
+            elif epss >= 0.7:
+                epss_distribution["medium"] += 1
+            else:
+                epss_distribution["low"] += 1
+        if row.get("kev"):
+            kev_count += 1
+        vp = row.get("matched_vendor_or_product")
+        if vp:
+            vendor_counts[vp] = vendor_counts.get(vp, 0) + 1
+    cves_count = len(cves_table_data)
+    return {
+        "cvss_distribution": distribution,
+        "highest_cvss": round(highest_cvss, 1) if highest_cvss is not None else None,
+        "highest_cvss_version": highest_cvss_version,
+        "average_cvss": (
+            round(sum(cvss_scores) / len(cvss_scores), 1) if cvss_scores else None
+        ),
+        "epss_distribution": epss_distribution,
+        "epss_avg": (
+            round(sum(epss_values) / len(epss_values), 2) if epss_values else None
+        ),
+        "epss_max": round(max(epss_values), 2) if epss_values else None,
+        "kev_count": kev_count,
+        "cves_count": cves_count,
+        "kev_percent": int(round(100 * kev_count / cves_count)) if cves_count else 0,
+        "top_vendors_products": [
+            {"name": name, "count": count}
+            for name, count in sorted(vendor_counts.items(), key=lambda item: -item[1])[
+                :5
+            ]
+        ],
+    }
+
+
+def update_automations_last_execution(postgres_hook, automation_ids, executed_at):
+    if not automation_ids:
+        return
+    postgres_hook.run(
+        sql=SQL_UPDATE_AUTOMATION_LAST_EXECUTION_AT,
+        parameters={
+            "automation_ids": tuple(automation_ids),
+            "executed_at": executed_at,
+        },
+    )
+
+
+def insert_automation_execution(postgres_hook, item, period, item_changes_details):
+    execution_id = str(uuid.uuid4())
+    automation = item["automation"]
+    scheduled_report = item.get("scheduled_report") or {}
+    cves_table_data = build_cves_table_data(automation, item_changes_details)
+    impact_summary = build_impact_summary_from_cves_table(cves_table_data)
+    postgres_hook.run(
+        sql=SQL_INSERT_AUTOMATION_EXECUTION,
+        parameters={
+            "id": execution_id,
+            "executed_at": period["end"],
+            "window_start": period["start"],
+            "window_end": period["end"],
+            "matched_cves_count": len(cves_table_data),
+            "automation_id": automation["automation_id"],
+            "report_id": scheduled_report.get("report_id"),
+            "impact_summary": Json(impact_summary),
+            "cves_table_data": Json(cves_table_data),
+        },
+    )
+    return execution_id
+
+
+def insert_automation_execution_result(
+    postgres_hook, execution_id, action, action_result
+):
+    action_type = action.get("type")
+    output_type, label = ACTION_TYPE_TO_OUTPUT.get(
+        action_type,
+        (
+            action_type or "unknown",
+            (action_type or "unknown").replace("_", " ").title(),
+        ),
+    )
+    result_status = (action_result or {}).get("status") or RESULT_STATUS_FAILED
+    details = (action_result or {}).get("details") or {}
+    output_type = (action_result or {}).get("output_type", output_type)
+    label = (action_result or {}).get("label", label)
+    postgres_hook.run(
+        sql=SQL_INSERT_AUTOMATION_EXECUTION_RESULT,
+        parameters={
+            "id": str(uuid.uuid4()),
+            "automation_execution_id": execution_id,
+            "output_type": output_type,
+            "label": label,
+            "status": result_status,
+            "details": Json(details),
+        },
+    )
 
 
 def _parse_schedule_time(automation):
@@ -263,16 +484,24 @@ def build_realtime_work_items(**context):
         )
         return True
 
+    # List the automations by project
+    automations = redis_get(redis_hook, REDIS_PREFIX_AUTOMATIONS, start, end)
+    if not automations:
+        return _empty_queue()
+
+    # Update last_execution_at for every realtime automation evaluated this run.
+    realtime_automation_ids = []
+    for project_automations in automations.values():
+        for automation in project_automations or []:
+            if automation.get("trigger_type") == "realtime":
+                realtime_automation_ids.append(automation["automation_id"])
+    update_automations_last_execution(postgres_hook, realtime_automation_ids, end)
+
     # Group the changes by project
     project_changes = get_project_changes(redis_hook, start, end)
     if not project_changes:
         return _empty_queue()
     logger.debug("List of project changes: %s", project_changes)
-
-    # List the automations by project
-    automations = redis_get(redis_hook, REDIS_PREFIX_AUTOMATIONS, start, end)
-    if not automations:
-        return _empty_queue()
 
     # List the changes details
     changes_details = redis_get(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end)
@@ -352,6 +581,12 @@ def build_scheduled_report_content_hourly(**context):
         return True
 
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    scheduled_automation_ids = []
+    for project_automations in automations.values():
+        for automation in project_automations or []:
+            if automation.get("trigger_type") == "scheduled":
+                scheduled_automation_ids.append(automation["automation_id"])
+    update_automations_last_execution(postgres_hook, scheduled_automation_ids, end)
     items = []
 
     for project_id, project_automations in automations.items():
@@ -463,6 +698,13 @@ def evaluate_scheduled_due_in_automation_timezone(**context):
     if not automations:
         redis_set(redis_hook, REDIS_PREFIX_SCHEDULED_DUE_WORK_ITEMS, start, end, [])
         return True
+    postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    scheduled_automation_ids = []
+    for project_automations in automations.values():
+        for automation in project_automations or []:
+            if automation.get("trigger_type") == "scheduled":
+                scheduled_automation_ids.append(automation["automation_id"])
+    update_automations_last_execution(postgres_hook, scheduled_automation_ids, end)
 
     due_work_items = []
     for _, project_automations in automations.items():
@@ -593,13 +835,18 @@ async def execute_actions_async(action_items, changes_details, period):
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
 
     async with aiohttp.ClientSession(raise_for_status=True) as session:
-        tasks = []
         for item in action_items:
             item_changes_details = {
                 change_id: changes_details[change_id]
                 for change_id in item.get("changes", [])
                 if change_id in changes_details
             }
+            execution_id = insert_automation_execution(
+                postgres_hook=postgres_hook,
+                item=item,
+                period=period,
+                item_changes_details=item_changes_details,
+            )
             action_context = {
                 "session": session,
                 "semaphore": semaphore,
@@ -610,18 +857,42 @@ async def execute_actions_async(action_items, changes_details, period):
                 "period": period,
                 "scheduled_report": item.get("scheduled_report"),
             }
+            notification_tasks = []
             for action in item["actions"]:
 
                 # TODO: pourquoi faire un if ici?
                 if action.get("type") == "send_notification":
-                    tasks.append(
-                        asyncio.create_task(execute_action(action, action_context))
+                    notification_tasks.append(
+                        (
+                            action,
+                            asyncio.create_task(execute_action(action, action_context)),
+                        )
                     )
                 else:
-                    await execute_action(action, action_context)
+                    action_result = await execute_action(action, action_context)
+                    insert_automation_execution_result(
+                        postgres_hook=postgres_hook,
+                        execution_id=execution_id,
+                        action=action,
+                        action_result=action_result,
+                    )
 
-        if tasks:
-            await asyncio.gather(*tasks)
+            if notification_tasks:
+                task_outputs = await asyncio.gather(
+                    *[task for _, task in notification_tasks], return_exceptions=True
+                )
+                for (action, _), action_result in zip(notification_tasks, task_outputs):
+                    if isinstance(action_result, Exception):
+                        action_result = {
+                            "status": RESULT_STATUS_FAILED,
+                            "details": {"summary": str(action_result)},
+                        }
+                    insert_automation_execution_result(
+                        postgres_hook=postgres_hook,
+                        execution_id=execution_id,
+                        action=action,
+                        action_result=action_result,
+                    )
 
 
 def _execute_automation_actions(queue_name: str, **context):

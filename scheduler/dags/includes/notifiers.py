@@ -215,26 +215,68 @@ class WebhookNotifier(BaseNotifier):
                 headers=self.headers,
                 timeout=self.request_timeout,
             ) as response:
-                json_response = await response.json()
+                response_text = await response.text()
+                response_headers = dict(response.headers)
                 status_code = response.status
         except aiohttp.ClientConnectorError as e:
             logger.error("ClientConnectorError(%s): %s", self.url, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                },
+            }
         except aiohttp.ClientResponseError as e:
             logger.error("ClientResponseError(%s): %s", self.url, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "status_code": e.status,
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                },
+            }
         except asyncio.TimeoutError:
             logger.error(
                 "TimeoutError(%s): the request timeout of %s has been exceeded",
                 self.url,
                 f"{str(self.request_timeout)} seconds",
             )
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": "Request timed out",
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                },
+            }
         except Exception as e:
             logger.error("Exception(%s): %s", self.url, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                },
+            }
         else:
             logger.info("Result(%s): %s", self.url, status_code)
-            logger.debug("Response(%s): %s", self.url, json_response)
-
-        # No need to return the response we don't use it
-        return {}
+            logger.debug("Response(%s): %s", self.url, response_text)
+            return {
+                "status": "success" if 200 <= status_code < 300 else "failed",
+                "details": {
+                    "response_url": self.url,
+                    "status_code": status_code,
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                    "response_headers": response_headers,
+                    "response_body": response_text,
+                },
+            }
 
 
 class SlackNotifier(BaseNotifier):
@@ -373,6 +415,8 @@ class SlackNotifier(BaseNotifier):
     async def send(self):
         logger.info("Sending Slack notification to %s", self.webhook_url)
         messages = self.format_slack_blocks()
+        responses = []
+        has_error = False
 
         for idx, msg in enumerate(messages, 1):
             try:
@@ -383,7 +427,15 @@ class SlackNotifier(BaseNotifier):
                     timeout=self.request_timeout,
                 ) as resp:
                     text = await resp.text()
+                    responses.append(
+                        {
+                            "index": idx,
+                            "status_code": resp.status,
+                            "response_body": text,
+                        }
+                    )
                     if resp.status != 200:
+                        has_error = True
                         logger.error(
                             "Slack message %s/%s failed: %s %s",
                             idx,
@@ -399,9 +451,24 @@ class SlackNotifier(BaseNotifier):
                             len(msg["blocks"]),
                         )
             except Exception as e:
+                has_error = True
+                responses.append(
+                    {"index": idx, "status_code": None, "response_body": str(e)}
+                )
                 logger.error(
                     "Error sending Slack message %s/%s: %s", idx, len(messages), e
                 )
+        last_response = responses[-1] if responses else {}
+        return {
+            "status": "failed" if has_error else "success",
+            "details": {
+                "response_url": self.webhook_url,
+                "status_code": last_response.get("status_code"),
+                "request_headers": {"Content-Type": "application/json"},
+                "request_payload": json.dumps(messages[-1]) if messages else None,
+                "response_body": json.dumps(responses),
+            },
+        }
 
 
 class EmailNotifier(BaseNotifier):
@@ -538,7 +605,30 @@ class EmailNotifier(BaseNotifier):
             response = await aiosmtplib.send(message, **kwargs)
         except aiosmtplib.errors.SMTPException as e:
             logger.error("SMTPException(%s): %s", self.email, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "status": "failed",
+                    "response_body": str(e),
+                },
+            }
         except Exception as e:
             logger.error("Exception(%s): %s", self.email, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "status": "failed",
+                    "response_body": str(e),
+                },
+            }
         else:
             logger.info("Result(%s): %s", self.email, response[1])
+            return {
+                "status": "success",
+                "details": {
+                    "status": "delivered",
+                    "response_body": str(response[1]),
+                },
+            }

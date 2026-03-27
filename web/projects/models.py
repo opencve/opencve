@@ -185,6 +185,7 @@ class Automation(BaseModel):
         null=True,
         blank=True,
     )
+    last_execution_at = models.DateTimeField(null=True, blank=True, db_index=True)
     configuration = models.JSONField(default=get_default_automation_config)
 
     # Relationships

@@ -421,6 +421,66 @@ WHERE notifications.id = %(notification_id)s
   AND notifications.is_enabled = 't'
 """
 
+SQL_UPDATE_AUTOMATION_LAST_EXECUTION_AT = """
+UPDATE opencve_automations
+SET
+  last_execution_at = %(executed_at)s,
+  updated_at = NOW()
+WHERE id IN %(automation_ids)s;
+"""
+
+SQL_INSERT_AUTOMATION_EXECUTION = """
+INSERT INTO opencve_automation_executions (
+  id,
+  created_at,
+  updated_at,
+  executed_at,
+  window_start,
+  window_end,
+  matched_cves_count,
+  automation_id,
+  report_id,
+  impact_summary,
+  cves_table_data
+)
+VALUES (
+  %(id)s,
+  NOW(),
+  NOW(),
+  %(executed_at)s,
+  %(window_start)s,
+  %(window_end)s,
+  %(matched_cves_count)s,
+  %(automation_id)s,
+  %(report_id)s,
+  %(impact_summary)s,
+  %(cves_table_data)s
+);
+"""
+
+SQL_INSERT_AUTOMATION_EXECUTION_RESULT = """
+INSERT INTO opencve_automation_execution_results (
+  id,
+  created_at,
+  updated_at,
+  automation_execution_id,
+  output_type,
+  label,
+  status,
+  details
+)
+VALUES (
+  %(id)s,
+  NOW(),
+  NOW(),
+  %(automation_execution_id)s,
+  %(output_type)s,
+  %(label)s,
+  %(status)s,
+  %(details)s
+);
+"""
+
 CVSS_VERSION_MAP = {
     "v2.0": "cvssV2_0",
     "v3.0": "cvssV3_0",
