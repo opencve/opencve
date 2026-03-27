@@ -1,0 +1,16 @@
+Daily Security Report - {{ project }} ({{ day }})
+=================================================
+Organization: {{ organization }}
+Project: {{ project }}
+Date: {{ day }}
+
+AI SECURITY SUMMARY
+-------------------
+{{ ai_summary }}
+
+View the full report:
+{{ project_url }}
+
+--
+You are receiving this because you configured a Report notification on project {{ project }}.
+OpenCVE (c) {{ year }}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Security Report - {{ project }}</title>
+<style>
+  body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+  .wrapper { max-width: 700px; margin: 30px auto; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .header { background-color: #222d32; padding: 24px 32px; }
+  .header h1 { color: #ffffff; margin: 0; font-size: 20px; }
+  .header p { color: #aaaaaa; margin: 4px 0 0 0; font-size: 13px; }
+  .content { padding: 32px; }
+  .content h2 { font-size: 16px; color: #333333; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; margin-top: 0; }
+  .summary { background-color: #f9f9f9; border-left: 4px solid #00c0ef; padding: 16px 20px; border-radius: 4px; font-size: 14px; line-height: 1.7; color: #444444; white-space: pre-wrap; }
+  .btn-wrapper { text-align: center; margin: 32px 0 16px 0; }
+  .btn { background-color: #00c0ef; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 4px; font-size: 14px; display: inline-block; }
+  .footer { background-color: #f0f0f0; padding: 16px 32px; text-align: center; font-size: 12px; color: #888888; }
+  .footer a { color: #00c0ef; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Daily Security Report</h1>
+    <p>{{ organization }} / {{ project }} &mdash; {{ day }}</p>
+  </div>
+  <div class="content">
+    <h2>AI Security Summary</h2>
+    <div class="summary">{{ ai_summary }}</div>
+    <div class="btn-wrapper">
+      <a href="{{ project_url }}" class="btn">View Full Report</a>
+    </div>
+  </div>
+  <div class="footer">
+    <p>You are receiving this because you configured a Report notification on project <strong>{{ project }}</strong>.</p>
+    <p><a href="{{ web_url }}">OpenCVE</a> &copy; {{ year }}</p>
+  </div>
+</div>
+</body>
+</html>

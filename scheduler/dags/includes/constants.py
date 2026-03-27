@@ -329,3 +329,24 @@ WHERE r.id = e.id;
 """.format(
     expired_select=REPORTS_EXPIRED_SELECT.strip()
 )
+SQL_REPORTS_WITH_NOTIFICATIONS = """
+SELECT
+  reports.id AS report_id,
+  reports.project_id,
+  projects.name AS project_name,
+  organizations.name AS org_name,
+  reports.ai_summary,
+  notifications.name AS notification_name,
+  notifications.configuration AS notification_configuration
+FROM
+  opencve_reports AS reports
+  JOIN opencve_projects AS projects ON projects.id = reports.project_id
+  JOIN opencve_organizations AS organizations ON organizations.id = projects.organization_id
+  JOIN opencve_notifications AS notifications ON notifications.project_id = reports.project_id
+WHERE
+  reports.day = %(day)s
+  AND reports.ai_summary IS NOT NULL
+  AND notifications.type = 'email'
+  AND notifications.configuration->'types' ? 'send_report'
+  AND notifications.is_enabled = 't';
+"""

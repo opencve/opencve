@@ -94,6 +94,7 @@ class NotificationForm(forms.ModelForm):
     vendors = forms.BooleanField(required=False)
     references = forms.BooleanField(required=False)
     metrics = forms.BooleanField(required=False)
+    send_report = forms.BooleanField(required=False)
 
     cvss31_score = forms.ChoiceField(
         choices=CVSS_SCORES,
@@ -215,3 +216,4 @@ class SlackForm(NotificationForm):
         label="Slack Webhook URL",
         help_text="Enter your Slack incoming webhook URL",
     )
+
