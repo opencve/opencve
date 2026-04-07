@@ -2317,3 +2317,9 @@ tr.auditlog-detail-row > td {
   padding: 8px 12px;
   word-break: break-word;
 }
+
+.try-result-code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
