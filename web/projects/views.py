@@ -34,6 +34,7 @@ from organizations.mixins import (
 from projects.forms import FORM_MAPPING, ProjectForm, CveTrackerFilterForm
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
 from projects.models import Notification, Project, CveComment, CveTracker
+from projects.notifications import run_notification_try
 from projects.utils import send_notification_confirmation_email
 from users.models import User
 from views.models import View as SavedView
@@ -465,6 +466,56 @@ class SubscriptionsView(
         return context
 
 
+class NotificationFormTryMixin:
+    """
+    Handle POST action=try: validate form, send test notification, re-render without saving.
+    """
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get("action") == "try":
+            return self._handle_notification_try(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
+
+    def _notification_type_for_try(self) -> str:
+        raise NotImplementedError
+
+    def _prepare_object_for_try_form(self):
+        """Create: no instance yet. Update: load object for ModelForm."""
+        if isinstance(self, UpdateView):
+            self.object = self.get_object()
+        else:
+            self.object = None
+
+    def _handle_notification_try(self, request, *args, **kwargs):
+        self._prepare_object_for_try_form()
+
+        form = self.get_form()
+        if not form.is_valid():
+            return self.form_invalid(form)
+
+        ntype = self._notification_type_for_try()
+        extras = {
+            field: form.cleaned_data[field] for field in FORM_MAPPING.get(ntype, [])
+        }
+
+        try_result = run_notification_try(
+            ntype,
+            extras,
+            project_name=self.project.name,
+            organization_name=request.current_organization.name,
+            notification_name=form.cleaned_data.get("name", "Test notification"),
+            project_subscriptions=(
+                self.project.subscriptions.get("vendors", [])
+                + self.project.subscriptions.get("products", [])
+            ),
+            triggered_by_email=getattr(request.user, "email", "") or "",
+        )
+
+        context = self.get_context_data()
+        context["try_result"] = try_result.as_template_dict()
+        return self.render_to_response(context)
+
+
 class NotificationsView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
@@ -485,6 +536,7 @@ class NotificationsView(
 
 
 class NotificationCreateView(
+    NotificationFormTryMixin,
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
@@ -550,10 +602,15 @@ class NotificationCreateView(
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
         context["type"] = self.request.GET["type"]
+        context.setdefault("try_result", None)
         return context
+
+    def _notification_type_for_try(self) -> str:
+        return self.request.GET["type"]
 
 
 class NotificationUpdateView(
+    NotificationFormTryMixin,
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
@@ -644,7 +701,11 @@ class NotificationUpdateView(
         for field in custom_fields:
             context["form"].initial[field] = self.object.configuration["extras"][field]
 
+        context.setdefault("try_result", None)
         return {**context, **{"type": self.object.type}}
+
+    def _notification_type_for_try(self) -> str:
+        return self.object.type
 
 
 class NotificationDeleteView(

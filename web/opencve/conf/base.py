@@ -299,3 +299,6 @@ ENABLE_ONBOARDING = True
 
 # Maximum number of fields to allow in a CVE Advanced Search query
 CVES_ADVANCED_SEARCH_MAX_FIELDS = 5
+
+# Seconds for webhook/Slack "Try notification" HTTP requests
+NOTIFICATION_TRY_TIMEOUT = 30

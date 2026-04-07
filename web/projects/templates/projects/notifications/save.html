@@ -38,8 +38,77 @@
                     {% endif %}
                     <div class="pull-right">
                         <a href="{% url 'notifications' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default">Cancel</a>
-                        <button type="submit" class="btn btn-primary">Save</button>
+                        <button type="submit" name="action" value="save" class="btn btn-primary">Save</button>
                     </div>
+                </div>
+            </div>
+
+            <div class="box box-default">
+                <div class="box-header with-border">
+                    <h3 class="box-title"><i class="fa fa-flask"></i> Try</h3>
+                </div>
+                <div class="box-body">
+                    <p class="text-muted">Send a test without saving. For webhooks and Slack you will see the HTTP request and response below.</p>
+                    <p>
+                        <button type="submit" name="action" value="try" class="btn btn-info btn-block"><i class="fa fa-paper-plane"></i> Try</button>
+                    </p>
+                    {% if try_result %}
+                    <div class="alert alert-{% if try_result.success %}success{% else %}error{% endif %}">
+                        <i class="fa {% if try_result.success %}fa-check-circle{% else %}fa-exclamation-circle{% endif %}"></i>
+                        {{ try_result.summary }}
+                    </div>
+                    {% if try_result.channel_type == "email" and try_result.details %}
+                        <div>
+                            {% if try_result.details.recipient %}
+                            <strong>Recipient</strong>
+                            <p>{{ try_result.details.recipient }}</p>
+                            {% endif %}
+                            {% if try_result.details.subject %}
+                            <strong>Subject</strong>
+                            <p>{{ try_result.details.subject }}</p>
+                            {% endif %}
+                            {% if try_result.details.error %}
+                            <strong>Error</strong>
+                            <p><code class="try-result-code">{{ try_result.details.error }}</code></p>
+                            {% endif %}
+                        </div>
+                    {% elif try_result.details.request_url %}
+                        <div>
+                            <strong>URL</strong>
+                            <p><code class="try-result-code">{{ try_result.details.request_url }}</code></p>
+                            {% if try_result.details.request_method %}
+                            <strong>Method</strong>
+                            <p>{{ try_result.details.request_method }}</p>
+                            {% endif %}
+                            {% if "response_status" in try_result.details %}
+                            <strong>HTTP status</strong>
+                            <p>{{ try_result.details.response_status }}</p>
+                            {% endif %}
+                            {% if try_result.details.error %}
+                            <strong>Error</strong>
+                            <p><code class="try-result-code">{{ try_result.details.error }}</code></p>
+                            {% endif %}
+                        </div>
+                        {% if try_result.details.request_headers %}
+                        <p class="text-muted" style="margin-bottom: 4px;"><strong>Request headers</strong></p>
+                        <pre class="pre-scrollable" style="max-height: 120px; font-size: 11px;">{% for hk, hv in try_result.details.request_headers.items %}{{ hk }}: {{ hv }}
+{% endfor %}</pre>
+                        {% endif %}
+                        {% if try_result.details.request_payload %}
+                        <p class="text-muted" style="margin-bottom: 4px;"><strong>Request body</strong></p>
+                        <pre class="pre-scrollable" style="max-height: 200px; font-size: 11px;">{{ try_result.details.request_payload }}</pre>
+                        {% endif %}
+                        {% if try_result.details.response_headers %}
+                        <p class="text-muted" style="margin-bottom: 4px;"><strong>Response headers</strong></p>
+                        <pre class="pre-scrollable" style="max-height: 120px; font-size: 11px;">{% for hk, hv in try_result.details.response_headers.items %}{{ hk }}: {{ hv }}
+{% endfor %}</pre>
+                        {% endif %}
+                        {% if try_result.details.response_body %}
+                        <p class="text-muted" style="margin-bottom: 4px;"><strong>Response body</strong></p>
+                        <pre class="pre-scrollable" style="max-height: 200px; font-size: 11px;">{{ try_result.details.response_body }}</pre>
+                        {% endif %}
+                    {% endif %}
+                    {% endif %}
                 </div>
             </div>
         </div>
