@@ -300,7 +300,7 @@ class BaseNotificationTester(ABC):
     def build_email_context(self, payload):
         start = datetime.fromisoformat(payload["period"]["start"])
         end = datetime.fromisoformat(payload["period"]["end"])
-        web_url = getattr(settings, "OPENCVE_WEB_URL", "http://localhost:8000")
+        web_url = getattr(settings, "WEB_BASE_URL").rstrip("/")
         project_url = f"{web_url}/org/{quote(payload['organization'])}/projects/{quote(payload['project'])}"
         notification_url = (
             f"{project_url}/notifications/{quote(payload['notification'])}"
@@ -445,9 +445,7 @@ class SlackNotificationTester(BaseNotificationTester):
         title = source_payload["title"]
         organization = source_payload["organization"]
         project = source_payload["project"]
-        web_url = getattr(settings, "OPENCVE_WEB_URL", "https://app.opencve.io").rstrip(
-            "/"
-        )
+        web_url = getattr(settings, "WEB_BASE_URL").rstrip("/")
         return {
             "blocks": [
                 {
