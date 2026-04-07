@@ -22,7 +22,7 @@ def test_build_mock_payload_uses_fixed_subscriptions_and_cves():
     assert payload["changes"][1]["cve"]["cve_id"] == "CVE-2025-64459"
 
 
-@override_settings(OPENCVE_WEB_URL="https://app.opencve.io")
+@override_settings(WEB_BASE_URL="https://app.opencve.io")
 def test_build_email_context_contains_scheduler_like_links():
     """Build email context with notification and project URLs."""
     tester = notif.EmailNotificationTester(
@@ -46,7 +46,7 @@ def test_build_email_context_contains_scheduler_like_links():
 
 @override_settings(
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
-    OPENCVE_WEB_URL="https://app.opencve.io",
+    WEB_BASE_URL="https://app.opencve.io",
 )
 def test_email_notification_tester_sends_multipart_email():
     """Send one test email with plain and HTML alternatives."""
@@ -76,6 +76,9 @@ def test_webhook_notification_tester_requires_url():
     assert result.summary == "Webhook URL is required."
 
 
+@override_settings(
+    WEB_BASE_URL="https://app.opencve.io",
+)
 def test_slack_format_matches_scheduler_style():
     """Format Slack blocks with emoji, clickable CVEs and inline metadata."""
     tester = notif.SlackNotificationTester(

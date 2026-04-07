@@ -302,3 +302,6 @@ CVES_ADVANCED_SEARCH_MAX_FIELDS = 5
 
 # Seconds for webhook/Slack "Try notification" HTTP requests
 NOTIFICATION_TRY_TIMEOUT = 30
+
+# Base URL
+WEB_BASE_URL = env.str("WEB_BASE_URL", default="https://app.opencve.io")
