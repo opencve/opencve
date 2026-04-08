@@ -19,10 +19,27 @@
     background-color: #fff;
   }
 
+  .skin-opencve .main-header .navbar .sidebar-toggle {
+    color: #253841;
+    display: none;
+  }
+
+  .skin-opencve .main-header .navbar .sidebar-toggle:hover,
+  .skin-opencve .main-header .navbar .sidebar-toggle:focus {
+    color: #090031;
+    background-color: #f5f5f5;
+  }
+
   .skin-opencve .main-header .navbar .navbar-title {
     font-size: 24px;
     float: left;
     margin: 12px;
+  }
+
+  @media (max-width: 767px) {
+    .skin-opencve .main-header .navbar .sidebar-toggle {
+      display: block;
+    }
   }
 
   .skin-opencve .main-header .navbar .navbar-title i {
