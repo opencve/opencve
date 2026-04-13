@@ -3,10 +3,11 @@
 {% load opencve_extras %}
 
 {% block tab_content %}
-<div class="row">
-  <div class="col-md-12">
-    <h4>Audit logs</h4>
-
+<div class="box box-primary">
+  <div class="box-header with-border">
+    <h3 class="box-title">Filters</h3>
+  </div>
+  <div class="box-body">
     <form method="get" class="form" role="form">
       <div class="row">
         <div class="col-md-4">
@@ -88,9 +89,14 @@
         </div>
       </div>
     </form>
+  </div>
+</div>
 
-    <hr>
-
+<div class="box box-primary">
+  <div class="box-header with-border">
+    <h3 class="box-title">Audit Logs</h3>
+  </div>
+  <div class="box-body">
     <div class="table-responsive no-padding">
       <table class="table table-hover table-striped" id="table-audit-logs">
         <thead>
@@ -355,7 +361,7 @@
     {# Inline details rows are rendered per entry above; no modal needed #}
 
     {% if paginator.num_pages > 1 %}
-    <nav aria-label="Audit logs pagination">
+    <nav aria-label="Audit logs pagination" class="text-center">
       <ul class="pagination">
         {% if page_obj.has_previous %}
         <li>

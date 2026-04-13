@@ -1136,8 +1136,12 @@ def test_edit_organization_audit_logs_empty(
     assert response.status_code == 200
     soup = BeautifulSoup(response.content, features="html.parser")
 
-    # Heading and table should be present
-    assert soup.find("h4").text.strip() == "Audit logs"
+    # Filters and audit logs boxes should be present
+    box_titles = [
+        title.text.strip() for title in soup.find_all("h3", {"class": "box-title"})
+    ]
+    assert "Filters" in box_titles
+    assert "Audit Logs" in box_titles
     table = soup.find("table", {"id": "table-audit-logs"})
     assert table is not None
 

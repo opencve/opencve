@@ -2,18 +2,22 @@
 {% load crispy_forms_tags %}
 
 {% block tab_content %}
-<div class="row">
-    <div class="col-md-12">
-      <h4>New member</h4>
-      <form action="{% url 'edit_organization_members' org_name=request.resolver_match.kwargs.org_name %}" method="post" class="form-inline form-new-member">
-        {% crispy members_form %}
-      </form>
-    </div>
+<div class="box box-primary">
+  <div class="box-header with-border">
+    <h3 class="box-title">New Member</h3>
   </div>
-  <hr>
-  <div class="row">
-    <div class="col-md-12">
-      <h4>Members</h4>
+  <div class="box-body">
+    <form action="{% url 'edit_organization_members' org_name=request.resolver_match.kwargs.org_name %}" method="post" class="form-inline form-new-member">
+      {% crispy members_form %}
+    </form>
+  </div>
+</div>
+
+<div class="box box-primary">
+  <div class="box-header with-border">
+    <h3 class="box-title">Members</h3>
+  </div>
+  <div class="box-body">
       <div class="table-responsive no-padding">
         <table class="table table-hover table-striped" id="table-members">
           <tbody>
