@@ -31,4 +31,4 @@ class GitFetchOperator(KindOperator):
             self.log.info("No change detected")
             return
 
-        self.log.info(f"New HEAD is {repo.head.commit})")
+        self.log.info(f"New HEAD is {repo.head.commit}")
