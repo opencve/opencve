@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AnonymousUser
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, permissions, viewsets
+from rest_framework.response import Response
 
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Cve, Product, Vendor, Weakness
@@ -38,6 +39,19 @@ class CveViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_serializer_class(self):
         return self.serializer_classes.get(self.action, self.serializer_class)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = serializer.data
+
+        includes = {
+            item.strip() for item in request.query_params.get("include", "").split(",")
+        }
+        if "nvd_cpe_configurations" in includes:
+            data["nvd_cpe_configurations"] = instance.nvd_json.get("configurations", [])
+
+        return Response(data)
 
 
 class WeaknessViewSet(viewsets.ReadOnlyModelViewSet):

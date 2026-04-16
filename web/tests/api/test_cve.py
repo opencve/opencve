@@ -1,5 +1,6 @@
 import pytest
 from django.urls import reverse
+from unittest.mock import PropertyMock, patch
 
 from organizations.models import OrganizationAPIToken
 from users.models import CveTag, UserTag
@@ -106,6 +107,52 @@ def test_get_cve(create_cve, open_file, auth_client):
     assert response.status_code == 200
     expected_result = open_file("serialized_cves/CVE-2021-44228.json")
     assert response.json() == expected_result
+
+
+@pytest.mark.django_db
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+def test_get_cve_with_and_without_nvd_cpe_configurations_include(
+    mock_nvd_json, create_cve, auth_client
+):
+    mock_nvd_json.return_value = {
+        "configurations": [{"operator": "AND", "nodes": [{"operator": "OR"}]}]
+    }
+    create_cve("CVE-2021-44228")
+    client = auth_client()
+    cve_detail_url = reverse("cve-detail", kwargs={"cve_id": "CVE-2021-44228"})
+
+    # Without include
+    response = client.get(cve_detail_url)
+    assert response.status_code == 200
+    assert "nvd_cpe_configurations" not in response.json()
+    assert mock_nvd_json.call_count == 0
+
+    # With include
+    response = client.get(f"{cve_detail_url}?include=nvd_cpe_configurations")
+    assert response.status_code == 200
+    assert response.json()["nvd_cpe_configurations"] == [
+        {"operator": "AND", "nodes": [{"operator": "OR"}]}
+    ]
+    assert mock_nvd_json.call_count == 1
+
+
+@pytest.mark.django_db
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+def test_get_cve_with_nvd_cpe_configurations_include_fallback_to_empty_list(
+    mock_nvd_json, create_cve, auth_client
+):
+    mock_nvd_json.return_value = {}
+    create_cve("CVE-2021-44228")
+    client = auth_client()
+
+    response = client.get(
+        f"{reverse('cve-detail', kwargs={'cve_id': 'CVE-2021-44228'})}"
+        "?include=nvd_cpe_configurations"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["nvd_cpe_configurations"] == []
+    assert mock_nvd_json.call_count == 1
 
 
 @pytest.mark.django_db
