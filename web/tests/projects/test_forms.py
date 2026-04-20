@@ -325,7 +325,7 @@ def test_cve_tracker_filter_form_valid_with_status(create_organization):
     """Test that form is valid with status only"""
     org = create_organization(name="my-orga")
     form = CveTrackerFilterForm(
-        data={"status": "to_evaluate"},
+        data={"status": ["to_evaluate"]},
         organization=org,
     )
     assert form.errors == {}
@@ -338,7 +338,7 @@ def test_cve_tracker_filter_form_valid_with_both(create_organization, create_use
     org = create_organization(name="my-orga-with-member", user=user)
 
     form = CveTrackerFilterForm(
-        data={"assignee": user.username, "status": "pending_review"},
+        data={"assignee": user.username, "status": ["pending_review"]},
         organization=org,
     )
     assert form.errors == {}
@@ -406,7 +406,7 @@ def test_cve_tracker_filter_form_invalid_status(create_organization):
     """Test that invalid status values are rejected"""
     org = create_organization(name="my-orga")
     form = CveTrackerFilterForm(
-        data={"status": "invalid_status"},
+        data={"status": ["invalid_status"]},
         organization=org,
     )
     assert not form.is_valid()
@@ -430,7 +430,7 @@ def test_cve_tracker_filter_form_valid_statuses(create_organization, status):
     """Test that all valid status values are accepted"""
     org = create_organization(name="my-orga")
     form = CveTrackerFilterForm(
-        data={"status": status},
+        data={"status": [status]},
         organization=org,
     )
     assert form.errors == {}
@@ -491,7 +491,7 @@ def test_cve_tracker_filter_form_valid_with_query_and_other_fields(
         data={
             "query": "kev:true",
             "assignee": user.username,
-            "status": "to_evaluate",
+            "status": ["to_evaluate"],
         },
         organization=org,
     )
@@ -532,7 +532,7 @@ def test_cve_tracker_filter_form_valid_with_view_and_other_fields(
         data={
             "view": str(view.id),
             "assignee": user.username,
-            "status": "to_evaluate",
+            "status": ["to_evaluate"],
             "query": "cvss31>=7",
         },
         organization=org,
@@ -748,3 +748,47 @@ def test_cve_tracker_filter_form_invalid_view_private_from_different_user(
     )
     assert not form.is_valid()
     assert "view" in form.errors
+
+
+def test_cve_tracker_filter_form_status_is_multiple_choice_field():
+    """Status filter is a multi-select field."""
+    form = CveTrackerFilterForm()
+
+    assert form.fields["status"].__class__.__name__ == "MultipleChoiceField"
+    assert form.fields["status"].widget.__class__.__name__ == "SelectMultiple"
+
+
+def test_cve_tracker_filter_form_status_accepts_multiple_and_no_status():
+    """Status filter accepts multiple values, including No status."""
+    form = CveTrackerFilterForm()
+    no_status_value = CveTrackerFilterForm.NO_STATUS_VALUE
+    first_status = form.fields["status"].choices[0][0]
+    second_status = form.fields["status"].choices[1][0]
+
+    bound_form = CveTrackerFilterForm(
+        data={
+            "status": [first_status, second_status, no_status_value],
+        }
+    )
+
+    assert bound_form.is_valid()
+    assert bound_form.cleaned_data["status"] == [
+        first_status,
+        second_status,
+        no_status_value,
+    ]
+
+
+def test_cve_tracker_filter_form_status_rejects_invalid_multiple_value():
+    """Status filter rejects invalid values in a multiple selection."""
+    form = CveTrackerFilterForm()
+    valid_status = form.fields["status"].choices[0][0]
+
+    bound_form = CveTrackerFilterForm(
+        data={
+            "status": [valid_status, "invalid_status_value"],
+        }
+    )
+
+    assert not bound_form.is_valid()
+    assert "status" in bound_form.errors

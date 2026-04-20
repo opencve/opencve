@@ -1307,7 +1307,7 @@ def test_assignment_cves_widget_validate_config(
     # Valid empty config
     assert widget.validate_config({}) == {
         "assignee_id": "",
-        "status": "",
+        "status": [],
         "project_id": "",
     }
 
@@ -1338,7 +1338,7 @@ def test_assignment_cves_widget_validate_config(
     )
     assert valid_config_assignee == {
         "assignee_id": str(user1.id),
-        "status": "",
+        "status": [],
         "project_id": "",
     }
 
@@ -1357,7 +1357,7 @@ def test_assignment_cves_widget_validate_config(
     )
     assert valid_config_assignee_user2 == {
         "assignee_id": str(user2.id),
-        "status": "",
+        "status": [],
         "project_id": "",
     }
 
@@ -1373,7 +1373,7 @@ def test_assignment_cves_widget_validate_config(
     )
     assert valid_config_status == {
         "assignee_id": "",
-        "status": "to_evaluate",
+        "status": ["to_evaluate"],
         "project_id": "",
     }
 
@@ -1419,7 +1419,7 @@ def test_assignment_cves_widget_validate_config(
     )
     assert valid_config_project == {
         "assignee_id": "",
-        "status": "",
+        "status": [],
         "project_id": str(project1_org1.id),
     }
 
@@ -1433,7 +1433,7 @@ def test_assignment_cves_widget_validate_config(
     )
     assert valid_config_all == {
         "assignee_id": str(user1.id),
-        "status": "resolved",
+        "status": ["resolved"],
         "project_id": str(project1_org1.id),
     }
 
@@ -1506,6 +1506,7 @@ def test_assignment_cves_widget_config(
         "title": "CVEs by Assignment Config",
         "config": widget.configuration,
         "request": mock_request,
+        "no_status_value": AssignmentCvesWidget.NO_STATUS_VALUE,
     }
 
     # Verify only active project from org1 is passed
@@ -1709,3 +1710,256 @@ def test_assignment_cves_widget_index(
     assert cve2.cve_id not in returned_cve_ids_all  # Status is "resolved"
     assert cve3.cve_id not in returned_cve_ids_all  # Assigned to user2
     assert cve4.cve_id not in returned_cve_ids_all  # In project2
+
+
+@pytest.mark.django_db
+def test_assignment_cves_widget_validate_config_status_list_with_no_status(
+    create_user,
+    create_organization,
+):
+    """Validate list-based statuses and the special No status token."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+
+    mock_request = MagicMock()
+    mock_request.user = user
+    mock_request.current_organization = org
+
+    widget = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "7b5dc53d-6705-4f9e-a433-26b1d9ac4c03",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {"assignee_id": "", "status": "", "project_id": ""},
+        },
+    )
+
+    cleaned = widget.validate_config(
+        {
+            "assignee_id": "",
+            "status": ["to_evaluate", AssignmentCvesWidget.NO_STATUS_VALUE],
+            "project_id": "",
+        }
+    )
+    assert cleaned["status"] == ["to_evaluate", AssignmentCvesWidget.NO_STATUS_VALUE]
+
+
+@pytest.mark.django_db
+def test_assignment_cves_widget_index_no_status_selected_project_includes_no_tracker_cves(
+    create_user,
+    create_organization,
+    create_project,
+    create_cve,
+):
+    """No status on one project includes CVEs without project trackers."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="Project1", organization=org, active=True)
+    project.subscriptions = {"vendors": ["vendor-a"], "products": []}
+    project.save(update_fields=["subscriptions"])
+
+    cve_with_tracker = create_cve("CVE-2021-34181")
+    cve_with_tracker.vendors = ["vendor-a"]
+    cve_with_tracker.save(update_fields=["vendors"])
+    cve_without_tracker = create_cve("CVE-2022-20698")
+    cve_without_tracker.vendors = ["vendor-a"]
+    cve_without_tracker.save(update_fields=["vendors"])
+
+    CveTracker.update_tracker(
+        project=project, cve=cve_with_tracker, assignee=user, status="to_evaluate"
+    )
+
+    mock_request = MagicMock()
+    mock_request.user = user
+    mock_request.current_organization = org
+
+    widget = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "31a62737-c2af-4dd2-9f78-c1648f020ed6",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {
+                "assignee_id": "",
+                "status": [AssignmentCvesWidget.NO_STATUS_VALUE],
+                "project_id": str(project.id),
+            },
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.index()
+
+    actual_context = mock_render.call_args[0][1]
+    actual_trackers = actual_context["trackers"]
+    returned_cve_ids = {t.cve.cve_id for t in actual_trackers}
+
+    assert cve_without_tracker.cve_id in returned_cve_ids
+    assert cve_with_tracker.cve_id not in returned_cve_ids
+
+
+@pytest.mark.django_db
+def test_assignment_cves_widget_index_no_status_all_projects_includes_no_tracker_cves(
+    create_user,
+    create_organization,
+    create_project,
+    create_cve,
+):
+    """No status on all projects includes no-tracker CVEs per project."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project1 = create_project(name="Project1", organization=org, active=True)
+    project2 = create_project(name="Project2", organization=org, active=True)
+    project1.subscriptions = {"vendors": ["vendor-a"], "products": []}
+    project1.save(update_fields=["subscriptions"])
+    project2.subscriptions = {"vendors": ["vendor-b"], "products": []}
+    project2.save(update_fields=["subscriptions"])
+
+    cve_no_tracker_project1 = create_cve("CVE-2023-22490")
+    cve_no_tracker_project1.vendors = ["vendor-a"]
+    cve_no_tracker_project1.save(update_fields=["vendors"])
+    cve_no_tracker_project2 = create_cve("CVE-2024-31331")
+    cve_no_tracker_project2.vendors = ["vendor-b"]
+    cve_no_tracker_project2.save(update_fields=["vendors"])
+
+    mock_request = MagicMock()
+    mock_request.user = user
+    mock_request.current_organization = org
+
+    widget = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "4e9d34b5-f791-4993-8224-9cf5f586f214",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {
+                "assignee_id": "",
+                "status": [AssignmentCvesWidget.NO_STATUS_VALUE],
+                "project_id": "",
+            },
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.index()
+
+    actual_context = mock_render.call_args[0][1]
+    actual_trackers = actual_context["trackers"]
+    returned_pairs = {(t.project.id, t.cve.cve_id) for t in actual_trackers}
+
+    assert (project1.id, cve_no_tracker_project1.cve_id) in returned_pairs
+    assert (project2.id, cve_no_tracker_project2.cve_id) in returned_pairs
+
+
+@pytest.mark.django_db
+def test_assignment_cves_widget_index_multiple_statuses_excludes_no_tracker_cves(
+    create_user,
+    create_organization,
+    create_project,
+    create_cve,
+):
+    """Multiple status filter returns matching trackers and excludes no-tracker CVEs."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="Project1", organization=org, active=True)
+
+    cve_to_evaluate = create_cve("CVE-2023-22490")
+    cve_resolved = create_cve("CVE-2024-31331")
+    cve_no_tracker = create_cve("CVE-2025-2239")
+
+    CveTracker.update_tracker(
+        project=project,
+        cve=cve_to_evaluate,
+        assignee=user,
+        status="to_evaluate",
+    )
+    CveTracker.update_tracker(
+        project=project,
+        cve=cve_resolved,
+        assignee=user,
+        status="resolved",
+    )
+
+    mock_request = MagicMock()
+    mock_request.user = user
+    mock_request.current_organization = org
+
+    widget = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "c0e8d2c1-6e72-4b3d-8784-3f9c608f7e6e",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            "config": {
+                "assignee_id": "",
+                "status": ["to_evaluate", "resolved"],
+                "project_id": str(project.id),
+            },
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.index()
+
+    actual_context = mock_render.call_args[0][1]
+    actual_trackers = actual_context["trackers"]
+    returned_cve_ids = {tracker.cve.cve_id for tracker in actual_trackers}
+
+    assert cve_to_evaluate.cve_id in returned_cve_ids
+    assert cve_resolved.cve_id in returned_cve_ids
+    assert cve_no_tracker.cve_id not in returned_cve_ids
+
+
+@pytest.mark.django_db
+def test_assignment_cves_widget_legacy_single_status_config_is_supported(
+    create_user,
+    create_organization,
+    create_project,
+    create_cve,
+):
+    """Legacy widgets storing status as a string are still supported."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="Project1", organization=org, active=True)
+
+    cve_to_evaluate = create_cve("CVE-2021-34181")
+    cve_resolved = create_cve("CVE-2022-20698")
+    CveTracker.update_tracker(
+        project=project, cve=cve_to_evaluate, assignee=user, status="to_evaluate"
+    )
+    CveTracker.update_tracker(
+        project=project, cve=cve_resolved, assignee=user, status="resolved"
+    )
+
+    mock_request = MagicMock()
+    mock_request.user = user
+    mock_request.current_organization = org
+
+    widget = AssignmentCvesWidget(
+        mock_request,
+        {
+            "id": "5c1203e7-bf47-47ba-b2d9-8bce741eb82d",
+            "type": "assignment_cves",
+            "title": "CVEs by Assignment",
+            # Legacy persisted format: single string instead of list.
+            "config": {
+                "assignee_id": "",
+                "status": "to_evaluate",
+                "project_id": str(project.id),
+            },
+        },
+    )
+
+    # Normalization should convert legacy string status to a list.
+    assert widget.configuration["status"] == ["to_evaluate"]
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.index()
+
+    actual_context = mock_render.call_args[0][1]
+    actual_trackers = actual_context["trackers"]
+    returned_cve_ids = {tracker.cve.cve_id for tracker in actual_trackers}
+
+    assert cve_to_evaluate.cve_id in returned_cve_ids
+    assert cve_resolved.cve_id not in returned_cve_ids

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Exists, OuterRef
 from django.template.loader import render_to_string
 
 from changes.models import Change, Report
@@ -341,12 +342,23 @@ class AssignmentCvesWidget(Widget):
     id = "assignment_cves"
     name = "CVEs by Assignment"
     description = "Displays CVEs filtered by project, assignee and status."
+    NO_STATUS_VALUE = "__no_status__"
     allowed_config_keys = ["assignee_id", "status", "project_id"]
     default_config_values = {
         "assignee_id": "",
-        "status": "",
+        "status": [],
         "project_id": "",
     }
+
+    def _normalize_statuses(self, value):
+        # Backward compatibility: older dashboards store a single string.
+        if isinstance(value, str):
+            return [value] if value else []
+        if isinstance(value, (tuple, set)):
+            return [v for v in value if v]
+        if isinstance(value, list):
+            return [v for v in value if v]
+        return []
 
     def validate_config(self, config):
         cleaned = super().validate_config(config)
@@ -366,12 +378,14 @@ class AssignmentCvesWidget(Widget):
             if not user:
                 raise ValueError(f"Assignee not found ({assignee_id})")
 
-        # Validate status if provided
-        status = cleaned.get("status", "")
-        if status:
-            valid_statuses = [choice[0] for choice in CveTracker.STATUS_CHOICES]
-            if status not in valid_statuses:
-                raise ValueError(f"Invalid status ({status})")
+        # Validate status values if provided
+        statuses = self._normalize_statuses(cleaned.get("status", []))
+        valid_statuses = {choice[0] for choice in CveTracker.STATUS_CHOICES}
+        valid_statuses.add(self.NO_STATUS_VALUE)
+        invalid_statuses = [s for s in statuses if s not in valid_statuses]
+        if invalid_statuses:
+            raise ValueError(f"Invalid status ({', '.join(invalid_statuses)})")
+        cleaned["status"] = statuses
 
         # Validate project_id if provided
         project_id = cleaned.get("project_id", "")
@@ -414,6 +428,7 @@ class AssignmentCvesWidget(Widget):
         return self.render_config(
             members=members,
             status_choices=CveTracker.STATUS_CHOICES,
+            no_status_value=self.NO_STATUS_VALUE,
             projects=projects,
         )
 
@@ -421,7 +436,6 @@ class AssignmentCvesWidget(Widget):
         # Build tracker filter conditions
         tracker_filters = {"project__organization": self.request.current_organization}
 
-        # Apply project filter if provided
         project_id = self.configuration.get("project_id", "")
         if project_id:
             tracker_filters["project_id"] = project_id
@@ -431,16 +445,90 @@ class AssignmentCvesWidget(Widget):
         if assignee_id:
             tracker_filters["assignee_id"] = assignee_id
 
-        # Apply status filter if provided
-        status = self.configuration.get("status", "")
-        if status:
-            tracker_filters["status"] = status
+        # Apply status filters if provided
+        statuses = self._normalize_statuses(self.configuration.get("status", []))
+        include_no_status = self.NO_STATUS_VALUE in statuses
+        selected_statuses = [s for s in statuses if s != self.NO_STATUS_VALUE]
+
+        if selected_statuses and include_no_status:
+            trackers_status_filter = (
+                models.Q(status__in=selected_statuses)
+                | models.Q(status__isnull=True)
+                | models.Q(status="")
+            )
+        elif selected_statuses:
+            trackers_status_filter = models.Q(status__in=selected_statuses)
+        elif include_no_status:
+            trackers_status_filter = models.Q(status__isnull=True) | models.Q(status="")
+        else:
+            trackers_status_filter = None
 
         # Query trackers directly with all filters
-        trackers = (
-            CveTracker.objects.filter(**tracker_filters)
-            .select_related("cve", "project", "assignee")
-            .order_by("-cve__updated_at")[:20]
+        trackers_query = CveTracker.objects.filter(**tracker_filters)
+        if trackers_status_filter is not None:
+            trackers_query = trackers_query.filter(trackers_status_filter)
+
+        trackers = list(
+            trackers_query.select_related("cve", "project", "assignee").order_by(
+                "-cve__updated_at"
+            )[:20]
         )
+
+        if include_no_status and not assignee_id:
+            # Scope to one project when selected, otherwise all active projects.
+            if project_id:
+                projects = Project.objects.filter(
+                    id=project_id,
+                    organization=self.request.current_organization,
+                    active=True,
+                )
+            else:
+                projects = Project.objects.filter(
+                    organization=self.request.current_organization,
+                    active=True,
+                )
+
+            # Avoid duplicates when mixing real trackers and synthetic no-status rows.
+            existing_pairs = {
+                (tracker.project_id, tracker.cve_id) for tracker in trackers
+            }
+            for project in projects:
+                # Use the same vendor/product scope as the project vulnerabilities page.
+                vendors = project.subscriptions.get(
+                    "vendors", []
+                ) + project.subscriptions.get("products", [])
+                if not vendors:
+                    continue
+
+                # "No status" includes CVEs that do not have any tracker for this project.
+                project_trackers = CveTracker.objects.filter(
+                    project=project, cve=OuterRef("pk")
+                )
+                no_tracker_cves = (
+                    Cve.objects.filter(vendors__has_any_keys=vendors)
+                    .annotate(has_project_tracker=Exists(project_trackers))
+                    .filter(has_project_tracker=False)
+                    .order_by("-updated_at")
+                )
+
+                for cve in no_tracker_cves:
+                    pair = (project.id, cve.id)
+                    if pair in existing_pairs:
+                        continue
+
+                    # Build a lightweight synthetic tracker for rendering.
+                    trackers.append(
+                        CveTracker(
+                            cve=cve,
+                            project=project,
+                            assignee=None,
+                            status=None,
+                        )
+                    )
+                    existing_pairs.add(pair)
+
+        trackers = sorted(
+            trackers, key=lambda tracker: tracker.cve.updated_at, reverse=True
+        )[:20]
 
         return self.render_index(trackers=trackers)

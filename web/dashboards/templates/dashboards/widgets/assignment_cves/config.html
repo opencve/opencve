@@ -22,12 +22,12 @@
         </select>
     </div>
     <div class="form-group">
-        <label for="status-select">Select a Status</label>
-        <select class="form-control" id="status-select" name="status">
-            <option value="">All statuses</option>
+        <label for="status-select">Select one or more statuses</label>
+        <select class="form-control" id="status-select" name="status" multiple>
             {% for status_key, status_label in status_choices %}
-            <option value="{{ status_key }}" {% if status_key == config.status %}selected{% endif %}>{{ status_label }}</option>
+            <option value="{{ status_key }}" {% if status_key in config.status %}selected{% endif %}>{{ status_label }}</option>
             {% endfor %}
+            <option value="{{ no_status_value }}" {% if no_status_value in config.status %}selected{% endif %}>No status</option>
         </select>
     </div>
 </form>
