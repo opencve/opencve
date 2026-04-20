@@ -123,16 +123,18 @@ class EmailForm(NotificationForm):
 class CveTrackerFilterForm(forms.Form):
     """Form for filtering CVEs by assignee, status, and query"""
 
+    NO_STATUS_VALUE = "__no_status__"
+
     assignee = forms.ChoiceField(
         choices=[],
         required=False,
         widget=forms.Select(attrs={"class": "form-control select2-assignee"}),
     )
 
-    status = forms.ChoiceField(
-        choices=[("", "All statuses")] + CveTracker.STATUS_CHOICES,
+    status = forms.MultipleChoiceField(
+        choices=CveTracker.STATUS_CHOICES + [(NO_STATUS_VALUE, "No status")],
         required=False,
-        widget=forms.Select(attrs={"class": "form-control select2-status"}),
+        widget=forms.SelectMultiple(attrs={"class": "form-control select2-status"}),
     )
 
     query = forms.CharField(

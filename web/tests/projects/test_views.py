@@ -12,6 +12,7 @@ from changes.models import Change, Report
 from cves.models import Cve
 from cves.search import BadQueryException, MaxFieldsExceededException
 from organizations.models import Membership
+from projects.forms import CveTrackerFilterForm
 from projects.models import CveComment, CveTracker, Notification, Project
 from projects.views import ProjectVulnerabilitiesView
 
@@ -669,6 +670,125 @@ def test_project_vulnerabilities_view_filter_by_status(
     cves = list(response.context["cves"])
     assert len(cves) == 1
     assert cves[0].cve_id == "CVE-2023-22490"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_view_filter_by_multiple_statuses(
+    create_organization, create_user, create_project, create_cve, auth_client
+):
+    """Filtering with multiple statuses returns CVEs matching any selected status."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(
+        name="project1",
+        organization=org,
+        vendors=["git-scm", "apache"],
+    )
+    cve1 = create_cve("CVE-2023-22490")
+    cve2 = create_cve("CVE-2021-44228")
+    cve3 = create_cve("CVE-2022-20698")
+
+    CveTracker.update_tracker(project=project, cve=cve1, status="to_evaluate")
+    CveTracker.update_tracker(project=project, cve=cve2, status="resolved")
+    CveTracker.update_tracker(project=project, cve=cve3, status="risk_accepted")
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"status": ["to_evaluate", "resolved"]},
+    )
+    assert response.status_code == 200
+    cves = list(response.context["cves"])
+    cve_ids = {cve.cve_id for cve in cves}
+    assert cve1.cve_id in cve_ids
+    assert cve2.cve_id in cve_ids
+    assert cve3.cve_id not in cve_ids
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_view_filter_by_no_status_includes_no_tracker(
+    create_organization, create_user, create_project, create_cve, auth_client
+):
+    """No status includes CVEs with empty status and CVEs without tracker."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(
+        name="project1",
+        organization=org,
+        vendors=["git-scm", "apache"],
+    )
+    cve_no_status = create_cve("CVE-2023-22490")
+    cve_with_status = create_cve("CVE-2021-44228")
+    cve_without_tracker = create_cve("CVE-2022-20698")
+    cve_without_tracker.vendors = ["git-scm"]
+    cve_without_tracker.save(update_fields=["vendors"])
+
+    CveTracker.update_tracker(project=project, cve=cve_no_status, status=None)
+    CveTracker.update_tracker(project=project, cve=cve_with_status, status="resolved")
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"status": [CveTrackerFilterForm.NO_STATUS_VALUE]},
+    )
+    assert response.status_code == 200
+    cves = list(response.context["cves"])
+    cve_ids = {cve.cve_id for cve in cves}
+    assert cve_no_status.cve_id in cve_ids
+    assert cve_without_tracker.cve_id in cve_ids
+    assert cve_with_status.cve_id not in cve_ids
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_vulnerabilities_view_filter_by_statuses_and_no_status(
+    create_organization, create_user, create_project, create_cve, auth_client
+):
+    """Combining statuses with No status matches both groups."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(
+        name="project1",
+        organization=org,
+        vendors=["git-scm", "apache"],
+    )
+    cve_with_selected_status = create_cve("CVE-2023-22490")
+    cve_no_status = create_cve("CVE-2021-44228")
+    cve_with_other_status = create_cve("CVE-2022-20698")
+    cve_without_tracker = create_cve("CVE-2025-2239")
+    cve_without_tracker.vendors = ["git-scm"]
+    cve_without_tracker.save(update_fields=["vendors"])
+
+    CveTracker.update_tracker(
+        project=project, cve=cve_with_selected_status, status="to_evaluate"
+    )
+    CveTracker.update_tracker(project=project, cve=cve_no_status, status=None)
+    CveTracker.update_tracker(
+        project=project, cve=cve_with_other_status, status="risk_accepted"
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={
+            "status": ["to_evaluate", CveTrackerFilterForm.NO_STATUS_VALUE],
+        },
+    )
+    assert response.status_code == 200
+    cves = list(response.context["cves"])
+    cve_ids = {cve.cve_id for cve in cves}
+    assert cve_with_selected_status.cve_id in cve_ids
+    assert cve_no_status.cve_id in cve_ids
+    assert cve_without_tracker.cve_id in cve_ids
+    assert cve_with_other_status.cve_id not in cve_ids
 
 
 @override_settings(ENABLE_ONBOARDING=False)

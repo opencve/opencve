@@ -1050,7 +1050,17 @@ function getContrastedColor(str){
         widgetElement.find(".save-config").on("click", function () {
           let formData = widgetElement.find("form").serializeArray();
           let config = {};
-          formData.forEach(item => config[item.name] = item.value);
+          formData.forEach(item => {
+            if (Object.prototype.hasOwnProperty.call(config, item.name)) {
+              if (Array.isArray(config[item.name])) {
+                config[item.name].push(item.value);
+              } else {
+                config[item.name] = [config[item.name], item.value];
+              }
+            } else {
+              config[item.name] = item.value;
+            }
+          });
 
           widgetElement.attr("data-title", config.title);
           widgetElement.find(".box-title-text").text(config.title);

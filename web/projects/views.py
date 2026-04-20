@@ -7,7 +7,7 @@ import pyparsing as pp
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.http import Http404, JsonResponse
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
@@ -232,6 +232,46 @@ class ProjectVulnerabilitiesView(
         except pp.ParseException:
             return base_queryset
 
+    def _apply_status_filter(self, queryset, statuses):
+        if not statuses:
+            return queryset
+
+        include_no_status = CveTrackerFilterForm.NO_STATUS_VALUE in statuses
+        selected_statuses = [
+            status
+            for status in statuses
+            if status and status != CveTrackerFilterForm.NO_STATUS_VALUE
+        ]
+
+        status_filter = Q()
+        if selected_statuses:
+            status_filter |= Q(
+                trackers__project=self.project,
+                trackers__status__in=selected_statuses,
+            )
+        if include_no_status:
+            # "No status" must also match CVEs that do not have a tracker yet
+            project_trackers = CveTracker.objects.filter(
+                project=self.project, cve=OuterRef("pk")
+            )
+            project_trackers_with_status = project_trackers.exclude(
+                Q(status__isnull=True) | Q(status="")
+            )
+
+            queryset = queryset.annotate(
+                has_project_tracker=Exists(project_trackers),
+                has_project_tracker_with_status=Exists(project_trackers_with_status),
+            )
+            # Keep CVEs with no tracker, or trackers where every status is empty.
+            status_filter |= Q(has_project_tracker=False) | Q(
+                has_project_tracker_with_status=False
+            )
+
+        if status_filter:
+            queryset = queryset.filter(status_filter)
+
+        return queryset
+
     def get_queryset(self):
         vendors = (
             self.project.subscriptions["vendors"]
@@ -261,7 +301,7 @@ class ProjectVulnerabilitiesView(
 
         # Apply filters
         assignee_username = self.request.GET.get("assignee")
-        status = self.request.GET.get("status")
+        statuses = self.request.GET.getlist("status")
 
         if assignee_username:
             queryset = queryset.filter(
@@ -269,10 +309,7 @@ class ProjectVulnerabilitiesView(
                 trackers__assignee__username=assignee_username,
             )
 
-        if status:
-            queryset = queryset.filter(
-                trackers__project=self.project, trackers__status=status
-            )
+        queryset = self._apply_status_filter(queryset, statuses)
 
         return queryset.order_by("-updated_at")
 
