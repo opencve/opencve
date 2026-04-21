@@ -1325,3 +1325,54 @@ def test_invalid_widget_validate_config_handling(
         reverse("load_widget_data", kwargs={"widget_id": widget_id}),
     )
     assert response.status_code == 400
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_dashboard_view_without_organization_renders_empty_template(
+    auth_client, create_user
+):
+    """
+    When ENABLE_ONBOARDING is disabled and the user has no organization,
+    the dashboard page should render the empty template.
+    """
+    user = create_user()
+    client = auth_client(user)
+
+    response = client.get(reverse("home"))
+
+    assert response.status_code == 200
+    assert response.template_name == ["dashboards/empty.html"]
+    assert response.context["view"].request.current_organization is None
+
+    # No Dashboard should have been created for this user
+    assert Dashboard.objects.filter(user=user).count() == 0
+
+    # The empty page exposes the "Create an organization" call to action
+    soup = BeautifulSoup(response.content, features="html.parser")
+    create_link = soup.find("a", href=reverse("create_organization"))
+    assert create_link is not None
+    assert "Create an organization" in create_link.get_text()
+
+    # The widgets modal from index.html must not be rendered
+    assert soup.find("div", {"id": "modal-add-widget"}) is None
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.django_db
+def test_dashboard_view_with_organization_still_renders_index(
+    auth_client, create_user, create_organization
+):
+    """
+    When the user belongs to an organization, the dashboard renders
+    the regular index template and creates the default dashboard.
+    """
+    user = create_user()
+    create_organization(name="Test Org", user=user)
+    client = auth_client(user)
+
+    response = client.get(reverse("home"))
+
+    assert response.status_code == 200
+    assert response.template_name == ["dashboards/index.html"]
+    assert Dashboard.objects.filter(user=user).count() == 1

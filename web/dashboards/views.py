@@ -22,8 +22,17 @@ class DashboardView(TemplateView):
             return redirect("cves")
         return super().dispatch(request, *args, **kwargs)
 
+    def get_template_names(self):
+        if not self.request.current_organization:
+            return ["dashboards/empty.html"]
+        return [self.template_name]
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
+        if not self.request.current_organization:
+            return context
+
         context["widgets"] = sorted(list_widgets().values(), key=lambda x: x["name"])
 
         # Retrieve the list of dashboards
