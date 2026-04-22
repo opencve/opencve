@@ -1,0 +1,18 @@
+{% extends "users/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Sign Up Closed" %} - {{ block.super }}{% endblock %}
+
+{% block header %}{% trans "Sign up is closed" %}{% endblock %}
+
+{% block content %}
+<p class="text-center">
+    {% trans "We are sorry, but the sign up is currently closed." %}
+</p>
+{% endblock %}
+
+{% block links %}
+<hr />
+<span>{% trans "Already have an account?" %}</span>
+<a href="{% url 'account_login' %}">{% trans "Sign in" %}</a>
+{% endblock %}

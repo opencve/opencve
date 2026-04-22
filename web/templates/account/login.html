@@ -15,7 +15,9 @@
 {% endblock %}
 
 {% block links %}
+{% if ENABLE_REGISTER %}
 <hr />
 <span>Register a new account?</span>
 <a href="{% url 'account_signup' %}" class="text-center">Register</a>
+{% endif %}
 {% endblock %}

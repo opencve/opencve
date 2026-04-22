@@ -86,6 +86,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "opencve.context_processors.canonical_url_context",
+                "opencve.context_processors.feature_flags",
             ],
         },
     },
@@ -192,6 +193,8 @@ SOCIALACCOUNT_AUTO_SIGNUP = False
 SOCIALACCOUNT_EMAIL_REQUIRED = False
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+ACCOUNT_ADAPTER = "users.adapters.AccountAdapter"
+SOCIALACCOUNT_ADAPTER = "users.adapters.SocialAccountAdapter"
 
 # Audit Logs
 # serialize_data=True (with serialize_auditlog_fields_only=True) for org-scoped models
@@ -296,6 +299,9 @@ V1_DATABASE = env.db(
 
 # Redirect user to onboarding view if they do not belong to an organization
 ENABLE_ONBOARDING = True
+
+# Allow new account registration (regular signup and social signup)
+ENABLE_REGISTER = True
 
 # Maximum number of fields to allow in a CVE Advanced Search query
 CVES_ADVANCED_SEARCH_MAX_FIELDS = 5

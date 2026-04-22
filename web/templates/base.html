@@ -39,9 +39,11 @@
                             <li class="hidden-xs">
                                 <a href="{% url 'account_login' %}">Sign in</a>
                             </li>
+                            {% if ENABLE_REGISTER %}
                             <li class="hidden-xs">
                                 <a href="{% url 'account_signup' %}">Register</a>
                             </li>
+                            {% endif %}
                             {% endif %}
                         </ul>
                     </div>

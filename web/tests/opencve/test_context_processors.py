@@ -2,7 +2,10 @@ from unittest.mock import patch, PropertyMock
 
 import pytest
 from bs4 import BeautifulSoup
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
+
+from opencve.context_processors import feature_flags
 
 
 @pytest.mark.parametrize(
@@ -52,3 +55,17 @@ def test_canonical_url_context(
         soup.find("link", {"rel": "canonical"})["href"]
         == f"http://testserver{canonical_url}"
     )
+
+
+@override_settings(ENABLE_REGISTER=True)
+def test_feature_flags_enable_register_true():
+    request = RequestFactory().get("/")
+    context = feature_flags(request)
+    assert context["ENABLE_REGISTER"] is True
+
+
+@override_settings(ENABLE_REGISTER=False)
+def test_feature_flags_enable_register_false():
+    request = RequestFactory().get("/")
+    context = feature_flags(request)
+    assert context["ENABLE_REGISTER"] is False
