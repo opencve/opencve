@@ -1,5 +1,11 @@
 from urllib.parse import urlencode
 
+from django.conf import settings
+
+
+def feature_flags(request):
+    return {"ENABLE_REGISTER": getattr(settings, "ENABLE_REGISTER", True)}
+
 
 def canonical_url_context(request):
     query_params = request.GET.dict()
