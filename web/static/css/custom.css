@@ -2198,6 +2198,15 @@ a.cve-section-nav-item i {
   width: 20px;
 }
 
+.cve-analysis-cloud-notice {
+  margin: 0;
+  font-size: 13px;
+}
+
+.cve-analysis-cloud-notice .fa {
+  margin-right: 4px;
+}
+
 .cve-analysis-content {
   overflow: auto;
 }
