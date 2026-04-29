@@ -49,13 +49,28 @@ You can subscribe to products, receive alerts, analyze changes, and collaborate 
 - Drag, resize, and save layouts per organization.
 
 ### ✨ OpenCVE Enrichment
-- Our in-house AI analyzes every new CVE and extracts associated vendors and products, even when they weren’t explicitly mentioned by the CVE authors.
-- So users can subscribe and filter by vendor/product with confidence and never miss a relevant vulnerability.
+- Automatically associate CVEs with vendors, products, and affected versions.
+- Advanced AI-powered analysis, including impact assessment and remediation insights, is available in OpenCVE Cloud.
+
+## OpenCVE Community vs OpenCVE Cloud
+
+OpenCVE is available as both a self-hosted Community edition and a hosted Cloud platform.
+
+The Community edition allows you to track CVEs, organize your monitoring, and build your own workflows.
+
+For teams that need more advanced capabilities, OpenCVE Cloud provides additional features such as:
+
+- AI-powered CVE analysis and remediation insights
+- Enterprise-grade security (SAML SSO, MFA enforcement)
+- Managed, scalable infrastructure
+- Advanced audit, SIEM & threat intelligence (coming soon)
+
+👉 Learn more: [https://www.opencve.io/pricing](https://www.opencve.io/pricing)
 
 ## How to Use OpenCVE
 
 ### ✅ SaaS (Recommended)
-Use the hosted version at [https://www.opencve.io](https://www.opencve.io) — no setup required.
+Use the hosted version at [https://www.opencve.io](https://www.opencve.io) — no setup required, with access to advanced features and enterprise capabilities.
 
 ### 🐳 Self-Hosted
 Run OpenCVE on your own infrastructure using Docker. See the [installation guide](https://docs.opencve.io/deployment/) for more details.
@@ -78,3 +93,9 @@ OpenCVE is actively developed and regularly improved.
 <p align="center">
    <img src="https://raw.githubusercontent.com/opencve/opencve/master/github-star-watch.gif" width="600" alt="How to Star and Watch the repository">
 </p>
+
+## License
+
+OpenCVE Community is released under a Business Source License (BSL), allowing free usage with some limitations for commercial use.
+
+See the [LICENSE](LICENSE) file for more details.
