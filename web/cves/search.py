@@ -66,8 +66,16 @@ class Filter:
 
 class StringFilter(Filter):
     supported_operators = [":", "=", "!=", "!:"]
+    MIN_SEARCH_LENGTH = 3
 
     def run(self):
+        if (
+            self.operator in ("icontains", "not_icontains")
+            and len(self.value) < self.MIN_SEARCH_LENGTH
+        ):
+            raise BadQueryException(
+                f"Search terms must be at least {self.MIN_SEARCH_LENGTH} characters long."
+            )
         if self.operator.startswith("not"):
             return ~Q(**{f"{self.field}__{self.operator[4:]}": self.value})
         return Q(**{f"{self.field}__{self.operator}": self.value})

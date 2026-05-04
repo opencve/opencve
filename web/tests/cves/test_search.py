@@ -82,6 +82,28 @@ def test_string_filter_negation():
     assert filter.execute() == ~Q(foo__icontains="bar")
 
 
+def test_string_filter_min_length_icontains():
+    filter = StringFilter("foo", "icontains", "ab", None)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "at least 3 characters" in str(excinfo.value)
+
+
+def test_string_filter_min_length_not_icontains():
+    filter = StringFilter("foo", "not_icontains", "x", None)
+    with pytest.raises(BadQueryException) as excinfo:
+        filter.execute()
+    assert "at least 3 characters" in str(excinfo.value)
+
+
+def test_string_filter_min_length_not_applied_to_exact():
+    filter = StringFilter("foo", "exact", "ab", None)
+    assert filter.execute() == Q(foo__exact="ab")
+
+    filter = StringFilter("foo", "not_exact", "x", None)
+    assert filter.execute() == ~Q(foo__exact="x")
+
+
 def test_cwe_filter_bad_query():
     filter = CweFilter("cwe", "lt", "CWE-123", None)
     with pytest.raises(BadQueryException):
