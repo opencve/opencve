@@ -3,6 +3,14 @@ from django.urls import path, register_converter
 from opencve.utils import DateConverter
 from projects.views import (
     AssignCveUserView,
+    AutomationConfigurationView,
+    AutomationCreateView,
+    AutomationDeleteView,
+    AutomationExecutionDetailView,
+    AutomationExecutionDrawerView,
+    AutomationExecutionsView,
+    AutomationOverviewView,
+    AutomationsView,
     CreateCveCommentView,
     DeleteCveCommentView,
     NotificationCreateView,
@@ -18,6 +26,7 @@ from projects.views import (
     ProjectVulnerabilitiesCsvExportView,
     ProjectVulnerabilitiesView,
     ReportsView,
+    ReportByIdView,
     ReportView,
     SubscriptionsView,
     UpdateCveCommentView,
@@ -84,9 +93,54 @@ urlpatterns = [
         name="report",
     ),
     path(
+        "org/<org_name>/projects/<project_name>/reports/id/<uuid:report_id>",
+        ReportByIdView.as_view(),
+        name="report_by_id",
+    ),
+    path(
         "org/<org_name>/projects/<project_name>/subscriptions",
         SubscriptionsView.as_view(),
         name="subscriptions",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations",
+        AutomationsView.as_view(),
+        name="automations",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/add/<str:trigger_type>/",
+        AutomationCreateView.as_view(),
+        name="create_automation",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>",
+        AutomationOverviewView.as_view(),
+        name="automation_overview",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/configuration",
+        AutomationConfigurationView.as_view(),
+        name="automation_configuration",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/executions",
+        AutomationExecutionsView.as_view(),
+        name="automation_executions",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/executions/<uuid:execution_id>",
+        AutomationExecutionDetailView.as_view(),
+        name="automation_execution_detail",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/executions/<uuid:execution_id>/drawer",
+        AutomationExecutionDrawerView.as_view(),
+        name="automation_execution_drawer",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/automations/<automation>/delete",
+        AutomationDeleteView.as_view(),
+        name="delete_automation",
     ),
     path(
         "org/<org_name>/projects/<project_name>/vulnerabilities",

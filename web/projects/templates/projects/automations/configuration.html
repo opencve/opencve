@@ -1,0 +1,179 @@
+{% extends 'projects/base_project.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ automation.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    {% include 'projects/automations/_menu.html' with active_section='config' %}
+
+    <!-- Right column: main content -->
+    <div class="col-md-9 col-sm-8">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Conditions</h3>
+            </div>
+            <div class="box-body">
+        <form method="post" id="automation-form" action="{% url 'automation_configuration' org_name=request.current_organization.name project_name=project.name automation=automation.name %}">
+            {% csrf_token %}
+            {{ form.configuration_json }}
+            {{ form.trigger_type }}
+            <input type="hidden" name="name" value="{{ form.name.value|default:automation.name }}">
+            {% if automation.is_enabled %}<input type="hidden" name="is_enabled" value="on">{% endif %}
+
+            {% if is_report_automation %}
+            <div class="automation-section">
+                <div class="section-header">
+                    <span class="section-label">SCHEDULE</span>
+                    <span class="section-description trigger-description-inline">
+                        A report is generated
+                        <select name="frequency" id="id_frequency" class="form-control trigger-frequency-select select2" required>
+                            <option value="daily" {% if automation.frequency == 'daily' %}selected{% endif %}>Daily</option>
+                            <option value="weekly" {% if automation.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+                        </select>
+                    </span>
+                </div>
+                <div class="row" style="margin-top: 10px;">
+                    <div class="col-sm-5">
+                        <label for="id_schedule_timezone">Timezone</label>
+                        <input
+                            type="text"
+                            name="schedule_timezone"
+                            id="id_schedule_timezone"
+                            class="form-control"
+                            placeholder="Europe/Paris"
+                            value="{{ form.schedule_timezone.value|default:automation.schedule_timezone|default:'' }}"
+                            required
+                        >
+                        {% if form.schedule_timezone.errors %}
+                        <p class="text-danger">{{ form.schedule_timezone.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-3">
+                        <label for="id_schedule_time">Run time</label>
+                        <input
+                            type="time"
+                            name="schedule_time"
+                            id="id_schedule_time"
+                            class="form-control"
+                            value="{{ form.schedule_time.value|time:'H:i'|default:'09:00' }}"
+                            step="3600"
+                            required
+                        >
+                        {% if form.schedule_time.errors %}
+                        <p class="text-danger">{{ form.schedule_time.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-4" id="weekly-day-container" {% if automation.frequency != 'weekly' and form.frequency.value != 'weekly' %}style="display:none"{% endif %}>
+                        <label for="id_schedule_weekday">Run day (weekly)</label>
+                        <select name="schedule_weekday" id="id_schedule_weekday" class="form-control select2">
+                            <option value="">Select a day...</option>
+                            {% for day_key, day_label in form.schedule_weekday.field.choices %}
+                                {% with selected_day=form.schedule_weekday.value|default:automation.schedule_weekday %}
+                                <option value="{{ day_key }}" {% if selected_day == day_key %}selected{% endif %}>{{ day_label }}</option>
+                                {% endwith %}
+                            {% endfor %}
+                        </select>
+                        {% if form.schedule_weekday.errors %}
+                        <p class="text-danger">{{ form.schedule_weekday.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if form.frequency.errors %}
+                <p class="text-danger">{{ form.frequency.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if is_alert_automation %}
+            <div class="automation-section" id="when-section">
+                <div class="section-header">
+                    <span class="section-label">WHEN</span>
+                    <span class="section-description">one or more of these events occur</span>
+                </div>
+                <div id="triggers-container"></div>
+                <select class="add-dropdown select2" id="add-trigger-dropdown" data-placeholder="Add optional event...">
+                    <option value="">Add optional event...</option>
+                </select>
+            </div>
+            {% endif %}
+
+            <div id="conditions-section">
+                <div class="automation-section">
+                    <div class="condition-group" data-group-index="0">
+                        <div class="section-header">
+                            <span class="section-label">{% if is_report_automation %}SCOPE{% else %}IF{% endif %}</span>
+                            <span class="section-description">all of these conditions match</span>
+                        </div>
+                        <div class="group-conditions"></div>
+                        <select class="add-dropdown select2 add-condition-dropdown" data-placeholder="Add optional filter..." data-group-index="0">
+                            <option value="">Add optional filter...</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-default btn-add-or-group" id="add-or-group-btn">
+                        <i class="fa fa-plus"></i> Add OR group
+                    </button>
+                </div>
+                <div id="condition-groups-container"></div>
+                <template id="condition-group-or-template">
+                    <div class="automation-section">
+                        <div class="condition-group" data-group-index="">
+                            <div class="section-header section-header-with-remove">
+                                <span class="section-label">OR {% if is_report_automation %}SCOPE{% else %}IF{% endif %}</span>
+                                <span class="section-description">all of these conditions match</span>
+                                <button type="button" class="btn btn-sm btn-default btn-remove-or-group" title="Remove this OR group">
+                                    <i class="fa fa-trash"></i> Remove OR group
+                                </button>
+                            </div>
+                            <div class="group-conditions"></div>
+                            <select class="add-dropdown select2 add-condition-dropdown" data-placeholder="Add optional filter..." data-group-index="">
+                                <option value="">Add optional filter...</option>
+                            </select>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="automation-section">
+                <div class="section-header">
+                    <span class="section-label">THEN</span>
+                    <span class="section-description">perform these actions</span>
+                </div>
+                <div id="actions-container">
+                    {% if is_report_automation %}
+                    <div class="action-item action-item-fixed" data-type="generate_report">
+                        <div class="action-item-content">
+                            <span class="action-item-label">
+                                <i class="fa fa-file-text-o" style="margin-right: 6px; color: #888;"></i>
+                                Generate a report
+                            </span>
+                            <input type="hidden" class="action-value" value="true">
+                        </div>
+                        <span title="This action cannot be removed"><i class="fa fa-lock" style="color: #bbb;"></i></span>
+                    </div>
+                    {% endif %}
+                </div>
+                <select class="add-dropdown select2" id="add-action-dropdown" data-placeholder="Add action...">
+                    <option value="">Add action...</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary pull-right">Save</button>
+        </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var automationData = {{ automation_data_json|safe }};
+var automationOptions = {
+    notifications: [{% for n in notifications %}{id: "{{ n.id }}", name: "{{ n.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}],
+    users: [{% for u in organization_members %}{id: "{{ u.id }}", name: "{{ u.username|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}],
+    statuses: [{% for k, v in status_choices %}{id: "{{ k }}", name: "{{ v|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+};
+var automationTriggerType = "{{ automation.trigger_type }}";
+</script>
+
+{% endblock %}

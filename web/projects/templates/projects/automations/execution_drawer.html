@@ -1,0 +1,240 @@
+{% load opencve_extras %}
+<div class="drawer-with-nav">
+    <nav class="drawer-nav" aria-label="Sections">
+        <a href="#drawer-section-executioninfo" class="drawer-nav-item active" data-section="drawer-section-executioninfo"><i class="fa fa-info-circle"></i><span class="drawer-nav-tooltip">Execution info</span></a>
+        <a href="#drawer-section-impact" class="drawer-nav-item" data-section="drawer-section-impact"><i class="fa fa-bar-chart"></i><span class="drawer-nav-tooltip">Impact summary</span></a>
+        <a href="#drawer-section-results" class="drawer-nav-item" data-section="drawer-section-results"><i class="fa fa-file-text-o"></i><span class="drawer-nav-badge">{{ results|length }}</span><span class="drawer-nav-tooltip">Results</span></a>
+        <a href="#drawer-section-cves" class="drawer-nav-item" data-section="drawer-section-cves"><i class="fa fa-shield"></i><span class="drawer-nav-badge">{{ cves_table_data|length }}</span><span class="drawer-nav-tooltip">CVEs</span></a>
+    </nav>
+    <div class="drawer-content">
+
+        <div id="drawer-section-executioninfo" class="drawer-section drawer-execution-info">
+            <h5>Execution info</h5>
+            <dl class="dl-horizontal drawer-dl">
+                <dt>Execution time</dt>
+                <dd>{% if automation.trigger_type == 'alert' %}{{ execution.executed_at|date:"Y-m-d" }} {{ execution.window_start|time:"H:i" }} → {{ execution.window_end|time:"H:i" }}{% else %}{{ execution.executed_at|date:"Y-m-d H:i" }}{% endif %}</dd>
+                <dt>Window</dt>
+                <dd>{{ execution.window_start|date:"Y-m-d H:i" }} – {{ execution.window_end|date:"Y-m-d H:i" }}</dd>
+                <dt>CVEs matched</dt>
+                <dd>{{ execution.matched_cves_count }}</dd>
+            </dl>
+        </div>
+
+        <div id="drawer-section-impact" class="drawer-section drawer-impact">
+            <h5>Impact summary</h5>
+            {% if impact_chart_data %}
+            <script type="application/json" id="drawer-impact-chart-data">{{ impact_chart_data_json|safe }}</script>
+            <div class="drawer-impact-grid">
+                <div class="drawer-impact-block">
+                    <h6 class="drawer-impact-block-title">CVSS Severity Distribution</h6>
+                    <canvas id="drawer-cvss-distribution-chart" class="drawer-impact-canvas" width="240" height="90"></canvas>
+                    <div class="drawer-impact-subtext-row">
+                        <span>Highest: {{ impact_chart_data.highest_cvss|default:"—" }}{% if impact_chart_data.highest_cvss_version %} ({{ impact_chart_data.highest_cvss_version }}){% endif %}</span>
+                        <span>Average: {{ impact_chart_data.average_cvss|default:"—" }}</span>
+                    </div>
+                </div>
+                <div class="drawer-impact-block">
+                    <h6 class="drawer-impact-block-title">EPSS Distribution</h6>
+                    {% if impact_chart_data.epss_max %}
+                    <canvas id="drawer-epss-distribution-chart" class="drawer-impact-canvas" width="240" height="90"></canvas>
+                    <div class="drawer-impact-subtext-row">
+                        <span>Highest: {{ impact_chart_data.epss_max }}</span>
+                        <span>Average: {{ impact_chart_data.epss_avg|default:"—" }}</span>
+                    </div>
+                    {% else %}
+                    <p class="drawer-impact-nodata">No EPSS data available for this execution.</p>
+                    {% endif %}
+                </div>
+                <div class="drawer-impact-block">
+                    <h6 class="drawer-impact-block-title">KEV Statistics</h6>
+                    <div class="drawer-impact-kev-block">
+                        <div class="drawer-impact-kev-donut-wrap">
+                            <canvas id="drawer-kev-donut-chart" class="drawer-impact-kev-donut" width="90" height="90"></canvas>
+                        </div>
+                        <div class="drawer-impact-kev-text">
+                            <p class="drawer-impact-kev-main"><strong>{{ impact_chart_data.kev_count }}/{{ impact_chart_data.cves_count }}</strong> CVEs in KEV</p>
+                            <p class="drawer-impact-kev-sub">{{ impact_chart_data.kev_percent }}% exposure rate</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer-impact-block">
+                    <h6 class="drawer-impact-block-title">Top Vendors / Products</h6>
+                    <canvas id="drawer-vendors-chart" class="drawer-impact-canvas drawer-impact-canvas-vendors" width="240" height="72"></canvas>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted">No impact summary available.</p>
+            {% endif %}
+        </div>
+
+        <div id="drawer-section-results" class="drawer-section drawer-results">
+            <h5>Results ({{ results|length }})</h5>
+            {% if results %}
+            <div class="drawer-result-cards">
+                {% for result in results %}
+                <div class="panel panel-default drawer-result-card drawer-result-card--{{ result.status }}">
+                    <div class="panel-body drawer-result-card-panel">
+
+                        <!-- Header row: title / summary | action buttons -->
+                        <div class="drawer-result-card-body">
+                            <div class="drawer-result-card-text">
+                                {% if result.output_type == 'notification_sent' %}
+                                    <p class="drawer-result-card-title"><strong>🔔 Notification sent</strong></p>
+                                {% elif result.output_type == 'report' %}
+                                    <p class="drawer-result-card-title"><strong>📄 Report generated</strong></p>
+                                {% elif result.output_type == 'assignment' %}
+                                    <p class="drawer-result-card-title"><strong>📋 Assignments</strong></p>
+                                {% elif result.output_type == 'status_change' %}
+                                    <p class="drawer-result-card-title"><strong>🔄 Status changes</strong></p>
+                                {% else %}
+                                    <p class="drawer-result-card-title"><strong>{{ result.label }}</strong></p>
+                                {% endif %}
+                                <p class="text-muted drawer-result-card-summary">{{ result.summary_display }}</p>
+                            </div>
+                            <div class="drawer-result-card-action">
+                                {% if result.output_type == 'report' %}
+                                    {% if result.details.report_id %}
+                                    <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See report</a>
+                                    {% elif result.details.report_day %}
+                                    <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">See report</a>
+                                    {% endif %}
+                                {% else %}
+                                    {% if result.details.report_id %}
+                                    <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">View report</a>
+                                    {% elif result.details.report_day %}
+                                    <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">View report</a>
+                                    {% elif result.details.url %}
+                                    <a href="{{ result.details.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">Open link</a>
+                                    {% endif %}
+                                {% endif %}
+                                <a class="btn btn-sm btn-default drawer-result-detail-toggle collapsed"
+                                   data-toggle="collapse"
+                                   href="#drawer-result-detail-{{ forloop.counter }}"
+                                   aria-expanded="false">
+                                    <i class="fa fa-chevron-down"></i><i class="fa fa-chevron-up"></i> Details
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Inline collapsible details -->
+                        <div class="collapse" id="drawer-result-detail-{{ forloop.counter }}">
+                            <div class="drawer-result-card-detail">
+                            {% with d=result.details %}
+                            {% if result.output_type == 'notification_sent' %}
+
+                                {% if d.status_code %}
+                                <p class="drawer-detail-status">
+                                    <strong>HTTP status:</strong>
+                                    <span class="label {% if d.status_code >= 200 and d.status_code < 300 %}label-success{% else %}label-danger{% endif %}">{{ d.status_code }}</span>
+                                </p>
+                                {% endif %}
+                                {% if d.summary %}
+                                <div class="alert alert-error drawer-detail-alert">
+                                    <i class="fa fa-exclamation-triangle"></i> {{ d.summary }}
+                                </div>
+                                {% endif %}
+
+                                <ul class="nav nav-tabs nav-tabs-sm drawer-detail-tabs">
+                                    <li class="active"><a href="#drawer-req-{{ forloop.counter }}" data-toggle="tab"><i class="fa fa-upload"></i> Request</a></li>
+                                    <li><a href="#drawer-res-{{ forloop.counter }}" data-toggle="tab"><i class="fa fa-download"></i> Response</a></li>
+                                </ul>
+                                <div class="tab-content drawer-result-tab-content">
+                                    <div class="tab-pane active" id="drawer-req-{{ forloop.counter }}">
+                                        {% if d.response_url %}
+                                        <p class="drawer-detail-url"><strong>URL:</strong> <code class="drawer-detail-url-code">{{ d.response_url }}</code></p>
+                                        {% endif %}
+                                        {% if d.request_headers %}
+                                        <p class="drawer-detail-label">Headers</p>
+                                        <div class="drawer-detail-code drawer-detail-code--sm">
+                                            {% for k, v in d.request_headers.items %}<span class="drawer-detail-kv"><strong>{{ k }}</strong>: {{ v }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        {% if d.request_payload %}
+                                        <p class="drawer-detail-label drawer-detail-label--mt">Body</p>
+                                        <pre class="drawer-detail-code drawer-detail-code--body">{{ d.request_payload|format_json }}</pre>
+                                        {% endif %}
+                                        {% if not d.response_url and not d.request_headers and not d.request_payload %}
+                                        <p class="text-muted drawer-detail-empty">No request data available.</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="tab-pane" id="drawer-res-{{ forloop.counter }}">
+                                        {% if d.response_headers %}
+                                        <p class="drawer-detail-label">Headers</p>
+                                        <div class="drawer-detail-code drawer-detail-code--sm">
+                                            {% for k, v in d.response_headers.items %}<span class="drawer-detail-kv"><strong>{{ k }}</strong>: {{ v }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        {% if d.response_body %}
+                                        <p class="drawer-detail-label drawer-detail-label--mt">Body</p>
+                                        <pre class="drawer-detail-code drawer-detail-code--body">{{ d.response_body|format_json }}</pre>
+                                        {% endif %}
+                                        {% if not d.response_headers and not d.response_body %}
+                                        <p class="text-muted drawer-detail-empty">No response data available.</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                            {% elif result.details %}
+
+                                <table class="table table-condensed drawer-detail-table">
+                                    <tbody>
+                                        {% for k, v in result.details.items %}
+                                        <tr>
+                                            <td class="drawer-detail-table-key">{{ k }}</td>
+                                            <td class="drawer-detail-table-val">{% if v is None %}—{% else %}{{ v }}{% endif %}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+
+                            {% else %}
+                                <p class="text-muted drawer-detail-empty">No details available.</p>
+                            {% endif %}
+                            {% endwith %}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No results for this execution.</p>
+            {% endif %}
+        </div>
+
+        <div id="drawer-section-cves" class="drawer-section drawer-cves">
+            <h5>CVEs</h5>
+            {% if cves_table_data %}
+            <div class="table-responsive">
+                <table class="table table-condensed table-hover">
+                    <thead>
+                        <tr>
+                            <th>CVE ID</th>
+                            <th>CVSS 3.1</th>
+                            <th>EPSS</th>
+                            <th>KEV</th>
+                            <th>Vendors / Products</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in cves_table_data %}
+                        <tr>
+                            <td><a href="{% url 'cve' cve_id=row.cve_id %}" target="_blank" rel="noopener noreferrer">{{ row.cve_id }}</a></td>
+                            <td>{% if row.cvss_31 != None %}{{ row.cvss_31 }}{% else %}—{% endif %}</td>
+                            <td>{% if row.epss != None %}{{ row.epss }}{% else %}—{% endif %}</td>
+                            <td>{% if row.kev %}<span class="label label-danger">Yes</span>{% else %}<span class="label label-success">No</span>{% endif %}</td>
+                            <td>{% if row.matched_vendors_or_products %}{% for vp in row.matched_vendors_or_products %}<span class="label label-default">{{ vp }}</span>{% endfor %}{% else %}—{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No CVE list available for this execution.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

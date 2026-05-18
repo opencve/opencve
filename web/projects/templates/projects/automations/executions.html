@@ -1,0 +1,77 @@
+{% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
+
+{% block title %}Executions - {{ automation.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    {% include 'projects/automations/_menu.html' with active_section='executions' %}
+
+    <div class="col-md-9 col-sm-8">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Executions <small>({{ page_obj.paginator.count }} total)</small></h3>
+            </div>
+            <div class="box-body no-padding">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Execution time</th>
+                                <th>Scope</th>
+                                <th>CVEs</th>
+                                <th>Results</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in executions %}
+                            <tr class="automation-execution-row" data-execution-id="{{ event.execution_id }}">
+                                <td>{{ event.executed_at|date:"Y-m-d H:i" }}</td>
+                                <td>{{ event.window_start|time:"H:i" }}–{{ event.window_end|time:"H:i" }}</td>
+                                <td>{{ event.matched_cves_count }}</td>
+                                <td>
+                                    {% if event.result_entries %}
+                                        {% for entry in event.result_entries %}
+                                            <i class="fa {{ entry.icon }} automation-result-icon {% if entry.status == 'success' %}text-success{% elif entry.status == 'skipped' %}text-muted{% else %}text-danger{% endif %}" data-toggle="tooltip" data-placement="top" data-container="body" title="{{ entry.label }} ({{ entry.status_display }})" aria-label="{{ entry.label }}"></i>
+                                        {% endfor %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-muted">No executions yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if page_obj.paginator.num_pages > 1 %}
+                <div class="box-footer text-center">
+                    <ul class="pagination pagination-sm no-margin">
+                        {% if page_obj.has_previous %}
+                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' 1 %}">&laquo; first</a></li>
+                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.previous_page_number %}">&lsaquo; prev</a></li>
+                        {% endif %}
+                        <li class="disabled"><span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                        {% if page_obj.has_next %}
+                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.next_page_number %}">next &rsaquo;</a></li>
+                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'projects/automations/_drawer.html' %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+AutomationDrawer.init("{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id='00000000-0000-0000-0000-000000000000' %}");
+</script>
+{% endblock %}
