@@ -27,17 +27,28 @@ class BaseNotifier:
     }
 
     def __init__(
-        self, *args, semaphore, session, notification, changes, changes_details, period
+        self,
+        *args,
+        semaphore,
+        session,
+        notification,
+        changes,
+        changes_details,
+        period,
+        report_content=None,
     ):
         self.semaphore = semaphore
         self.session = session
         self.notification = notification
         self.config = notification["notification_conf"]
         self.period = period
+        self.report_content = report_content
         self.request_timeout = conf.getint("opencve", "notification_request_timeout")
 
         # Filter full list of changes details with the notification ones
-        self.changes = [dict(changes_details[c]) for c in changes]
+        self.changes = [
+            dict(changes_details[c]) for c in changes if c in changes_details
+        ]
 
     @staticmethod
     def humanize_subscription(name):
@@ -51,6 +62,11 @@ class BaseNotifier:
 
     @staticmethod
     def get_title(payload):
+        if payload.get("report_content"):
+            total = payload["report_content"].get("cve_count", 0)
+            period_type = payload["report_content"].get("period_type", "period")
+            return f"{period_type.capitalize()} report ready ({total} CVEs)"
+
         total = len(payload["changes"])
         change_str = "changes" if total > 1 else "change"
         title = "{count} {change_str} on {subscriptions}".format(
@@ -132,6 +148,20 @@ class BaseNotifier:
 
         return payload
 
+    def prepare_report_content_payload(self):
+        start = arrow.get(self.period.get("start")).to("utc").datetime.isoformat()
+        end = arrow.get(self.period.get("end")).to("utc").datetime.isoformat()
+        content = self.report_content or {}
+        payload = {
+            "organization": self.notification["organization_name"],
+            "project": self.notification["project_name"],
+            "notification": self.notification["notification_name"],
+            "period": {"start": start, "end": end},
+            "report_content": content,
+            "title": self.get_title({"report_content": content}),
+        }
+        return payload
+
     @staticmethod
     def get_severity_str(score):
         if not score:
@@ -172,34 +202,81 @@ class WebhookNotifier(BaseNotifier):
             self.url,
             str(len(self.changes)),
         )
+        payload = (
+            self.prepare_report_content_payload()
+            if self.report_content
+            else self.prepare_payload()
+        )
 
         try:
             async with self.session.post(
                 self.url,
-                json=self.prepare_payload(),
+                json=payload,
                 headers=self.headers,
                 timeout=self.request_timeout,
             ) as response:
-                json_response = await response.json()
+                response_text = await response.text()
+                response_headers = dict(response.headers)
                 status_code = response.status
         except aiohttp.ClientConnectorError as e:
             logger.error("ClientConnectorError(%s): %s", self.url, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                },
+            }
         except aiohttp.ClientResponseError as e:
             logger.error("ClientResponseError(%s): %s", self.url, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "status_code": e.status,
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                },
+            }
         except asyncio.TimeoutError:
             logger.error(
                 "TimeoutError(%s): the request timeout of %s has been exceeded",
                 self.url,
                 f"{str(self.request_timeout)} seconds",
             )
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": "Request timed out",
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                },
+            }
         except Exception as e:
             logger.error("Exception(%s): %s", self.url, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                },
+            }
         else:
             logger.info("Result(%s): %s", self.url, status_code)
-            logger.debug("Response(%s): %s", self.url, json_response)
-
-        # No need to return the response we don't use it
-        return {}
+            logger.debug("Response(%s): %s", self.url, response_text)
+            return {
+                "status": "success" if 200 <= status_code < 300 else "failed",
+                "details": {
+                    "response_url": self.url,
+                    "status_code": status_code,
+                    "request_headers": self.headers,
+                    "request_payload": json.dumps(payload),
+                    "response_headers": response_headers,
+                    "response_body": response_text,
+                },
+            }
 
 
 class SlackNotifier(BaseNotifier):
@@ -211,6 +288,8 @@ class SlackNotifier(BaseNotifier):
         self.webhook_url = self.config.get("extras").get("webhook_url")
 
     def format_slack_blocks(self):
+        if self.report_content:
+            return self.format_slack_blocks_report()
         payload = self.prepare_payload()
         title = payload["title"]
         organization = payload["organization"]
@@ -296,9 +375,48 @@ class SlackNotifier(BaseNotifier):
             for i in range(0, len(blocks), self.MAX_BLOCKS)
         ]
 
+    def format_slack_blocks_report(self):
+        payload = self.prepare_report_content_payload()
+        report = payload["report_content"]
+        title = payload["title"]
+        organization = payload["organization"]
+        project = payload["project"]
+        period_label = report.get("report_day", "N/A")
+        cve_count = report.get("cve_count", 0)
+        report_url = report.get("report_url")
+        timezone_label = report.get("period_timezone", "UTC")
+
+        report_line = (
+            f"<{report_url}|Open report>" if report_url else "Report link unavailable"
+        )
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"🗂️ *{title}*\n_{organization} / {project}_",
+                },
+            },
+            {"type": "divider"},
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"*Period:* {period_label} ({timezone_label})\n"
+                        f"*Total CVEs:* {cve_count}\n"
+                        f"*Report:* {report_line}"
+                    ),
+                },
+            },
+        ]
+        return [{"blocks": blocks}]
+
     async def send(self):
         logger.info("Sending Slack notification to %s", self.webhook_url)
         messages = self.format_slack_blocks()
+        responses = []
+        has_error = False
 
         for idx, msg in enumerate(messages, 1):
             try:
@@ -309,7 +427,15 @@ class SlackNotifier(BaseNotifier):
                     timeout=self.request_timeout,
                 ) as resp:
                     text = await resp.text()
+                    responses.append(
+                        {
+                            "index": idx,
+                            "status_code": resp.status,
+                            "response_body": text,
+                        }
+                    )
                     if resp.status != 200:
+                        has_error = True
                         logger.error(
                             "Slack message %s/%s failed: %s %s",
                             idx,
@@ -325,9 +451,24 @@ class SlackNotifier(BaseNotifier):
                             len(msg["blocks"]),
                         )
             except Exception as e:
+                has_error = True
+                responses.append(
+                    {"index": idx, "status_code": None, "response_body": str(e)}
+                )
                 logger.error(
                     "Error sending Slack message %s/%s: %s", idx, len(messages), e
                 )
+        last_response = responses[-1] if responses else {}
+        return {
+            "status": "failed" if has_error else "success",
+            "details": {
+                "response_url": self.webhook_url,
+                "status_code": last_response.get("status_code"),
+                "request_headers": {"Content-Type": "application/json"},
+                "request_payload": json.dumps(messages[-1]) if messages else None,
+                "response_body": json.dumps(responses),
+            },
+        }
 
 
 class EmailNotifier(BaseNotifier):
@@ -338,6 +479,9 @@ class EmailNotifier(BaseNotifier):
         self.email = self.config.get("extras").get("email")
 
     def get_template_context(self):
+        if self.report_content:
+            return self.get_report_template_context()
+
         payload = super().prepare_payload()
         organization = payload["organization"]
         project = payload["project"]
@@ -399,6 +543,44 @@ class EmailNotifier(BaseNotifier):
 
         return context
 
+    def get_report_template_context(self):
+        payload = self.prepare_report_content_payload()
+        report = payload["report_content"]
+        organization = payload["organization"]
+        project = payload["project"]
+        notification = payload["notification"]
+        extras = self.config.get("extras") or {}
+        web_url = conf.get("opencve", "web_base_url")
+        project_url = f"{web_url}/org/{urllib.parse.quote(organization)}/projects/{urllib.parse.quote(project)}"
+        notification_url = (
+            f"{project_url}/notifications/{urllib.parse.quote(notification)}"
+        )
+
+        unsubscribe_token = extras.get("unsubscribe_token")
+        unsubscribe_url = (
+            f"{web_url}/notifications/unsubscribe/{unsubscribe_token}"
+            if unsubscribe_token
+            else ""
+        )
+
+        return {
+            "web_url": web_url,
+            "project_url": project_url,
+            "notification_url": notification_url,
+            "unsubscribe_url": unsubscribe_url,
+            "created_by_email": extras.get("created_by_email") or "",
+            "title": payload["title"],
+            "organization": organization,
+            "project": project,
+            "notification": notification,
+            "report_url": report.get("report_url", ""),
+            "period_label": report.get("report_day", ""),
+            "period_type": report.get("period_type", "daily"),
+            "period_timezone": report.get("period_timezone", "UTC"),
+            "cve_count": report.get("cve_count", 0),
+            "year": datetime.datetime.now().year,
+        }
+
     async def send(self):
         logger.info(
             "Sending %s notification to %s (%s changes)",
@@ -408,10 +590,11 @@ class EmailNotifier(BaseNotifier):
         )
 
         context = self.get_template_context()
+        template_name = "email_report" if self.report_content else "email_notification"
         message = await get_smtp_message(
             email_to=self.email,
             subject=f"[{context['project']}] {context['title']}",
-            template="email_notification",
+            template=template_name,
             context=context,
         )
 
@@ -420,7 +603,30 @@ class EmailNotifier(BaseNotifier):
             response = await aiosmtplib.send(message, **kwargs)
         except aiosmtplib.errors.SMTPException as e:
             logger.error("SMTPException(%s): %s", self.email, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "status": "failed",
+                    "response_body": str(e),
+                },
+            }
         except Exception as e:
             logger.error("Exception(%s): %s", self.email, e)
+            return {
+                "status": "failed",
+                "details": {
+                    "summary": str(e),
+                    "status": "failed",
+                    "response_body": str(e),
+                },
+            }
         else:
             logger.info("Result(%s): %s", self.email, response[1])
+            return {
+                "status": "success",
+                "details": {
+                    "status": "delivered",
+                    "response_body": str(response[1]),
+                },
+            }

@@ -98,7 +98,9 @@ def run_dag_task():
             start_date=pendulum.datetime(2024, 1, 1, tz="UTC"),
             params=params,
         ) as dag:
-            task_fn(task_name=task_fn.function.__name__)
+            task_fn()
+
+        actual_task_id = dag.tasks[0].task_id
 
         dagrun = dag.create_dagrun(
             state=DagRunState.RUNNING,
@@ -107,8 +109,8 @@ def run_dag_task():
             start_date=start,
             run_type=DagRunType.MANUAL,
         )
-        ti = dagrun.get_task_instance(task_id=task_fn.function.__name__)
-        ti.task = dag.get_task(task_id=task_fn.function.__name__)
+        ti = dagrun.get_task_instance(task_id=actual_task_id)
+        ti.task = dag.get_task(task_id=actual_task_id)
         ti.run(ignore_ti_state=True)
         return ti
 
