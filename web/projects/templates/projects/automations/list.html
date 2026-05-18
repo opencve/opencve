@@ -1,0 +1,230 @@
+{% extends 'projects/base_project.html' %}
+{% block title %}Automations - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    <!-- Left column: New Automation + Filters (mailbox-style sidebar) -->
+    <div class="col-md-3 col-sm-4">
+
+        <button type="button" class="btn btn-primary btn-block margin-bottom" data-toggle="modal" data-target="#newAutomationModal">
+            <i class="fa fa-plus"></i> New Automation
+        </button>
+
+        <!-- Modal: choose trigger type then template -->
+        <div class="modal fade" id="newAutomationModal" tabindex="-1" role="dialog" aria-labelledby="newAutomationModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="newAutomationModalLabel">Choose automation type</h4>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Step 1: trigger type (alert / report) -->
+                        <div id="newAutomationStepTrigger" class="new-automation-step">
+                            <div class="row automation-trigger-options">
+                                <div class="col-xs-6">
+                                    <a href="#" class="trigger-option trigger-option-alert" data-trigger="alert">
+                                        <span class="trigger-option-icon"><i class="fa fa-bolt"></i></span>
+                                        <span class="trigger-option-title">Alert</span>
+                                        <span class="trigger-option-desc">Processes new or updated CVEs hourly and triggers actions automatically.</span>
+                                        <span class="trigger-option-select">Select</span>
+                                    </a>
+                                </div>
+                                <div class="col-xs-6">
+                                    <a href="#" class="trigger-option trigger-option-report" data-trigger="report">
+                                        <span class="trigger-option-icon"><i class="fa fa-calendar"></i></span>
+                                        <span class="trigger-option-title">Report</span>
+                                        <span class="trigger-option-desc">Aggregates matching CVEs daily or weekly into a consolidated report.</span>
+                                        <span class="trigger-option-select">Select</span>
+                                    </a>
+                                </div>
+                            </div>
+                            <p class="text-center" style="margin-top: 1em;">
+                                <a href="https://docs.opencve.io" target="_blank" rel="noopener noreferrer">What's the difference?</a>
+                            </p>
+                        </div>
+
+                        <!-- Step 2: template list (shown after choosing trigger type) -->
+                        <div id="newAutomationStepTemplates" class="new-automation-step" style="display: none;">
+                            <h4 id="newAutomationTemplatesTitle" class="automation-templates-step-title text-center"></h4>
+                            <div id="newAutomationTemplatesAlert" class="automation-template-list" style="display: none;">
+                                <a href="{{ url_add_alert }}?template=recently_published" class="automation-template-option">
+                                    <span class="automation-template-title">🆕 Recently published CVEs</span>
+                                    <span class="automation-template-desc">Notify when new CVEs are published</span>
+                                </a>
+                                <a href="{{ url_add_alert }}?template=kev_alert" class="automation-template-option">
+                                    <span class="automation-template-title">🔥 High severity KEV alert</span>
+                                    <span class="automation-template-desc">Notify when a CVE in KEV enters the project</span>
+                                </a>
+                                <a href="{{ url_add_alert }}?template=critical_cve" class="automation-template-option">
+                                    <span class="automation-template-title">🚨 Critical CVE alert</span>
+                                    <span class="automation-template-desc">Notify when CVSS ≥ 9.0</span>
+                                </a>
+                                <a href="{{ url_add_alert }}?template=auto_triage" class="automation-template-option">
+                                    <span class="automation-template-title">👤 New CVE auto-triage</span>
+                                    <span class="automation-template-desc">Assign new CVEs to a specific user</span>
+                                </a>
+                                <div class="automation-template-or-divider">
+                                    <span class="automation-template-or-divider-line"></span>
+                                    <span class="automation-template-or-divider-text">OR</span>
+                                    <span class="automation-template-or-divider-line"></span>
+                                </div>
+                                <a href="{{ url_add_alert }}" class="automation-template-option">
+                                    <span class="automation-template-title">📌 Custom automation</span>
+                                    <span class="automation-template-desc">Start from scratch</span>
+                                </a>
+                            </div>
+                            <div id="newAutomationTemplatesReport" class="automation-template-list" style="display: none;">
+                                <a href="{{ url_add_report }}?template=weekly_summary" class="automation-template-option">
+                                    <span class="automation-template-title">📅 Weekly security summary</span>
+                                    <span class="automation-template-desc">Report of all CVEs added this week</span>
+                                </a>
+                                <a href="{{ url_add_report }}?template=weekly_kev" class="automation-template-option">
+                                    <span class="automation-template-title">🛡️ Weekly KEV CVEs alert</span>
+                                    <span class="automation-template-desc">Send a notification every week with newly added CVEs in the KEV list.</span>
+                                </a>
+                                <div class="automation-template-or-divider">
+                                    <span class="automation-template-or-divider-line"></span>
+                                    <span class="automation-template-or-divider-text">OR</span>
+                                    <span class="automation-template-or-divider-line"></span>
+                                </div>
+                                <a href="{{ url_add_report }}" class="automation-template-option">
+                                    <span class="automation-template-title">📌 Custom report</span>
+                                    <span class="automation-template-desc">Start from scratch</span>
+                                </a>
+                            </div>
+                            <p class="text-center" style="margin-top: 1.25em; margin-bottom: 0;">
+                                <a href="#" class="new-automation-back-link"><i class="fa fa-arrow-left"></i> Change type</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title">Type</h3>
+            </div>
+            <div class="box-body no-padding">
+                <ul class="nav nav-pills nav-stacked">
+                    <li class="{% if not request.GET.type %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}"><i class="fa fa-inbox"></i> All</a></li>
+                    <li class="{% if request.GET.type == 'alert' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?type=alert"><i class="fa fa-bolt"></i> Alert</a></li>
+                    <li class="{% if request.GET.type == 'report' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?type=report"><i class="fa fa-calendar"></i> Report</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title">Status</h3>
+            </div>
+            <div class="box-body no-padding">
+                <ul class="nav nav-pills nav-stacked">
+                    <li class="{% if not request.GET.status %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}{% if request.GET.type %}?type={{ request.GET.type }}{% endif %}"><i class="fa fa-inbox"></i> All</a></li>
+                    <li class="{% if request.GET.status == 'enabled' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?status=enabled{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}"><i class="fa fa-check-circle text-success"></i> Enabled</a></li>
+                    <li class="{% if request.GET.status == 'disabled' %}active{% endif %}"><a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}?status=disabled{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}"><i class="fa fa-ban text-danger"></i> Disabled</a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right column: title + list of automations (mailbox table style) -->
+    <div class="col-md-9 col-sm-8">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Automations ({{ automations|length }})</h3>
+            </div>
+            <div class="box-body no-padding">
+                {% if automations %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 36px;"></th>
+                                <th>Name</th>
+                                <th class="text-center">Conditions</th>
+                                <th class="text-center">Actions</th>
+                                <th class="text-center" title="Enabled">Enabled</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for automation in automations %}
+                            <tr>
+                                <td>
+                            {% if automation.trigger_type == 'report' %}
+                                    <i class="fa fa-calendar text-muted" title="Report — {{ automation.get_frequency_display }}"></i>
+                                    {% else %}
+                                        <i class="fa fa-bolt text-muted" title="Alert"></i>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation.name %}"><strong>{{ automation.name }}</strong></a>
+                                </td>
+                                <td class="text-center">{{ automation.conditions_count }}</td>
+                                <td class="text-center">{{ automation.configuration.actions|length }}</td>
+                                <td class="text-center">
+                                    {% if automation.is_enabled %}
+                                        <i class="fa fa-check-circle text-success" title="Enabled"></i>
+                                    {% else %}
+                                        <i class="fa fa-times-circle text-danger" title="Disabled"></i>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div style="padding: 20px;">
+                    <p class="text-muted">No automations yet. Create one using the buttons on the left.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var modal = document.getElementById('newAutomationModal');
+    if (!modal) return;
+    var stepTrigger = document.getElementById('newAutomationStepTrigger');
+    var stepTemplates = document.getElementById('newAutomationStepTemplates');
+    var templatesTitle = document.getElementById('newAutomationTemplatesTitle');
+    var listAlert = document.getElementById('newAutomationTemplatesAlert');
+    var listReport = document.getElementById('newAutomationTemplatesReport');
+
+    function showTriggerStep() {
+        stepTrigger.style.display = 'block';
+        stepTemplates.style.display = 'none';
+        listAlert.style.display = 'none';
+        listReport.style.display = 'none';
+    }
+
+    function showTemplatesStep(trigger) {
+        stepTrigger.style.display = 'none';
+        stepTemplates.style.display = 'block';
+        listAlert.style.display = trigger === 'alert' ? 'block' : 'none';
+        listReport.style.display = trigger === 'report' ? 'block' : 'none';
+        templatesTitle.textContent = trigger === 'alert' ? 'Choose a template (alert)' : 'Choose a template (report)';
+    }
+
+    var openBtn = document.querySelector('[data-target="#newAutomationModal"]');
+    if (openBtn) openBtn.addEventListener('click', showTriggerStep);
+
+    [].forEach.call(modal.querySelectorAll('.trigger-option[data-trigger]'), function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            showTemplatesStep(el.getAttribute('data-trigger'));
+        });
+    });
+
+    var backLink = modal.querySelector('.new-automation-back-link');
+    if (backLink) backLink.addEventListener('click', function(e) { e.preventDefault(); showTriggerStep(); });
+})();
+</script>
+
+{% endblock %}

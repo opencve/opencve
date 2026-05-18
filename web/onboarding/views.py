@@ -151,6 +151,7 @@ class OnboardingFormView(
                     subscriptions=subscriptions,
                 )
 
+                # TODO: add a new automation for this notification
                 if data.get("enable_email_notification"):
                     extras = {
                         "email": data["notification_email"],
@@ -163,9 +164,7 @@ class OnboardingFormView(
                         is_enabled=False,
                         project=project,
                         configuration={
-                            "types": ["created", "first_time"],
                             "extras": extras,
-                            "metrics": {"cvss31": str(data["cvss31_min"])},
                         },
                     )
         except IntegrityError as exc:

@@ -1,12 +1,12 @@
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import HTML, Button, Div, Field, Layout, Submit
+from crispy_forms.layout import HTML, Layout, Submit
 from django import forms
 from django.conf import settings
 from django.db.models import Q
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from cves.constants import CVSS_SCORES
-from projects.models import Notification, Project, CveTracker
+from projects.models import Automation, Notification, Project, CveTracker
 from users.models import User
 from views.models import View as SavedView
 
@@ -84,22 +84,6 @@ class NotificationForm(forms.ModelForm):
             extras = self.instance.configuration.get("extras") or {}
             if extras.get("confirmation_token"):
                 self.fields.pop("is_enabled", None)
-
-    created = forms.BooleanField(required=False)
-    description = forms.BooleanField(required=False)
-    title = forms.BooleanField(required=False)
-    first_time = forms.BooleanField(required=False)
-    weaknesses = forms.BooleanField(required=False)
-    cpes = forms.BooleanField(required=False)
-    vendors = forms.BooleanField(required=False)
-    references = forms.BooleanField(required=False)
-    metrics = forms.BooleanField(required=False)
-
-    cvss31_score = forms.ChoiceField(
-        choices=CVSS_SCORES,
-        label="Be alerted when the CVSSv3.1 score is greater than or equal to :",
-        initial=0,
-    )
 
     def clean_name(self):
         name = self.cleaned_data["name"]
@@ -217,3 +201,201 @@ class SlackForm(NotificationForm):
         label="Slack Webhook URL",
         help_text="Enter your Slack incoming webhook URL",
     )
+
+
+class AutomationOverviewForm(forms.ModelForm):
+    """Form for updating only name and is_enabled from the Overview page."""
+
+    class Meta:
+        model = Automation
+        fields = ["name", "is_enabled"]
+
+    def __init__(self, *args, **kwargs):
+        self.project = kwargs.pop("project", None)
+        kwargs.pop("request", None)
+        super().__init__(*args, **kwargs)
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        if name in ("add",):
+            raise forms.ValidationError("This name is reserved.")
+        if self.project and (not self.instance.pk or self.instance.name != name):
+            if Automation.objects.filter(project=self.project, name=name).exists():
+                raise forms.ValidationError("This name already exists.")
+        return name
+
+
+class AutomationForm(forms.ModelForm):
+    class Meta:
+        model = Automation
+        fields = [
+            "name",
+            "is_enabled",
+            "trigger_type",
+            "frequency",
+            "schedule_timezone",
+            "schedule_time",
+            "schedule_weekday",
+        ]
+
+    configuration_json = forms.CharField(widget=forms.HiddenInput(), required=False)
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("request", None)
+        self.project = kwargs.pop("project", None)
+        super(AutomationForm, self).__init__(*args, **kwargs)
+        self.fields["trigger_type"].required = True
+        self.fields["frequency"].required = False
+        self.fields["schedule_timezone"].required = False
+        self.fields["schedule_time"].required = False
+        self.fields["schedule_weekday"].required = False
+        self.fields["frequency"].widget = forms.RadioSelect(
+            choices=Automation.FREQUENCY_CHOICES
+        )
+
+        if self.instance and self.instance.pk:
+            import json
+
+            self.fields["configuration_json"].initial = json.dumps(
+                self.instance.configuration
+            )
+            self.fields["trigger_type"].widget = forms.HiddenInput()
+            self.fields["frequency"].widget = forms.Select(
+                choices=Automation.FREQUENCY_CHOICES
+            )
+        else:
+            self.fields["trigger_type"].widget = forms.HiddenInput()
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+
+        # Check if the name is not a reserved keyword
+        if name in ("add",):
+            raise forms.ValidationError("This name is reserved.")
+
+        # Check if the automation already exists for this project
+        if self.project and (not self.instance.pk or self.instance.name != name):
+            if Automation.objects.filter(project=self.project, name=name).exists():
+                raise forms.ValidationError("This name already exists.")
+
+        return name
+
+    def clean(self):
+        data = super().clean()
+        trigger = data.get("trigger_type")
+        frequency = data.get("frequency")
+        schedule_timezone = data.get("schedule_timezone")
+        schedule_time = data.get("schedule_time")
+        schedule_weekday = data.get("schedule_weekday")
+
+        if trigger == Automation.TRIGGER_REPORT and not frequency:
+            self.add_error(
+                "frequency", "Frequency is required when trigger type is report."
+            )
+        if trigger == Automation.TRIGGER_REPORT and not schedule_timezone:
+            self.add_error(
+                "schedule_timezone",
+                "Timezone is required when trigger type is report.",
+            )
+        if trigger == Automation.TRIGGER_REPORT and not schedule_time:
+            self.add_error(
+                "schedule_time", "Run time is required when trigger type is report."
+            )
+        if schedule_timezone:
+            try:
+                ZoneInfo(schedule_timezone)
+            except ZoneInfoNotFoundError:
+                self.add_error(
+                    "schedule_timezone",
+                    "Invalid timezone, please use an IANA timezone (example: Europe/Paris).",
+                )
+        if schedule_time and schedule_time.minute != 0:
+            self.add_error(
+                "schedule_time",
+                "Run time must be aligned to a full hour (HH:00) because the DAG runs hourly.",
+            )
+        if (
+            trigger == Automation.TRIGGER_REPORT
+            and frequency == Automation.FREQUENCY_WEEKLY
+        ):
+            if not schedule_weekday:
+                self.add_error(
+                    "schedule_weekday",
+                    "A weekday is required for weekly report automations.",
+                )
+        if (
+            trigger == Automation.TRIGGER_REPORT
+            and frequency == Automation.FREQUENCY_DAILY
+        ):
+            data["schedule_weekday"] = None
+        if trigger == Automation.TRIGGER_ALERT:
+            data["frequency"] = None
+            data["schedule_timezone"] = None
+            data["schedule_time"] = None
+            data["schedule_weekday"] = None
+        return data
+
+    def _validate_conditions_tree(self, node):
+        """Validate conditions tree: { operator: OR|AND, children: [...] } or leaf { type, value }."""
+        if not isinstance(node, dict):
+            raise forms.ValidationError("Condition node must be an object.")
+        if "operator" in node:
+            if node["operator"] not in ("OR", "AND"):
+                raise forms.ValidationError("Operator must be OR or AND.")
+            children = node.get("children")
+            if not isinstance(children, list):
+                raise forms.ValidationError("Children must be a list.")
+            for child in children:
+                self._validate_conditions_tree(child)
+        elif "type" in node:
+            if "value" not in node:
+                raise forms.ValidationError("Condition leaf must have 'value'.")
+        else:
+            raise forms.ValidationError(
+                "Condition node must have 'operator' and 'children' or 'type' and 'value'."
+            )
+
+    def clean_configuration_json(self):
+        import json
+
+        config_json = self.cleaned_data.get("configuration_json", "{}")
+        if not config_json:
+            config_json = (
+                '{"conditions": {"operator": "OR", "children": []}, "actions": []}'
+            )
+
+        try:
+            config = json.loads(config_json)
+            # Validate structure
+            if not isinstance(config, dict):
+                raise forms.ValidationError("Invalid configuration format.")
+            if "conditions" not in config or "actions" not in config:
+                raise forms.ValidationError(
+                    "Configuration must contain 'conditions' and 'actions'."
+                )
+            self._validate_conditions_tree(config["conditions"])
+            if not isinstance(config["actions"], list):
+                raise forms.ValidationError("Actions must be a list.")
+            if "triggers" in config:
+                if not isinstance(config["triggers"], list):
+                    raise forms.ValidationError("Triggers must be a list.")
+                for t in config["triggers"]:
+                    if not isinstance(t, str):
+                        raise forms.ValidationError("Each trigger must be a string.")
+            return config
+        except json.JSONDecodeError:
+            raise forms.ValidationError("Invalid JSON format.")
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if self.project:
+            instance.project = self.project
+
+        # Set configuration from the JSON field
+        config = self.cleaned_data.get("configuration_json")
+        if config:
+            instance.configuration = config
+
+        if commit:
+            instance.save()
+        return instance

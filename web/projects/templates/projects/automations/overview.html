@@ -1,0 +1,83 @@
+{% extends 'projects/base_project.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ automation.name }} - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="row">
+    {% include 'projects/automations/_menu.html' with active_section='overview' %}
+
+    <!-- Right column: main content -->
+    <div class="col-md-9 col-sm-8">
+        <form method="post" action="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation.name %}">
+            {% csrf_token %}
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">General</h3>
+                </div>
+                <div class="box-body">
+                    {{ form.name|as_crispy_field }}
+                    {{ form.is_enabled|as_crispy_field }}
+                    <div class="clearfix automation-form-actions">
+                        <a href="{% url 'delete_automation' org_name=request.current_organization.name project_name=project.name automation=automation.name %}" class="btn btn-danger btn-sm pull-left">Delete</a>
+                        <button type="submit" class="btn btn-primary btn-sm pull-right">Save</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Recent Executions</h3>
+                <div class="box-tools pull-right">
+                    <a href="{{ url_executions }}" class="btn btn-xs btn-default"><i class="fa fa-history"></i> View all</a>
+                </div>
+            </div>
+            <div class="box-body no-padding">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Execution time</th>
+                                <th>Scope</th>
+                                <th>CVEs</th>
+                                <th>Results</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in activity_events %}
+                            <tr class="automation-execution-row" data-execution-id="{{ event.execution_id }}">
+                                <td>{{ event.executed_at|date:"Y-m-d H:i" }}</td>
+                                <td>{{ event.window_start|time:"H:i" }}–{{ event.window_end|time:"H:i" }}</td>
+                                <td>{{ event.matched_cves_count }}</td>
+                                <td>
+                                    {% if event.result_entries %}
+                                        {% for entry in event.result_entries %}
+                                            <i class="fa {{ entry.icon }} automation-result-icon {% if entry.status == 'success' %}text-success{% elif entry.status == 'skipped' %}text-muted{% else %}text-danger{% endif %}" data-toggle="tooltip" data-placement="top" data-container="body" title="{{ entry.label }} ({{ entry.status_display }})" aria-label="{{ entry.label }}"></i>
+                                        {% endfor %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-muted">No activity yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'projects/automations/_drawer.html' %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+AutomationDrawer.init("{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id='00000000-0000-0000-0000-000000000000' %}");
+</script>
+{% endblock %}

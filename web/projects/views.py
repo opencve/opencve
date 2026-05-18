@@ -1,15 +1,15 @@
 import importlib
 import json
 import secrets
+import pyparsing as pp
 from datetime import datetime
 
-import pyparsing as pp
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.paginator import Paginator
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.http import Http404, JsonResponse
-from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.generic import (
@@ -31,25 +31,30 @@ from organizations.mixins import (
     OrganizationIsMemberMixin,
     OrganizationIsOwnerMixin,
 )
-from projects.forms import FORM_MAPPING, ProjectForm, CveTrackerFilterForm
+from projects.forms import (
+    AutomationForm,
+    AutomationOverviewForm,
+    FORM_MAPPING,
+    ProjectForm,
+    CveTrackerFilterForm,
+)
 from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
-from projects.models import Notification, Project, CveComment, CveTracker
+from projects.models import (
+    Automation,
+    AutomationExecution,
+    AutomationRunResult,
+    CveComment,
+    CveTracker,
+    Notification,
+    Project,
+)
 from projects.notifications import run_notification_try
-from projects.utils import send_notification_confirmation_email
+from projects.utils import (
+    RESULT_TYPE_ICONS,
+    send_notification_confirmation_email,
+)
 from users.models import User
 from views.models import View as SavedView
-
-NOTIFICATION_TYPES = [
-    "cpes",
-    "created",
-    "description",
-    "first_time",
-    "metrics",
-    "references",
-    "title",
-    "vendors",
-    "weaknesses",
-]
 
 
 class ProjectsListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
@@ -473,13 +478,44 @@ class ReportView(
         queryset = self.model.objects.prefetch_related(changes_with_cve_prefetch)
 
         # Return the daily report
+        report = (
+            queryset.filter(project=self.project, day=self.kwargs["day"])
+            .order_by("-created_at")
+            .first()
+        )
+        if not report:
+            raise Http404()
+
+        return self.get_report_statistics(report)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        return context
+
+
+class ReportByIdView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
+):
+    model = Report
+    template_name = "projects/report.html"
+
+    def get_object(self, queryset=None):
+        changes_with_cve_prefetch = Prefetch(
+            "changes",
+            queryset=Change.objects.select_related("cve"),
+        )
+        queryset = self.model.objects.prefetch_related(changes_with_cve_prefetch)
         report = get_object_or_404(
             queryset,
             project=self.project,
-            day=self.kwargs["day"],
+            id=self.kwargs["report_id"],
         )
-
-        return self.get_report_statistics(report)
+        return ReportView.get_report_statistics(report)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -592,10 +628,6 @@ class NotificationCreateView(
         return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
-        types = [
-            k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v
-        ]
-
         # Extra configuration
         extras = {}
         custom_fields = FORM_MAPPING.get(self.request.GET["type"], [])
@@ -613,11 +645,7 @@ class NotificationCreateView(
         # Create the notification
         form.instance.project = self.project
         form.instance.type = notification_type
-        form.instance.configuration = {
-            "types": types,
-            "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
-            "extras": extras,
-        }
+        form.instance.configuration = {"extras": extras}
 
         response = super().form_valid(form)
         if notification_type == "email":
@@ -668,10 +696,6 @@ class NotificationUpdateView(
         )
 
     def form_valid(self, form):
-        types = [
-            k for k, v in form.cleaned_data.items() if k in NOTIFICATION_TYPES and v
-        ]
-
         # Extra configuration
         extras = {}
         custom_fields = FORM_MAPPING.get(form.instance.type, [])
@@ -696,11 +720,7 @@ class NotificationUpdateView(
 
         # Create the notification
         form.instance.project = self.project
-        form.instance.configuration = {
-            "types": types,
-            "metrics": {"cvss31": form.cleaned_data["cvss31_score"]},
-            "extras": extras,
-        }
+        form.instance.configuration = {"extras": extras}
 
         response = super().form_valid(form)
         if email_changed_send_confirm:
@@ -727,16 +747,9 @@ class NotificationUpdateView(
             extras.get("confirmation_token")
         )
 
-        # Transform JSON field into dedicated fields
-        context["form"].initial["cvss31_score"] = self.object.configuration["metrics"][
-            "cvss31"
-        ]
-        for _type in self.object.configuration["types"]:
-            context["form"].initial[_type] = True
-
         custom_fields = FORM_MAPPING.get(self.object.type, [])
         for field in custom_fields:
-            context["form"].initial[field] = self.object.configuration["extras"][field]
+            context["form"].initial[field] = extras.get(field)
 
         context.setdefault("try_result", None)
         return {**context, **{"type": self.object.type}}
@@ -1175,3 +1188,636 @@ class DeleteCveCommentView(
 
         comment.delete()
         return JsonResponse({"success": True, "deleted_id": comment_id})
+
+
+class AutomationsView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
+):
+    model = Project
+    template_name = "projects/automations/list.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        queryset = Automation.objects.filter(project=self.project).order_by("name")
+        filter_type = self.request.GET.get("type")
+        if filter_type == "alert":
+            queryset = queryset.filter(trigger_type=Automation.TRIGGER_ALERT)
+        elif filter_type == "report":
+            queryset = queryset.filter(trigger_type=Automation.TRIGGER_REPORT)
+        filter_status = self.request.GET.get("status")
+        if filter_status == "enabled":
+            queryset = queryset.filter(is_enabled=True)
+        elif filter_status == "disabled":
+            queryset = queryset.filter(is_enabled=False)
+        context["automations"] = list(queryset)
+        org_name = self.request.current_organization.name
+        context["url_add_alert"] = reverse(
+            "create_automation",
+            kwargs={
+                "org_name": org_name,
+                "project_name": self.project.name,
+                "trigger_type": "alert",
+            },
+        )
+        context["url_add_report"] = reverse(
+            "create_automation",
+            kwargs={
+                "org_name": org_name,
+                "project_name": self.project.name,
+                "trigger_type": "report",
+            },
+        )
+        return context
+
+
+def _populate_automation_form_context(view, context, default_config):
+    """
+    Populate shared context keys required by the automation configuration form
+    (notifications, org members, status choices, and automation_data_json).
+
+    Returns True if the context is fully ready for an early return (valid POST config),
+    or False if the caller must set automation_data_json to the serialized default_config.
+    """
+    context["notifications"] = (
+        Notification.objects.filter(project=view.project).order_by("name").all()
+    )
+    context["organization_members"] = (
+        User.objects.filter(
+            membership__organization=view.request.current_organization,
+            membership__date_joined__isnull=False,
+        )
+        .distinct()
+        .order_by("username")
+    )
+    context["status_choices"] = CveTracker.STATUS_CHOICES
+
+    if view.request.method == "POST":
+        raw = view.request.POST.get("configuration_json")
+        if raw:
+            try:
+                data = json.loads(raw)
+                if (
+                    isinstance(data, dict)
+                    and "conditions" in data
+                    and "actions" in data
+                ):
+                    context["automation_data_json"] = json.dumps(data)
+                    return True
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    context["automation_data_json"] = json.dumps(default_config)
+    return False
+
+
+class AutomationCreateView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    CreateView,
+):
+    model = Automation
+    form_class = AutomationForm
+    template_name = "projects/automations/save.html"
+    success_message = "The automation has been successfully created."
+
+    def get_initial(self):
+        initial = super().get_initial()
+        trigger_type = self.kwargs.get("trigger_type", "alert")
+        if trigger_type not in (
+            Automation.TRIGGER_ALERT,
+            Automation.TRIGGER_REPORT,
+        ):
+            trigger_type = Automation.TRIGGER_ALERT
+        initial["trigger_type"] = trigger_type
+        if trigger_type == Automation.TRIGGER_REPORT:
+            template = self.request.GET.get("template") or ""
+            if template in ("weekly_summary", "weekly_kev"):
+                initial["frequency"] = Automation.FREQUENCY_WEEKLY
+                initial["schedule_weekday"] = Automation.WEEKDAY_MONDAY
+            else:
+                initial["frequency"] = Automation.FREQUENCY_DAILY
+            initial["schedule_timezone"] = "UTC"
+            initial["schedule_time"] = "09:00"
+        else:
+            initial["frequency"] = None
+        return initial
+
+    def form_valid(self, form):
+        form.instance.project = self.project
+        return super().form_valid(form)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["project"] = self.project
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        trigger_type = self.kwargs.get("trigger_type", "alert")
+        if trigger_type not in (
+            Automation.TRIGGER_ALERT,
+            Automation.TRIGGER_REPORT,
+        ):
+            trigger_type = Automation.TRIGGER_ALERT
+        context["trigger_type"] = trigger_type
+
+        default_config = {
+            "conditions": {"operator": "OR", "children": []},
+            "actions": [],
+        }
+        early_return = _populate_automation_form_context(self, context, default_config)
+        if early_return:
+            return context
+
+        # Pre-fill from template on GET (overrides the default set by the helper)
+        if self.request.method == "GET":
+            template_config = self._get_template_config()
+            if template_config:
+                context["automation_data_json"] = json.dumps(template_config)
+        return context
+
+    def _get_template_config(self):
+        """Build configuration JSON for automation templates."""
+        template = self.request.GET.get("template") or ""
+
+        notifications = list(
+            Notification.objects.filter(project=self.project).order_by("name")[:1]
+        )
+        members = list(
+            User.objects.filter(
+                membership__organization=self.request.current_organization,
+                membership__date_joined__isnull=False,
+            )
+            .distinct()
+            .order_by("username")[:1]
+        )
+        first_notification_id = str(notifications[0].id) if notifications else ""
+        first_user_id = str(members[0].id) if members else ""
+
+        # One AND group with no conditions
+        empty_and_group = {"operator": "AND", "children": []}
+
+        if template == "recently_published":
+            return {
+                "triggers": ["cve_enters_project"],
+                "conditions": {"operator": "OR", "children": [empty_and_group]},
+                "actions": [
+                    {"type": "send_notification", "value": first_notification_id}
+                ],
+            }
+        if template == "kev_alert":
+            return {
+                "triggers": ["cve_enters_project", "kev_added"],
+                "conditions": {
+                    "operator": "OR",
+                    "children": [
+                        {
+                            "operator": "AND",
+                            "children": [
+                                {"type": "kev_present", "value": True},
+                            ],
+                        }
+                    ],
+                },
+                "actions": [
+                    {"type": "send_notification", "value": first_notification_id}
+                ],
+            }
+        if template == "critical_cve":
+            return {
+                "triggers": ["cve_enters_project"],
+                "conditions": {
+                    "operator": "OR",
+                    "children": [
+                        {
+                            "operator": "AND",
+                            "children": [
+                                {
+                                    "type": "cvss_gte",
+                                    "value": {"version": "v3.1", "value": 7},
+                                },
+                            ],
+                        },
+                        {
+                            "operator": "AND",
+                            "children": [
+                                {
+                                    "type": "cvss_gte",
+                                    "value": {"version": "v4.0", "value": 7},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                "actions": [
+                    {"type": "send_notification", "value": first_notification_id}
+                ],
+            }
+        if template == "auto_triage":
+            actions = []
+            if first_user_id:
+                actions.append({"type": "assign_user", "value": first_user_id})
+            actions.append({"type": "change_status", "value": "to_evaluate"})
+            return {
+                "triggers": ["cve_enters_project"],
+                "conditions": {"operator": "OR", "children": [empty_and_group]},
+                "actions": actions,
+            }
+
+        if template == "weekly_summary":
+            return {
+                "conditions": {"operator": "OR", "children": [empty_and_group]},
+                "actions": [{"type": "generate_report", "value": True}],
+            }
+        if template == "weekly_kev":
+            return {
+                "conditions": {
+                    "operator": "OR",
+                    "children": [
+                        {
+                            "operator": "AND",
+                            "children": [
+                                {"type": "kev_present", "value": True},
+                            ],
+                        }
+                    ],
+                },
+                "actions": [
+                    {"type": "send_notification", "value": first_notification_id}
+                ],
+            }
+        return None
+
+    def get_success_url(self):
+        return reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+
+
+def _build_activity_events(automation, limit=10):
+    """Build activity_events list for an automation (for Overview or context)."""
+    activity_executions = (
+        AutomationExecution.objects.filter(automation=automation)
+        .prefetch_related("results")
+        .order_by("-executed_at")[:limit]
+    )
+    return [
+        {
+            "execution_id": execution.id,
+            "execution_slug": execution.slug,
+            "executed_at": execution.executed_at,
+            "window_start": execution.window_start,
+            "window_end": execution.window_end,
+            "matched_cves_count": execution.matched_cves_count,
+            "result_entries": [
+                {
+                    "label": r.label,
+                    "icon": RESULT_TYPE_ICONS.get(r.output_type, "fa-file-o"),
+                    "status": r.status,
+                    "status_display": r.get_status_display(),
+                }
+                for r in execution.results.all()
+            ],
+        }
+        for execution in activity_executions
+    ]
+
+
+class AutomationOverviewView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    UpdateView,
+):
+    """Overview page for an automation: header, summary, recent executions (drawer on click)."""
+
+    model = Automation
+    form_class = AutomationOverviewForm
+    template_name = "projects/automations/overview.html"
+    success_message = "The automation has been successfully updated."
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Automation,
+            project=self.project,
+            name=self.kwargs["automation"],
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["project"] = self.project
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        context["automation"] = self.object
+        context["activity_events"] = _build_activity_events(self.object, limit=10)
+        context["url_back"] = reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+        context["url_executions"] = reverse(
+            "automation_executions",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+                "automation": self.object.name,
+            },
+        )
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+                "automation": self.object.name,
+            },
+        )
+
+
+class AutomationConfigurationView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    RequestViewMixin,
+    UpdateView,
+):
+    model = Automation
+    form_class = AutomationForm
+    template_name = "projects/automations/configuration.html"
+    success_message = "The automation has been successfully updated."
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Automation,
+            project=self.project,
+            name=self.kwargs["automation"],
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["project"] = self.project
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        context["automation"] = self.object
+        context["trigger_type"] = self.object.trigger_type
+        context["is_report_automation"] = (
+            self.object.trigger_type == Automation.TRIGGER_REPORT
+        )
+        context["is_alert_automation"] = (
+            self.object.trigger_type == Automation.TRIGGER_ALERT
+        )
+        context["url_back"] = reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+        default_config = (
+            self.object.configuration
+            if self.object and self.object.pk
+            else {"conditions": {"operator": "OR", "children": []}, "actions": []}
+        )
+        _populate_automation_form_context(self, context, default_config)
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+                "automation": self.object.name,
+            },
+        )
+
+
+class AutomationExecutionsView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    DetailView,
+):
+    """Executions page: full paginated list of all executions for an automation."""
+
+    model = Automation
+    template_name = "projects/automations/executions.html"
+    context_object_name = "automation"
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Automation,
+            project=self.project,
+            name=self.kwargs["automation"],
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        context["automation"] = self.object
+
+        queryset = (
+            AutomationExecution.objects.filter(automation=self.object)
+            .prefetch_related("results")
+            .order_by("-executed_at")
+        )
+
+        paginator = Paginator(queryset, 20)
+        page_number = self.request.GET.get("page", 1)
+        page = paginator.get_page(page_number)
+        context["page_obj"] = page
+        context["executions"] = [
+            {
+                "execution_id": execution.id,
+                "executed_at": execution.executed_at,
+                "window_start": execution.window_start,
+                "window_end": execution.window_end,
+                "matched_cves_count": execution.matched_cves_count,
+                "result_entries": [
+                    {
+                        "label": r.label,
+                        "icon": RESULT_TYPE_ICONS.get(r.output_type, "fa-file-o"),
+                        "status": r.status,
+                        "status_display": r.get_status_display(),
+                    }
+                    for r in execution.results.all()
+                ],
+            }
+            for execution in page.object_list
+        ]
+        return context
+
+
+class AutomationExecutionDrawerView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    View,
+):
+    """Returns HTML fragment for the execution detail drawer (execution info, CVEs, results in cards)."""
+
+    def get(self, request, *args, **kwargs):
+        execution = _get_automation_execution_by_id(
+            self.project,
+            kwargs["automation"],
+            kwargs["execution_id"],
+        )
+        if execution is None:
+            raise Http404("No execution found.")
+        results = list(
+            AutomationRunResult.objects.filter(automation_execution=execution)
+        )
+        for res in results:
+            if res.details is None:
+                res.details = {}
+        cves_table_data = (
+            execution.cves_table_data if execution.cves_table_data is not None else []
+        )
+        impact_chart_data = execution.impact_summary
+        return render(
+            request,
+            "projects/automations/execution_drawer.html",
+            {
+                "project": self.project,
+                "automation": execution.automation,
+                "execution": execution,
+                "results": results,
+                "cves_table_data": cves_table_data,
+                "impact_chart_data": impact_chart_data,
+                "impact_chart_data_json": (
+                    json.dumps(impact_chart_data) if impact_chart_data else "null"
+                ),
+            },
+        )
+
+
+class AutomationExecutionDetailView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    View,
+):
+    """Full-page detail view for a single automation execution."""
+
+    def get(self, request, *args, **kwargs):
+        execution = _get_automation_execution_by_id(
+            self.project,
+            kwargs["automation"],
+            kwargs["execution_id"],
+        )
+        if execution is None:
+            raise Http404("No execution found.")
+
+        automation = execution.automation
+        activity_executions = (
+            AutomationExecution.objects.filter(automation=automation)
+            .prefetch_related("results")
+            .order_by("-executed_at")[:20]
+        )
+        results = list(
+            AutomationRunResult.objects.filter(automation_execution=execution)
+        )
+        for res in results:
+            if res.details is None:
+                res.details = {}
+
+        url_back = reverse(
+            "automation_executions",
+            kwargs={
+                "org_name": request.current_organization.name,
+                "project_name": self.project.name,
+                "automation": automation.name,
+            },
+        )
+        return render(
+            request,
+            "projects/automations/execution_detail.html",
+            {
+                "project": self.project,
+                "automation": automation,
+                "execution": execution,
+                "results": results,
+                "activity_executions": activity_executions,
+                "url_back": url_back,
+            },
+        )
+
+
+def _get_automation_execution_by_id(project, automation_name, execution_id):
+    """Resolve an AutomationExecution by primary key (unique per execution)."""
+    return (
+        AutomationExecution.objects.filter(
+            pk=execution_id,
+            automation__project=project,
+            automation__name=automation_name,
+        )
+        .prefetch_related("results")
+        .select_related("automation", "automation__project")
+        .first()
+    )
+
+
+class AutomationDeleteView(
+    LoginRequiredMixin,
+    OrganizationIsOwnerMixin,
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    DeleteView,
+):
+    model = Automation
+    template_name = "projects/automations/delete.html"
+    success_message = "The automation has been successfully removed."
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            Automation,
+            project=self.project,
+            name=self.kwargs["automation"],
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        return context
+
+    def get_success_url(self):
+        return reverse(
+            "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
