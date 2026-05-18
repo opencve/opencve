@@ -20,7 +20,7 @@ CALL cve_upsert(
 
 REPORT_UPSERT_PROCEDURE = """
 CALL report_upsert(
-    %(report)s, %(project)s, %(day)s, %(changes)s
+    %(report)s, %(project)s, %(automation)s, %(period_day)s, %(period_type)s, %(period_timezone)s, %(changes)s
 );
 """
 
@@ -33,7 +33,10 @@ SELECT
   changes.path AS change_path,
   cves.vendors AS cve_vendors,
   cves.cve_id AS cve_id,
-  cves.metrics AS cve_metrics
+  cves.metrics AS cve_metrics,
+  cves.created_at AS cve_created_at,
+  cves.title AS cve_title,
+  cves.description AS cve_description
 FROM
   opencve_cves AS cves
   JOIN opencve_changes AS changes ON cves.id = changes.cve_id
@@ -56,37 +59,6 @@ WHERE
     subscriptions->'vendors' ?| %(vendors)s
     OR subscriptions->'products' ?| %(products)s
   );
-"""
-
-SQL_PROJECT_WITH_NOTIFICATIONS = """
-SELECT
-  projects.id,
-  projects.name,
-  organizations.name,
-  notifications.name,
-  notifications.type,
-  notifications.configuration
-FROM
-  opencve_notifications AS notifications
-  JOIN opencve_projects AS projects ON projects.id = notifications.project_id
-  JOIN opencve_organizations AS organizations ON organizations.id = projects.organization_id
-WHERE
-  is_enabled = 't'
-  AND projects.id IN %(projects)s;
-"""
-
-SQL_CHANGE_WITH_CVE = """
-SELECT
-  changes.id,
-  cves.cve_id,
-  cves.summary,
-  cves.cvss,
-FROM
-  opencve_cves AS cves
-  JOIN opencve_changes AS changes ON cves.id = changes.cve_id
-WHERE
-  changes.created_at >= %(start)s
-  AND changes.created_at <= %(end)s;
 """
 
 SQL_CVES_EVOLUTION_STATISTICS = """
@@ -329,3 +301,229 @@ WHERE r.id = e.id;
 """.format(
     expired_select=REPORTS_EXPIRED_SELECT.strip()
 )
+
+SQL_PROJECT_WITH_AUTOMATIONS = """
+SELECT
+  projects.id,
+  projects.name,
+  organizations.name,
+  automations.id,
+  automations.name,
+  automations.trigger_type,
+  automations.frequency,
+  automations.schedule_timezone,
+  automations.schedule_time,
+  automations.schedule_weekday,
+  automations.configuration
+FROM
+  opencve_automations AS automations
+  JOIN opencve_projects AS projects ON projects.id = automations.project_id
+  JOIN opencve_organizations AS organizations ON organizations.id = projects.organization_id
+WHERE
+  automations.is_enabled = 't'
+  AND projects.id IN %(projects)s
+ORDER BY automations.name ASC;
+"""
+
+SQL_REPORT_SUMMARY_BY_ID = """
+WITH distinct_cves AS (
+  SELECT DISTINCT cves.cve_id, (cves.metrics->'cvssV3_1'->'data'->>'score')::float AS score
+  FROM
+    opencve_reports AS reports
+    JOIN opencve_reports_changes AS rc ON reports.id = rc.report_id
+    JOIN opencve_changes AS changes ON rc.change_id = changes.id
+    JOIN opencve_cves AS cves ON changes.cve_id = cves.id
+  WHERE
+    reports.id = %(report_id)s
+),
+score_distribution AS (
+  SELECT
+    JSONB_AGG(
+      jsonb_build_object(
+        'score', score,
+        'count', count
+      ) ORDER BY score DESC NULLS LAST
+    ) AS score_distribution
+  FROM (
+    SELECT
+      score,
+      COUNT(*) AS count
+    FROM distinct_cves
+    GROUP BY score
+  ) AS sub
+)
+SELECT
+  COALESCE((SELECT COUNT(*) FROM distinct_cves), 0) AS total_cve_count,
+  COALESCE((SELECT score_distribution FROM score_distribution), '[]'::jsonb) AS score_distribution;
+"""
+
+SQL_CVE_ID_BY_CVE_ID = """
+SELECT id, cve_id, created_at
+FROM opencve_cves
+WHERE cve_id IN %(cve_ids)s;
+"""
+
+SQL_CVE_TRACKER_STATUS = """
+SELECT cves.cve_id, trackers.status, trackers.assignee_id
+FROM opencve_cve_trackers AS trackers
+JOIN opencve_cves AS cves ON trackers.cve_id = cves.id
+WHERE trackers.project_id = %(project_id)s
+  AND cves.cve_id IN %(cve_ids)s;
+"""
+
+SQL_UPSERT_CVE_TRACKER = """
+INSERT INTO opencve_cve_trackers (id, cve_id, project_id, assignee_id, status, assigned_at, created_at, updated_at)
+VALUES (%(id)s, %(cve_id)s, %(project_id)s, %(assignee_id)s, %(status)s, NOW(), NOW(), NOW())
+ON CONFLICT ON CONSTRAINT ix_unique_cve_project_tracker DO UPDATE SET
+  assignee_id = COALESCE(EXCLUDED.assignee_id, opencve_cve_trackers.assignee_id),
+  status = COALESCE(EXCLUDED.status, opencve_cve_trackers.status),
+  updated_at = NOW();
+"""
+
+SQL_REPORT_DUE_AUTOMATIONS = """
+SELECT
+  projects.id,
+  projects.name,
+  organizations.name,
+  automations.id,
+  automations.name,
+  automations.trigger_type,
+  automations.frequency,
+  automations.schedule_timezone,
+  automations.schedule_time,
+  automations.schedule_weekday,
+  automations.configuration,
+  projects.subscriptions
+FROM opencve_automations AS automations
+JOIN opencve_projects AS projects ON projects.id = automations.project_id
+JOIN opencve_organizations AS organizations ON organizations.id = projects.organization_id
+WHERE automations.is_enabled = TRUE
+  AND projects.active = TRUE
+  AND automations.trigger_type = 'report'
+  AND EXTRACT(HOUR FROM (%(data_interval_end)s AT TIME ZONE automations.schedule_timezone))
+      = EXTRACT(HOUR FROM automations.schedule_time)
+  AND EXTRACT(MINUTE FROM (%(data_interval_end)s AT TIME ZONE automations.schedule_timezone))
+      = EXTRACT(MINUTE FROM automations.schedule_time)
+  AND (
+    automations.frequency = 'daily'
+    OR (
+      automations.frequency = 'weekly'
+      AND CASE LOWER(automations.schedule_weekday)
+        WHEN 'monday'    THEN 1
+        WHEN 'tuesday'   THEN 2
+        WHEN 'wednesday' THEN 3
+        WHEN 'thursday'  THEN 4
+        WHEN 'friday'    THEN 5
+        WHEN 'saturday'  THEN 6
+        WHEN 'sunday'    THEN 7
+      END = EXTRACT(ISODOW FROM (%(data_interval_end)s AT TIME ZONE automations.schedule_timezone))
+    )
+  )
+ORDER BY automations.name ASC;
+"""
+
+SQL_NOTIFICATION_BY_ID = """
+SELECT
+    notifications.name,
+    notifications.type,
+    notifications.configuration
+FROM opencve_notifications AS notifications
+WHERE notifications.id = %(notification_id)s
+  AND notifications.is_enabled = 't'
+"""
+
+SQL_UPDATE_AUTOMATION_LAST_EXECUTION_AT = """
+UPDATE opencve_automations
+SET
+  last_execution_at = %(executed_at)s,
+  updated_at = NOW()
+WHERE id IN %(automation_ids)s;
+"""
+
+SQL_REPORT_CVES_DETAILS_BY_ID = """
+SELECT DISTINCT ON (cves.cve_id)
+  cves.cve_id,
+  cves.metrics  AS cve_metrics,
+  cves.vendors  AS cve_vendors
+FROM opencve_reports AS reports
+  JOIN opencve_reports_changes AS rc ON reports.id = rc.report_id
+  JOIN opencve_changes          AS changes ON rc.change_id  = changes.id
+  JOIN opencve_cves             AS cves    ON changes.cve_id = cves.id
+WHERE reports.id = %(report_id)s;
+"""
+
+SQL_INSERT_AUTOMATION_EXECUTION = """
+INSERT INTO opencve_automation_executions (
+  id,
+  created_at,
+  updated_at,
+  executed_at,
+  window_start,
+  window_end,
+  matched_cves_count,
+  automation_id,
+  report_id,
+  impact_summary,
+  cves_table_data
+)
+VALUES (
+  %(id)s,
+  NOW(),
+  NOW(),
+  %(executed_at)s,
+  %(window_start)s,
+  %(window_end)s,
+  %(matched_cves_count)s,
+  %(automation_id)s,
+  %(report_id)s,
+  %(impact_summary)s,
+  %(cves_table_data)s
+);
+"""
+
+SQL_INSERT_AUTOMATION_EXECUTION_RESULT = """
+INSERT INTO opencve_automation_execution_results (
+  id,
+  created_at,
+  updated_at,
+  automation_execution_id,
+  output_type,
+  label,
+  status,
+  details
+)
+VALUES (
+  %(id)s,
+  NOW(),
+  NOW(),
+  %(automation_execution_id)s,
+  %(output_type)s,
+  %(label)s,
+  %(status)s,
+  %(details)s
+);
+"""
+
+CVSS_VERSION_MAP = {
+    "v2.0": "cvssV2_0",
+    "v3.0": "cvssV3_0",
+    "v3.1": "cvssV3_1",
+    "v4.0": "cvssV4_0",
+}
+
+CONDITION_TO_CHANGE_TYPES = {
+    "cve_enters_project": {"created"},
+    "cvss_increased": {"metrics"},
+    "cvss_decreased": {"metrics"},
+    "cvss_increased_by": {"metrics"},
+    "epss_increased": {"metrics"},
+    "epss_decreased": {"metrics"},
+    "kev_added": {"kev"},
+    "new_vendor": {"vendors"},
+    "new_product": {"cpes"},
+    "description_changed": {"description"},
+    "summary_changed": {"summary"},
+    "title_changed": {"title"},
+    "new_reference": {"references"},
+    "new_weakness": {"weaknesses"},
+}
