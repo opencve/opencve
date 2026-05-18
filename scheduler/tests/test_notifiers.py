@@ -470,11 +470,14 @@ async def test_webhook_notifier_send_success(tests_path, tmp_path_factory):
     repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
 
     semaphore = asyncio.Semaphore(10)
-    session = AsyncMock()
-    mock_response = AsyncMock()
+    session = MagicMock()
+    mock_response = MagicMock()
     mock_response.status = 200
-    mock_response.json = AsyncMock(return_value={"status": "ok"})
-    session.post.return_value.__aenter__.return_value = mock_response
+    mock_response.text = AsyncMock(return_value="ok")
+    mock_response.headers = {"Content-Type": "application/json"}
+    mock_cm = AsyncMock()
+    mock_cm.__aenter__.return_value = mock_response
+    session.post.return_value = mock_cm
 
     notifier = WebhookNotifier(
         semaphore=semaphore,
@@ -491,7 +494,9 @@ async def test_webhook_notifier_send_success(tests_path, tmp_path_factory):
     with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
         result = await notifier.execute()
 
-    assert result == {}
+    assert result["status"] == "success"
+    assert result["details"]["status_code"] == 200
+    assert result["details"]["response_url"] == "https://example.com/webhook"
     session.post.assert_called_once()
     call_kwargs = session.post.call_args
     assert call_kwargs[0][0] == "https://example.com/webhook"
@@ -528,12 +533,11 @@ async def test_webhook_notifier_send_connection_error(tests_path, tmp_path_facto
     repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
 
     semaphore = asyncio.Semaphore(10)
-    session = AsyncMock()
+    session = MagicMock()
 
-    # Create ClientConnectorError
     connection_key = MagicMock()
     os_error = OSError("Connection refused")
-    os_error.errno = 61  # Connection refused error code
+    os_error.errno = 61
     session.post.side_effect = aiohttp.ClientConnectorError(
         connection_key, os_error=os_error
     )
@@ -553,7 +557,8 @@ async def test_webhook_notifier_send_connection_error(tests_path, tmp_path_facto
     with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
         result = await notifier.execute()
 
-    assert result == {}
+    assert result["status"] == "failed"
+    assert "Cannot connect to host" in result["details"]["summary"]
 
 
 @pytest.mark.asyncio
@@ -585,7 +590,7 @@ async def test_webhook_notifier_send_timeout_error(tests_path, tmp_path_factory)
     repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
 
     semaphore = asyncio.Semaphore(10)
-    session = AsyncMock()
+    session = MagicMock()
     session.post.side_effect = asyncio.TimeoutError()
 
     notifier = WebhookNotifier(
@@ -603,7 +608,8 @@ async def test_webhook_notifier_send_timeout_error(tests_path, tmp_path_factory)
     with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path):
         result = await notifier.execute()
 
-    assert result == {}
+    assert result["status"] == "failed"
+    assert result["details"]["summary"] == "Request timed out"
 
 
 # Tests for SlackNotifier
