@@ -1,3 +1,5 @@
+import datetime
+
 from django.db import migrations
 
 
@@ -52,10 +54,10 @@ def _build_triggers(types):
 
 
 def migrate_notification_rules_to_automations(apps, schema_editor):
-    # Creates one Automation per Notification and points send_notification at the existing row id.
-    # Clears types and metrics from Notification.configuration so only extras remain.
+    # Creates one alert Automation per Notification and one report Automation per Project.
     Notification = apps.get_model("projects", "Notification")
     Automation = apps.get_model("projects", "Automation")
+    Project = apps.get_model("projects", "Project")
 
     for notification in Notification.objects.select_related("project").all():
         configuration = notification.configuration or {}
@@ -86,6 +88,21 @@ def migrate_notification_rules_to_automations(apps, schema_editor):
             "extras": extras if isinstance(extras, dict) else {}
         }
         notification.save(update_fields=["configuration", "updated_at"])
+
+    for project in Project.objects.all():
+        Automation.objects.create(
+            project_id=project.id,
+            name="Daily report",
+            is_enabled=True,
+            trigger_type="report",
+            frequency="daily",
+            schedule_time=datetime.time(9, 0),
+            schedule_timezone="UTC",
+            configuration={
+                "conditions": {"operator": "OR", "children": []},
+                "actions": [],
+            },
+        )
 
 
 def noop(apps, schema_editor):
