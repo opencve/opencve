@@ -37,15 +37,7 @@
                 <div class="row" style="margin-top: 10px;">
                     <div class="col-sm-5">
                         <label for="id_schedule_timezone">Timezone</label>
-                        <input
-                            type="text"
-                            name="schedule_timezone"
-                            id="id_schedule_timezone"
-                            class="form-control"
-                            placeholder="Europe/Paris"
-                            value="{{ form.schedule_timezone.value|default:automation.schedule_timezone|default:'' }}"
-                            required
-                        >
+                        {{ form.schedule_timezone }}
                         {% if form.schedule_timezone.errors %}
                         <p class="text-danger">{{ form.schedule_timezone.errors.0 }}</p>
                         {% endif %}
