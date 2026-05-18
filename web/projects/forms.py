@@ -1,14 +1,45 @@
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
+
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Layout, Submit
 from django import forms
 from django.conf import settings
 from django.db.models import Q
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from projects.models import Automation, Notification, Project, CveTracker
 from users.models import User
 from views.models import View as SavedView
+
+COMMON_TIMEZONES = [
+    "UTC",
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "Asia/Tokyo",
+    "Asia/Shanghai",
+    "Asia/Singapore",
+    "Asia/Kolkata",
+    "Australia/Sydney",
+    "Pacific/Auckland",
+]
+
+TIMEZONE_CHOICES = [
+    ("", ""),
+    ("Common", [(tz, tz) for tz in COMMON_TIMEZONES]),
+    (
+        "All timezones",
+        [
+            (tz, tz)
+            for tz in sorted(available_timezones())
+            if tz not in COMMON_TIMEZONES
+        ],
+    ),
+]
 
 FORM_MAPPING = {
     "email": ["email"],
@@ -246,7 +277,11 @@ class AutomationForm(forms.ModelForm):
         super(AutomationForm, self).__init__(*args, **kwargs)
         self.fields["trigger_type"].required = True
         self.fields["frequency"].required = False
-        self.fields["schedule_timezone"].required = False
+        self.fields["schedule_timezone"] = forms.ChoiceField(
+            choices=TIMEZONE_CHOICES,
+            required=False,
+            widget=forms.Select(attrs={"class": "form-control select2-timezone"}),
+        )
         self.fields["schedule_time"].required = False
         self.fields["schedule_weekday"].required = False
         self.fields["frequency"].widget = forms.RadioSelect(

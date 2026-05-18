@@ -97,6 +97,10 @@ function getContrastedColor(str){
       allowClear: true,
       placeholder: 'All actions',
     });
+    $('.select2-timezone').select2({
+      allowClear: true,
+      placeholder: 'Select a timezone',
+    });
   // Handle clear event to ensure it works correctly with empty value
   $('#id_assignee').on('select2:clear', function() {
       $(this).val('').trigger('change');
