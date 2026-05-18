@@ -2,14 +2,13 @@ import json
 import pathlib
 import time
 from logging import Logger
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import more_itertools
 
 import openai
 from airflow.configuration import conf
 from airflow.exceptions import AirflowException, AirflowConfigException
-from airflow.models import Variable
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
@@ -69,9 +68,29 @@ def format_change_details(records):
             "cve_vendors": r[3],
             "cve_id": r[4],
             "cve_metrics": r[5],
+            "cve_created_at": (
+                r[6].isoformat()
+                if hasattr(r[6], "isoformat") and r[6] is not None
+                else r[6]
+            ),
+            "cve_title": r[7],
+            "cve_description": r[8],
         }
         for r in records
     }
+
+
+def minify_change_events(events):
+    """
+    Transform KB change events list into a compact payload keyed by event type.
+    """
+    payload = {}
+    for event in events or []:
+        event_type = event.get("type")
+        if not event_type:
+            continue
+        payload[event_type] = event.get("details")
+    return payload
 
 
 def merge_project_subscriptions(records):
@@ -123,29 +142,65 @@ def list_changes_by_project(changes, subscriptions):
     return {k: v for k, v in projects_changes.items() if v}
 
 
-def group_notifications_by_project(records, subscriptions):
-    projects_notifications = {}
-    for notification in records:
-        p_id, p_name, o_name, n_name, n_type, n_conf = notification
+def group_automations_by_project(records, subscriptions):
+    """
+    This function groups automations by project.
+    Each record contains:
+    (
+      project_id,
+      project_name,
+      org_name,
+      automation_id,
+      automation_name,
+      trigger_type,
+      frequency,
+      schedule_timezone,
+      schedule_time,
+      schedule_weekday,
+      configuration,
+    )
+    """
+    projects_automations = {}
+    for automation in records:
+        (
+            p_id,
+            p_name,
+            o_name,
+            a_id,
+            a_name,
+            a_trigger,
+            a_frequency,
+            a_timezone,
+            a_time,
+            a_weekday,
+            a_conf,
+        ) = automation
 
-        if p_id not in projects_notifications:
-            projects_notifications[p_id] = []
+        if p_id not in projects_automations:
+            projects_automations[p_id] = []
 
         # Extract project subscriptions
         project_subscriptions = subscriptions.get(p_id, [])
 
-        projects_notifications[p_id].append(
+        projects_automations[p_id].append(
             {
                 "project_id": p_id,
                 "project_name": p_name,
                 "project_subscriptions": project_subscriptions,
                 "organization_name": o_name,
-                "notification_name": n_name,
-                "notification_type": n_type,
-                "notification_conf": n_conf,
+                "automation_id": a_id,
+                "automation_name": a_name,
+                "trigger_type": a_trigger,
+                "frequency": a_frequency,
+                "schedule_timezone": a_timezone,
+                "schedule_time": (
+                    a_time.strftime("%H:%M") if hasattr(a_time, "strftime") else None
+                ),
+                "schedule_weekday": a_weekday,
+                "automation_conf": a_conf,
             }
         )
-    return projects_notifications
+    return projects_automations
 
 
 def get_dates_from_context(context: Dict) -> Tuple[DateTime, DateTime]:
@@ -242,13 +297,6 @@ def get_smtp_conf():
         pass
 
     return kwargs
-
-
-def should_execute(variable_name: str) -> bool:
-    """
-    This function checks if a variable is set to "true".
-    """
-    return Variable.get(variable_name, default_var="true") == "true"
 
 
 def call_llm(api_key, api_url, model, messages, logger):

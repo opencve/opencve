@@ -15,12 +15,13 @@ from includes.utils import (
     format_change_details,
     merge_project_subscriptions,
     list_changes_by_project,
-    group_notifications_by_project,
+    group_automations_by_project,
+    minify_change_events,
+    format_epss_score,
     get_dates_from_context,
     list_commits,
     get_smtp_conf,
     get_smtp_message,
-    should_execute,
     call_llm,
     read_cve_from_kb,
     build_scores_distribution,
@@ -58,6 +59,8 @@ def test_group_changes_by_vendor():
 
 
 def test_format_change_details():
+    """Test format_change_details with 9-field tuples including cve_created_at, title, description."""
+    created_at = pendulum.datetime(2024, 3, 15, 10, 0, tz="UTC")
     records = [
         (
             "change1",
@@ -66,6 +69,9 @@ def test_format_change_details():
             ["vendor1"],
             "CVE-2024-0001",
             {"cvssV3_1": {}},
+            created_at,
+            "Title for CVE-2024-0001",
+            "Description for CVE-2024-0001",
         ),
         (
             "change2",
@@ -74,6 +80,9 @@ def test_format_change_details():
             ["vendor2"],
             "CVE-2024-0002",
             {"cvssV4_0": {}},
+            None,
+            None,
+            None,
         ),
     ]
     assert format_change_details(records) == {
@@ -84,6 +93,9 @@ def test_format_change_details():
             "cve_vendors": ["vendor1"],
             "cve_id": "CVE-2024-0001",
             "cve_metrics": {"cvssV3_1": {}},
+            "cve_created_at": created_at.isoformat(),
+            "cve_title": "Title for CVE-2024-0001",
+            "cve_description": "Description for CVE-2024-0001",
         },
         "change2": {
             "change_id": "change2",
@@ -92,6 +104,9 @@ def test_format_change_details():
             "cve_vendors": ["vendor2"],
             "cve_id": "CVE-2024-0002",
             "cve_metrics": {"cvssV4_0": {}},
+            "cve_created_at": None,
+            "cve_title": None,
+            "cve_description": None,
         },
     }
 
@@ -135,102 +150,6 @@ def test_list_changes_by_project():
             "project5": ["change1", "change2", "change3"],
         }
     )
-
-
-def test_get_project_notifications():
-    records = [
-        (
-            "project-id-1",
-            "project-name-1",
-            "organization-1",
-            "notification-1",
-            "webhook",
-            {
-                "types": ["created", "weaknesses", "cpes"],
-                "extras": {"url": "https://localhost:5000", "headers": {"foo": "bar"}},
-                "metrics": {"cvss31": "4"},
-            },
-        ),
-        (
-            "project-id-1",
-            "project-name-1",
-            "organization-1",
-            "notification-2",
-            "email",
-            {
-                "types": ["references"],
-                "extras": {},
-                "metrics": {"cvss31": "8"},
-            },
-        ),
-        (
-            "project-id-2",
-            "project-name-2",
-            "organization-2",
-            "notification-3",
-            "email",
-            {
-                "types": ["cpes"],
-                "extras": {},
-                "metrics": {"cvss31": "0"},
-            },
-        ),
-    ]
-    subscriptions = {"project-id-1": ["foo", "foo$PRODUCT$bar"]}
-    assert group_notifications_by_project(records, subscriptions) == {
-        "project-id-1": [
-            {
-                "project_id": "project-id-1",
-                "project_name": "project-name-1",
-                "project_subscriptions": [
-                    "foo",
-                    "foo$PRODUCT$bar",
-                ],
-                "organization_name": "organization-1",
-                "notification_name": "notification-1",
-                "notification_type": "webhook",
-                "notification_conf": {
-                    "types": ["created", "weaknesses", "cpes"],
-                    "extras": {
-                        "url": "https://localhost:5000",
-                        "headers": {"foo": "bar"},
-                    },
-                    "metrics": {"cvss31": "4"},
-                },
-            },
-            {
-                "project_id": "project-id-1",
-                "project_name": "project-name-1",
-                "project_subscriptions": [
-                    "foo",
-                    "foo$PRODUCT$bar",
-                ],
-                "organization_name": "organization-1",
-                "notification_name": "notification-2",
-                "notification_type": "email",
-                "notification_conf": {
-                    "types": ["references"],
-                    "extras": {},
-                    "metrics": {"cvss31": "8"},
-                },
-            },
-        ],
-        "project-id-2": [
-            {
-                "project_id": "project-id-2",
-                "project_name": "project-name-2",
-                "project_subscriptions": [],
-                "organization_name": "organization-2",
-                "notification_name": "notification-3",
-                "notification_type": "email",
-                "notification_conf": {
-                    "types": ["cpes"],
-                    "extras": {},
-                    "metrics": {"cvss31": "0"},
-                },
-            }
-        ],
-    }
 
 
 def test_get_dates_from_context():
@@ -348,22 +267,6 @@ async def test_get_smtp_message(override_conf):
     assert "From: from@example.com" in message.as_string()
     assert "To: to@example.com" in message.as_string()
     assert "Subject: Test Subject" in message.as_string()
-
-
-@patch("airflow.models.Variable.get")
-def test_should_execute_function_with_different_values(mock_variable_get):
-    """Test the should_execute function with different values"""
-    # Test with "true"
-    mock_variable_get.return_value = "true"
-    assert should_execute("test_var") is True
-
-    # Test with "false"
-    mock_variable_get.return_value = "false"
-    assert should_execute("test_var") is False
-
-    # Test with other value
-    mock_variable_get.return_value = "other"
-    assert should_execute("test_var") is False
 
 
 @patch("includes.utils.openai.OpenAI")
@@ -826,3 +729,108 @@ def test_build_user_content_for_llm_epss_formatting(mock_read_cve):
     )
 
     assert "EPSS < 1%" in result
+
+
+def test_group_automations_by_project():
+    """Test grouping automations by project with subscription enrichment."""
+    schedule_time = pendulum.parse("09:00:00").time()
+    records = [
+        (
+            "project-1",
+            "proj-name-1",
+            "org-1",
+            "auto-1",
+            "my-alert",
+            "alert",
+            "daily",
+            "UTC",
+            schedule_time,
+            None,
+            {"triggers": [], "conditions": {}, "actions": []},
+        ),
+        (
+            "project-1",
+            "proj-name-1",
+            "org-1",
+            "auto-2",
+            "my-report",
+            "report",
+            "weekly",
+            "Europe/Paris",
+            schedule_time,
+            "monday",
+            {"triggers": [], "conditions": {}, "actions": []},
+        ),
+    ]
+    subscriptions = {"project-1": ["vendor1", "vendor1$PRODUCT$prod1"]}
+    result = group_automations_by_project(records, subscriptions)
+    assert len(result) == 1
+    assert len(result["project-1"]) == 2
+    assert result["project-1"][0]["automation_id"] == "auto-1"
+    assert result["project-1"][0]["trigger_type"] == "alert"
+    assert result["project-1"][0]["project_subscriptions"] == [
+        "vendor1",
+        "vendor1$PRODUCT$prod1",
+    ]
+    assert result["project-1"][1]["automation_id"] == "auto-2"
+    assert result["project-1"][1]["frequency"] == "weekly"
+    assert result["project-1"][1]["schedule_weekday"] == "monday"
+    assert result["project-1"][1]["schedule_time"] == "09:00"
+
+
+def test_group_automations_by_project_no_subscriptions():
+    """Test grouping automations when project has no subscriptions."""
+    records = [
+        (
+            "project-1",
+            "proj-name-1",
+            "org-1",
+            "auto-1",
+            "my-alert",
+            "alert",
+            "daily",
+            "UTC",
+            None,
+            None,
+            {"triggers": []},
+        ),
+    ]
+    result = group_automations_by_project(records, {})
+    assert result["project-1"][0]["project_subscriptions"] == []
+
+
+def test_minify_change_events():
+    """Test transformation of KB change events list into a compact payload."""
+    events = [
+        {"type": "description", "details": {"old": None, "new": "New desc"}},
+        {"type": "metrics", "details": {"added": {"cvssV3_1": {"score": 8.0}}}},
+    ]
+    result = minify_change_events(events)
+    assert result == {
+        "description": {"old": None, "new": "New desc"},
+        "metrics": {"added": {"cvssV3_1": {"score": 8.0}}},
+    }
+
+
+def test_minify_change_events_empty():
+    """Test minify_change_events with None and empty list."""
+    assert minify_change_events(None) == {}
+    assert minify_change_events([]) == {}
+
+
+def test_minify_change_events_skips_missing_type():
+    """Test minify_change_events skips events without a type key."""
+    events = [{"details": "no type"}, {"type": "title", "details": {"old": "a"}}]
+    result = minify_change_events(events)
+    assert result == {"title": {"old": "a"}}
+
+
+def test_format_epss_score():
+    """Test EPSS score formatting for various ranges."""
+    assert format_epss_score(0) == "0%"
+    assert format_epss_score(0.005) == "< 1%"
+    assert format_epss_score(0.05) == "5%"
+    assert format_epss_score(0.956) == "96%"
+    assert format_epss_score(1.0) == "100%"
+    assert format_epss_score("invalid") == "N/A"
+    assert format_epss_score(None) == "N/A"

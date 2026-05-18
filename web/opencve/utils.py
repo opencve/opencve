@@ -22,7 +22,9 @@ class DateConverter:
         return datetime.strptime(value, self.format).date()
 
     def to_url(self, value):
-        return value.strftime(self.format)
+        if hasattr(value, "strftime"):
+            return value.strftime(self.format)
+        return str(value)
 
 
 def normalize_pk_for_model(model_class, object_pk_str):
