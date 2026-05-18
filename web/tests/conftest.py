@@ -11,7 +11,13 @@ from psycopg2.extras import Json
 from cves.models import Cve, Variable
 from dashboards.models import Dashboard
 from organizations.models import Membership, Organization
-from projects.models import Notification, Project
+from projects.models import (
+    Automation,
+    AutomationExecution,
+    AutomationRunResult,
+    Notification,
+    Project,
+)
 from views.models import View
 
 
@@ -98,6 +104,85 @@ def create_notification():
         )
 
     return _create_notification
+
+
+@pytest.fixture
+def create_automation():
+    def _create_automation(
+        name,
+        project,
+        trigger_type=Automation.TRIGGER_ALERT,
+        is_enabled=True,
+        configuration=None,
+        frequency=None,
+        schedule_timezone=None,
+        schedule_time=None,
+        schedule_weekday=None,
+    ):
+        return Automation.objects.create(
+            name=name,
+            project=project,
+            trigger_type=trigger_type,
+            is_enabled=is_enabled,
+            configuration=(
+                configuration
+                if configuration is not None
+                else {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+            frequency=frequency,
+            schedule_timezone=schedule_timezone,
+            schedule_time=schedule_time,
+            schedule_weekday=schedule_weekday,
+        )
+
+    return _create_automation
+
+
+@pytest.fixture
+def create_automation_execution():
+    def _create_execution(
+        automation,
+        executed_at=None,
+        window_start=None,
+        window_end=None,
+        matched_cves_count=0,
+        impact_summary=None,
+        cves_table_data=None,
+    ):
+        from datetime import timedelta
+
+        ts = executed_at or now()
+        return AutomationExecution.objects.create(
+            automation=automation,
+            executed_at=ts,
+            window_start=window_start or ts - timedelta(hours=1),
+            window_end=window_end or ts,
+            matched_cves_count=matched_cves_count,
+            impact_summary=impact_summary,
+            cves_table_data=cves_table_data,
+        )
+
+    return _create_execution
+
+
+@pytest.fixture
+def create_automation_run_result():
+    def _create_result(
+        automation_execution,
+        output_type="notification_sent",
+        label="Notification sent",
+        status=AutomationRunResult.STATUS_SUCCESS,
+        details=None,
+    ):
+        return AutomationRunResult.objects.create(
+            automation_execution=automation_execution,
+            output_type=output_type,
+            label=label,
+            status=status,
+            details=details if details is not None else {},
+        )
+
+    return _create_result
 
 
 @pytest.fixture

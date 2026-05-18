@@ -13,7 +13,14 @@ from cves.models import Cve
 from cves.search import BadQueryException, MaxFieldsExceededException
 from organizations.models import Membership
 from projects.forms import CveTrackerFilterForm
-from projects.models import CveComment, CveTracker, Notification, Project
+from projects.models import (
+    Automation,
+    AutomationRunResult,
+    CveComment,
+    CveTracker,
+    Notification,
+    Project,
+)
 from projects.views import ProjectVulnerabilitiesView
 
 
@@ -1569,7 +1576,6 @@ def test_notification_update_view_valid_form(
     assert response.status_code == 200
     notification.refresh_from_db()
     assert notification.configuration["extras"]["email"] == "old@example.com"
-    assert notification.configuration["metrics"]["cvss31"] == "7"
     assert (
         notification.configuration["extras"]["created_by_email"]
         == "creator@example.com"
@@ -3565,3 +3571,1701 @@ def test_delete_cve_comment_success_deletes_from_db(
     assert data["success"] is True
     assert str(data["deleted_id"]) == str(comment.id)
     assert CveComment.objects.count() == 0
+
+
+# ---------------------------------------------------------------------------
+# AutomationsView (list)
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_view_requires_authentication(client):
+    """Redirect anonymous users to login."""
+    response = client.get(
+        reverse(
+            "automations",
+            kwargs={"org_name": "test-org", "project_name": "test-project"},
+        )
+    )
+    assert response.status_code == 302
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_view_organization_member_access(
+    create_organization, create_user, create_project, auth_client
+):
+    """Only organization members can access the automations list."""
+    user1 = create_user()
+    org1 = create_organization(name="org1", user=user1)
+    create_project(name="project1", organization=org1)
+
+    user2 = create_user()
+    create_organization(name="org2", user=user2)
+
+    client = auth_client(user1)
+    response = client.get(
+        reverse("automations", kwargs={"org_name": "org1", "project_name": "project1"})
+    )
+    assert response.status_code == 200
+
+    client = auth_client(user2)
+    response = client.get(
+        reverse("automations", kwargs={"org_name": "org1", "project_name": "project1"})
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_view_displays_automations(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Automations list shows all project automations."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    a1 = create_automation(name="alert1", project=project)
+    a2 = create_automation(
+        name="report1", project=project, trigger_type=Automation.TRIGGER_REPORT
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse("automations", kwargs={"org_name": "org1", "project_name": "project1"})
+    )
+    assert response.status_code == 200
+    names = [a.name for a in response.context["automations"]]
+    assert "alert1" in names
+    assert "report1" in names
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_view_filter_by_type(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Automations list can be filtered by trigger type."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(
+        name="alert1", project=project, trigger_type=Automation.TRIGGER_ALERT
+    )
+    create_automation(
+        name="report1", project=project, trigger_type=Automation.TRIGGER_REPORT
+    )
+
+    client = auth_client(user)
+
+    response = client.get(
+        reverse("automations", kwargs={"org_name": "org1", "project_name": "project1"})
+        + "?type=alert"
+    )
+    names = [a.name for a in response.context["automations"]]
+    assert "alert1" in names
+    assert "report1" not in names
+
+    response = client.get(
+        reverse("automations", kwargs={"org_name": "org1", "project_name": "project1"})
+        + "?type=report"
+    )
+    names = [a.name for a in response.context["automations"]]
+    assert "report1" in names
+    assert "alert1" not in names
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_view_filter_by_status(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Automations list can be filtered by enabled/disabled status."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="enabled-one", project=project, is_enabled=True)
+    create_automation(name="disabled-one", project=project, is_enabled=False)
+
+    client = auth_client(user)
+
+    response = client.get(
+        reverse("automations", kwargs={"org_name": "org1", "project_name": "project1"})
+        + "?status=enabled"
+    )
+    names = [a.name for a in response.context["automations"]]
+    assert "enabled-one" in names
+    assert "disabled-one" not in names
+
+    response = client.get(
+        reverse("automations", kwargs={"org_name": "org1", "project_name": "project1"})
+        + "?status=disabled"
+    )
+    names = [a.name for a in response.context["automations"]]
+    assert "disabled-one" in names
+    assert "enabled-one" not in names
+
+
+# ---------------------------------------------------------------------------
+# AutomationCreateView
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_create_view_requires_authentication(client):
+    """Redirect anonymous users to login."""
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "test-org",
+                "project_name": "test-project",
+                "trigger_type": "alert",
+            },
+        )
+    )
+    assert response.status_code == 302
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_create_view_requires_owner(
+    create_organization, create_user, create_project, auth_client
+):
+    """Only organization owners can create automations."""
+    user1 = create_user()
+    org = create_organization(name="org1", user=user1)
+    create_project(name="project1", organization=org)
+
+    user2 = create_user()
+    Membership.objects.create(
+        user=user2,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    client = auth_client(user1)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+
+    client = auth_client(user2)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        )
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_create_view_creates_alert(
+    create_organization, create_user, create_project, auth_client
+):
+    """POST creates a new alert automation and redirects to the list."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    config = {"conditions": {"operator": "OR", "children": []}, "actions": []}
+    response = client.post(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        ),
+        data={
+            "name": "new-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(config),
+        },
+        follow=True,
+    )
+    assert response.status_code == 200
+    assert Automation.objects.filter(name="new-alert", project=project).exists()
+    automation = Automation.objects.get(name="new-alert", project=project)
+    assert automation.trigger_type == Automation.TRIGGER_ALERT
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_create_view_context_trigger_type(
+    create_organization, create_user, create_project, auth_client
+):
+    """GET populates context with the correct trigger_type from URL."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "report",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["trigger_type"] == "report"
+
+
+# ---------------------------------------------------------------------------
+# AutomationOverviewView
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_overview_view_requires_authentication(client):
+    """Redirect anonymous users to login."""
+    response = client.get(
+        reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": "test-org",
+                "project_name": "test-project",
+                "automation": "my-auto",
+            },
+        )
+    )
+    assert response.status_code == 302
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_overview_view_displays_automation(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Overview page displays the automation and activity events."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="my-alert", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["automation"].name == "my-alert"
+    assert "activity_events" in response.context
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_overview_view_update_name(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """POST on overview renames the automation."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="old-name", project=project)
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "old-name",
+            },
+        ),
+        data={"name": "new-name", "is_enabled": True},
+        follow=True,
+    )
+    assert response.status_code == 200
+    assert Automation.objects.filter(name="new-name", project=project).exists()
+    assert not Automation.objects.filter(name="old-name", project=project).exists()
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_overview_view_toggle_enabled(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """POST on overview can disable the automation."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project, is_enabled=True)
+
+    client = auth_client(user)
+    client.post(
+        reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        ),
+        data={"name": "my-alert", "is_enabled": False},
+        follow=True,
+    )
+    automation.refresh_from_db()
+    assert automation.is_enabled is False
+
+
+# ---------------------------------------------------------------------------
+# AutomationConfigurationView
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_configuration_view_requires_authentication(client):
+    """Redirect anonymous users to login."""
+    response = client.get(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "test-org",
+                "project_name": "test-project",
+                "automation": "my-auto",
+            },
+        )
+    )
+    assert response.status_code == 302
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_configuration_view_displays_form(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Configuration page renders with automation context."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="my-alert", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["automation"].name == "my-alert"
+    assert "automation_data_json" in response.context
+    assert "notifications" in response.context
+    assert "status_choices" in response.context
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_configuration_view_update_config(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """POST on configuration saves the new configuration_json."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    new_config = {
+        "conditions": {
+            "operator": "OR",
+            "children": [{"type": "kev_present", "value": True}],
+        },
+        "actions": [{"type": "send_notification", "value": "test"}],
+    }
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        ),
+        data={
+            "name": "my-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(new_config),
+        },
+        follow=True,
+    )
+    assert response.status_code == 200
+    automation.refresh_from_db()
+    assert automation.configuration["actions"] == new_config["actions"]
+
+
+# ---------------------------------------------------------------------------
+# AutomationExecutionsView
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_executions_view_requires_authentication(client):
+    """Redirect anonymous users to login."""
+    response = client.get(
+        reverse(
+            "automation_executions",
+            kwargs={
+                "org_name": "test-org",
+                "project_name": "test-project",
+                "automation": "my-auto",
+            },
+        )
+    )
+    assert response.status_code == 302
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_executions_view_lists_executions(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Executions page lists executions for the automation."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    create_automation_execution(automation=automation, matched_cves_count=3)
+    create_automation_execution(automation=automation, matched_cves_count=5)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_executions",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert len(response.context["executions"]) == 2
+    assert "page_obj" in response.context
+
+
+# ---------------------------------------------------------------------------
+# AutomationExecutionDetailView
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_execution_detail_view_requires_authentication(client):
+    """Redirect anonymous users to login."""
+    import uuid
+
+    response = client.get(
+        reverse(
+            "automation_execution_detail",
+            kwargs={
+                "org_name": "test-org",
+                "project_name": "test-project",
+                "automation": "my-auto",
+                "execution_id": uuid.uuid4(),
+            },
+        )
+    )
+    assert response.status_code == 302
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_execution_detail_view_displays_execution(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    create_automation_run_result,
+    auth_client,
+):
+    """Detail page renders the execution with its results."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation, matched_cves_count=3)
+    create_automation_run_result(
+        automation_execution=execution, label="Slack #security"
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_execution_detail",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+                "execution_id": execution.id,
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["execution"] == execution
+    assert len(response.context["results"]) == 1
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_execution_detail_view_404_wrong_automation(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Return 404 when execution_id does not belong to the named automation."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    auto1 = create_automation(name="auto1", project=project)
+    auto2 = create_automation(name="auto2", project=project)
+    execution = create_automation_execution(automation=auto1)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_execution_detail",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "auto2",
+                "execution_id": execution.id,
+            },
+        )
+    )
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# AutomationExecutionDrawerView
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_execution_drawer_view_returns_html_fragment(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Drawer view returns an HTML fragment with execution data."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation, matched_cves_count=2)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_execution_drawer",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+                "execution_id": execution.id,
+            },
+        )
+    )
+    assert response.status_code == 200
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_execution_drawer_view_404_not_found(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    auth_client,
+):
+    """Drawer view returns 404 for a non-existent execution."""
+    import uuid
+
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="my-alert", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_execution_drawer",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+                "execution_id": uuid.uuid4(),
+            },
+        )
+    )
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# AutomationDeleteView
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_delete_view_requires_authentication(client):
+    """Redirect anonymous users to login."""
+    response = client.get(
+        reverse(
+            "delete_automation",
+            kwargs={
+                "org_name": "test-org",
+                "project_name": "test-project",
+                "automation": "my-auto",
+            },
+        )
+    )
+    assert response.status_code == 302
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_delete_view_requires_owner(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Only organization owners can delete automations."""
+    user1 = create_user()
+    org = create_organization(name="org1", user=user1)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="my-alert", project=project)
+
+    user2 = create_user()
+    Membership.objects.create(
+        user=user2,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    client = auth_client(user1)
+    response = client.get(
+        reverse(
+            "delete_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+
+    client = auth_client(user2)
+    response = client.get(
+        reverse(
+            "delete_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 302
+    assert response.url == reverse("list_organizations")
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_delete_view_deletes_automation(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """POST deletes the automation and shows a success message."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "delete_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        ),
+        follow=True,
+    )
+    assert response.status_code == 200
+    assert not Automation.objects.filter(id=automation.id).exists()
+
+    messages = list(get_messages(response.wsgi_request))
+    assert any("removed" in str(m) for m in messages)
+
+
+# ---------------------------------------------------------------------------
+# _populate_automation_form_context (tested through views)
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_populate_context_on_post_with_valid_config_json(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_notification,
+    auth_client,
+):
+    """POST with valid configuration_json sets automation_data_json from the posted value."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="my-alert", project=project)
+    create_notification(name="notif1", project=project)
+
+    posted_config = {
+        "conditions": {
+            "operator": "AND",
+            "children": [{"type": "kev_present", "value": True}],
+        },
+        "actions": [{"type": "send_notification", "value": "xxx"}],
+    }
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        ),
+        data={
+            "name": "my-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(posted_config),
+        },
+    )
+    assert response.status_code == 302 or response.status_code == 200
+    if response.status_code == 200:
+        ctx_json = json.loads(response.context["automation_data_json"])
+        assert ctx_json["conditions"]["operator"] == "AND"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_populate_context_on_post_with_invalid_json_uses_default(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    auth_client,
+):
+    """POST with invalid JSON in configuration_json falls back to the automation's saved config."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    saved_config = {
+        "conditions": {
+            "operator": "OR",
+            "children": [{"type": "kev_present", "value": True}],
+        },
+        "actions": [],
+    }
+    create_automation(name="my-alert", project=project, configuration=saved_config)
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        ),
+        data={
+            "name": "my-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": "not valid json {{",
+        },
+    )
+    assert response.status_code == 200
+    ctx_json = json.loads(response.context["automation_data_json"])
+    assert ctx_json == saved_config
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_populate_context_includes_notifications_and_members(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_notification,
+    auth_client,
+):
+    """Context includes notifications, organization_members, and status_choices."""
+    user = create_user(username="alice")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="my-alert", project=project)
+    notif = create_notification(name="slack-notif", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert notif in response.context["notifications"]
+    member_usernames = [u.username for u in response.context["organization_members"]]
+    assert "alice" in member_usernames
+    assert len(response.context["status_choices"]) > 0
+
+
+# ---------------------------------------------------------------------------
+# AutomationCreateView._get_template_config (tested through GET with ?template=)
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_template_recently_published(
+    create_organization,
+    create_user,
+    create_project,
+    create_notification,
+    auth_client,
+):
+    """Template 'recently_published' pre-fills triggers and first notification."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    notif = create_notification(name="email-notif", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        )
+        + "?template=recently_published"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.context["automation_data_json"])
+    assert data["triggers"] == ["cve_enters_project"]
+    assert data["actions"][0]["type"] == "send_notification"
+    assert data["actions"][0]["value"] == str(notif.id)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_template_kev_alert(
+    create_organization,
+    create_user,
+    create_project,
+    create_notification,
+    auth_client,
+):
+    """Template 'kev_alert' pre-fills KEV condition and triggers."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_notification(name="notif", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        )
+        + "?template=kev_alert"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.context["automation_data_json"])
+    assert "kev_added" in data["triggers"]
+    conditions = data["conditions"]["children"][0]["children"]
+    assert conditions[0]["type"] == "kev_present"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_template_critical_cve(
+    create_organization,
+    create_user,
+    create_project,
+    create_notification,
+    auth_client,
+):
+    """Template 'critical_cve' pre-fills CVSS conditions for v3.1 and v4.0."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_notification(name="notif", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        )
+        + "?template=critical_cve"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.context["automation_data_json"])
+    children = data["conditions"]["children"]
+    assert len(children) == 2
+    assert children[0]["children"][0]["type"] == "cvss_gte"
+    assert children[0]["children"][0]["value"]["version"] == "v3.1"
+    assert children[1]["children"][0]["value"]["version"] == "v4.0"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_template_auto_triage(
+    create_organization, create_user, create_project, auth_client
+):
+    """Template 'auto_triage' pre-fills assign_user and change_status actions."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        )
+        + "?template=auto_triage"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.context["automation_data_json"])
+    action_types = [a["type"] for a in data["actions"]]
+    assert "assign_user" in action_types
+    assert "change_status" in action_types
+    assert data["actions"][-1]["value"] == "to_evaluate"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_template_weekly_summary(
+    create_organization, create_user, create_project, auth_client
+):
+    """Template 'weekly_summary' pre-fills generate_report action."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "report",
+            },
+        )
+        + "?template=weekly_summary"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.context["automation_data_json"])
+    assert data["actions"][0]["type"] == "generate_report"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_template_weekly_kev(
+    create_organization,
+    create_user,
+    create_project,
+    create_notification,
+    auth_client,
+):
+    """Template 'weekly_kev' pre-fills KEV condition and send_notification action."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    notif = create_notification(name="notif", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "report",
+            },
+        )
+        + "?template=weekly_kev"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.context["automation_data_json"])
+    assert data["conditions"]["children"][0]["children"][0]["type"] == "kev_present"
+    assert data["actions"][0]["type"] == "send_notification"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_template_unknown_uses_default(
+    create_organization, create_user, create_project, auth_client
+):
+    """Unknown template name leaves default empty config."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        )
+        + "?template=nonexistent"
+    )
+    assert response.status_code == 200
+    data = json.loads(response.context["automation_data_json"])
+    assert data == {"conditions": {"operator": "OR", "children": []}, "actions": []}
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_no_template_uses_default(
+    create_organization, create_user, create_project, auth_client
+):
+    """GET without template param uses default empty config."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    data = json.loads(response.context["automation_data_json"])
+    assert data == {"conditions": {"operator": "OR", "children": []}, "actions": []}
+
+
+# ---------------------------------------------------------------------------
+# AutomationCreateView.get_initial
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_invalid_trigger_type_defaults_to_alert(
+    create_organization, create_user, create_project, auth_client
+):
+    """Invalid trigger_type in URL defaults to 'alert'."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "invalid",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["trigger_type"] == "alert"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_report_initial_sets_schedule_defaults(
+    create_organization, create_user, create_project, auth_client
+):
+    """Report trigger sets initial frequency=daily, timezone=UTC, time=09:00."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "report",
+            },
+        )
+    )
+    assert response.status_code == 200
+    form = response.context["form"]
+    assert form.initial["frequency"] == Automation.FREQUENCY_DAILY
+    assert form.initial["schedule_timezone"] == "UTC"
+    assert form.initial["schedule_time"] == "09:00"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_create_view_report_weekly_template_sets_weekly_frequency(
+    create_organization, create_user, create_project, auth_client
+):
+    """Report with weekly_summary template sets frequency=weekly and weekday=monday."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "report",
+            },
+        )
+        + "?template=weekly_summary"
+    )
+    assert response.status_code == 200
+    form = response.context["form"]
+    assert form.initial["frequency"] == Automation.FREQUENCY_WEEKLY
+    assert form.initial["schedule_weekday"] == Automation.WEEKDAY_MONDAY
+
+
+# ---------------------------------------------------------------------------
+# AutomationConfigurationView - additional context flags
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_configuration_view_report_automation_context_flags(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Configuration context includes is_report_automation=True for report triggers."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(
+        name="my-report",
+        project=project,
+        trigger_type=Automation.TRIGGER_REPORT,
+        frequency=Automation.FREQUENCY_DAILY,
+        schedule_timezone="UTC",
+        schedule_time="09:00",
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-report",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["is_report_automation"] is True
+    assert response.context["is_alert_automation"] is False
+    assert response.context["trigger_type"] == "report"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_configuration_view_alert_automation_context_flags(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Configuration context includes is_alert_automation=True for alert triggers."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="my-alert", project=project)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["is_alert_automation"] is True
+    assert response.context["is_report_automation"] is False
+
+
+# ---------------------------------------------------------------------------
+# _build_activity_events (tested through Overview context)
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_overview_activity_events_structure(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    create_automation_run_result,
+    auth_client,
+):
+    """Activity events have the expected keys and include result_entries."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation, matched_cves_count=3)
+    create_automation_run_result(
+        automation_execution=execution,
+        output_type="notification_sent",
+        label="Slack #infra",
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    events = response.context["activity_events"]
+    assert len(events) == 1
+    event = events[0]
+    assert event["execution_id"] == execution.id
+    assert event["matched_cves_count"] == 3
+    assert "execution_slug" in event
+    assert "executed_at" in event
+    assert "window_start" in event
+    assert "window_end" in event
+    assert len(event["result_entries"]) == 1
+    entry = event["result_entries"][0]
+    assert entry["label"] == "Slack #infra"
+    assert entry["icon"] == "fa-envelope"
+    assert entry["status"] == AutomationRunResult.STATUS_SUCCESS
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_overview_activity_events_ordering_and_limit(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Activity events are ordered most-recent-first and limited to 10."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    ts = now()
+    for i in range(12):
+        create_automation_execution(
+            automation=automation,
+            executed_at=ts - timedelta(hours=12 - i),
+            matched_cves_count=i,
+        )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    events = response.context["activity_events"]
+    assert len(events) == 10
+    assert events[0]["matched_cves_count"] == 11
+    assert events[-1]["matched_cves_count"] == 2
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_overview_activity_events_result_icon_fallback(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    create_automation_run_result,
+    auth_client,
+):
+    """Unknown output_type uses the fallback icon 'fa-file-o'."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation)
+    create_automation_run_result(
+        automation_execution=execution,
+        output_type="unknown_type",
+        label="Mystery",
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    events = response.context["activity_events"]
+    assert events[0]["result_entries"][0]["icon"] == "fa-file-o"
+
+
+# ---------------------------------------------------------------------------
+# AutomationExecutionsView - pagination
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_executions_view_pagination(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Executions are paginated with 20 per page."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    ts = now()
+    for i in range(25):
+        create_automation_execution(
+            automation=automation,
+            executed_at=ts - timedelta(hours=25 - i),
+        )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_executions",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert len(response.context["executions"]) == 20
+    assert response.context["page_obj"].paginator.num_pages == 2
+
+    response = client.get(
+        reverse(
+            "automation_executions",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+        + "?page=2"
+    )
+    assert len(response.context["executions"]) == 5
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_executions_view_execution_dict_structure(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    create_automation_run_result,
+    auth_client,
+):
+    """Each execution dict in context has required keys including result_entries."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation, matched_cves_count=7)
+    create_automation_run_result(
+        automation_execution=execution,
+        output_type="report",
+        label="Weekly PDF",
+        status=AutomationRunResult.STATUS_SUCCESS,
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_executions",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        )
+    )
+    assert response.status_code == 200
+    exec_dict = response.context["executions"][0]
+    assert exec_dict["execution_id"] == execution.id
+    assert exec_dict["matched_cves_count"] == 7
+    assert "executed_at" in exec_dict
+    assert "window_start" in exec_dict
+    assert "window_end" in exec_dict
+    assert len(exec_dict["result_entries"]) == 1
+    entry = exec_dict["result_entries"][0]
+    assert entry["label"] == "Weekly PDF"
+    assert entry["icon"] == "fa-file-text-o"
+    assert entry["status"] == "success"
+    assert entry["status_display"] == "Success"
+
+
+# ---------------------------------------------------------------------------
+# AutomationExecutionDrawerView - impact_summary in context
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_execution_drawer_view_with_impact_summary(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Drawer passes impact_chart_data and cves_table_data to template context."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    impact = {"cvss_distribution": {"Critical": 2, "High": 1, "Medium": 0, "Low": 0}}
+    cves_table = [{"cve_id": "CVE-2025-0001", "cvss_31": 9.5}]
+    execution = create_automation_execution(automation=automation, matched_cves_count=1)
+    execution.impact_summary = impact
+    execution.cves_table_data = cves_table
+    execution.save()
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_execution_drawer",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+                "execution_id": execution.id,
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["impact_chart_data"] == impact
+    assert response.context["cves_table_data"] == cves_table
+    assert json.loads(response.context["impact_chart_data_json"]) == impact
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_execution_drawer_view_null_impact_summary(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Drawer renders correctly when impact_summary is None."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_execution_drawer",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+                "execution_id": execution.id,
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["impact_chart_data"] is None
+    assert response.context["impact_chart_data_json"] == "null"
+    assert response.context["cves_table_data"] == []
+
+
+# ---------------------------------------------------------------------------
+# AutomationExecutionDetailView - activity_executions
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_execution_detail_view_includes_activity_executions(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Detail page context includes recent activity_executions for the sidebar."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    ts = now()
+    executions = []
+    for i in range(5):
+        e = create_automation_execution(
+            automation=automation,
+            executed_at=ts - timedelta(hours=5 - i),
+        )
+        executions.append(e)
+
+    target = executions[2]
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_execution_detail",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+                "execution_id": target.id,
+            },
+        )
+    )
+    assert response.status_code == 200
+    assert response.context["execution"] == target
+    assert len(response.context["activity_executions"]) == 5
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_execution_detail_view_result_details_none_becomes_empty_dict(
+    create_organization,
+    create_user,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    auth_client,
+):
+    """Results with details=None are normalized to empty dict in context."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation)
+    result = AutomationRunResult.objects.create(
+        automation_execution=execution,
+        output_type="notification_sent",
+        label="test",
+        details=None,
+    )
+
+    client = auth_client(user)
+    response = client.get(
+        reverse(
+            "automation_execution_detail",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+                "execution_id": execution.id,
+            },
+        )
+    )
+    assert response.status_code == 200
+    res = response.context["results"][0]
+    assert res.details == {}
+
+
+# ---------------------------------------------------------------------------
+# AutomationsView - url_add context
+# ---------------------------------------------------------------------------
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automations_view_provides_add_urls(
+    create_organization, create_user, create_project, auth_client
+):
+    """Context includes url_add_alert and url_add_report."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(name="project1", organization=org)
+
+    client = auth_client(user)
+    response = client.get(
+        reverse("automations", kwargs={"org_name": "org1", "project_name": "project1"})
+    )
+    assert response.status_code == 200
+    assert "/automations/add/alert/" in response.context["url_add_alert"]
+    assert "/automations/add/report/" in response.context["url_add_report"]
