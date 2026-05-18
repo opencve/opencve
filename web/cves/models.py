@@ -7,8 +7,16 @@ from django.db import models
 from django.db.models.functions import Upper
 
 from cves.constants import PRODUCT_SEPARATOR
-from cves.utils import humanize
+from cves.utils import get_highest_cvss, humanize
 from opencve.models import BaseModel
+
+# Map Cve metrics keys to the keys used by get_highest_cvss
+_CVSS_METRIC_TO_KEY = {
+    "cvssV4_0": "cvss_40",
+    "cvssV3_1": "cvss_31",
+    "cvssV3_0": "cvss_30",
+    "cvssV2_0": "cvss_20",
+}
 
 
 class Cve(BaseModel):
@@ -144,6 +152,23 @@ class Cve(BaseModel):
     @property
     def epss(self):
         return self.metrics.get("epss")
+
+    @property
+    def highest_cvss(self):
+        """
+        Return the highest CVSS score across all versions and its label.
+        Returns (score, version_label) e.g. (9.3, "v2.0") or (None, None).
+        """
+        scores_dict = {}
+        for metric_key, key in _CVSS_METRIC_TO_KEY.items():
+            data = self.metrics.get(metric_key, {}).get("data", {})
+            score = data.get("score") if isinstance(data, dict) else None
+            if score is not None:
+                try:
+                    scores_dict[key] = float(score)
+                except (TypeError, ValueError):
+                    pass
+        return get_highest_cvss(scores_dict)
 
     @property
     def ssvc(self):

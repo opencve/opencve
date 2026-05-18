@@ -14,7 +14,26 @@ def get_default_subscriptions():
 
 
 def get_default_configuration():
-    return {"cvss": 0, "events": []}
+    # Kept for historical migrations that import this symbol.
+    return {"extras": {}}
+
+
+def get_default_automation_config():
+    return {"conditions": {"operator": "OR", "children": []}, "actions": []}
+
+
+def count_conditions_tree(node):
+    """
+    Count leaf conditions in a conditions tree.
+    Nodes with "children" are groups (OR/AND); nodes with "type" are actual conditions.
+    """
+    if not node:
+        return 0
+    if "children" in node:
+        return sum(count_conditions_tree(c) for c in node.get("children", []))
+    if "type" in node:
+        return 1
+    return 0
 
 
 class Project(BaseModel):
@@ -105,6 +124,205 @@ class Notification(BaseModel):
             return False
         extras = self.configuration.get("extras") or {}
         return bool(extras.get("confirmation_token"))
+
+
+class Automation(BaseModel):
+    TRIGGER_ALERT = "alert"
+    TRIGGER_REPORT = "report"
+    TRIGGER_CHOICES = [
+        (TRIGGER_ALERT, "Alert"),
+        (TRIGGER_REPORT, "Report"),
+    ]
+    FREQUENCY_DAILY = "daily"
+    FREQUENCY_WEEKLY = "weekly"
+    FREQUENCY_CHOICES = [
+        (FREQUENCY_DAILY, "Daily"),
+        (FREQUENCY_WEEKLY, "Weekly"),
+    ]
+    WEEKDAY_MONDAY = "monday"
+    WEEKDAY_TUESDAY = "tuesday"
+    WEEKDAY_WEDNESDAY = "wednesday"
+    WEEKDAY_THURSDAY = "thursday"
+    WEEKDAY_FRIDAY = "friday"
+    WEEKDAY_SATURDAY = "saturday"
+    WEEKDAY_SUNDAY = "sunday"
+    WEEKDAY_CHOICES = [
+        (WEEKDAY_MONDAY, "Monday"),
+        (WEEKDAY_TUESDAY, "Tuesday"),
+        (WEEKDAY_WEDNESDAY, "Wednesday"),
+        (WEEKDAY_THURSDAY, "Thursday"),
+        (WEEKDAY_FRIDAY, "Friday"),
+        (WEEKDAY_SATURDAY, "Saturday"),
+        (WEEKDAY_SUNDAY, "Sunday"),
+    ]
+
+    name = models.CharField(
+        max_length=256,
+        validators=[
+            RegexValidator(
+                regex=r"^[a-zA-Z0-9\-_ ]+$",
+                message="Special characters (except dash and underscore) are not accepted",
+            ),
+        ],
+    )
+    is_enabled = models.BooleanField(default=True)
+    trigger_type = models.CharField(
+        max_length=20,
+        choices=TRIGGER_CHOICES,
+        default=TRIGGER_ALERT,
+    )
+    frequency = models.CharField(
+        max_length=20,
+        choices=FREQUENCY_CHOICES,
+        null=True,
+        blank=True,
+    )
+    schedule_timezone = models.CharField(max_length=64, null=True, blank=True)
+    schedule_time = models.TimeField(null=True, blank=True)
+    schedule_weekday = models.CharField(
+        max_length=20,
+        choices=WEEKDAY_CHOICES,
+        null=True,
+        blank=True,
+    )
+    last_execution_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    configuration = models.JSONField(default=get_default_automation_config)
+
+    # Relationships
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="automations"
+    )
+
+    class Meta:
+        db_table = "opencve_automations"
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse(
+            "automation_overview",
+            kwargs={
+                "project_name": self.project.name,
+                "org_name": self.project.organization.name,
+                "automation": self.name,
+            },
+        )
+
+    @property
+    def conditions_count(self):
+        """Number of leaf conditions (recursive count, ignoring groups/operators)."""
+        conditions = self.configuration.get("conditions") or {}
+        return count_conditions_tree(conditions)
+
+
+class AutomationExecution(BaseModel):
+    """Activity executions for an automation (execution time, window, results)."""
+
+    executed_at = models.DateTimeField(db_index=True)
+    window_start = models.DateTimeField()
+    window_end = models.DateTimeField()
+    matched_cves_count = models.IntegerField(default=0)
+
+    automation = models.ForeignKey(
+        Automation, on_delete=models.CASCADE, related_name="executions"
+    )
+    report = models.ForeignKey(
+        "changes.Report",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="automation_executions",
+    )
+    impact_summary = models.JSONField(null=True, blank=True, default=None)
+    cves_table_data = models.JSONField(null=True, blank=True, default=None)
+
+    class Meta:
+        db_table = "opencve_automation_executions"
+        ordering = ["-executed_at"]
+
+    def __str__(self):
+        return f"{self.automation.name} - {self.executed_at}"
+
+    @property
+    def slug(self):
+        """URL slug from execution time (e.g. 2026-02-18-14-00)."""
+        return self.executed_at.strftime("%Y-%m-%d-%H-%M")
+
+
+class AutomationRunResult(BaseModel):
+    """Single result from an automation execution (report, notification, PDF, etc.).
+    All result-specific data (report day, file path, url, etc.) is in details (JSONB).
+    """
+
+    STATUS_SUCCESS = "success"
+    STATUS_SKIPPED = "skipped"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_SUCCESS, "Success"),
+        (STATUS_SKIPPED, "Skipped"),
+        (STATUS_FAILED, "Failed"),
+    ]
+
+    automation_execution = models.ForeignKey(
+        AutomationExecution, on_delete=models.CASCADE, related_name="results"
+    )
+    output_type = models.CharField(max_length=64)
+    label = models.CharField(max_length=256)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_SUCCESS,
+    )
+    details = models.JSONField(null=True, blank=True, default=dict)  # noqa: B008
+
+    class Meta:
+        db_table = "opencve_automation_execution_results"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.label} ({self.automation_execution_id})"
+
+    @property
+    def summary_display(self):
+        """Human-readable one-line summary from details (e.g. "Slack #infra (sent)", "13 CVEs assigned to \"bob@...\"")."""
+        details = self.details or {}
+        if self.output_type == "notification_sent":
+            channel = details.get("channel")
+            status = details.get("status")
+            if channel:
+                return f"{channel} ({status})" if status else channel
+            return self.label
+        if self.output_type == "report":
+            cve_count = details.get("cve_count")
+            if cve_count is not None:
+                return f"{cve_count} CVE(s) included"
+            return self.label
+        if self.output_type == "assignment":
+            summary = details.get("summary")
+            if summary:
+                return summary
+            assigned_count = details.get("assigned_count")
+            assignee = details.get("assignee")
+            if assigned_count is not None:
+                base = f"{assigned_count} CVEs assigned"
+                return f'{base} to "{assignee}"' if assignee else base
+            return self.label
+        if self.output_type == "status_change":
+            summary = details.get("summary")
+            if summary:
+                return summary
+            from_status = details.get("from_status")
+            to_status = details.get("to_status")
+            updated_count = details.get("updated_count")
+            if from_status and to_status and updated_count is not None:
+                return (
+                    f'{updated_count} CVEs moved from "{from_status}" → "{to_status}"'
+                )
+            if updated_count is not None:
+                return f"{updated_count} CVE(s) updated"
+            return self.label
+        return details.get("summary") or "—"
 
 
 class CveTracker(BaseModel):
