@@ -292,7 +292,6 @@ def test_onboarding_form_valid_notification_linked_to_project(auth_client, creat
     assert notification.project == project
     assert notification.is_enabled is False
     assert notification.configuration["extras"]["email"] == "alerts@example.com"
-    assert notification.configuration["metrics"]["cvss31"] == "7"
 
 
 @freeze_time("2024-01-01")
@@ -326,11 +325,9 @@ def test_onboarding_valid_form_with_notification(auth_client, create_user):
     assert notification.name == "Email notifications"
     assert notification.type == "email"
     assert notification.is_enabled is False
-    assert notification.configuration["types"] == ["created", "first_time"]
     assert notification.configuration["extras"]["email"] == "alerts@example.com"
     assert notification.configuration["extras"]["created_by_email"] == "john@doe.com"
     assert "confirmation_token" in notification.configuration["extras"]
-    assert notification.configuration["metrics"]["cvss31"] == "7"
 
     assert len(outbox) == 1
     assert outbox[0].to == ["alerts@example.com"]

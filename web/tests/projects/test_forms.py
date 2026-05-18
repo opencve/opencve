@@ -1,3 +1,4 @@
+import json
 from unittest.mock import Mock
 
 import pytest
@@ -10,7 +11,10 @@ from projects.forms import (
     NotificationForm,
     ProjectForm,
     CveTrackerFilterForm,
+    AutomationForm,
+    AutomationOverviewForm,
 )
+from projects.models import Automation
 
 
 def test_project_form_valid(create_organization):
@@ -792,3 +796,496 @@ def test_cve_tracker_filter_form_status_rejects_invalid_multiple_value():
 
     assert not bound_form.is_valid()
     assert "status" in bound_form.errors
+
+
+# --- AutomationForm tests ---
+
+
+def test_automation_form_valid_alert(create_organization, create_project):
+    """Accept a minimal alert automation with valid name."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "my-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "is_enabled": True,
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert form.errors == {}
+
+
+def test_automation_form_special_characters(create_organization, create_project):
+    """Reject names with special characters other than dash and underscore."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "foo|bar",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert "name" in form.errors
+
+
+def test_automation_form_reserved_name(create_organization, create_project):
+    """Reject the reserved name 'add'."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "add",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert form.errors == {"name": ["This name is reserved."]}
+
+
+def test_automation_form_name_already_exists(
+    create_organization, create_project, create_automation
+):
+    """Reject duplicate automation name within the same project."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="project1", organization=org)
+    create_automation(name="existing", project=project)
+
+    form = AutomationForm(
+        data={
+            "name": "existing",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert form.errors == {"name": ["This name already exists."]}
+
+
+def test_automation_form_same_name_different_project(
+    create_organization, create_project, create_automation
+):
+    """Allow the same name in a different project."""
+    org = create_organization(name="my-orga")
+    project1 = create_project(name="project1", organization=org)
+    project2 = create_project(name="project2", organization=org)
+    create_automation(name="my-alert", project=project1)
+
+    form = AutomationForm(
+        data={
+            "name": "my-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project2,
+    )
+    assert form.errors == {}
+
+
+def test_automation_form_report_requires_frequency(create_organization, create_project):
+    """Report trigger without frequency raises a validation error."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "my-report",
+            "trigger_type": Automation.TRIGGER_REPORT,
+            "schedule_timezone": "UTC",
+            "schedule_time": "09:00",
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert "frequency" in form.errors
+
+
+def test_automation_form_report_requires_timezone(create_organization, create_project):
+    """Report trigger without timezone raises a validation error."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "my-report",
+            "trigger_type": Automation.TRIGGER_REPORT,
+            "frequency": Automation.FREQUENCY_DAILY,
+            "schedule_time": "09:00",
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert "schedule_timezone" in form.errors
+
+
+def test_automation_form_report_requires_time(create_organization, create_project):
+    """Report trigger without schedule_time raises a validation error."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "my-report",
+            "trigger_type": Automation.TRIGGER_REPORT,
+            "frequency": Automation.FREQUENCY_DAILY,
+            "schedule_timezone": "UTC",
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert "schedule_time" in form.errors
+
+
+def test_automation_form_report_invalid_timezone(create_organization, create_project):
+    """Report trigger with invalid timezone raises a validation error."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "my-report",
+            "trigger_type": Automation.TRIGGER_REPORT,
+            "frequency": Automation.FREQUENCY_DAILY,
+            "schedule_timezone": "Not/A/Zone",
+            "schedule_time": "09:00",
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert "schedule_timezone" in form.errors
+
+
+def test_automation_form_report_time_not_on_hour(create_organization, create_project):
+    """Report trigger with non-aligned minutes raises a validation error."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "my-report",
+            "trigger_type": Automation.TRIGGER_REPORT,
+            "frequency": Automation.FREQUENCY_DAILY,
+            "schedule_timezone": "UTC",
+            "schedule_time": "09:30",
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert "schedule_time" in form.errors
+
+
+def test_automation_form_weekly_requires_weekday(create_organization, create_project):
+    """Weekly report without schedule_weekday raises a validation error."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "my-report",
+            "trigger_type": Automation.TRIGGER_REPORT,
+            "frequency": Automation.FREQUENCY_WEEKLY,
+            "schedule_timezone": "UTC",
+            "schedule_time": "09:00",
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert "schedule_weekday" in form.errors
+
+
+def test_automation_form_valid_weekly_report(create_organization, create_project):
+    """Accept a complete weekly report automation."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "Weekly KEV",
+            "trigger_type": Automation.TRIGGER_REPORT,
+            "frequency": Automation.FREQUENCY_WEEKLY,
+            "schedule_timezone": "Europe/Paris",
+            "schedule_time": "09:00",
+            "schedule_weekday": Automation.WEEKDAY_MONDAY,
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert form.errors == {}
+
+
+def test_automation_form_valid_daily_report(create_organization, create_project):
+    """Daily report clears schedule_weekday even if provided."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "Daily Digest",
+            "trigger_type": Automation.TRIGGER_REPORT,
+            "frequency": Automation.FREQUENCY_DAILY,
+            "schedule_timezone": "UTC",
+            "schedule_time": "08:00",
+            "schedule_weekday": Automation.WEEKDAY_FRIDAY,
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert form.errors == {}
+    assert form.cleaned_data["schedule_weekday"] is None
+
+
+def test_automation_form_alert_clears_schedule_fields(
+    create_organization, create_project
+):
+    """Alert trigger resets all schedule fields to None."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "my-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "frequency": Automation.FREQUENCY_DAILY,
+            "schedule_timezone": "UTC",
+            "schedule_time": "09:00",
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}, "actions": []}
+            ),
+        },
+        project=project,
+    )
+    assert form.errors == {}
+    assert form.cleaned_data["frequency"] is None
+    assert form.cleaned_data["schedule_timezone"] is None
+    assert form.cleaned_data["schedule_time"] is None
+    assert form.cleaned_data["schedule_weekday"] is None
+
+
+def test_automation_form_invalid_configuration_json(
+    create_organization, create_project
+):
+    """Reject malformed JSON in configuration_json."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "bad-config",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": "not valid json",
+        },
+        project=project,
+    )
+    assert "configuration_json" in form.errors
+
+
+def test_automation_form_configuration_missing_keys(
+    create_organization, create_project
+):
+    """Reject configuration_json without 'conditions' and 'actions'."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "missing-keys",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(
+                {"conditions": {"operator": "OR", "children": []}}
+            ),
+        },
+        project=project,
+    )
+    assert "configuration_json" in form.errors
+
+
+def test_automation_form_configuration_invalid_operator(
+    create_organization, create_project
+):
+    """Reject conditions with invalid operator."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "bad-op",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(
+                {
+                    "conditions": {"operator": "XOR", "children": []},
+                    "actions": [],
+                }
+            ),
+        },
+        project=project,
+    )
+    assert "configuration_json" in form.errors
+
+
+def test_automation_form_configuration_leaf_without_value(
+    create_organization, create_project
+):
+    """Reject condition leaf nodes that lack a 'value' key."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "bad-leaf",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(
+                {
+                    "conditions": {
+                        "operator": "OR",
+                        "children": [{"type": "kev_present"}],
+                    },
+                    "actions": [],
+                }
+            ),
+        },
+        project=project,
+    )
+    assert "configuration_json" in form.errors
+
+
+def test_automation_form_configuration_with_triggers(
+    create_organization, create_project
+):
+    """Accept configuration_json that includes a valid triggers list."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    form = AutomationForm(
+        data={
+            "name": "with-triggers",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(
+                {
+                    "triggers": ["cve_enters_project", "kev_added"],
+                    "conditions": {"operator": "OR", "children": []},
+                    "actions": [],
+                }
+            ),
+        },
+        project=project,
+    )
+    assert form.errors == {}
+
+
+def test_automation_form_save_sets_project(create_organization, create_project):
+    """save() writes project and configuration to the instance."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    config = {"conditions": {"operator": "OR", "children": []}, "actions": ["foo"]}
+    form = AutomationForm(
+        data={
+            "name": "saved-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(config),
+        },
+        project=project,
+    )
+    assert form.is_valid(), form.errors
+    automation = form.save()
+    assert automation.project == project
+    assert automation.configuration["actions"] == ["foo"]
+
+
+# --- AutomationOverviewForm tests ---
+
+
+def test_overview_form_valid(create_organization, create_project, create_automation):
+    """Accept a valid name and is_enabled update."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    form = AutomationOverviewForm(
+        data={"name": "renamed", "is_enabled": True},
+        instance=automation,
+        project=project,
+    )
+    assert form.errors == {}
+
+
+def test_overview_form_reserved_name(
+    create_organization, create_project, create_automation
+):
+    """Reject the reserved name 'add' from overview form."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    form = AutomationOverviewForm(
+        data={"name": "add", "is_enabled": True},
+        instance=automation,
+        project=project,
+    )
+    assert form.errors == {"name": ["This name is reserved."]}
+
+
+def test_overview_form_duplicate_name(
+    create_organization, create_project, create_automation
+):
+    """Reject renaming to an already existing automation name in the same project."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+    create_automation(name="taken", project=project)
+    automation = create_automation(name="original", project=project)
+
+    form = AutomationOverviewForm(
+        data={"name": "taken", "is_enabled": True},
+        instance=automation,
+        project=project,
+    )
+    assert form.errors == {"name": ["This name already exists."]}
+
+
+def test_overview_form_keep_same_name(
+    create_organization, create_project, create_automation
+):
+    """Allow keeping the same name when editing."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    form = AutomationOverviewForm(
+        data={"name": "my-alert", "is_enabled": False},
+        instance=automation,
+        project=project,
+    )
+    assert form.errors == {}

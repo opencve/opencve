@@ -1,7 +1,17 @@
 import pytest
-from django.db import IntegrityError
+from datetime import time
 
-from projects.models import CveTracker
+from django.db import IntegrityError
+from django.utils.timezone import now
+
+from projects.models import (
+    Automation,
+    AutomationExecution,
+    AutomationRunResult,
+    CveTracker,
+    count_conditions_tree,
+    get_default_automation_config,
+)
 
 
 def test_project_model(create_user, create_organization, create_project):
@@ -443,3 +453,317 @@ def test_notification_is_pending_email_confirmation(
         configuration={"types": [], "metrics": {}, "extras": {"url": "https://x.com"}},
     )
     assert webhook_notif.is_pending_email_confirmation is False
+
+
+# --- Automation tests ---
+
+
+def test_get_default_automation_config():
+    """Return a dict with empty conditions tree and empty actions list."""
+    config = get_default_automation_config()
+    assert config == {"conditions": {"operator": "OR", "children": []}, "actions": []}
+
+
+@pytest.mark.parametrize(
+    "node,expected",
+    [
+        (None, 0),
+        ({}, 0),
+        ({"operator": "OR", "children": []}, 0),
+        ({"type": "cvss_gte", "value": 7}, 1),
+        (
+            {
+                "operator": "OR",
+                "children": [
+                    {"type": "cvss_gte", "value": 7},
+                    {"type": "kev_present", "value": True},
+                ],
+            },
+            2,
+        ),
+        (
+            {
+                "operator": "OR",
+                "children": [
+                    {
+                        "operator": "AND",
+                        "children": [
+                            {"type": "cvss_gte", "value": 7},
+                            {"type": "kev_present", "value": True},
+                        ],
+                    },
+                    {
+                        "operator": "AND",
+                        "children": [
+                            {"type": "cvss_gte", "value": 9},
+                        ],
+                    },
+                ],
+            },
+            3,
+        ),
+    ],
+)
+def test_count_conditions_tree(node, expected):
+    """Count leaf conditions in various tree shapes."""
+    assert count_conditions_tree(node) == expected
+
+
+def test_automation_model(create_user, create_organization, create_project):
+    """Create an alert automation and verify all fields."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    automation = Automation.objects.create(
+        name="My Alert",
+        project=project,
+        trigger_type=Automation.TRIGGER_ALERT,
+        is_enabled=True,
+        configuration={
+            "conditions": {"operator": "OR", "children": []},
+            "actions": [{"type": "send_notification", "value": "abc"}],
+        },
+    )
+
+    assert automation.name == "My Alert"
+    assert automation.project == project
+    assert automation.trigger_type == Automation.TRIGGER_ALERT
+    assert automation.is_enabled is True
+    assert str(automation) == "My Alert"
+    assert automation.frequency is None
+    assert automation.schedule_timezone is None
+    assert automation.schedule_time is None
+    assert automation.schedule_weekday is None
+
+
+def test_automation_get_absolute_url(
+    create_user, create_organization, create_project, create_automation
+):
+    """Return the overview URL for the automation."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    assert automation.get_absolute_url() == (
+        "/org/org1/projects/project1/automations/my-alert"
+    )
+
+
+def test_automation_conditions_count(create_user, create_organization, create_project):
+    """conditions_count returns the number of leaf conditions in the configuration tree."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    automation = Automation.objects.create(
+        name="complex",
+        project=project,
+        configuration={
+            "conditions": {
+                "operator": "OR",
+                "children": [
+                    {
+                        "operator": "AND",
+                        "children": [
+                            {
+                                "type": "cvss_gte",
+                                "value": {"version": "v3.1", "value": 7},
+                            },
+                            {"type": "kev_present", "value": True},
+                        ],
+                    },
+                ],
+            },
+            "actions": [],
+        },
+    )
+    assert automation.conditions_count == 2
+
+    empty = Automation.objects.create(
+        name="empty",
+        project=project,
+    )
+    assert empty.conditions_count == 0
+
+
+def test_automation_report_trigger(create_user, create_organization, create_project):
+    """Create a report automation with schedule fields."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    automation = Automation.objects.create(
+        name="Daily Report",
+        project=project,
+        trigger_type=Automation.TRIGGER_REPORT,
+        frequency=Automation.FREQUENCY_DAILY,
+        schedule_timezone="Europe/Paris",
+        schedule_time=time(9, 0),
+    )
+
+    assert automation.trigger_type == Automation.TRIGGER_REPORT
+    assert automation.frequency == Automation.FREQUENCY_DAILY
+    assert automation.schedule_timezone == "Europe/Paris"
+    assert automation.schedule_time == time(9, 0)
+    assert automation.schedule_weekday is None
+
+
+def test_automation_execution_model(
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+    create_automation_execution,
+):
+    """Create an execution and verify fields and slug property."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    ts = now()
+    execution = create_automation_execution(
+        automation=automation,
+        executed_at=ts,
+        matched_cves_count=5,
+    )
+
+    assert execution.automation == automation
+    assert execution.matched_cves_count == 5
+    assert execution.slug == ts.strftime("%Y-%m-%d-%H-%M")
+    assert str(execution) == f"my-alert - {ts}"
+
+
+def test_automation_execution_ordering(
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+    create_automation_execution,
+):
+    """Executions are ordered by most recent first."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+
+    from datetime import timedelta
+
+    ts = now()
+    old = create_automation_execution(
+        automation=automation, executed_at=ts - timedelta(hours=2)
+    )
+    recent = create_automation_execution(automation=automation, executed_at=ts)
+
+    executions = list(AutomationExecution.objects.filter(automation=automation))
+    assert executions[0] == recent
+    assert executions[1] == old
+
+
+def test_automation_run_result_model(
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    create_automation_run_result,
+):
+    """Create a run result and verify fields."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation, matched_cves_count=3)
+
+    result = create_automation_run_result(
+        automation_execution=execution,
+        output_type="notification_sent",
+        label="Slack #security",
+        status=AutomationRunResult.STATUS_SUCCESS,
+        details={"channel": "Slack #security", "status": "sent"},
+    )
+
+    assert result.automation_execution == execution
+    assert result.output_type == "notification_sent"
+    assert result.label == "Slack #security"
+    assert result.status == AutomationRunResult.STATUS_SUCCESS
+    assert str(result) == f"Slack #security ({execution.id})"
+
+
+@pytest.mark.parametrize(
+    "output_type,details,expected",
+    [
+        (
+            "notification_sent",
+            {"channel": "Slack #infra", "status": "sent"},
+            "Slack #infra (sent)",
+        ),
+        ("notification_sent", {"channel": "Slack #infra"}, "Slack #infra"),
+        ("notification_sent", {}, "fallback"),
+        ("report", {"cve_count": 12}, "12 CVE(s) included"),
+        ("report", {}, "fallback"),
+        ("assignment", {"summary": "3 CVEs assigned"}, "3 CVEs assigned"),
+        (
+            "assignment",
+            {"assigned_count": 5, "assignee": "alice"},
+            '5 CVEs assigned to "alice"',
+        ),
+        ("status_change", {"summary": "2 moved"}, "2 moved"),
+        (
+            "status_change",
+            {"from_status": "New", "to_status": "Resolved", "updated_count": 4},
+            '4 CVEs moved from "New" → "Resolved"',
+        ),
+        ("status_change", {"updated_count": 3}, "3 CVE(s) updated"),
+        ("unknown_type", {"summary": "custom"}, "custom"),
+        ("unknown_type", {}, "—"),
+    ],
+)
+def test_automation_run_result_summary_display(
+    output_type,
+    details,
+    expected,
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+    create_automation_execution,
+):
+    """summary_display returns a human-readable line based on output_type and details."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="a", project=project)
+    execution = create_automation_execution(automation=automation)
+
+    result = AutomationRunResult.objects.create(
+        automation_execution=execution,
+        output_type=output_type,
+        label="fallback",
+        details=details,
+    )
+    assert result.summary_display == expected
+
+
+def test_automation_cascade_delete(
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+    create_automation_execution,
+    create_automation_run_result,
+):
+    """Deleting an automation cascades to executions and results."""
+    user = create_user(username="user1")
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project)
+    execution = create_automation_execution(automation=automation)
+    create_automation_run_result(automation_execution=execution)
+
+    automation.delete()
+
+    assert AutomationExecution.objects.count() == 0
+    assert AutomationRunResult.objects.count() == 0
