@@ -751,7 +751,7 @@ def build_report_notification_payload(**context):
         score_distribution = summary[1] if summary else []
         report_url = (
             f"{web_base_url}/org/{urllib.parse.quote(automation['organization_name'])}"
-            f"/projects/{urllib.parse.quote(automation['project_name'])}/reports/id/{report_id}"
+            f"/projects/{urllib.parse.quote(automation['project_name'])}/reports/{report_id}"
         )
 
         actions = automation.get("automation_conf", {}).get("actions", [])

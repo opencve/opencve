@@ -10,7 +10,7 @@
     <tbody>
         {% for report in reports %}
         <tr>
-            <td><a href="{% url 'report' org_name=organization.name project_name=report.project.name day=report.day %}">{{ report.day|date:"M, d" }}</a></td>
+            <td><a href="{% url 'report' org_name=organization.name project_name=report.project.name report_id=report.id %}">{{ report.day|date:"M, d" }}</a></td>
             <td><a href="{% url 'project' org_name=organization.name project_name=report.project.name %}">{{ report.project.name }}</a></td>
             <td class="center">{{ report.changes.count }}</td>
         </tr>
