@@ -13,7 +13,7 @@ from freezegun import freeze_time
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Product, Vendor
 from organizations.models import Membership, Organization
-from projects.models import Notification, Project
+from projects.models import Automation, Notification, Project
 
 
 def test_onboarding_dispatch(client, auth_client, create_user, create_organization):
@@ -418,3 +418,102 @@ def test_search_vendors_products_includes_products_by_vendor_name(
             }
         ],
     }
+
+
+# --- Automation creation during onboarding ---
+
+
+@freeze_time("2024-01-01")
+def test_onboarding_no_automation_created_without_notification(
+    auth_client, create_user
+):
+    """No automation is created when email notification is not enabled."""
+    user = create_user(username="john", email="john@doe.com")
+    client = auth_client(user)
+    url = reverse("onboarding")
+
+    client.post(
+        url,
+        data={
+            "organization": "myorga",
+            "project": "myproject",
+            "selected_subscriptions": "[]",
+            "enable_email_notification": "",
+            "cvss31_min": "0",
+        },
+        follow=True,
+    )
+
+    assert Automation.objects.count() == 0
+    assert Notification.objects.count() == 0
+
+
+@freeze_time("2024-01-01")
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+def test_onboarding_creates_automation_with_notification(auth_client, create_user):
+    """An alert automation is created and linked to the notification."""
+    user = create_user(username="john", email="john@doe.com")
+    client = auth_client(user)
+    url = reverse("onboarding")
+
+    response = client.post(
+        url,
+        data={
+            "organization": "myorga",
+            "project": "myproject",
+            "selected_subscriptions": "[]",
+            "enable_email_notification": "1",
+            "notification_email": "alerts@example.com",
+            "cvss31_min": "7",
+        },
+        follow=True,
+    )
+    assert response.redirect_chain == [(reverse("home"), 302)]
+
+    notification = Notification.objects.first()
+    assert notification is not None
+
+    automation = Automation.objects.first()
+    assert automation is not None
+    assert automation.name == "Email notifications"
+    assert automation.trigger_type == Automation.TRIGGER_ALERT
+    assert automation.is_enabled is True
+    assert automation.project == notification.project
+
+    actions = automation.configuration["actions"]
+    assert len(actions) == 1
+    assert actions[0]["type"] == "send_notification"
+    assert actions[0]["value"] == str(notification.id)
+
+    conditions = automation.configuration["conditions"]
+    assert conditions == {"operator": "OR", "children": []}
+
+
+@freeze_time("2024-01-01")
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+def test_onboarding_automation_linked_to_correct_project(auth_client, create_user):
+    """The automation is linked to the same project as the notification."""
+    user = create_user(username="john", email="john@doe.com")
+    client = auth_client(user)
+    url = reverse("onboarding")
+
+    client.post(
+        url,
+        data={
+            "organization": "myorga",
+            "project": "myproject",
+            "selected_subscriptions": "[]",
+            "enable_email_notification": "1",
+            "notification_email": "alerts@example.com",
+            "cvss31_min": "0",
+        },
+        follow=True,
+    )
+
+    project = Project.objects.first()
+    automation = Automation.objects.first()
+    notification = Notification.objects.first()
+
+    assert automation.project == project
+    assert notification.project == project
+    assert automation.project == notification.project
