@@ -4,7 +4,7 @@ import pendulum
 from airflow.configuration import conf
 from airflow import DAG
 
-from includes.tasks.reports import summarize_reports
+from includes.tasks.reports import summarize_reports, summarize_weekly_reports
 
 
 doc_md_DAG = """
@@ -31,3 +31,4 @@ with DAG(
     },
 ) as dag:
     summarize_reports()
+    summarize_weekly_reports()
