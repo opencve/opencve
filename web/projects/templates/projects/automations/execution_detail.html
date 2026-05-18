@@ -82,9 +82,7 @@
                             </td>
                             <td>
                                 {% if result.details.report_id %}
-                                <a href="{% url 'report_by_id' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" class="btn btn-sm btn-default">View report</a>
-                                {% elif result.details.report_day %}
-                                <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=result.details.report_day %}" class="btn btn-sm btn-default">View report</a>
+                                <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name report_id=result.details.report_id %}" class="btn btn-sm btn-default">View report</a>
                                 {% elif result.details.url %}
                                 <a href="{{ result.details.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-default">Open link</a>
                                 {% else %}

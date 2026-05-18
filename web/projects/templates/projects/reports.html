@@ -22,7 +22,7 @@
                     <tbody>
                         {% for report in reports %}
                         <tr>
-                            <td><a href="{% url 'report' org_name=request.current_organization.name project_name=project.name day=report.day %}">{{ report.day|date:"D d M Y" }}</a></td>
+                            <td><a href="{% url 'report' org_name=request.current_organization.name project_name=project.name report_id=report.id %}">{{ report.day|date:"D d M Y" }}</a></td>
                             <td>{% if report.period_type == "daily" %}Daily{% else %}Weekly{% endif %}</td>
                             <td>{% if report.automation %}<a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=report.automation.name %}">{{ report.automation.name }}</a>{% else %}-{% endif %}</td>
                             <td>

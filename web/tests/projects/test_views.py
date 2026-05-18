@@ -1,4 +1,5 @@
 import json
+import uuid
 from datetime import date, timedelta
 from unittest.mock import Mock, PropertyMock, patch
 
@@ -1034,15 +1035,22 @@ def test_reports_view_displays_reports(
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_report_view_requires_authentication(client):
+def test_report_view_requires_authentication(
+    client, create_organization, create_user, create_project
+):
     """Test that ReportView requires authentication"""
+    user = create_user()
+    org = create_organization(name="test-org", user=user)
+    project = create_project(name="test-project", organization=org)
+    report = Report.objects.create(project=project, day=date.today())
+
     response = client.get(
         reverse(
             "report",
             kwargs={
                 "org_name": "test-org",
                 "project_name": "test-project",
-                "day": date.today(),
+                "report_id": report.id,
             },
         )
     )
@@ -1070,7 +1078,7 @@ def test_report_view_organization_member_access(
             kwargs={
                 "org_name": "org1",
                 "project_name": "project1",
-                "day": date.today(),
+                "report_id": report.id,
             },
         )
     )
@@ -1084,7 +1092,7 @@ def test_report_view_organization_member_access(
             kwargs={
                 "org_name": "org1",
                 "project_name": "project1",
-                "day": date.today(),
+                "report_id": report.id,
             },
         )
     )
@@ -1108,7 +1116,7 @@ def test_report_view_not_found(
             kwargs={
                 "org_name": "org1",
                 "project_name": "project1",
-                "day": date.today() - timedelta(days=1),
+                "report_id": uuid.uuid4(),
             },
         )
     )
@@ -1142,7 +1150,7 @@ def test_report_view_statistics(
             kwargs={
                 "org_name": "org1",
                 "project_name": "project1",
-                "day": date.today(),
+                "report_id": report.id,
             },
         )
     )

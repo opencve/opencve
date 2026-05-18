@@ -470,43 +470,6 @@ class ReportView(
         return {"report": report, "changes": changes.values()}
 
     def get_object(self, queryset=None):
-        # Optimize the query to return the associated events and CVE
-        changes_with_cve_prefetch = Prefetch(
-            "changes",
-            queryset=Change.objects.select_related("cve"),
-        )
-        queryset = self.model.objects.select_related("automation").prefetch_related(
-            changes_with_cve_prefetch
-        )
-
-        # Return the daily report
-        report = (
-            queryset.filter(project=self.project, day=self.kwargs["day"])
-            .order_by("-created_at")
-            .first()
-        )
-        if not report:
-            raise Http404()
-
-        return self.get_report_statistics(report)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["project"] = self.project
-        return context
-
-
-class ReportByIdView(
-    LoginRequiredMixin,
-    OrganizationIsMemberMixin,
-    ProjectObjectMixin,
-    ProjectIsActiveMixin,
-    DetailView,
-):
-    model = Report
-    template_name = "projects/report.html"
-
-    def get_object(self, queryset=None):
         changes_with_cve_prefetch = Prefetch(
             "changes",
             queryset=Change.objects.select_related("cve"),
@@ -519,7 +482,7 @@ class ReportByIdView(
             project=self.project,
             id=self.kwargs["report_id"],
         )
-        return ReportView.get_report_statistics(report)
+        return self.get_report_statistics(report)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
