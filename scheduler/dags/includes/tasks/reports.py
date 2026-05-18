@@ -16,8 +16,9 @@ from includes.constants import (
     SQL_DELETE_EXPIRED_REPORTS,
     SQL_CHANGE_WITH_VENDORS,
     SQL_PROJECT_WITH_SUBSCRIPTIONS,
-    SQL_REPORTS_CVES_BY_DAY,
+    SQL_DAILY_REPORTS_CVES_TO_SUMMARIZE,
     SQL_UPDATE_REPORT_AI_SUMMARY,
+    SQL_WEEKLY_REPORTS_CVES_TO_SUMMARIZE,
 )
 from includes.storage import (
     REDIS_PREFIX_CHANGES_DETAILS,
@@ -151,13 +152,8 @@ def resolve_subscriptions(**context):
     redis_set(redis_hook, REDIS_PREFIX_SUBSCRIPTIONS, start, end, subscriptions)
 
 
-@task
-def summarize_reports(**context):
-    """
-    This task is used to generate summaries for each report.
-    """
-
-    # First we check if the LLM is well configured
+def _get_llm_config():
+    """Return (llm_api_key, llm_api_url, llm_model) or raise AirflowSkipException."""
     try:
         llm_api_key = conf.get("opencve", "llm_api_key")
     except AirflowConfigException:
@@ -173,17 +169,11 @@ def summarize_reports(**context):
     except AirflowConfigException:
         llm_model = "Mistral-7B-Instruct-v0.3"
 
-    # Retrieve the reports for the last day
-    last_day = str(context["data_interval_start"].date())
-    logger.info("Retrieving reports for day %s", last_day)
+    return llm_api_key, llm_api_url, llm_model
 
-    hook = PostgresHook(postgres_conn_id="opencve_postgres")
-    reports = hook.get_records(
-        sql=SQL_REPORTS_CVES_BY_DAY,
-        parameters={"day": last_day},
-    )
 
-    # LLM system prompt
+def _process_reports_with_llm(reports, hook, llm_api_key, llm_api_url, llm_model):
+    """Call the LLM for each report and persist the generated summary."""
     prompt_path = (
         pathlib.Path(__file__).parent.parent / "data" / "summarize_reports.prompt"
     )
@@ -227,6 +217,44 @@ def summarize_reports(**context):
             sql=SQL_UPDATE_REPORT_AI_SUMMARY,
             parameters={"report_id": report_id, "ai_summary": response},
         )
+
+
+@task
+def summarize_reports(**context):
+    """
+    Generate AI summaries for daily reports of the previous day.
+    """
+    llm_api_key, llm_api_url, llm_model = _get_llm_config()
+
+    last_day = str(context["data_interval_start"].date())
+    logger.info("Retrieving daily reports for day %s", last_day)
+
+    hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    reports = hook.get_records(
+        sql=SQL_DAILY_REPORTS_CVES_TO_SUMMARIZE,
+        parameters={"day": last_day},
+    )
+
+    _process_reports_with_llm(reports, hook, llm_api_key, llm_api_url, llm_model)
+
+
+@task
+def summarize_weekly_reports(**context):
+    """
+    Generate AI summaries for weekly reports whose 7-day period has ended.
+    """
+    llm_api_key, llm_api_url, llm_model = _get_llm_config()
+
+    current_date = str(context["data_interval_start"].date())
+    logger.info("Retrieving completed weekly reports as of %s", current_date)
+
+    hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    reports = hook.get_records(
+        sql=SQL_WEEKLY_REPORTS_CVES_TO_SUMMARIZE,
+        parameters={"current_date": current_date},
+    )
+
+    _process_reports_with_llm(reports, hook, llm_api_key, llm_api_url, llm_model)
 
 
 def clean_reports():
