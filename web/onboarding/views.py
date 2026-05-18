@@ -15,7 +15,7 @@ from cves.models import Product, Vendor
 from onboarding.forms import OnboardingForm
 from organizations.models import Membership, Organization
 from organizations.utils import is_organization_name_unique_violation
-from projects.models import Notification, Project
+from projects.models import Automation, Notification, Project
 from projects.utils import send_notification_confirmation_email
 
 
@@ -151,7 +151,7 @@ class OnboardingFormView(
                     subscriptions=subscriptions,
                 )
 
-                # TODO: add a new automation for this notification
+                # Create a new automation for the notification
                 if data.get("enable_email_notification"):
                     extras = {
                         "email": data["notification_email"],
@@ -165,6 +165,22 @@ class OnboardingFormView(
                         project=project,
                         configuration={
                             "extras": extras,
+                        },
+                    )
+
+                    Automation.objects.create(
+                        name="Email notifications",
+                        trigger_type=Automation.TRIGGER_ALERT,
+                        is_enabled=True,
+                        project=project,
+                        configuration={
+                            "conditions": {"operator": "OR", "children": []},
+                            "actions": [
+                                {
+                                    "type": "send_notification",
+                                    "value": str(notification.id),
+                                }
+                            ],
                         },
                     )
         except IntegrityError as exc:
