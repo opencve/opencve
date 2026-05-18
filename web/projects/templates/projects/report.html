@@ -6,7 +6,39 @@
 
 {% block content_project %}
 
-
+<div class="row">
+    {% if object.report.automation %}
+    <div class="col-md-12">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title"><i class="fa fa-cogs"></i> Automation</h3>
+            </div>
+            <div class="box-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Name</strong><br>
+                        <a href="{{ object.report.automation.get_absolute_url }}">{{ object.report.automation.name }}</a>
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Period</strong><br>
+                        {{ object.report.get_period_type_display }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Schedule</strong><br>
+                        {{ object.report.automation.schedule_time|time:"H:i" }} ({{ object.report.automation.schedule_timezone }})
+                    </div>
+                    {% if object.report.automation.frequency == 'weekly' and object.report.automation.schedule_weekday %}
+                    <div class="col-md-2">
+                        <strong>Weekday</strong><br>
+                        {{ object.report.automation.get_schedule_weekday_display }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
 
 <div class="row">
     {% if object.report.ai_summary %}

@@ -475,7 +475,9 @@ class ReportView(
             "changes",
             queryset=Change.objects.select_related("cve"),
         )
-        queryset = self.model.objects.prefetch_related(changes_with_cve_prefetch)
+        queryset = self.model.objects.select_related("automation").prefetch_related(
+            changes_with_cve_prefetch
+        )
 
         # Return the daily report
         report = (
@@ -509,7 +511,9 @@ class ReportByIdView(
             "changes",
             queryset=Change.objects.select_related("cve"),
         )
-        queryset = self.model.objects.prefetch_related(changes_with_cve_prefetch)
+        queryset = self.model.objects.select_related("automation").prefetch_related(
+            changes_with_cve_prefetch
+        )
         report = get_object_or_404(
             queryset,
             project=self.project,
