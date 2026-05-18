@@ -18,9 +18,6 @@
                 <li class="{% is_active_link 'project_vulnerabilities' %}">
                     <a href="{% url 'project_vulnerabilities' org_name=request.current_organization.name project_name=project.name %}">Vulnerabilities</a>
                 </li>
-                <li class="{% is_active_link 'reports' 'report' %}">
-                    <a href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}">Reports</a>
-                </li>
                 <li class="{% is_active_link 'subscriptions' %}">
                     <a href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}">Subscriptions</a>
                 </li>
@@ -29,6 +26,9 @@
                 </li>
                 <li class="{% is_active_link 'notifications' 'create_notification' 'edit_notification' %}">
                     <a href="{% url 'notifications' org_name=request.current_organization.name project_name=project.name %}">Notifications</a>
+                </li>
+                <li class="{% is_active_link 'reports' 'report' %}">
+                    <a href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}">Reports</a>
                 </li>
                 <li class="pull-right">
                     <a href="{% url 'edit_project' org_name=request.current_organization.name project_name=project.name %}">
