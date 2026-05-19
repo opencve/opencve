@@ -1,9 +1,11 @@
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 from django.test import override_settings
 
-from changes.models import Change
+from changes.models import Change, Report
 
 
 @pytest.mark.django_db
@@ -41,3 +43,36 @@ def test_change_model_previous_change(create_cve, open_file):
 
     assert not change_1.get_previous_change()
     assert change_2.get_previous_change() == change_1
+
+
+def test_report_period_window_daily():
+    report = Report(
+        day=date(2026, 5, 18),
+        period_type=Report.PERIOD_DAILY,
+        period_timezone="UTC",
+    )
+    start, end = report.get_period_window()
+    assert start == datetime(2026, 5, 18, 0, 0, 0, tzinfo=ZoneInfo("UTC"))
+    assert end == datetime(2026, 5, 18, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
+
+
+def test_report_period_window_weekly():
+    report = Report(
+        day=date(2026, 5, 18),
+        period_type=Report.PERIOD_WEEKLY,
+        period_timezone="UTC",
+    )
+    start, end = report.get_period_window()
+    assert start == datetime(2026, 5, 18, 0, 0, 0, tzinfo=ZoneInfo("UTC"))
+    assert end == datetime(2026, 5, 24, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
+
+
+def test_report_period_window_unknown_timezone_falls_back_to_utc():
+    report = Report(
+        day=date(2026, 5, 18),
+        period_type=Report.PERIOD_DAILY,
+        period_timezone="Not/A_Real/Zone",
+    )
+    start, end = report.get_period_window()
+    assert start.tzinfo == ZoneInfo("UTC")
+    assert end.tzinfo == ZoneInfo("UTC")

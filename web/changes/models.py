@@ -1,5 +1,7 @@
 import json
 import pathlib
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.db import models
@@ -99,3 +101,30 @@ class Report(BaseModel):
                 name="ix_unique_project_period_automation",
             ),
         ]
+
+    def _period_timezone(self):
+        tz_name = self.period_timezone or "UTC"
+        try:
+            return ZoneInfo(tz_name)
+        except ZoneInfoNotFoundError:
+            return ZoneInfo("UTC")
+
+    def get_period_window(self):
+        """Return (start, end) datetimes for this report's accumulation period."""
+        tz = self._period_timezone()
+        start = datetime.combine(self.day, time.min, tzinfo=tz)
+        end_day = (
+            self.day + timedelta(days=6)
+            if self.period_type == self.PERIOD_WEEKLY
+            else self.day
+        )
+        end = datetime.combine(end_day, time(23, 59, 59), tzinfo=tz)
+        return start, end
+
+    @property
+    def period_window_start(self):
+        return self.get_period_window()[0]
+
+    @property
+    def period_window_end(self):
+        return self.get_period_window()[1]

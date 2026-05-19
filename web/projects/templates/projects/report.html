@@ -1,5 +1,5 @@
 {% extends 'projects/base_project.html' %}
-{% load opencve_extras %}
+{% load opencve_extras tz %}
 
 {% block title %}Report for {{ object.report.day|date:'M, d Y' }} - {{ block.super }}{% endblock %}
 {% block navbar_title %}{{ project.name }} - Report for {{ object.report.day|date:'M, d Y' }}{% endblock %}
@@ -19,9 +19,13 @@
                         <strong>Name</strong><br>
                         <a href="{{ object.report.automation.get_absolute_url }}">{{ object.report.automation.name }}</a>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-4">
                         <strong>Period</strong><br>
-                        {{ object.report.get_period_type_display }}
+                        ({{ object.report.get_period_type_display }})
+                        {% timezone object.report.period_timezone %}
+                        From <strong>{{ object.report.period_window_start|date:"Y-m-d H:i" }}</strong> to <strong>{{ object.report.period_window_end|date:"Y-m-d H:i" }}</strong>
+                        {% endtimezone %}
+                        <small class="text-muted">{{ object.report.period_timezone }}</small>
                     </div>
                     <div class="col-md-3">
                         <strong>Schedule</strong><br>
