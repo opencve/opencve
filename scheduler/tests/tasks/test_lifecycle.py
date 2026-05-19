@@ -23,6 +23,7 @@ from includes.tasks.automations import (
     evaluate_report_due_in_automation_timezone,
     build_report_notification_payload,
     execute_report_due_automation_actions,
+    get_report_period_window,
 )
 from includes.storage import (
     REDIS_PREFIX_AUTOMATION_ACTION_QUEUE_ALERT,
@@ -470,12 +471,23 @@ def test_report_automation_due_at_scheduled_time(
 
     executions = web_pg_hook.get_records(
         f"""
-        SELECT automation_id, matched_cves_count
+        SELECT automation_id, matched_cves_count, window_start, window_end, executed_at
         FROM opencve_automation_executions
         WHERE automation_id = '{AUTOMATION_REPORT_ID}';
         """
     )
     assert len(executions) >= 1
+    _, _, window_start, window_end, executed_at = executions[0]
+    period_window = get_report_period_window(
+        {
+            "period_day": "2024-01-01",
+            "period_type": "daily",
+            "period_timezone": "UTC",
+        }
+    )
+    assert pendulum.instance(window_start) == period_window["start"]
+    assert pendulum.instance(window_end) == period_window["end"]
+    assert pendulum.instance(executed_at) == due_end_adj
 
     results = web_pg_hook.get_records(
         "SELECT output_type, status FROM opencve_automation_execution_results;"

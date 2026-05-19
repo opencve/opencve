@@ -9,6 +9,7 @@ from includes.tasks.automations import (
     filter_changes_for_automation,
     get_accumulation_period_bucket,
     get_due_period_bucket,
+    get_report_period_window,
 )
 
 
@@ -186,6 +187,49 @@ def test_get_due_period_bucket_weekly():
     bucket = get_due_period_bucket(automation, context)
     assert bucket["period_day"] == "2024-06-10"
     assert bucket["period_type"] == "weekly"
+
+
+def test_get_report_period_window_daily_utc():
+    """Daily report window spans the full calendar day in UTC."""
+    window = get_report_period_window(
+        {
+            "period_day": "2024-06-14",
+            "period_type": "daily",
+            "period_timezone": "UTC",
+        }
+    )
+    assert window["start"] == pendulum.datetime(2024, 6, 14, 0, 0, 0, tz="UTC")
+    assert window["end"] == pendulum.datetime(2024, 6, 14, tz="UTC").end_of("day")
+
+
+def test_get_report_period_window_weekly_utc():
+    """Weekly report window spans Monday 00:00 through Sunday 23:59:59."""
+    window = get_report_period_window(
+        {
+            "period_day": "2024-06-10",
+            "period_type": "weekly",
+            "period_timezone": "UTC",
+        }
+    )
+    assert window["start"] == pendulum.datetime(2024, 6, 10, 0, 0, 0, tz="UTC")
+    assert window["end"] == pendulum.datetime(2024, 6, 16, tz="UTC").end_of("day")
+
+
+def test_get_report_period_window_timezone():
+    """Report window boundaries use the automation timezone."""
+    window = get_report_period_window(
+        {
+            "period_day": "2024-06-14",
+            "period_type": "daily",
+            "period_timezone": "America/New_York",
+        }
+    )
+    assert window["start"] == pendulum.datetime(
+        2024, 6, 14, 0, 0, 0, tz="America/New_York"
+    )
+    assert window["end"] == pendulum.datetime(
+        2024, 6, 14, tz="America/New_York"
+    ).end_of("day")
 
 
 def test_filter_changes_for_automation_no_conditions():

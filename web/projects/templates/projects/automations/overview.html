@@ -40,7 +40,7 @@
                         <thead>
                             <tr>
                                 <th>Execution time</th>
-                                <th>Scope</th>
+                                <th>Window</th>
                                 <th>CVEs</th>
                                 <th>Results</th>
                             </tr>
@@ -49,7 +49,7 @@
                             {% for event in activity_events %}
                             <tr class="automation-execution-row" data-execution-id="{{ event.execution_id }}">
                                 <td>{{ event.executed_at|date:"Y-m-d H:i" }}</td>
-                                <td>{{ event.window_start|time:"H:i" }}–{{ event.window_end|time:"H:i" }}</td>
+                                <td>{% if automation.trigger_type == 'report' %}{{ event.window_start|date:"Y-m-d H:i" }} – {{ event.window_end|date:"Y-m-d H:i" }}{% else %}{{ event.window_start|time:"H:i" }}–{{ event.window_end|time:"H:i" }}{% endif %}</td>
                                 <td>{{ event.matched_cves_count }}</td>
                                 <td>
                                     {% if event.result_entries %}

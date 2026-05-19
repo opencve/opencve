@@ -4,6 +4,7 @@ import urllib.parse
 import uuid
 
 import aiohttp
+import pendulum
 from airflow.configuration import conf
 from airflow.decorators import task
 from airflow.exceptions import AirflowSkipException
@@ -216,7 +217,9 @@ def update_automations_last_execution(postgres_hook, automation_ids, executed_at
     )
 
 
-def insert_automation_execution(postgres_hook, item, period, item_changes_details):
+def insert_automation_execution(
+    postgres_hook, item, period, item_changes_details, executed_at=None
+):
     execution_id = str(uuid.uuid4())
     automation = item["automation"]
     report_content = item.get("report_content") or {}
@@ -226,7 +229,7 @@ def insert_automation_execution(postgres_hook, item, period, item_changes_detail
         sql=SQL_INSERT_AUTOMATION_EXECUTION,
         parameters={
             "id": execution_id,
-            "executed_at": period["end"],
+            "executed_at": executed_at if executed_at is not None else period["end"],
             "window_start": period["start"],
             "window_end": period["end"],
             "matched_cves_count": len(cves_table_data),
@@ -318,6 +321,19 @@ def get_due_period_bucket(automation, context):
         "period_type": period_type,
         "period_timezone": _get_timezone_name(automation),
     }
+
+
+def get_report_period_window(period_bucket):
+    """Return start/end datetimes covering the full daily or weekly report period."""
+    tz = period_bucket.get("period_timezone") or "UTC"
+    period_day = period_bucket["period_day"]
+    period_type = period_bucket["period_type"]
+    start = pendulum.parse(str(period_day), tz=tz).start_of("day")
+    if period_type == "weekly":
+        end = start.add(days=6).end_of("day")
+    else:
+        end = start.end_of("day")
+    return {"start": start, "end": end}
 
 
 def filter_changes_for_automation(automation, changes, changes_details, cve_trackers):
@@ -785,10 +801,13 @@ def build_report_notification_payload(**context):
     return True
 
 
-async def execute_actions_async(action_items, changes_details, period):
+async def execute_actions_async(
+    action_items, changes_details, period, executed_at=None
+):
     max_notifications_per_task = conf.getint("opencve", "max_notifications_per_task")
     semaphore = asyncio.Semaphore(max_notifications_per_task)
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
+    run_executed_at = executed_at if executed_at is not None else period["end"]
 
     async with aiohttp.ClientSession(raise_for_status=True) as session:
         for item in action_items:
@@ -797,16 +816,27 @@ async def execute_actions_async(action_items, changes_details, period):
                 for change_id in item.get("changes", [])
                 if change_id in changes_details
             }
-            report_id = (item.get("report_content") or {}).get("report_id")
+            report_content = item.get("report_content")
+            report_id = (report_content or {}).get("report_id")
             if not item_changes_details and report_id:
                 item_changes_details = build_report_item_changes_details(
                     postgres_hook, report_id
                 )
+            item_period = period
+            if report_content:
+                item_period = get_report_period_window(
+                    {
+                        "period_day": report_content["report_day"],
+                        "period_type": report_content["period_type"],
+                        "period_timezone": report_content.get("period_timezone", "UTC"),
+                    }
+                )
             execution_id = insert_automation_execution(
                 postgres_hook=postgres_hook,
                 item=item,
-                period=period,
+                period=item_period,
                 item_changes_details=item_changes_details,
+                executed_at=run_executed_at,
             )
             action_context = {
                 "session": session,
@@ -815,8 +845,8 @@ async def execute_actions_async(action_items, changes_details, period):
                 "automation": item["automation"],
                 "changes": item.get("changes", []),
                 "item_changes_details": item_changes_details,
-                "period": period,
-                "report_content": item.get("report_content"),
+                "period": item_period,
+                "report_content": report_content,
             }
             notification_tasks = []
             for action in item["actions"]:
@@ -883,6 +913,7 @@ def _execute_automation_actions(queue_name: str, **context):
                 action_items=chunk,
                 changes_details=changes_details,
                 period={"start": start, "end": end},
+                executed_at=end,
             )
         )
     return True
