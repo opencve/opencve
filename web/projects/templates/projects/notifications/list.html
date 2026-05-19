@@ -6,10 +6,26 @@
 {% block content_project %}
 
 <div class="row">
-    <div class="col-lg-9 col-md-9 col-sm-9">
+    <div class="col-md-3 col-sm-4">
+
+        <a class="btn btn-primary btn-block margin-bottom" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=email"><i class="fa fa-plus"></i> Email</a>
+        <a class="btn btn-primary btn-block margin-bottom" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=webhook"><i class="fa fa-plus"></i> Webhook</a>
+        <a class="btn btn-primary btn-block margin-bottom" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=slack"><i class="fa fa-plus"></i> Slack</a>
+
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
+            </div>
+            <div class="box-body">
+                <p>The notifications are used to immediately send a message for each change on your subscriptions.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-9 col-sm-8">
         <div class="box box-primary">
             <div class="box-header with-border">
-                <h3 class="box-title">Notifications list</h3>
+                <h3 class="box-title">Notifications ({{ notifications|length }})</h3>
             </div>
             <div class="box-body">
                 {% if notifications %}
@@ -35,30 +51,8 @@
                     {% endfor %}
                 </ul>
                 {% else %}
-                    <p>You have no notification yet.</p>
+                <p class="text-muted">No notifications yet. Create one using the buttons on the left.</p>
                 {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-3 col-md-3 col-sm-3">
-        <div class="box box-primary">
-            <div class="box-header">
-                <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
-            </div>
-            <div class="box-body">
-                <p>The notifications are used to immediately send a message for each change on your subscriptions. </p>
-            </div>
-        </div>
-
-        <div class="box box-primary">
-            <div class="box-header with-border">
-                <h3 class="box-title">New Notification</h3>
-            </div>
-            <div class="box-body">
-                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=email"><i class="fa fa-plus"></i> Email</a>
-                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=webhook"><i class="fa fa-plus"></i> Webhook</a>
-                <a class="btn btn-block btn-social btn-default" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=slack"><i class="fa fa-plus"></i> Slack</a>
             </div>
         </div>
     </div>
