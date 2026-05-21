@@ -47,6 +47,10 @@ FORM_MAPPING = {
     "slack": ["webhook_url"],
 }
 
+NOTIFICATION_TYPE_CHOICES = [
+    (type_key, type_key.capitalize()) for type_key in FORM_MAPPING
+]
+
 
 class ProjectForm(forms.ModelForm):
     class Meta:

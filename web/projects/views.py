@@ -35,6 +35,7 @@ from projects.forms import (
     AutomationForm,
     AutomationOverviewForm,
     FORM_MAPPING,
+    NOTIFICATION_TYPE_CHOICES,
     ProjectForm,
     CveTrackerFilterForm,
 )
@@ -427,11 +428,20 @@ class ReportsView(
             .prefetch_related(changes_with_cve_prefetch)
             .all()
         )
+
+        # Apply period filter
+        filter_period = self.request.GET.get("period")
+        if filter_period == Report.PERIOD_DAILY:
+            query = query.filter(period_type=Report.PERIOD_DAILY)
+        elif filter_period == Report.PERIOD_WEEKLY:
+            query = query.filter(period_type=Report.PERIOD_WEEKLY)
+
         return query.order_by("-created_at")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
+        context["period_choices"] = Report.PERIOD_CHOICES
         return context
 
 
@@ -569,9 +579,15 @@ class NotificationsView(
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
-        context["notifications"] = (
-            Notification.objects.filter(project=self.project).order_by("name").all()
-        )
+        queryset = Notification.objects.filter(project=self.project).order_by("name")
+
+        # Apply type filter
+        filter_type = self.request.GET.get("type")
+        if filter_type in FORM_MAPPING:
+            queryset = queryset.filter(type=filter_type)
+
+        context["notifications"] = list(queryset)
+        context["notification_types"] = NOTIFICATION_TYPE_CHOICES
         return context
 
 

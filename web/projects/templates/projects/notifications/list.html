@@ -57,6 +57,20 @@
                 <p>They do not send anything by themselves. Add them as actions in your <a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}">automations</a> to receive alerts or scheduled reports.</p>
             </div>
         </div>
+
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title">Type</h3>
+            </div>
+            <div class="box-body no-padding">
+                <ul class="nav nav-pills nav-stacked">
+                    <li class="{% if not request.GET.type %}active{% endif %}"><a href="{% url 'notifications' org_name=request.current_organization.name project_name=project.name %}"><i class="fa fa-inbox"></i> All</a></li>
+                    {% for type_value, type_label in notification_types %}
+                    <li class="{% if request.GET.type == type_value %}active{% endif %}"><a href="{% url 'notifications' org_name=request.current_organization.name project_name=project.name %}?type={{ type_value }}"><img src="{% static 'img/'|add:type_value|add:'.png' %}" alt="" class="notification-filter-icon"> {{ type_label }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
 
     <div class="col-md-9 col-sm-8">
