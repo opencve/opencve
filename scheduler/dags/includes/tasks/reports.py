@@ -245,13 +245,13 @@ def summarize_weekly_reports(**context):
     """
     llm_api_key, llm_api_url, llm_model = _get_llm_config()
 
-    current_date = str(context["data_interval_start"].date())
-    logger.info("Retrieving completed weekly reports as of %s", current_date)
+    current_ts = context["data_interval_start"]
+    logger.info("Retrieving completed weekly reports as of %s", current_ts)
 
     hook = PostgresHook(postgres_conn_id="opencve_postgres")
     reports = hook.get_records(
         sql=SQL_WEEKLY_REPORTS_CVES_TO_SUMMARIZE,
-        parameters={"current_date": current_date},
+        parameters={"current_ts": current_ts},
     )
 
     _process_reports_with_llm(reports, hook, llm_api_key, llm_api_url, llm_model)

@@ -270,8 +270,38 @@ def insert_automation_execution_result(
     )
 
 
+WEEKDAY_TO_ISO = {
+    "monday": 1,
+    "tuesday": 2,
+    "wednesday": 3,
+    "thursday": 4,
+    "friday": 5,
+    "saturday": 6,
+    "sunday": 7,
+}
+
+
 def _get_timezone_name(automation):
     return automation.get("schedule_timezone") or "UTC"
+
+
+def _get_schedule_weekday(automation):
+    weekday = automation.get("schedule_weekday")
+    if weekday and weekday.lower() in WEEKDAY_TO_ISO:
+        return weekday.lower()
+    if automation.get("frequency") == "weekly":
+        logger.warning(
+            "Weekly automation %s missing schedule_weekday; defaulting to monday",
+            automation.get("automation_id"),
+        )
+    return "monday"
+
+
+def get_rolling_week_start(local_date, schedule_weekday):
+    """Return the most recent schedule_weekday on or before local_date."""
+    target = WEEKDAY_TO_ISO[schedule_weekday.lower()]
+    offset = (local_date.isoweekday() - target) % 7
+    return local_date.subtract(days=offset)
 
 
 def get_accumulation_period_bucket(automation, context):
@@ -282,13 +312,12 @@ def get_accumulation_period_bucket(automation, context):
     )
     frequency = automation.get("frequency")
 
-    # BACKLOG: weekly accumulation currently anchors to the ISO start-of-week (Monday).
-    # The intended behaviour is to anchor to the day before the scheduled send time
-    # (e.g. user picks Wednesday 09:00 → window covers Wednesday-7d 00:00 to Tuesday 23:59).
-    # Changing the anchor requires migrating existing report rows and adjusting the unique
-    # constraint; defer until the report bucketing strategy is finalized.
     if frequency == "weekly":
-        period_day = str(local_anchor.start_of("week").date())
+        period_day = str(
+            get_rolling_week_start(
+                local_anchor.date(), _get_schedule_weekday(automation)
+            )
+        )
         period_type = "weekly"
     else:
         period_day = str(local_anchor.date())
@@ -306,12 +335,12 @@ def get_due_period_bucket(automation, context):
     )
     frequency = automation.get("frequency")
 
-    # Previous week for weekly automations
     if frequency == "weekly":
-        period_day = str(local_run_end.start_of("week").subtract(weeks=1).date())
+        current_week_start = get_rolling_week_start(
+            local_run_end.date(), _get_schedule_weekday(automation)
+        )
+        period_day = str(current_week_start.subtract(days=7))
         period_type = "weekly"
-
-    # Previous day for daily automations
     else:
         period_day = str(local_run_end.subtract(days=1).date())
         period_type = "daily"

@@ -58,13 +58,13 @@ def test_report_period_window_daily():
 
 def test_report_period_window_weekly():
     report = Report(
-        day=date(2026, 5, 18),
+        day=date(2026, 5, 22),
         period_type=Report.PERIOD_WEEKLY,
         period_timezone="UTC",
     )
     start, end = report.get_period_window()
-    assert start == datetime(2026, 5, 18, 0, 0, 0, tzinfo=ZoneInfo("UTC"))
-    assert end == datetime(2026, 5, 24, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
+    assert start == datetime(2026, 5, 22, 0, 0, 0, tzinfo=ZoneInfo("UTC"))
+    assert end == datetime(2026, 5, 28, 23, 59, 59, tzinfo=ZoneInfo("UTC"))
 
 
 def test_report_period_window_unknown_timezone_falls_back_to_utc():

@@ -1,5 +1,5 @@
 {% extends 'projects/base_project.html' %}
-{% load opencve_extras %}
+{% load opencve_extras tz %}
 
 {% block title %}Executions - {{ automation.name }} - {{ block.super }}{% endblock %}
 
@@ -28,7 +28,7 @@
                             {% for event in executions %}
                             <tr class="automation-execution-row" data-execution-id="{{ event.execution_id }}">
                                 <td>{{ event.executed_at|date:"Y-m-d H:i" }}</td>
-                                <td>{% if automation.trigger_type == 'report' %}{{ event.window_start|date:"Y-m-d H:i" }} – {{ event.window_end|date:"Y-m-d H:i" }}{% else %}{{ event.window_start|time:"H:i" }}–{{ event.window_end|time:"H:i" }}{% endif %}</td>
+                                <td>{% if automation.trigger_type == 'report' %}{% timezone automation.schedule_timezone %}{{ event.window_start|date:"M j, Y H:i:s" }} – {{ event.window_end|date:"M j, Y H:i:s" }}{% endtimezone %}{% else %}{{ event.window_start|time:"H:i" }}–{{ event.window_end|time:"H:i" }}{% endif %}</td>
                                 <td>{{ event.matched_cves_count }}</td>
                                 <td>
                                     {% if event.result_entries %}

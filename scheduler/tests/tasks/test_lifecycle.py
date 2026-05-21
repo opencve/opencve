@@ -107,7 +107,12 @@ def _setup_alert_automation(web_pg_hook, cvss_threshold=7.0):
     )
 
 
-def _setup_report_automation(web_pg_hook, schedule_time="09:00:00", frequency="daily"):
+def _setup_report_automation(
+    web_pg_hook,
+    schedule_time="09:00:00",
+    frequency="daily",
+    schedule_weekday=None,
+):
     """Insert a report automation with daily schedule at the given time."""
     config = {
         "triggers": [],
@@ -116,6 +121,7 @@ def _setup_report_automation(web_pg_hook, schedule_time="09:00:00", frequency="d
             {"type": "generate_report", "value": True},
         ],
     }
+    weekday_sql = "NULL" if schedule_weekday is None else f"'{schedule_weekday}'"
     web_pg_hook.run(
         f"""
         INSERT INTO opencve_automations (
@@ -125,7 +131,7 @@ def _setup_report_automation(web_pg_hook, schedule_time="09:00:00", frequency="d
         )
         VALUES (
             '{AUTOMATION_REPORT_ID}', now(), now(), 'my-report', 'report',
-            '{frequency}', 'UTC', '{schedule_time}', NULL,
+            '{frequency}', 'UTC', '{schedule_time}', {weekday_sql},
             '{json.dumps(config)}'::jsonb, '{PROJECT_ID}', true
         );
         """
@@ -493,3 +499,93 @@ def test_report_automation_due_at_scheduled_time(
         "SELECT output_type, status FROM opencve_automation_execution_results;"
     )
     assert len(results) >= 1
+
+
+@pytest.mark.web_db
+@pytest.mark.web_redis
+def test_weekly_report_automation_due_at_scheduled_time(
+    tests_path, tmp_path_factory, web_pg_hook, web_redis_hook, override_conf
+):
+    """Weekly report: rolling week bucket and execution window at scheduled time."""
+    override_conf("opencve", "max_automations_map_length", "10")
+    override_conf("opencve", "max_notifications_per_task", "5")
+
+    _setup_org_and_project(web_pg_hook)
+    _setup_report_automation(
+        web_pg_hook,
+        schedule_time="09:00:00",
+        frequency="weekly",
+        schedule_weekday="friday",
+    )
+
+    # Accumulate CVE in hour 01:00-02:00 (fixture change created_at is 2024-01-01T01:00:00)
+    hour_start = pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC")
+    hour_end = pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC")
+    hour_ctx = _ctx(hour_start, hour_end)
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=0)
+
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        ProcessKbOperator(task_id="kb1").execute(hour_ctx)
+
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path), patch(
+        "includes.tasks.reports.KB_LOCAL_REPO", repo.repo_path
+    ):
+        collect_hourly_changes.function(**hour_ctx)
+
+    resolve_subscriptions.function(**hour_ctx)
+    load_enabled_automations.function(**hour_ctx)
+    build_report_content_hourly.function(**hour_ctx)
+    upsert_report_content_and_entries.function(**hour_ctx)
+
+    reports = web_pg_hook.get_records(
+        f"""
+        SELECT day, period_type, period_timezone FROM opencve_reports
+        WHERE project_id = '{PROJECT_ID}' AND automation_id = '{AUTOMATION_REPORT_ID}';
+        """
+    )
+    assert len(reports) == 1
+    report_day, period_type, period_timezone = reports[0]
+    # Rolling week starting Friday Dec 29, 2023 (Mon Jan 1 2024 is in that bucket)
+    assert str(report_day) == "2023-12-29"
+    assert period_type == "weekly"
+    assert period_timezone == "UTC"
+
+    # Due on Friday Jan 5, 2024 at 09:00 UTC
+    due_start = pendulum.datetime(2024, 1, 5, 8, 0, tz="UTC")
+    due_end = pendulum.datetime(2024, 1, 5, 9, 0, tz="UTC")
+    due_ctx = _ctx(due_start, due_end)
+    due_end_adj = due_end.subtract(seconds=1)
+
+    evaluate_report_due_in_automation_timezone.function(**due_ctx)
+
+    due_items = redis_get(
+        web_redis_hook,
+        REDIS_PREFIX_REPORT_DUE_WORK_ITEMS,
+        due_start,
+        due_end_adj,
+    )
+    assert len(due_items) >= 1
+    assert due_items[0]["period_bucket"]["period_day"] == "2023-12-29"
+
+    build_report_notification_payload.function(**due_ctx)
+    execute_report_due_automation_actions.function(**due_ctx)
+
+    executions = web_pg_hook.get_records(
+        f"""
+        SELECT window_start, window_end FROM opencve_automation_executions
+        WHERE automation_id = '{AUTOMATION_REPORT_ID}';
+        """
+    )
+    assert len(executions) >= 1
+    window_start, window_end = executions[0]
+    period_window = get_report_period_window(
+        {
+            "period_day": "2023-12-29",
+            "period_type": "weekly",
+            "period_timezone": "UTC",
+        }
+    )
+    assert pendulum.instance(window_start) == period_window["start"]
+    assert pendulum.instance(window_end) == period_window["end"]

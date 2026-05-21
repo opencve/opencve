@@ -153,13 +153,18 @@ def test_get_accumulation_period_bucket_daily():
     assert bucket["period_timezone"] == "UTC"
 
 
-def test_get_accumulation_period_bucket_weekly():
-    """Weekly accumulation bucket uses the start of the ISO week."""
-    automation = {"frequency": "weekly", "schedule_timezone": "UTC"}
-    context = {"data_interval_end": pendulum.datetime(2024, 6, 15, 10, 0, tz="UTC")}
+def test_get_accumulation_period_bucket_weekly_friday():
+    """Weekly accumulation anchors to the rolling week start (schedule weekday)."""
+    automation = {
+        "frequency": "weekly",
+        "schedule_timezone": "UTC",
+        "schedule_weekday": "friday",
+    }
+    # Thursday May 28, 2026 is in the week starting Friday May 22
+    context = {"data_interval_end": pendulum.datetime(2026, 5, 28, 10, 0, tz="UTC")}
     bucket = get_accumulation_period_bucket(automation, context)
     assert bucket["period_type"] == "weekly"
-    assert bucket["period_day"] == "2024-06-10"
+    assert bucket["period_day"] == "2026-05-22"
 
 
 def test_get_accumulation_period_bucket_timezone():
@@ -180,13 +185,43 @@ def test_get_due_period_bucket_daily():
     assert bucket["period_type"] == "daily"
 
 
-def test_get_due_period_bucket_weekly():
-    """Weekly due bucket returns previous week's Monday."""
-    automation = {"frequency": "weekly", "schedule_timezone": "UTC"}
-    context = {"data_interval_end": pendulum.datetime(2024, 6, 17, 9, 0, tz="UTC")}
+def test_get_due_period_bucket_weekly_friday():
+    """Weekly due bucket returns the previous complete 7-day rolling week."""
+    automation = {
+        "frequency": "weekly",
+        "schedule_timezone": "UTC",
+        "schedule_weekday": "friday",
+    }
+    context = {"data_interval_end": pendulum.datetime(2026, 5, 29, 9, 0, tz="UTC")}
     bucket = get_due_period_bucket(automation, context)
-    assert bucket["period_day"] == "2024-06-10"
+    assert bucket["period_day"] == "2026-05-22"
     assert bucket["period_type"] == "weekly"
+
+
+def test_get_due_period_bucket_weekly_monday_paris():
+    """Weekly due bucket respects automation timezone."""
+    automation = {
+        "frequency": "weekly",
+        "schedule_timezone": "Europe/Paris",
+        "schedule_weekday": "monday",
+    }
+    context = {"data_interval_end": pendulum.datetime(2026, 5, 25, 7, 0, tz="UTC")}
+    bucket = get_due_period_bucket(automation, context)
+    assert bucket["period_day"] == "2026-05-18"
+    assert bucket["period_type"] == "weekly"
+
+
+def test_get_due_period_bucket_daily_winnipeg():
+    """Daily due bucket uses the previous local day in automation timezone."""
+    automation = {
+        "frequency": "daily",
+        "schedule_timezone": "America/Winnipeg",
+    }
+    # Friday May 22, 2026 at 02:00 Winnipeg = 07:00 UTC
+    context = {"data_interval_end": pendulum.datetime(2026, 5, 22, 7, 0, tz="UTC")}
+    bucket = get_due_period_bucket(automation, context)
+    assert bucket["period_day"] == "2026-05-21"
+    assert bucket["period_type"] == "daily"
 
 
 def test_get_report_period_window_daily_utc():
@@ -202,17 +237,17 @@ def test_get_report_period_window_daily_utc():
     assert window["end"] == pendulum.datetime(2024, 6, 14, tz="UTC").end_of("day")
 
 
-def test_get_report_period_window_weekly_utc():
-    """Weekly report window spans Monday 00:00 through Sunday 23:59:59."""
+def test_get_report_period_window_weekly_friday():
+    """Weekly report window spans 7 days from period_day (Friday through Thursday)."""
     window = get_report_period_window(
         {
-            "period_day": "2024-06-10",
+            "period_day": "2026-05-22",
             "period_type": "weekly",
             "period_timezone": "UTC",
         }
     )
-    assert window["start"] == pendulum.datetime(2024, 6, 10, 0, 0, 0, tz="UTC")
-    assert window["end"] == pendulum.datetime(2024, 6, 16, tz="UTC").end_of("day")
+    assert window["start"] == pendulum.datetime(2026, 5, 22, 0, 0, 0, tz="UTC")
+    assert window["end"] == pendulum.datetime(2026, 5, 28, tz="UTC").end_of("day")
 
 
 def test_get_report_period_window_timezone():

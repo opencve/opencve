@@ -10,6 +10,7 @@ import arrow
 from airflow.configuration import conf
 
 from includes.constants import KB_LOCAL_REPO
+from includes.tasks.automations import get_report_period_window
 from includes.utils import get_smtp_conf, get_smtp_message
 
 logger = logging.getLogger(__name__)
@@ -148,15 +149,28 @@ class BaseNotifier:
 
         return payload
 
+    @staticmethod
+    def _format_period_in_timezone(period, timezone_name="UTC"):
+        """Format period boundaries in the automation/report timezone for notifications."""
+        tz = timezone_name or "UTC"
+        start = arrow.get(period.get("start")).to(tz)
+        end = arrow.get(period.get("end")).to(tz)
+        return {
+            "start": start.datetime.isoformat(),
+            "end": end.datetime.isoformat(),
+            "timezone": tz,
+        }
+
     def prepare_report_content_payload(self):
-        start = arrow.get(self.period.get("start")).to("utc").datetime.isoformat()
-        end = arrow.get(self.period.get("end")).to("utc").datetime.isoformat()
         content = self.report_content or {}
+        period = self._format_period_in_timezone(
+            self.period, content.get("period_timezone", "UTC")
+        )
         payload = {
             "organization": self.notification["organization_name"],
             "project": self.notification["project_name"],
             "notification": self.notification["notification_name"],
-            "period": {"start": start, "end": end},
+            "period": period,
             "report_content": content,
             "title": self.get_title({"report_content": content}),
         }
@@ -381,10 +395,11 @@ class SlackNotifier(BaseNotifier):
         title = payload["title"]
         organization = payload["organization"]
         project = payload["project"]
-        period_label = report.get("report_day", "N/A")
+        period_start, period_end, timezone_label = self._format_report_period_range(
+            report
+        )
         cve_count = report.get("cve_count", 0)
         report_url = report.get("report_url")
-        timezone_label = report.get("period_timezone", "UTC")
 
         report_line = (
             f"<{report_url}|Open report>" if report_url else "Report link unavailable"
@@ -403,7 +418,7 @@ class SlackNotifier(BaseNotifier):
                 "text": {
                     "type": "mrkdwn",
                     "text": (
-                        f"*Period:* {period_label} ({timezone_label})\n"
+                        f"*Covers:* {period_start} → {period_end} ({timezone_label})\n"
                         f"*Total CVEs:* {cve_count}\n"
                         f"*Report:* {report_line}"
                     ),
@@ -543,6 +558,19 @@ class EmailNotifier(BaseNotifier):
 
         return context
 
+    @staticmethod
+    def _format_report_period_range(report):
+        window = get_report_period_window(
+            {
+                "period_day": report.get("report_day"),
+                "period_type": report.get("period_type", "daily"),
+                "period_timezone": report.get("period_timezone", "UTC"),
+            }
+        )
+        tz = report.get("period_timezone", "UTC")
+        fmt = "MMM D, Y HH:mm:ss"
+        return window["start"].format(fmt), window["end"].format(fmt), tz
+
     def get_report_template_context(self):
         payload = self.prepare_report_content_payload()
         report = payload["report_content"]
@@ -563,6 +591,9 @@ class EmailNotifier(BaseNotifier):
             else ""
         )
 
+        period_start, period_end, period_timezone = self._format_report_period_range(
+            report
+        )
         return {
             "web_url": web_url,
             "project_url": project_url,
@@ -575,8 +606,10 @@ class EmailNotifier(BaseNotifier):
             "notification": notification,
             "report_url": report.get("report_url", ""),
             "period_label": report.get("report_day", ""),
+            "period_start": period_start,
+            "period_end": period_end,
             "period_type": report.get("period_type", "daily"),
-            "period_timezone": report.get("period_timezone", "UTC"),
+            "period_timezone": period_timezone,
             "cve_count": report.get("cve_count", 0),
             "year": datetime.datetime.now().year,
         }

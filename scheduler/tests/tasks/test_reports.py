@@ -592,7 +592,9 @@ def test_summarize_weekly_reports_no_reports():
 
             mock_hook_instance.get_records.assert_called_once()
             call_kwargs = mock_hook_instance.get_records.call_args[1]
-            assert call_kwargs["parameters"] == {"current_date": "2025-01-13"}
+            assert call_kwargs["parameters"] == {
+                "current_ts": pendulum.datetime(2025, 1, 13, 2, 0, tz="UTC")
+            }
 
 
 def test_summarize_weekly_reports_success(tests_path, tmp_path_factory):
@@ -641,7 +643,9 @@ def test_summarize_weekly_reports_success(tests_path, tmp_path_factory):
 
         # Check the query was called with the correct parameter
         call_kwargs = mock_hook_instance.get_records.call_args[1]
-        assert call_kwargs["parameters"] == {"current_date": "2025-01-13"}
+        assert call_kwargs["parameters"] == {
+            "current_ts": pendulum.datetime(2025, 1, 13, 2, 0, tz="UTC")
+        }
 
         # Check LLM call
         mock_call_llm.assert_called_once()
@@ -847,10 +851,10 @@ def test_summarize_weekly_reports_filters_by_date(web_pg_hook):
         """
     )
 
-    # Query as if we are running on 2025-01-20 (8 days after Jan 12, 3 days after Jan 17)
+    # Query as if we are running on 2025-01-20 (period ending Jan 18 is complete; Jan 23 is not)
     results = web_pg_hook.get_records(
         sql=SQL_WEEKLY_REPORTS_CVES_TO_SUMMARIZE,
-        parameters={"current_date": "2025-01-20"},
+        parameters={"current_ts": "2025-01-20T00:00:00+00:00"},
     )
 
     returned_report_ids = [r[0] for r in results]
@@ -914,7 +918,7 @@ def test_summarize_weekly_reports_skips_already_summarized(web_pg_hook):
 
     results = web_pg_hook.get_records(
         sql=SQL_WEEKLY_REPORTS_CVES_TO_SUMMARIZE,
-        parameters={"current_date": "2025-01-20"},
+        parameters={"current_ts": "2025-01-20T00:00:00+00:00"},
     )
 
     returned_report_ids = [r[0] for r in results]

@@ -3,7 +3,7 @@ This email has been sent from the {{ notification }} notification of the {{ orga
 
 Your {{ period_type }} report has been created.
 
-Period: {{ period_label }} ({{ period_timezone }})
+Covers: {{ period_start }} → {{ period_end }} ({{ period_timezone }})
 Total CVEs: {{ cve_count }}
 
 {% if report_url %}Open report: {{ report_url }}{% endif %}

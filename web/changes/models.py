@@ -128,3 +128,11 @@ class Report(BaseModel):
     @property
     def period_window_end(self):
         return self.get_period_window()[1]
+
+    def format_covers(self):
+        """Human-readable covered period in the automation timezone."""
+        start, end = self.get_period_window()
+        return (
+            f"Covers: {start.strftime('%b %d, %Y %H:%M:%S')} "
+            f"→ {end.strftime('%b %d, %Y %H:%M:%S')} {self.period_timezone or 'UTC'}"
+        )
