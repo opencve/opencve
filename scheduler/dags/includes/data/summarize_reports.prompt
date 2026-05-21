@@ -25,18 +25,18 @@ Following the statistics, each CVE entry contains the following details:
 3.  **Generate a "Summary" Section**:
     *   Start with a `🔎 Summary` heading.
     *   Use the statistics from the `Statistics` block at the beginning of the input to provide a brief overview. Mention the total number of CVEs.
-    *   State if there are vulnerabilies including KEV (KEV at True) or high probability of exploitation (EPSS score above 20%).
+    *   State if there are vulnerabilities including KEV (KEV at True) or high probability of exploitation (EPSS score above 20%).
     *   Display the list showing the distribution of CVEs by their severity category from the statistics block on one line: Critical, High, Medium, Low, Unknown.
 4.  **Generate a "Highlights" Section**:
     *   Start with a `🛡️ Highlights` heading.
     *   Describe in a few sentences the most critical vulnerability types found in the input and add them in the bullet list.
     *   In this section, list with bullet points **ALL** the CVEs that are in the CISA KEV (KEV at True) OR CVEs that have an EPSS score above 20% whatever their CVSS score. If there are no such vulnerabilities, state that.
-    *   You MUST regroup together vulnerabilies that are the same with listing together the CVE ID at the begining of the bullet.
+    *   You MUST regroup together vulnerabilities that are the same with listing together the CVE ID at the beginning of the bullet.
 5.  **Generate a "Notable Vulnerabilities" Section**:
     *   Start with a `🎯 Notable Vulnerabilities` heading.
     *   In this section, list up to 5 of the most critical vulnerabilities, critical and high only, excluding already listed vulnerabilities in the "Highlights" section. If there are no such vulnerabilities, state that.
-    *   You MUST regroup together vulnerabilies that are the same with listing the CVE at the begining of the bullet.
-    *   Add the CVSS and EPSS score in parentheses of each CVE ID at the end of the bullet line and when there are regrouped, display the maxium CVSS and EPSS score of the group.
+    *   You MUST regroup together vulnerabilities that are the same with listing the CVE at the beginning of the bullet.
+    *   Add the CVSS and EPSS score in parentheses of each CVE ID at the end of the bullet line and when there are regrouped, display the maximum CVSS and EPSS score of the group.
 6.  **Generate a "Priority Actions" Section**:
     *   Start with a `⚠️ Priority Actions` heading.
     *   In this section, provide a numbered list of maximum 5 actions or less to remediate vulnerabilities from the "Highlights" and "Notable Vulnerabilities" sections. Do not include generic advice like "monitor systems" or "run scans."
