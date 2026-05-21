@@ -3159,15 +3159,17 @@ $(document).ready(function() {
       var weekdayContainer = $('#weekly-day-container');
       var weekdaySelect = $('#id_schedule_weekday');
       if (weekdaySelect.length) {
-        weekdaySelect.select2({ allowClear: false, minimumResultsForSearch: Infinity, width: '100%' });
+        weekdaySelect.select2({ allowClear: false, minimumResultsForSearch: Infinity, width: '140px' });
       }
       function syncWeeklyScheduleFields() {
         if (!weekdayContainer.length) return;
         if (frequencySelect.val() === 'weekly') {
           weekdayContainer.show();
+          if (weekdaySelect.length && !weekdaySelect.val()) {
+            weekdaySelect.val('monday').trigger('change');
+          }
         } else {
           weekdayContainer.hide();
-          if (weekdaySelect.length) weekdaySelect.val('').trigger('change');
         }
       }
       frequencySelect.on('change', syncWeeklyScheduleFields);
@@ -3353,6 +3355,12 @@ $(document).ready(function() {
           actions.push(actionEntry);
         }
       });
+      if (typeof automationTriggerType !== 'undefined' && automationTriggerType === 'report') {
+        var hasGenerateReport = actions.some(function(a) { return a.type === 'generate_report'; });
+        if (!hasGenerateReport) {
+          actions.unshift({ type: 'generate_report', value: true });
+        }
+      }
       var conditionsTree = { operator: 'OR', children: conditionChildren };
       var config = { conditions: conditionsTree, actions: actions };
       if ($('#when-section').length) {
@@ -3398,7 +3406,10 @@ $(document).ready(function() {
         });
       }
       if (automationData.actions && Array.isArray(automationData.actions)) {
-        automationData.actions.forEach(function(action) { addActionUI(action.type, action.value); });
+        automationData.actions.forEach(function(action) {
+          if (action.type === 'generate_report') return;
+          addActionUI(action.type, action.value);
+        });
       }
     }
 
