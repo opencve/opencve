@@ -417,6 +417,9 @@ class CveDetailView(DetailView):
 
         cve = context["cve"]
 
+        # Preload all JSON data sources to avoid repeated file reads
+        cve.preload_json()
+
         # JSON context (KB, Mitre...)
         context.update(self.build_json_context(cve))
 

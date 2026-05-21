@@ -117,6 +117,20 @@ class Cve(BaseModel):
                     self._redhat_json = json.load(f)
         return self._redhat_json
 
+    def preload_json(self):
+        """
+        Preload all JSON data sources in a single call.
+        This ensures all lazy-loaded JSON is cached on the instance,
+        avoiding repeated file reads when accessing multiple properties.
+        Call this before rendering templates that access multiple JSON fields.
+        """
+        _ = self.kb_json
+        _ = self.mitre_json
+        _ = self.vulnrichment_json
+        _ = self.nvd_json
+        _ = self.redhat_json
+        _ = self.enrichment_json
+
     @property
     def enrichment_json(self):
         return self.kb_json.get("enrichment", {})
