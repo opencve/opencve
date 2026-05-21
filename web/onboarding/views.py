@@ -169,12 +169,16 @@ class OnboardingFormView(
                     )
 
                     Automation.objects.create(
-                        name="Email notifications",
+                        name="Recently published CVEs",
                         trigger_type=Automation.TRIGGER_ALERT,
                         is_enabled=True,
                         project=project,
                         configuration={
-                            "conditions": {"operator": "OR", "children": []},
+                            "triggers": ["cve_enters_project"],
+                            "conditions": {
+                                "operator": "OR",
+                                "children": [{"operator": "AND", "children": []}],
+                            },
                             "actions": [
                                 {
                                     "type": "send_notification",
