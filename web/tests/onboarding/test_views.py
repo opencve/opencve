@@ -475,10 +475,12 @@ def test_onboarding_creates_automation_with_notification(auth_client, create_use
 
     automation = Automation.objects.first()
     assert automation is not None
-    assert automation.name == "Email notifications"
+    assert automation.name == "Recently published CVEs"
     assert automation.trigger_type == Automation.TRIGGER_ALERT
     assert automation.is_enabled is True
     assert automation.project == notification.project
+
+    assert automation.configuration["triggers"] == ["cve_enters_project"]
 
     actions = automation.configuration["actions"]
     assert len(actions) == 1
@@ -486,7 +488,10 @@ def test_onboarding_creates_automation_with_notification(auth_client, create_use
     assert actions[0]["value"] == str(notification.id)
 
     conditions = automation.configuration["conditions"]
-    assert conditions == {"operator": "OR", "children": []}
+    assert conditions == {
+        "operator": "OR",
+        "children": [{"operator": "AND", "children": []}],
+    }
 
 
 @freeze_time("2024-01-01")
