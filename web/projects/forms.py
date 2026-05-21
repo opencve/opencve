@@ -288,6 +288,7 @@ class AutomationForm(forms.ModelForm):
         )
         self.fields["schedule_time"].required = False
         self.fields["schedule_weekday"].required = False
+        self.fields["schedule_weekday"].choices = Automation.WEEKDAY_CHOICES
         self.fields["frequency"].widget = forms.RadioSelect(
             choices=Automation.FREQUENCY_CHOICES
         )

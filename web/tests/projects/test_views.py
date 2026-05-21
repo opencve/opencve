@@ -4813,7 +4813,7 @@ def test_automations_create_view_invalid_trigger_type_defaults_to_alert(
 def test_automations_create_view_report_initial_sets_schedule_defaults(
     create_organization, create_user, create_project, auth_client
 ):
-    """Report trigger sets initial frequency=daily, timezone=UTC, time=09:00."""
+    """Report trigger sets initial frequency=daily, timezone=UTC, time=09:00, weekday=monday."""
     user = create_user()
     org = create_organization(name="org1", user=user)
     create_project(name="project1", organization=org)
@@ -4834,6 +4834,7 @@ def test_automations_create_view_report_initial_sets_schedule_defaults(
     assert form.initial["frequency"] == Automation.FREQUENCY_DAILY
     assert form.initial["schedule_timezone"] == "UTC"
     assert form.initial["schedule_time"] == "09:00"
+    assert form.initial["schedule_weekday"] == Automation.WEEKDAY_MONDAY
 
 
 @override_settings(ENABLE_ONBOARDING=False)

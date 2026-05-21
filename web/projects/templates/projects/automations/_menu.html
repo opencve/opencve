@@ -17,26 +17,18 @@
             </ul>
         </div>
     </div>
-    <div class="box box-primary">
+    <div class="box box-solid">
         <div class="box-header with-border">
-            <h3 class="box-title">Info</h3>
+            <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
         </div>
         <div class="box-body">
-            <p>
-                <strong>Type:</strong>
-                <span class="label label-primary">
-                    {% if automation.trigger_type == "alert" %}
-                        <i class="fa fa-bolt"></i>
-                    {% elif automation.trigger_type == "report" %}
-                        <i class="fa fa-calendar"></i>
-                    {% else %}
-                        <i class="fa fa-question-circle"></i>
-                    {% endif %}
-                    {{ automation.get_trigger_type_display }}
-                </span>
-            </p>
-            <p><strong>Created:</strong> {{ automation.created_at|date:"d M Y H:i" }}</p>
-            <p><strong>Updated:</strong> {{ automation.updated_at|date:"d M Y H:i" }}</p>
+            {% if automation.trigger_type == 'report' %}
+            <p>Report automations collect matching CVEs over a full daily or weekly period, based on the selected timezone.</p>
+            <p>Actions are executed later, at the scheduled time, on the CVEs collected in that report. For example, a daily report sent at 09:00 includes CVEs from the previous full day.</p>
+            {% else %}
+            <p>Alert automations run every hour on CVEs that matched during the previous hour.</p>
+            <p>Use them for near real-time actions, such as sending a notification as soon as a CVE enters the project or matches your conditions.</p>
+            {% endif %}
         </div>
     </div>
 </div>

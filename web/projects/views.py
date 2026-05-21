@@ -1285,11 +1285,11 @@ class AutomationCreateView(
             template = self.request.GET.get("template") or ""
             if template in ("weekly_summary", "weekly_kev"):
                 initial["frequency"] = Automation.FREQUENCY_WEEKLY
-                initial["schedule_weekday"] = Automation.WEEKDAY_MONDAY
             else:
                 initial["frequency"] = Automation.FREQUENCY_DAILY
             initial["schedule_timezone"] = "UTC"
             initial["schedule_time"] = "09:00"
+            initial["schedule_weekday"] = Automation.WEEKDAY_MONDAY
         else:
             initial["frequency"] = None
         return initial

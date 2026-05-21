@@ -20,12 +20,38 @@
                     </div>
                 </div>
                 <div class="box-body">
+                    <div class="form-group">
+                        <label class="control-label">Type</label>
+                        <div class="notification-type-readonly">
+                            {% if trigger_type == 'report' %}
+                            <i class="fa fa-calendar automation-type-icon automation-type-icon--report"></i>
+                            <span>Report</span>
+                            {% else %}
+                            <i class="fa fa-bolt automation-type-icon automation-type-icon--alert"></i>
+                            <span>Alert</span>
+                            {% endif %}
+                        </div>
+                    </div>
                     {{ form.name|as_crispy_field }}
 
                     <div class="pull-right">
                         <a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save</button>
                     </div>
+                </div>
+            </div>
+            <div class="box box-solid">
+                <div class="box-header with-border">
+                    <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
+                </div>
+                <div class="box-body">
+                    {% if trigger_type == 'report' %}
+                    <p>Report automations collect matching CVEs over a full daily or weekly period, based on the selected timezone.</p>
+                    <p>Actions are executed later, at the scheduled time, on the CVEs collected in that report. For example, a daily report sent at 09:00 includes CVEs from the previous full day.</p>
+                    {% else %}
+                    <p>Alert automations run every hour on CVEs that matched during the previous hour.</p>
+                    <p>Use them for near real-time actions, such as sending a notification as soon as a CVE enters the project or matches your conditions.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -42,49 +68,19 @@
                         <div class="section-header">
                             <span class="section-label">SCHEDULE</span>
                             <span class="section-description trigger-description-inline">
-                                A report is generated
+                                Collect matching CVEs over a
                                 <select name="frequency" id="id_frequency" class="form-control trigger-frequency-select select2" required>
                                     <option value="daily" {% if form.frequency.value == 'daily' %}selected{% endif %}>Daily</option>
                                     <option value="weekly" {% if form.frequency.value == 'weekly' %}selected{% endif %}>Weekly</option>
                                 </select>
+                                period in the
+                                {{ form.schedule_timezone }}
+                                timezone
                             </span>
                         </div>
-                        <div class="row" style="margin-top: 10px;">
-                            <div class="col-sm-5">
-                                <label for="id_schedule_timezone">Timezone</label>
-                                {{ form.schedule_timezone }}
-                                {% if form.schedule_timezone.errors %}
-                                    <p class="text-danger">{{ form.schedule_timezone.errors.0 }}</p>
-                                {% endif %}
-                            </div>
-                            <div class="col-sm-3">
-                                <label for="id_schedule_time">Run time</label>
-                                <input
-                                    type="time"
-                                    name="schedule_time"
-                                    id="id_schedule_time"
-                                    class="form-control"
-                                    value="{{ form.schedule_time.value|time:'H:i'|default:'09:00' }}"
-                                    step="3600"
-                                    required
-                                >
-                                {% if form.schedule_time.errors %}
-                                    <p class="text-danger">{{ form.schedule_time.errors.0 }}</p>
-                                {% endif %}
-                            </div>
-                            <div class="col-sm-4" id="weekly-day-container" {% if form.frequency.value != 'weekly' %}style="display:none"{% endif %}>
-                                <label for="id_schedule_weekday">Run day (weekly)</label>
-                                <select name="schedule_weekday" id="id_schedule_weekday" class="form-control select2">
-                                    <option value="">Select a day...</option>
-                                    {% for day_key, day_label in form.schedule_weekday.field.choices %}
-                                        <option value="{{ day_key }}" {% if form.schedule_weekday.value == day_key %}selected{% endif %}>{{ day_label }}</option>
-                                    {% endfor %}
-                                </select>
-                                {% if form.schedule_weekday.errors %}
-                                    <p class="text-danger">{{ form.schedule_weekday.errors.0 }}</p>
-                                {% endif %}
-                            </div>
-                        </div>
+                        {% if form.schedule_timezone.errors %}
+                            <p class="text-danger">{{ form.schedule_timezone.errors.0 }}</p>
+                        {% endif %}
                         {% if form.trigger_type.errors %}<p class="text-danger">{{ form.trigger_type.errors.0 }}</p>{% endif %}
                         {% if form.frequency.errors %}
                             <p class="text-danger">{{ form.frequency.errors.0 }}</p>
@@ -115,6 +111,7 @@
                             <div class="condition-group" data-group-index="0">
                                 <div class="section-header">
                                     <span class="section-label">{% if trigger_type == 'report' %}SCOPE{% else %}IF{% endif %}</span>
+                                    <span class="section-sublabel">optional</span>
                                     <span class="section-description">
                                         all of these conditions match
                                     </span>
@@ -154,23 +151,46 @@
                     <div class="automation-section">
                         <div class="section-header">
                             <span class="section-label">THEN</span>
+                            {% if trigger_type == 'report' %}
+                            <span class="section-sublabel">optional</span>
+                            <span class="section-description trigger-description-inline">
+                                Run these actions
+                                <span id="weekly-day-container" class="trigger-weekday-inline" {% if form.frequency.value != 'weekly' %}style="display:none"{% endif %}>
+                                    every
+                                    <select name="schedule_weekday" id="id_schedule_weekday" class="form-control trigger-weekday-select select2">
+                                        {% for day_key, day_label in form.schedule_weekday.field.choices %}
+                                            {% with selected_day=form.schedule_weekday.value|default:'monday' %}
+                                            <option value="{{ day_key }}" {% if selected_day == day_key %}selected{% endif %}>{{ day_label }}</option>
+                                            {% endwith %}
+                                        {% endfor %}
+                                    </select>
+                                </span>
+                                at
+                                <input
+                                    type="time"
+                                    name="schedule_time"
+                                    id="id_schedule_time"
+                                    class="form-control trigger-inline-time"
+                                    value="{{ form.schedule_time.value|time:'H:i'|default:'09:00' }}"
+                                    step="3600"
+                                    required
+                                >
+                            </span>
+                            {% else %}
                             <span class="section-description">
                                 perform these actions
                             </span>
-                        </div>
-                        <div id="actions-container">
-                            {% if trigger_type == 'report' %}
-                            <div class="action-item action-item-fixed" data-type="generate_report">
-                                <div class="action-item-content">
-                                    <span class="action-item-label">
-                                        Generate a report
-                                    </span>
-                                    <input type="hidden" class="action-value" value="true">
-                                </div>
-                                <span title="This action cannot be removed"><i class="fa fa-lock" style="color: #bbb;"></i></span>
-                            </div>
                             {% endif %}
                         </div>
+                        {% if trigger_type == 'report' %}
+                        {% if form.schedule_time.errors %}
+                            <p class="text-danger">{{ form.schedule_time.errors.0 }}</p>
+                        {% endif %}
+                        {% if form.schedule_weekday.errors %}
+                            <p class="text-danger">{{ form.schedule_weekday.errors.0 }}</p>
+                        {% endif %}
+                        {% endif %}
+                        <div id="actions-container"></div>
                         <select class="add-dropdown select2" id="add-action-dropdown" data-placeholder="Add action...">
                             <option value="">Add action...</option>
                         </select>

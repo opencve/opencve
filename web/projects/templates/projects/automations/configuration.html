@@ -27,51 +27,19 @@
                 <div class="section-header">
                     <span class="section-label">SCHEDULE</span>
                     <span class="section-description trigger-description-inline">
-                        A report is generated
+                        Collect matching CVEs over a
                         <select name="frequency" id="id_frequency" class="form-control trigger-frequency-select select2" required>
                             <option value="daily" {% if automation.frequency == 'daily' %}selected{% endif %}>Daily</option>
                             <option value="weekly" {% if automation.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
                         </select>
+                        period in the
+                        {{ form.schedule_timezone }}
+                        timezone
                     </span>
                 </div>
-                <div class="row" style="margin-top: 10px;">
-                    <div class="col-sm-5">
-                        <label for="id_schedule_timezone">Timezone</label>
-                        {{ form.schedule_timezone }}
-                        {% if form.schedule_timezone.errors %}
-                        <p class="text-danger">{{ form.schedule_timezone.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="col-sm-3">
-                        <label for="id_schedule_time">Run time</label>
-                        <input
-                            type="time"
-                            name="schedule_time"
-                            id="id_schedule_time"
-                            class="form-control"
-                            value="{{ form.schedule_time.value|time:'H:i'|default:'09:00' }}"
-                            step="3600"
-                            required
-                        >
-                        {% if form.schedule_time.errors %}
-                        <p class="text-danger">{{ form.schedule_time.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="col-sm-4" id="weekly-day-container" {% if automation.frequency != 'weekly' and form.frequency.value != 'weekly' %}style="display:none"{% endif %}>
-                        <label for="id_schedule_weekday">Run day (weekly)</label>
-                        <select name="schedule_weekday" id="id_schedule_weekday" class="form-control select2">
-                            <option value="">Select a day...</option>
-                            {% for day_key, day_label in form.schedule_weekday.field.choices %}
-                                {% with selected_day=form.schedule_weekday.value|default:automation.schedule_weekday %}
-                                <option value="{{ day_key }}" {% if selected_day == day_key %}selected{% endif %}>{{ day_label }}</option>
-                                {% endwith %}
-                            {% endfor %}
-                        </select>
-                        {% if form.schedule_weekday.errors %}
-                        <p class="text-danger">{{ form.schedule_weekday.errors.0 }}</p>
-                        {% endif %}
-                    </div>
-                </div>
+                {% if form.schedule_timezone.errors %}
+                <p class="text-danger">{{ form.schedule_timezone.errors.0 }}</p>
+                {% endif %}
                 {% if form.frequency.errors %}
                 <p class="text-danger">{{ form.frequency.errors.0 }}</p>
                 {% endif %}
@@ -96,6 +64,7 @@
                     <div class="condition-group" data-group-index="0">
                         <div class="section-header">
                             <span class="section-label">{% if is_report_automation %}SCOPE{% else %}IF{% endif %}</span>
+                            <span class="section-sublabel">optional</span>
                             <span class="section-description">all of these conditions match</span>
                         </div>
                         <div class="group-conditions"></div>
@@ -130,22 +99,46 @@
             <div class="automation-section">
                 <div class="section-header">
                     <span class="section-label">THEN</span>
-                    <span class="section-description">perform these actions</span>
-                </div>
-                <div id="actions-container">
                     {% if is_report_automation %}
-                    <div class="action-item action-item-fixed" data-type="generate_report">
-                        <div class="action-item-content">
-                            <span class="action-item-label">
-                                <i class="fa fa-file-text-o" style="margin-right: 6px; color: #888;"></i>
-                                Generate a report
-                            </span>
-                            <input type="hidden" class="action-value" value="true">
-                        </div>
-                        <span title="This action cannot be removed"><i class="fa fa-lock" style="color: #bbb;"></i></span>
-                    </div>
+                    <span class="section-sublabel">optional</span>
+                    {% endif %}
+                    {% if is_report_automation %}
+                    <span class="section-description trigger-description-inline">
+                        Run these actions
+                        <span id="weekly-day-container" class="trigger-weekday-inline" {% if automation.frequency != 'weekly' and form.frequency.value != 'weekly' %}style="display:none"{% endif %}>
+                            every
+                            <select name="schedule_weekday" id="id_schedule_weekday" class="form-control trigger-weekday-select select2">
+                                {% for day_key, day_label in form.schedule_weekday.field.choices %}
+                                    {% with selected_day=form.schedule_weekday.value|default:automation.schedule_weekday|default:'monday' %}
+                                    <option value="{{ day_key }}" {% if selected_day == day_key %}selected{% endif %}>{{ day_label }}</option>
+                                    {% endwith %}
+                                {% endfor %}
+                            </select>
+                        </span>
+                        at
+                        <input
+                            type="time"
+                            name="schedule_time"
+                            id="id_schedule_time"
+                            class="form-control trigger-inline-time"
+                            value="{{ form.schedule_time.value|time:'H:i'|default:'09:00' }}"
+                            step="3600"
+                            required
+                        >
+                    </span>
+                    {% else %}
+                    <span class="section-description">perform these actions</span>
                     {% endif %}
                 </div>
+                {% if is_report_automation %}
+                {% if form.schedule_time.errors %}
+                <p class="text-danger">{{ form.schedule_time.errors.0 }}</p>
+                {% endif %}
+                {% if form.schedule_weekday.errors %}
+                <p class="text-danger">{{ form.schedule_weekday.errors.0 }}</p>
+                {% endif %}
+                {% endif %}
+                <div id="actions-container"></div>
                 <select class="add-dropdown select2" id="add-action-dropdown" data-placeholder="Add action...">
                     <option value="">Add action...</option>
                 </select>

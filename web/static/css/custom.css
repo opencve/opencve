@@ -2386,6 +2386,18 @@ tr.auditlog-detail-row > td {
   font-size: 12px;
   text-transform: uppercase;
 }
+.automation-section .section-sublabel {
+  display: inline-block;
+  background: #f4f4f4;
+  color: #999;
+  border: 1px solid #ddd;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
 .automation-section .section-description {
   color: #666;
   font-size: 14px;
@@ -2501,6 +2513,77 @@ tr.auditlog-detail-row > td {
   height: auto;
   padding: 4px 8px;
   font-size: 14px;
+}
+.trigger-description-inline .select2-timezone,
+.trigger-description-inline #id_schedule_timezone {
+  display: inline-block;
+  width: 220px;
+  margin: 0 5px;
+  vertical-align: middle;
+  height: auto;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+.trigger-description-inline .trigger-inline-time {
+  display: inline-block;
+  width: 95px;
+  max-width: 95px;
+  min-width: 0;
+  height: 34px;
+  margin: 0 5px;
+  vertical-align: middle;
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 20px;
+  box-sizing: border-box;
+}
+.trigger-description-inline .trigger-inline-time::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+}
+.trigger-description-inline .trigger-weekday-select {
+  display: inline-block;
+  width: 140px;
+  margin: 0 5px;
+  vertical-align: middle;
+  height: 34px;
+  padding: 6px 8px;
+  font-size: 14px;
+  line-height: 20px;
+  box-sizing: border-box;
+}
+.trigger-weekday-inline {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 5px;
+}
+.trigger-description-inline .select2-container {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 5px;
+}
+.trigger-description-inline .select2-container .select2-selection--single {
+  height: 34px;
+  border-color: #d2d6de;
+}
+.trigger-description-inline .select2-container .select2-selection__rendered {
+  padding-left: 8px;
+  font-size: 14px;
+}
+.trigger-description-inline .select2-container .select2-selection__arrow {
+  height: 32px;
+}
+.trigger-description-inline #id_schedule_timezone + .select2-container,
+.trigger-description-inline #id_schedule_weekday + .select2-container {
+  width: auto !important;
+  min-width: 140px;
+}
+.trigger-description-inline #id_schedule_weekday + .select2-container {
+  width: 140px !important;
+}
+.trigger-description-inline #id_schedule_timezone + .select2-container {
+  min-width: 220px;
 }
 /* New automation modal: trigger type choice (alert / report) */
 .automation-trigger-options {
@@ -2710,6 +2793,19 @@ tr.auditlog-detail-row > td {
 }
 .notification-type-readonly span {
   font-weight: 600;
+}
+
+.automation-type-icon {
+  width: 20px;
+  font-size: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.automation-type-icon--alert {
+  color: #f59e0b;
+}
+.automation-type-icon--report {
+  color: #3b82f6;
 }
 
 .notification-filter-icon {

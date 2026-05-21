@@ -17,6 +17,18 @@
                     <h3 class="box-title">General</h3>
                 </div>
                 <div class="box-body">
+                    <div class="form-group">
+                        <label class="control-label">Type</label>
+                        <div class="notification-type-readonly">
+                            {% if automation.trigger_type == 'report' %}
+                            <i class="fa fa-calendar automation-type-icon automation-type-icon--report"></i>
+                            <span>Report</span>
+                            {% else %}
+                            <i class="fa fa-bolt automation-type-icon automation-type-icon--alert"></i>
+                            <span>Alert</span>
+                            {% endif %}
+                        </div>
+                    </div>
                     {{ form.name|as_crispy_field }}
                     {{ form.is_enabled|as_crispy_field }}
                     <div class="clearfix automation-form-actions">
