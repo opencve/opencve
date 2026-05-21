@@ -23,6 +23,20 @@
                 <p>For example, a weekly report scheduled on Friday includes CVEs from the previous Friday through Thursday.</p>
             </div>
         </div>
+
+        <div class="box box-solid">
+            <div class="box-header with-border">
+                <h3 class="box-title">Period</h3>
+            </div>
+            <div class="box-body no-padding">
+                <ul class="nav nav-pills nav-stacked">
+                    <li class="{% if not request.GET.period %}active{% endif %}"><a href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}"><i class="fa fa-inbox"></i> All</a></li>
+                    {% for period_value, period_label in period_choices %}
+                    <li class="{% if request.GET.period == period_value %}active{% endif %}"><a href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}?period={{ period_value }}"><i class="fa fa-{% if period_value == 'daily' %}clock-o{% else %}calendar{% endif %}"></i> {{ period_label }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
 
     <div class="col-md-9 col-sm-8">

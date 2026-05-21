@@ -2712,6 +2712,13 @@ tr.auditlog-detail-row > td {
   font-weight: 600;
 }
 
+.notification-filter-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
 /* Automation execution drawer: result cards with status bar on the left */
 .drawer-result-card.panel {
   border-left-width: 4px;

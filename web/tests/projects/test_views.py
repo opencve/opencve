@@ -1035,6 +1035,45 @@ def test_reports_view_displays_reports(
 
 
 @override_settings(ENABLE_ONBOARDING=False)
+def test_reports_view_filter_by_period(
+    create_organization, create_user, create_project, auth_client
+):
+    """Reports list can be filtered by period type."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    daily_report = Report.objects.create(
+        project=project, day=date.today(), period_type=Report.PERIOD_DAILY
+    )
+    weekly_report = Report.objects.create(
+        project=project,
+        day=date.today(),
+        period_type=Report.PERIOD_WEEKLY,
+    )
+
+    client = auth_client(user)
+    url = reverse("reports", kwargs={"org_name": "org1", "project_name": "project1"})
+
+    response = client.get(url + "?period=daily")
+    reports = list(response.context["reports"])
+    assert daily_report in reports
+    assert weekly_report not in reports
+
+    response = client.get(url + "?period=weekly")
+    reports = list(response.context["reports"])
+    assert weekly_report in reports
+    assert daily_report not in reports
+
+    response = client.get(url)
+    reports = list(response.context["reports"])
+    assert daily_report in reports
+    assert weekly_report in reports
+
+    response = client.get(url)
+    assert len(response.context["period_choices"]) == 2
+
+
+@override_settings(ENABLE_ONBOARDING=False)
 def test_report_view_requires_authentication(
     client, create_organization, create_user, create_project
 ):
@@ -1285,6 +1324,41 @@ def test_notifications_view_displays_notifications(
     notifications = list(response.context["notifications"])
     assert notification1 in notifications
     assert notification2 in notifications
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_notifications_view_filter_by_type(
+    create_organization, create_user, create_project, create_notification, auth_client
+):
+    """Notifications list can be filtered by type."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    email_notif = create_notification(name="email-one", project=project, type="email")
+    slack_notif = create_notification(name="slack-one", project=project, type="slack")
+
+    client = auth_client(user)
+    url = reverse(
+        "notifications", kwargs={"org_name": "org1", "project_name": "project1"}
+    )
+
+    response = client.get(url + "?type=email")
+    names = [n.name for n in response.context["notifications"]]
+    assert "email-one" in names
+    assert "slack-one" not in names
+
+    response = client.get(url + "?type=slack")
+    names = [n.name for n in response.context["notifications"]]
+    assert "slack-one" in names
+    assert "email-one" not in names
+
+    response = client.get(url)
+    names = [n.name for n in response.context["notifications"]]
+    assert email_notif in response.context["notifications"]
+    assert slack_notif in response.context["notifications"]
+
+    response = client.get(url)
+    assert len(response.context["notification_types"]) == 3
 
 
 @override_settings(ENABLE_ONBOARDING=False)
