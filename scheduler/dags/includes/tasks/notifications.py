@@ -100,8 +100,7 @@ def send_notifications(notifications, **context):
     changes_details = redis_hook.json().get(changes_details_key)
     logger.debug(f"{changes_details_key}: %s", changes_details)
 
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(
+    result = asyncio.run(
         execute_coroutines(notifications, changes_details, {"start": start, "end": end})
     )
     logger.debug("Notifications results: %s", result)
