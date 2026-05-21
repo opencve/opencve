@@ -108,7 +108,7 @@ def is_top_vendor_or_product(name):
 @register.filter
 def gravatar_url(email, size=40):
     return "https://www.gravatar.com/avatar/{}?{}".format(
-        hashlib.md5(email.lower().encode("utf-8")).hexdigest(),
+        hashlib.md5(email.lower().encode("utf-8"), usedforsecurity=False).hexdigest(),
         urlencode({"s": str(size)}),
     )
 
