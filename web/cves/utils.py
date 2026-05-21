@@ -124,15 +124,21 @@ def flatten_vendors(vendors):
 def list_weaknesses(cwe_names):
     """
     Takes a list of CWE names and return their objects.
+    Uses a single query with filter(cwe_id__in=...) to avoid N+1 queries.
     """
     from cves.models import Weakness
 
     weaknesses = {}
+    if not cwe_names:
+        return weaknesses
+
+    # Single query for all CWEs
+    cwe_lookup = dict(
+        Weakness.objects.filter(cwe_id__in=cwe_names).values_list("cwe_id", "name")
+    )
+
     for cwe_id in cwe_names:
-        weaknesses[cwe_id] = None
-        cwe = Weakness.objects.filter(cwe_id=cwe_id).first()
-        if cwe:
-            weaknesses[cwe_id] = cwe.name
+        weaknesses[cwe_id] = cwe_lookup.get(cwe_id)
     return weaknesses
 
 
