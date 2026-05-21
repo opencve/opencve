@@ -8,16 +8,53 @@
 <div class="row">
     <div class="col-md-3 col-sm-4">
 
-        <a class="btn btn-primary btn-block margin-bottom" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=email"><i class="fa fa-plus"></i> Email</a>
-        <a class="btn btn-primary btn-block margin-bottom" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=webhook"><i class="fa fa-plus"></i> Webhook</a>
-        <a class="btn btn-primary btn-block margin-bottom" href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=slack"><i class="fa fa-plus"></i> Slack</a>
+        <button type="button" class="btn btn-primary btn-block margin-bottom" data-toggle="modal" data-target="#newNotificationModal">
+            <i class="fa fa-plus"></i> New Notification
+        </button>
+
+        <div class="modal fade" id="newNotificationModal" tabindex="-1" role="dialog" aria-labelledby="newNotificationModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="newNotificationModalLabel">Choose notification type</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="notification-type-list">
+                            <a href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=email" class="notification-type-option">
+                                <span class="notification-type-icon"><img src="{% static 'img/email.png' %}" alt="Email"></span>
+                                <span class="notification-type-text">
+                                    <span class="notification-type-title">Email</span>
+                                    <span class="notification-type-desc">Receive alerts directly in your inbox.</span>
+                                </span>
+                            </a>
+                            <a href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=webhook" class="notification-type-option">
+                                <span class="notification-type-icon"><img src="{% static 'img/webhook.png' %}" alt="Webhook"></span>
+                                <span class="notification-type-text">
+                                    <span class="notification-type-title">Webhook</span>
+                                    <span class="notification-type-desc">Send events to your own HTTP endpoint.</span>
+                                </span>
+                            </a>
+                            <a href="{% url 'create_notification' org_name=request.current_organization.name project_name=project.name %}?type=slack" class="notification-type-option">
+                                <span class="notification-type-icon"><img src="{% static 'img/slack.png' %}" alt="Slack"></span>
+                                <span class="notification-type-text">
+                                    <span class="notification-type-title">Slack</span>
+                                    <span class="notification-type-desc">Post messages to a Slack channel.</span>
+                                </span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="box box-solid">
             <div class="box-header with-border">
                 <h3 class="box-title"><i class="fa fa-info-circle"></i> Info</h3>
             </div>
             <div class="box-body">
-                <p>The notifications are used to immediately send a message for each change on your subscriptions.</p>
+                <p>Notifications are delivery channels such as email, Slack, or webhooks.</p>
+                <p>They do not send anything by themselves. Add them as actions in your <a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}">automations</a> to receive alerts or scheduled reports.</p>
             </div>
         </div>
     </div>
@@ -51,7 +88,7 @@
                     {% endfor %}
                 </ul>
                 {% else %}
-                <p class="text-muted">No notifications yet. Create one using the buttons on the left.</p>
+                <p class="text-muted">No notifications yet. Create one using the button on the left.</p>
                 {% endif %}
             </div>
         </div>
