@@ -1,4 +1,4 @@
-{% load opencve_extras %}
+{% load opencve_extras tz %}
 <div class="drawer-with-nav">
     <nav class="drawer-nav" aria-label="Sections">
         <a href="#drawer-section-executioninfo" class="drawer-nav-item active" data-section="drawer-section-executioninfo"><i class="fa fa-info-circle"></i><span class="drawer-nav-tooltip">Execution info</span></a>
@@ -14,7 +14,7 @@
                 <dt>Execution time</dt>
                 <dd>{% if automation.trigger_type == 'alert' %}{{ execution.executed_at|date:"Y-m-d" }} {{ execution.window_start|time:"H:i" }} → {{ execution.window_end|time:"H:i" }}{% else %}{{ execution.executed_at|date:"Y-m-d H:i" }}{% endif %}</dd>
                 <dt>Window</dt>
-                <dd>{{ execution.window_start|date:"Y-m-d H:i" }} – {{ execution.window_end|date:"Y-m-d H:i" }}</dd>
+                <dd>{% if automation.trigger_type == 'report' and automation.schedule_timezone %}{% timezone automation.schedule_timezone %}{{ execution.window_start|date:"M j, Y H:i:s" }} – {{ execution.window_end|date:"M j, Y H:i:s" }}{% endtimezone %}{% else %}{{ execution.window_start|date:"Y-m-d H:i" }} – {{ execution.window_end|date:"Y-m-d H:i" }}{% endif %}</dd>
                 <dt>CVEs matched</dt>
                 <dd>{{ execution.matched_cves_count }}</dd>
             </dl>

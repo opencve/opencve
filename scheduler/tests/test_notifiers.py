@@ -14,6 +14,7 @@ from includes.notifiers import (
     WebhookNotifier,
     SlackNotifier,
 )
+from includes.tasks.automations import get_report_period_window
 from utils import TestRepo
 
 
@@ -178,6 +179,43 @@ def test_prepare_payload(tests_path, tmp_path_factory):
                 }
             ],
         }
+
+
+def test_prepare_report_content_payload_uses_report_timezone():
+    """Report notification period is formatted in period_timezone, not UTC."""
+
+    report_content = {
+        "report_id": "a786bd70-f3e0-4700-acbc-59bbcf4cbc2e",
+        "report_day": "2026-05-13",
+        "period_type": "daily",
+        "period_timezone": "Europe/Paris",
+        "cve_count": 1,
+    }
+    period_window = get_report_period_window(
+        {
+            "period_day": "2026-05-13",
+            "period_type": "daily",
+            "period_timezone": "Europe/Paris",
+        }
+    )
+    notif = BaseNotifier(
+        semaphore=None,
+        session=None,
+        notification={
+            "organization_name": "milka",
+            "project_name": "my-automations",
+            "notification_name": "Webhook sur localhost5000",
+            "notification_conf": {"extras": {}},
+        },
+        changes=[],
+        changes_details={},
+        period=period_window,
+        report_content=report_content,
+    )
+    payload = notif.prepare_report_content_payload()
+    assert payload["period"]["timezone"] == "Europe/Paris"
+    assert payload["period"]["start"] == "2026-05-13T00:00:00+02:00"
+    assert payload["period"]["end"] == "2026-05-13T23:59:59.999999+02:00"
 
 
 def test_generate_email_previews(tests_path, tmp_path_factory):

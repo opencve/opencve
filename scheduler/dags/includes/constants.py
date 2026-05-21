@@ -285,7 +285,9 @@ WITH distinct_cves AS (
   WHERE
     reports.period_type = 'weekly'
     AND reports.ai_summary IS NULL
-    AND reports.day + INTERVAL '7 days' <= %(current_date)s::date
+    AND ((reports.day + INTERVAL '7 days')::timestamp
+         AT TIME ZONE COALESCE(reports.period_timezone, 'UTC'))
+        <= %(current_ts)s::timestamptz
   ORDER BY
     reports.id,
     cves.cve_id,

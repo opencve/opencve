@@ -23,7 +23,8 @@
                         <strong>Period</strong><br>
                         ({{ object.report.get_period_type_display }})
                         {% timezone object.report.period_timezone %}
-                        From <strong>{{ object.report.period_window_start|date:"Y-m-d H:i" }}</strong> to <strong>{{ object.report.period_window_end|date:"Y-m-d H:i" }}</strong>
+                        Covers: <strong>{{ object.report.period_window_start|date:"M j, Y H:i:s" }}</strong>
+                        → <strong>{{ object.report.period_window_end|date:"M j, Y H:i:s" }}</strong>
                         {% endtimezone %}
                         <small class="text-muted">{{ object.report.period_timezone }}</small>
                     </div>
