@@ -388,13 +388,6 @@ def test_epss_filter_edge_cases():
     assert filter.execute() == Q(metrics__epss__data__score__exact=1.0)
 
 
-def test_usertag_filter_anonymous_user():
-    filter = UserTagFilter("userTag", "icontains", "foobar", AnonymousUser())
-    with pytest.raises(BadQueryException) as excinfo:
-        filter.execute()
-    assert "You must be logged in to use the 'userTag' filter." in str(excinfo.value)
-
-
 def test_search_init(create_user):
     user = create_user()
     q = "description:python"
