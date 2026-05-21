@@ -1,5 +1,5 @@
 {% extends 'projects/base_project.html' %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags static %}
 
 {% block title %}Manage Notification - {{ block.super }}{% endblock %}
 
@@ -19,6 +19,13 @@
                     </div>
                 </div>
                 <div class="box-body">
+                    <div class="form-group">
+                        <label class="control-label">Type</label>
+                        <div class="notification-type-readonly">
+                            <img src="{% static 'img/'|add:type|add:'.png' %}" alt="{{ type }}">
+                            <span>{{ type|capfirst }}</span>
+                        </div>
+                    </div>
                     {% if email_pending_confirmation %}
                     <div class="alert alert-warning">
                         This notification will be enabled once the recipient confirms the subscription by clicking the link in the confirmation email.

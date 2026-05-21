@@ -2633,6 +2633,85 @@ tr.auditlog-detail-row > td {
   letter-spacing: 0.5px;
 }
 
+/* New notification modal: type list */
+.notification-type-list {
+  margin-top: 4px;
+}
+.notification-type-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+  color: #333;
+  text-decoration: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.notification-type-option:last-child {
+  margin-bottom: 0;
+}
+.notification-type-option:hover {
+  border-color: #8B5CF6;
+  background: #f5f0ff;
+  color: #333;
+  text-decoration: none;
+  box-shadow: 0 1px 6px rgba(139, 92, 246, 0.12);
+}
+.notification-type-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.notification-type-icon img {
+  max-width: 32px;
+  max-height: 32px;
+}
+.notification-type-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.notification-type-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.notification-type-desc {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.35;
+}
+
+/* Notification save form: read-only type field */
+.notification-type-readonly {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  min-height: 34px;
+  background-color: #eee;
+  border: 1px solid #d2d6de;
+  border-radius: 0;
+  color: #555;
+}
+.notification-type-readonly img {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.notification-type-readonly span {
+  font-weight: 600;
+}
+
 /* Automation execution drawer: result cards with status bar on the left */
 .drawer-result-card.panel {
   border-left-width: 4px;
