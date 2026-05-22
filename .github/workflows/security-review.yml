@@ -1,0 +1,73 @@
+name: Trigger Security Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions: {}
+
+env:
+  LINEAR_TEAM_ID: ${{ vars.LINEAR_TEAM_ID }}
+  LINEAR_SECURITY_REVIEW_LABEL_ID: ${{ vars.LINEAR_SECURITY_REVIEW_LABEL_ID }}
+  LINEAR_TODO_STATE_ID: ${{ vars.LINEAR_TODO_STATE_ID }}
+
+jobs:
+  create-linear-ticket:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Linear issue with Security Review label
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+        run: |
+          DESCRIPTION=$(printf "pr_number: %s\nrepository: %s/%s" \
+            "$PR_NUMBER" "$GITHUB_OWNER" "$GITHUB_REPO")
+
+          QUERY=$(cat <<'GRAPHQL'
+          mutation($teamId: String!, $title: String!, $description: String, $labelIds: [String!], $stateId: String!) {
+            issueCreate(input: { teamId: $teamId, title: $title, description: $description, labelIds: $labelIds, stateId: $stateId }) {
+              success
+              issue {
+                id
+                identifier
+                title
+                url
+              }
+            }
+          }
+          GRAPHQL
+          )
+
+          RESPONSE=$(curl -s -X POST https://api.linear.app/graphql \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg q "$QUERY" \
+              --arg t "$LINEAR_TEAM_ID" \
+              --arg title "$ISSUE_TITLE" \
+              --arg desc "$DESCRIPTION" \
+              --arg label "$LINEAR_SECURITY_REVIEW_LABEL_ID" \
+              --arg state "$LINEAR_TODO_STATE_ID" \
+              '{query: $q, variables: {teamId: $t, title: $title, description: $desc, labelIds: [$label], stateId: $state}}')")
+
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.data.issueCreate.success')
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "::error::Failed to create Linear issue"
+            echo "$RESPONSE" | jq .
+            exit 1
+          fi
+
+          IDENTIFIER=$(echo "$RESPONSE" | jq -r '.data.issueCreate.issue.identifier')
+          URL=$(echo "$RESPONSE" | jq -r '.data.issueCreate.issue.url')
+
+          echo "### Linear issue created" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Identifier:** $IDENTIFIER" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **PR:** $GITHUB_OWNER/$GITHUB_REPO#$PR_NUMBER" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **URL:** $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
