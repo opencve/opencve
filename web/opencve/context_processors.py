@@ -10,17 +10,17 @@ def feature_flags(request):
 def canonical_url_context(request):
     query_params = request.GET.dict()
 
-    allowed_params = (
-        # Pagination
-        "page",
-        "product_page",
+    allowed_params = {
         # CVEs listing
         "search",
         "vendor",
         "product",
         "weakness",
         "cvss",
-    )
+    }
+
+    if not request.path.startswith("/vendors"):
+        allowed_params.update({"page", "product_page"})
 
     # Remove empty params, not allowed ones and first pages
     query_params_copy = query_params.copy()

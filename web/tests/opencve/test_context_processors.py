@@ -33,16 +33,14 @@ from opencve.context_processors import feature_flags
         ),
         (
             f"{reverse('vendors')}?search=firepower&product_page=2",
-            "/vendors/?product_page=2&search=firepower",
+            "/vendors/?search=firepower",
         ),
     ],
 )
 @patch("cves.views.CveListView.paginate_by", new_callable=PropertyMock)
-@patch("cves.views.VendorListView.paginate_by", new_callable=PropertyMock)
 def test_canonical_url_context(
-    mock_vendors, mock_cves, db, create_cve, client, full_url, canonical_url
+    mock_cves, db, create_cve, client, full_url, canonical_url
 ):
-    mock_vendors.return_value = 1
     mock_cves.return_value = 1
 
     create_cve("CVE-2024-31331")

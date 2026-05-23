@@ -102,6 +102,46 @@ function getContrastedColor(str){
       $(this).val('').trigger('change');
   });
 
+    $('.load-more').click(function() {
+        var button = $(this);
+        if (button.prop('disabled')) {
+            return;
+        }
+
+        var target = $(button.data('target'));
+        var requestData = {
+            search: button.data('search') || '',
+            vendor: button.data('vendor') || '',
+            after: button.data('after') || '',
+            after_id: button.data('after-id') || ''
+        };
+        var originalText = button.text();
+
+        button.prop('disabled', true).text('Loading...');
+
+        $.ajax({
+            url: button.data('url'),
+            data: requestData,
+            dataType: 'json',
+            type: 'GET',
+            success: function(data) {
+                target.append(data.html);
+
+                if (data.has_next) {
+                    button.data('after', data.after);
+                    button.data('after-id', data.after_id);
+                    button.prop('disabled', false).text(originalText);
+                } else {
+                    button.hide();
+                }
+            },
+            error: function() {
+                button.prop('disabled', false).text(originalText);
+                alert('Unable to load more items. Please try again.');
+            }
+        });
+    });
+
     // Input used to list the user organizations
     $('.select2-organizations').select2({allowClear: false, minimumResultsForSearch: Infinity});
     $('.select2-organizations').on('select2:selecting', function(e) {

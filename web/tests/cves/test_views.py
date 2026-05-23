@@ -12,8 +12,39 @@ from django.contrib.auth.models import AnonymousUser
 from cves.constants import PRODUCT_SEPARATOR
 from cves.views import CveListView, CveDetailView
 from cves.models import Vendor, Product, Cve
+from opencve.pagination import keyset_cursor_payload, paginate_keyset
 from users.models import UserTag, CveTag
 from projects.models import CveComment, CveTracker
+
+
+def _vendor_names(soup):
+    tbody = soup.find("tbody", {"id": "vendors-tbody"})
+    return [row.find_all("td")[0].text for row in tbody.find_all("tr")]
+
+
+def _product_names(soup):
+    tbody = soup.find("tbody", {"id": "products-tbody"})
+    return [row.find_all("td")[0].text for row in tbody.find_all("tr")]
+
+
+def _load_more_button(soup, button_id):
+    return soup.find("button", {"id": button_id})
+
+
+@pytest.fixture
+def keyset_vendors(db):
+    return [
+        Vendor.objects.create(name=f"keyset-vendor-{index:02d}") for index in range(25)
+    ]
+
+
+@pytest.fixture
+def keyset_products(db):
+    vendor = Vendor.objects.create(name="keyset-product-vendor")
+    return [
+        Product.objects.create(name=f"keyset-product-{index:02d}", vendor=vendor)
+        for index in range(25)
+    ]
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -50,6 +81,168 @@ def test_list_vendors_case_insensitive(db, create_cve, auth_client):
     content = soup.find("table", {"id": "table-products"}).find_all("td")
     assert content[0].text.strip() == "Git"
     assert content[1].text.strip() == "Git-scm"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_vendors_load_more_button_on_first_page(db, auth_client, keyset_vendors):
+    client = auth_client()
+    response = client.get(f"{reverse('vendors')}?search=keyset-vendor")
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert len(_vendor_names(soup)) == 20
+
+    button = _load_more_button(soup, "vendors-load-more")
+    assert button is not None
+    assert button.text.strip() == "Load more"
+    assert button["data-after"] == "keyset-vendor-19"
+    assert button["data-after-id"]
+    assert button["data-search"] == "keyset-vendor"
+    assert "after=" not in response.request.get("QUERY_STRING", "")
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_vendors_load_more_ajax(db, auth_client, keyset_vendors):
+    client = auth_client()
+    response = client.get(f"{reverse('vendors')}?search=keyset-vendor")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    first_page_names = _vendor_names(soup)
+    button = _load_more_button(soup, "vendors-load-more")
+
+    response = client.get(
+        reverse("vendors_load_more", kwargs={"list_type": "vendors"}),
+        {
+            "search": button["data-search"],
+            "after": button["data-after"],
+            "after_id": button["data-after-id"],
+        },
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["has_next"] is False
+    assert payload["after"] is None
+    assert payload["after_id"] is None
+    assert payload["html"].lstrip().startswith("<tr>")
+
+    soup = BeautifulSoup(payload["html"], features="html.parser")
+    second_page_names = [row.find_all("td")[0].text for row in soup.find_all("tr")]
+    assert len(second_page_names) == 5
+    assert set(first_page_names).isdisjoint(second_page_names)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_products_load_more_ajax(db, auth_client, keyset_products):
+    client = auth_client()
+    response = client.get(f"{reverse('vendors')}?search=keyset-product")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    first_page_names = _product_names(soup)
+    button = _load_more_button(soup, "products-load-more")
+
+    response = client.get(
+        reverse("vendors_load_more", kwargs={"list_type": "products"}),
+        {
+            "search": button["data-search"],
+            "after": button["data-after"],
+            "after_id": button["data-after-id"],
+        },
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["has_next"] is False
+    assert payload["after"] is None
+    assert payload["after_id"] is None
+
+    soup = BeautifulSoup(payload["html"], features="html.parser")
+    second_page_names = [row.find_all("td")[0].text for row in soup.find_all("tr")]
+    assert len(second_page_names) == 5
+    assert set(first_page_names).isdisjoint(second_page_names)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_vendors_page_ignores_legacy_and_cursor_params(db, auth_client, keyset_vendors):
+    client = auth_client()
+    response = client.get(
+        f"{reverse('vendors')}?search=keyset-vendor&page=999&product_page=999&after=foo&after_id=not-a-uuid"
+    )
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert len(_vendor_names(soup)) == 20
+    button = _load_more_button(soup, "vendors-load-more")
+    assert button["data-after"] == "keyset-vendor-19"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_products_load_more_preserves_vendor_filter(db, auth_client, keyset_products):
+    client = auth_client()
+    vendor = keyset_products[0].vendor
+    response = client.get(
+        f"{reverse('vendors')}?vendor={vendor.name}&search=keyset-product"
+    )
+    assert response.status_code == 200
+
+    soup = BeautifulSoup(response.content, features="html.parser")
+    button = _load_more_button(soup, "products-load-more")
+    assert button is not None
+    assert button["data-vendor"] == vendor.name
+    assert button["data-search"] == "keyset-product"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_vendors_load_more_rejects_vendor_filtered_vendors_list(
+    db, auth_client, keyset_products
+):
+    client = auth_client()
+    vendor = keyset_products[0].vendor
+    response = client.get(
+        reverse("vendors_load_more", kwargs={"list_type": "vendors"}),
+        {"vendor": vendor.name, "search": "keyset-product"},
+    )
+    assert response.status_code == 404
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_vendors_load_more_invalid_cursor_returns_first_page(
+    db, auth_client, keyset_vendors
+):
+    client = auth_client()
+    response = client.get(
+        reverse("vendors_load_more", kwargs={"list_type": "vendors"}),
+        {"search": "keyset-vendor", "after": "foo", "after_id": "not-a-uuid"},
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    soup = BeautifulSoup(payload["html"], features="html.parser")
+    names = [row.find_all("td")[0].text for row in soup.find_all("tr")]
+    assert len(names) == 20
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_vendors_template_has_load_more_only(db, auth_client, keyset_vendors):
+    client = auth_client()
+    response = client.get(f"{reverse('vendors')}?search=keyset-vendor")
+    content = response.content.decode()
+
+    assert "Load more" in content
+    assert ">next<" not in content
+    assert "first" not in content
+    assert "previous" not in content
+    assert "last" not in content
+    assert "Page " not in content
+    assert "Vendors (" not in content
+    assert "Products (" not in content
+
+
+def test_keyset_cursor_payload():
+    page = paginate_keyset(Vendor.objects.none(), cursor=None, limit=20)
+    assert keyset_cursor_payload(page) == {
+        "has_next": False,
+        "after": None,
+        "after_id": None,
+    }
 
 
 @override_settings(ENABLE_ONBOARDING=False)

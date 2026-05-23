@@ -1,0 +1,13 @@
+{% load opencve_extras %}
+{% for vendor in vendors %}
+<tr>
+    <td>{{ vendor.name | humanize }}{% if vendor.name|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}</td>
+    <td class="text-center"><a href="{% url 'vendors' %}?vendor={{ vendor.name | urlencode }}">{{ vendor.products.count }}</a></td>
+    <td class="text-center">
+        <div class="btn-group">
+            <a href="{% url 'subscribe' %}?vendor={{ vendor.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
+            <a href="{% url 'cves' %}?vendor={{ vendor.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
+        </div>
+    </td>
+</tr>
+{% endfor %}

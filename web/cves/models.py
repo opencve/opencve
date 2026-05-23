@@ -199,6 +199,9 @@ class Vendor(BaseModel):
 
     class Meta:
         db_table = "opencve_vendors"
+        indexes = [
+            models.Index(fields=["name", "id"], name="ix_vendors_name_id"),
+        ]
 
     @property
     def human_name(self):
@@ -220,6 +223,9 @@ class Product(BaseModel):
             models.UniqueConstraint(
                 fields=["name", "vendor_id"], name="ix_unique_products"
             )
+        ]
+        indexes = [
+            models.Index(fields=["name", "id"], name="ix_products_name_id"),
         ]
 
     @property

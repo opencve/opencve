@@ -55,46 +55,36 @@
             {% else %}
             <div class="box box-primary">
                 <div class="box-header with-border">
-                    <h3 class="box-title">Vendors ({{ paginator.count }})</h3>
+                    <h3 class="box-title">Vendors</h3>
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover table-striped" id="table-vendors">
-                        <tr>
-                            <th>Vendor</th>
-                            <th class="text-center">Products</th>
-                            <th class="text-center">Actions</th>
-                        </tr>
-                        {% for vendor in vendors %}
-                        <tr>
-                            <td>{{ vendor.name | humanize }}{% if vendor.name|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}</td>
-                            <td class="text-center"><a href="{% url 'vendors' %}?vendor={{ vendor.name }}">{{ vendor.products.count }}</a></td>
-                            <td class="text-center">
-                                <div class="btn-group">
-                                    <a href="{% url 'subscribe' %}?vendor={{ vendor.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
-                                    <a href="{% url 'cves' %}?vendor={{ vendor.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                        <thead>
+                            <tr>
+                                <th>Vendor</th>
+                                <th class="text-center">Products</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vendors-tbody">
+                            {% include "cves/includes/vendor_list_rows.html" %}
+                        </tbody>
                     </table>
                     <div class="center">
-                        <div class="pagination">
-                            <span class="step-links">
-                                {% if page_obj.has_previous %}
-                                    <a href="{% url 'vendors'%}?{% query_params_url 'page' 1 %}">&laquo; first</a>
-                                    <a href="{% url 'vendors'%}?{% query_params_url 'page' page_obj.previous_page_number %}">previous</a>
-                                {% endif %}
-
-                                <span class="current">
-                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
-                                </span>
-
-                                {% if page_obj.has_next %}
-                                    <a href="{% url 'vendors'%}?{% query_params_url 'page' page_obj.next_page_number %}">next</a>
-                                    <a href="{% url 'vendors'%}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a>
-                                {% endif %}
-                            </span>
-                        </div>
+                        {% if vendors_has_next %}
+                        <button type="button"
+                                class="btn btn-default btn-sm load-more"
+                                id="vendors-load-more"
+                                data-list="vendors"
+                                data-url="{% url 'vendors_load_more' 'vendors' %}"
+                                data-target="#vendors-tbody"
+                                data-after="{{ vendors_next_cursor.0 }}"
+                                data-after-id="{{ vendors_next_cursor.1 }}"
+                                data-search="{{ request.GET.search|default:'' }}"
+                                data-vendor="{{ request.GET.vendor|default:'' }}">
+                            Load more
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -104,53 +94,36 @@
         <div class='col-md-7'>
             <div class="box box-primary">
                 <div class="box-header with-border">
-                    <h3 class="box-title">Products ({{ paginator_products.count }})</h3>
+                    <h3 class="box-title">Products</h3>
                 </div>
                 <div class="box-body table-responsive no-padding">
                     <table class="table table-hover table-striped" id="table-products">
-                        <tr>
-                            <th>Product</th>
-                            <th>Vendor</th>
-                            <th class="text-center">Actions</th>
-                        </tr>
-                        {% for product in products %}
-                        <tr>
-                            <td>
-                                {{ product.name | humanize }}
-                                {% with vendor_product_key=product.vendor.name|stringformat:"s"|add:"$PRODUCT$"|add:product.name %}
-                                    {% if vendor_product_key|is_top_vendor_or_product %}
-                                        <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>
-                                    {% endif %}
-                                {% endwith %}
-                            </td>
-                            <td>{{ product.vendor.name | humanize }}</td>
-                            <td class="text-center">
-                                <div class="btn-group">
-                                    <a href="{% url 'subscribe' %}?vendor={{ product.vendor.name | urlencode }}&product={{ product.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-rocket"></i> Subscriptions</a>
-                                    <a href="{% url 'cves' %}?vendor={{ product.vendor.name | urlencode }}&product={{ product.name | urlencode }}" class="btn btn-default btn-xs"><i class="fa fa-shield"></i> CVE</a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Vendor</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-tbody">
+                            {% include "cves/includes/product_list_rows.html" %}
+                        </tbody>
                     </table>
                     <div class="center">
-                        <div class="pagination">
-                            <span class="step-links">
-                                {% if products.has_previous %}
-                                    <a href="{% url 'vendors'%}?{% query_params_url 'product_page' 1 %}">&laquo; first</a>
-                                    <a href="{% url 'vendors'%}?{% query_params_url 'product_page' products.previous_page_number %}">previous</a>
-                                {% endif %}
-
-                                <span class="current">
-                                    Page {{ products.number }} of {{ products.paginator.num_pages }}.
-                                </span>
-
-                                {% if products.has_next %}
-                                    <a href="{% url 'vendors'%}?{% query_params_url 'product_page' products.next_page_number %}">next</a>
-                                    <a href="{% url 'vendors'%}?{% query_params_url 'product_page' products.paginator.num_pages %}">last &raquo;</a>
-                                {% endif %}
-                            </span>
-                        </div>
+                        {% if products_has_next %}
+                        <button type="button"
+                                class="btn btn-default btn-sm load-more"
+                                id="products-load-more"
+                                data-list="products"
+                                data-url="{% url 'vendors_load_more' 'products' %}"
+                                data-target="#products-tbody"
+                                data-after="{{ products_next_cursor.0 }}"
+                                data-after-id="{{ products_next_cursor.1 }}"
+                                data-search="{{ request.GET.search|default:'' }}"
+                                data-vendor="{{ request.GET.vendor|default:'' }}">
+                            Load more
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
