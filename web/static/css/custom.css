@@ -137,6 +137,10 @@
   .center {
     text-align: center;
   }
+  .load-more {
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
   .no-padding {
     padding: 0 !important;
   }

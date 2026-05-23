@@ -8,8 +8,9 @@ from django.core.paginator import Paginator
 from django.db import models
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
-from django.views.generic import DetailView, ListView, TemplateView
+from django.views.generic import DetailView, ListView, TemplateView, View
 
 from cves.constants import PRODUCT_SEPARATOR
 from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
@@ -25,11 +26,16 @@ from cves.utils import (
     normalize_enrichment_affected,
 )
 from opencve.utils import is_valid_uuid
+from opencve.pagination import (
+    keyset_cursor_payload,
+    paginate_keyset,
+    parse_keyset_cursor,
+)
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project, CveComment, CveTracker
 from users.models import CveTag, UserTag
 from views.forms import ViewForm
-from views.models import View
+from views.models import View as SavedView
 
 
 class WeaknessListView(ListView):
@@ -44,41 +50,106 @@ class WeaknessListView(ListView):
         return query.order_by("-name")
 
 
-class VendorListView(ListView):
-    context_object_name = "vendors"
-    template_name = "cves/vendor_list.html"
-    paginate_by = 20
+VENDOR_LIST_PAGE_SIZE = 20
 
-    def get_queryset(self):
-        vendors = Vendor.objects.order_by("name").prefetch_related("products")
-        search = self.request.GET.get("search", "").lower()
-        if search:
-            vendors = vendors.filter(name__contains=search)
-        return vendors
+
+def get_vendors_queryset(*, search):
+    """Get the queryset for the vendors list."""
+    vendors_qs = Vendor.objects.prefetch_related("products")
+    if search:
+        vendors_qs = vendors_qs.filter(name__contains=search)
+    return vendors_qs
+
+
+def get_products_queryset(*, search, vendor):
+    """Get the queryset for the products list."""
+    products_qs = Product.objects.select_related("vendor")
+    if vendor:
+        products_qs = products_qs.filter(vendor__name=vendor)
+    if search:
+        products_qs = products_qs.filter(name__contains=search)
+    return products_qs
+
+
+def vendor_list_page_context(*, search, vendor_filter):
+    """Build the context for the vendor list page."""
+    context = {}
+
+    if not vendor_filter:
+        vendor_page = paginate_keyset(
+            get_vendors_queryset(search=search),
+            cursor=None,
+            limit=VENDOR_LIST_PAGE_SIZE,
+        )
+        context["vendors"] = vendor_page.items
+        context["vendors_has_next"] = vendor_page.has_next
+        context["vendors_next_cursor"] = vendor_page.next_cursor
+
+    product_page = paginate_keyset(
+        get_products_queryset(search=search, vendor=vendor_filter),
+        cursor=None,
+        limit=VENDOR_LIST_PAGE_SIZE,
+    )
+    context["products"] = product_page.items
+    context["products_has_next"] = product_page.has_next
+    context["products_next_cursor"] = product_page.next_cursor
+
+    return context
+
+
+class VendorListView(TemplateView):
+    template_name = "cves/vendor_list.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        # Get all products or filter them by vendor
-        vendor = self.request.GET.get("vendor", "").lower()
-        products = Product.objects.order_by("name").select_related("vendor")
-
-        # Filter by vendor
-        if vendor:
-            products = products.filter(vendor__name=vendor)
-
-        # Filter by keyword
         search = self.request.GET.get("search", "").lower()
-        if search:
-            products = products.filter(name__contains=search)
-
-        # Add the pagination
-        paginator = Paginator(products, 20)
-        page_number = self.request.GET.get("product_page")
-        context["products"] = paginator.get_page(page_number)
-        context["paginator_products"] = paginator
-
+        vendor_filter = self.request.GET.get("vendor", "").lower()
+        context.update(
+            vendor_list_page_context(search=search, vendor_filter=vendor_filter)
+        )
         return context
+
+
+class VendorListLoadMoreView(View):
+    def get(self, request, list_type, *args, **kwargs):
+        if list_type not in {"vendors", "products"}:
+            raise Http404("Unknown list type.")
+
+        # Parse the cursor from the request GET parameters.
+        search = request.GET.get("search", "").lower()
+        vendor_filter = request.GET.get("vendor", "").lower()
+        cursor = parse_keyset_cursor(
+            request.GET.get("after"),
+            request.GET.get("after_id"),
+        )
+
+        # Fetch the next page of vendors or products.
+        if list_type == "vendors":
+            if vendor_filter:
+                raise Http404("Vendor list is not available when a vendor is selected.")
+            page = paginate_keyset(
+                get_vendors_queryset(search=search),
+                cursor=cursor,
+                limit=VENDOR_LIST_PAGE_SIZE,
+            )
+            html = render_to_string(
+                "cves/includes/vendor_list_rows.html",
+                {"vendors": page.items},
+                request=request,
+            )
+        else:
+            page = paginate_keyset(
+                get_products_queryset(search=search, vendor=vendor_filter),
+                cursor=cursor,
+                limit=VENDOR_LIST_PAGE_SIZE,
+            )
+            html = render_to_string(
+                "cves/includes/product_list_rows.html",
+                {"products": page.items},
+                request=request,
+            )
+
+        return JsonResponse({"html": html, **keyset_cursor_payload(page)})
 
 
 class CveListView(ListView):
@@ -189,7 +260,7 @@ class CveListView(ListView):
         if self.request.current_organization:
             context["view_form"] = ViewForm(request=self.request)
 
-            context["views"] = View.objects.filter(
+            context["views"] = SavedView.objects.filter(
                 models.Q(
                     privacy="public", organization=self.request.current_organization
                 )
