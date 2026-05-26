@@ -1,9 +1,11 @@
 import json
 from datetime import date
+from unittest.mock import patch
 
 import pytest
 from bs4 import BeautifulSoup
 from django.contrib.messages import get_messages
+from django.db import IntegrityError
 from django.test import override_settings
 from django.urls import reverse
 from freezegun import freeze_time
@@ -115,6 +117,64 @@ def test_onboarding_valid_form_minimal(auth_client, create_user):
     assert project.subscriptions == {"vendors": [], "products": []}
 
     assert Notification.objects.count() == 0
+
+
+def test_onboarding_duplicate_organization_name(
+    auth_client, create_user, create_organization
+):
+    """Duplicate org name shows a form error without creating orphan data."""
+    create_organization(name="myorga")
+    user = create_user(username="john", email="john@doe.com")
+    client = auth_client(user)
+    url = reverse("onboarding")
+
+    response = client.post(
+        url,
+        data={
+            "organization": "myorga",
+            "project": "myproject",
+            "selected_subscriptions": "[]",
+            "enable_email_notification": "",
+            "cvss31_min": "0",
+        },
+        follow=False,
+    )
+
+    assert response.status_code == 200
+    assert b"This organization name is not available." in response.content
+    assert Organization.objects.filter(name="myorga").count() == 1
+    assert Project.objects.count() == 0
+    assert not Membership.objects.filter(user=user).exists()
+
+
+def test_onboarding_handles_organization_name_integrity_error(auth_client, create_user):
+    """Race condition on org name returns a form error instead of a 500."""
+    user = create_user(username="john", email="john@doe.com")
+    client = auth_client(user)
+    url = reverse("onboarding")
+
+    with patch(
+        "organizations.models.Organization.objects.create",
+        side_effect=IntegrityError(
+            'duplicate key value violates unique constraint "ix_unique_organization_name"'
+        ),
+    ):
+        response = client.post(
+            url,
+            data={
+                "organization": "myorga",
+                "project": "myproject",
+                "selected_subscriptions": "[]",
+                "enable_email_notification": "",
+                "cvss31_min": "0",
+            },
+            follow=False,
+        )
+
+    assert response.status_code == 200
+    assert b"This organization name is not available." in response.content
+    assert Project.objects.count() == 0
+    assert not Membership.objects.filter(user=user).exists()
 
 
 @freeze_time("2024-01-01")

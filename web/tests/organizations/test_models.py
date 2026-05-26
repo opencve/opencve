@@ -3,6 +3,7 @@ from datetime import date
 import pytest
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.utils.timezone import now
 from freezegun import freeze_time
 
@@ -34,6 +35,22 @@ def test_organization_name_validator(create_organization):
     orga = Organization.objects.create(name="with'quote")
     with pytest.raises(ValidationError):
         assert orga.full_clean()
+
+
+def test_organization_name_unique_constraint(create_user, create_organization):
+    create_organization(name="myorg")
+
+    with pytest.raises(IntegrityError):
+        Organization.objects.create(name="myorg")
+
+
+def test_organization_name_unique_constraint_is_case_sensitive(
+    create_user, create_organization
+):
+    create_organization(name="myorg")
+
+    organization = Organization.objects.create(name="Myorg")
+    assert organization.name == "Myorg"
 
 
 def test_membership_model(create_user):
