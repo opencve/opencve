@@ -3,6 +3,16 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.urls import reverse
 
+ORGANIZATION_NAME_UNIQUE_CONSTRAINT = "ix_unique_organization_name"
+
+
+def is_organization_name_unique_violation(error):
+    """
+    Check if the error is a unique constraint violation for the organization name.
+    """
+    message = str(getattr(error, "__cause__", None) or error)
+    return ORGANIZATION_NAME_UNIQUE_CONSTRAINT in message
+
 
 def send_organization_invitation_email(membership, request):
     """

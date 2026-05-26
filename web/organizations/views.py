@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.paginator import Paginator
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -34,6 +35,7 @@ from organizations.auditlog import (
     get_organization_audit_log_pks,
 )
 from organizations.utils import (
+    is_organization_name_unique_violation,
     send_organization_invitation_email,
     send_organization_signup_invitation_email,
 )
@@ -63,15 +65,22 @@ class OrganizationCreateView(
     success_message = "The organization has been successfully created."
 
     def form_valid(self, form):
-        response = super(OrganizationCreateView, self).form_valid(form)
-        date_now = now()
-        Membership.objects.create(
-            user=self.request.user,
-            organization=self.object,
-            role=Membership.OWNER,
-            date_invited=date_now,
-            date_joined=date_now,
-        )
+        try:
+            with transaction.atomic():
+                response = super(OrganizationCreateView, self).form_valid(form)
+                date_now = now()
+                Membership.objects.create(
+                    user=self.request.user,
+                    organization=self.object,
+                    role=Membership.OWNER,
+                    date_invited=date_now,
+                    date_joined=date_now,
+                )
+        except IntegrityError as exc:
+            if is_organization_name_unique_violation(exc):
+                form.add_error("name", "This organization name is not available.")
+                return self.form_invalid(form)
+            raise
         return response
 
     def get_success_url(self):
@@ -104,6 +113,16 @@ class OrganizationEditView(
             "edit_organization",
             kwargs={"org_name": self.object.name},
         )
+
+    def form_valid(self, form):
+        try:
+            with transaction.atomic():
+                return super().form_valid(form)
+        except IntegrityError as exc:
+            if is_organization_name_unique_violation(exc):
+                form.add_error("name", "This organization name is not available.")
+                return self.form_invalid(form)
+            raise
 
 
 class OrganizationEditMembersView(

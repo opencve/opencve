@@ -1,6 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
@@ -14,6 +14,7 @@ from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Product, Vendor
 from onboarding.forms import OnboardingForm
 from organizations.models import Membership, Organization
+from organizations.utils import is_organization_name_unique_violation
 from projects.models import Notification, Project
 from projects.utils import send_notification_confirmation_email
 
@@ -119,51 +120,63 @@ class OnboardingFormView(
         context["pending_invitations"] = pending_invitations
         return context
 
-    @transaction.atomic
     def form_valid(self, form):
         data = form.cleaned_data
         date_now = now()
+        notification = None
 
-        organization = Organization.objects.create(name=data["organization"])
-        Membership.objects.create(
-            user=self.request.user,
-            organization=organization,
-            role=Membership.OWNER,
-            date_invited=date_now,
-            date_joined=date_now,
-        )
+        try:
+            with transaction.atomic():
+                organization = Organization.objects.create(name=data["organization"])
 
-        subscriptions = {"vendors": [], "products": []}
-        selected = data.get("selected_subscriptions") or []
-        for item in selected:
-            if PRODUCT_SEPARATOR in item:
-                subscriptions["products"].append(item)
-            else:
-                subscriptions["vendors"].append(item)
+                Membership.objects.create(
+                    user=self.request.user,
+                    organization=organization,
+                    role=Membership.OWNER,
+                    date_invited=date_now,
+                    date_joined=date_now,
+                )
 
-        project = Project.objects.create(
-            name=data["project"],
-            organization=organization,
-            subscriptions=subscriptions,
-        )
+                subscriptions = {"vendors": [], "products": []}
+                selected = data.get("selected_subscriptions") or []
+                for item in selected:
+                    if PRODUCT_SEPARATOR in item:
+                        subscriptions["products"].append(item)
+                    else:
+                        subscriptions["vendors"].append(item)
 
-        if data.get("enable_email_notification"):
-            extras = {
-                "email": data["notification_email"],
-                "created_by_email": self.request.user.email,
-                "confirmation_token": secrets.token_urlsafe(32),
-            }
-            notification = Notification.objects.create(
-                name="Email notifications",
-                type="email",
-                is_enabled=False,
-                project=project,
-                configuration={
-                    "types": ["created", "first_time"],
-                    "extras": extras,
-                    "metrics": {"cvss31": str(data["cvss31_min"])},
-                },
-            )
+                project = Project.objects.create(
+                    name=data["project"],
+                    organization=organization,
+                    subscriptions=subscriptions,
+                )
+
+                if data.get("enable_email_notification"):
+                    extras = {
+                        "email": data["notification_email"],
+                        "created_by_email": self.request.user.email,
+                        "confirmation_token": secrets.token_urlsafe(32),
+                    }
+                    notification = Notification.objects.create(
+                        name="Email notifications",
+                        type="email",
+                        is_enabled=False,
+                        project=project,
+                        configuration={
+                            "types": ["created", "first_time"],
+                            "extras": extras,
+                            "metrics": {"cvss31": str(data["cvss31_min"])},
+                        },
+                    )
+        except IntegrityError as exc:
+            if is_organization_name_unique_violation(exc):
+                form.add_error(
+                    "organization", "This organization name is not available."
+                )
+                return self.form_invalid(form)
+            raise
+
+        if notification:
             send_notification_confirmation_email(notification, self.request)
 
         return super().form_valid(form)

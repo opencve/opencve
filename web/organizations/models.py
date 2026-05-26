@@ -23,6 +23,15 @@ class Organization(BaseModel):
         db_table = "opencve_organizations"
         permissions = (("add_member", "Add member"),)
 
+        # Case-sensitive uniqueness: legacy orgs may already coexist as MyOrg/myorg,
+        # so a case-insensitive constraint would break existing data on migration.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["name"],
+                name="ix_unique_organization_name",
+            )
+        ]
+
     def get_projects_vendors(self):
         projects_vendors = self.projects.values_list("subscriptions", flat=True)
         unique_vendors = set()
