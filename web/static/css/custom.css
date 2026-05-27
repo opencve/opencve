@@ -185,6 +185,12 @@
     border-bottom: 3px solid #090031;
   }
 
+  .opencve-nav-tabs > li.active > a,
+  .opencve-nav-tabs > li.active > a:focus,
+  .opencve-nav-tabs > li.active > a:hover {
+    cursor: pointer;
+  }
+
   .nav-tabs-settings > .tab-content {
     min-height: 400px;
   }
