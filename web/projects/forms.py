@@ -375,6 +375,14 @@ class AutomationForm(forms.ModelForm):
             data["schedule_weekday"] = None
         return data
 
+    def _get_trigger_type(self):
+        trigger = self.cleaned_data.get("trigger_type")
+        if trigger:
+            return trigger
+        if self.instance and self.instance.pk:
+            return self.instance.trigger_type
+        return self.data.get("trigger_type")
+
     def _validate_conditions_tree(self, node):
         """Validate conditions tree: { operator: OR|AND, children: [...] } or leaf { type, value }."""
         if not isinstance(node, dict):
@@ -422,6 +430,16 @@ class AutomationForm(forms.ModelForm):
                 for t in config["triggers"]:
                     if not isinstance(t, str):
                         raise forms.ValidationError("Each trigger must be a string.")
+            if self._get_trigger_type() == Automation.TRIGGER_ALERT:
+                triggers = config.get("triggers") or []
+                if not triggers:
+                    raise forms.ValidationError(
+                        "At least one event is required for alert automations."
+                    )
+                if not config["actions"]:
+                    raise forms.ValidationError(
+                        "At least one action is required for alert automations."
+                    )
             return config
         except json.JSONDecodeError:
             raise forms.ValidationError("Invalid JSON format.")

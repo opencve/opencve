@@ -800,6 +800,12 @@ def test_cve_tracker_filter_form_status_rejects_invalid_multiple_value():
 
 # --- AutomationForm tests ---
 
+MINIMAL_ALERT_CONFIGURATION = {
+    "triggers": ["cve_enters_project"],
+    "conditions": {"operator": "OR", "children": []},
+    "actions": [{"type": "send_notification", "value": "notif-1"}],
+}
+
 
 def test_automation_form_valid_alert(create_organization, create_project):
     """Accept a minimal alert automation with valid name."""
@@ -811,9 +817,7 @@ def test_automation_form_valid_alert(create_organization, create_project):
             "name": "my-alert",
             "trigger_type": Automation.TRIGGER_ALERT,
             "is_enabled": True,
-            "configuration_json": json.dumps(
-                {"conditions": {"operator": "OR", "children": []}, "actions": []}
-            ),
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
         },
         project=project,
     )
@@ -829,9 +833,7 @@ def test_automation_form_special_characters(create_organization, create_project)
         data={
             "name": "foo|bar",
             "trigger_type": Automation.TRIGGER_ALERT,
-            "configuration_json": json.dumps(
-                {"conditions": {"operator": "OR", "children": []}, "actions": []}
-            ),
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
         },
         project=project,
     )
@@ -847,9 +849,7 @@ def test_automation_form_reserved_name(create_organization, create_project):
         data={
             "name": "add",
             "trigger_type": Automation.TRIGGER_ALERT,
-            "configuration_json": json.dumps(
-                {"conditions": {"operator": "OR", "children": []}, "actions": []}
-            ),
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
         },
         project=project,
     )
@@ -868,9 +868,7 @@ def test_automation_form_name_already_exists(
         data={
             "name": "existing",
             "trigger_type": Automation.TRIGGER_ALERT,
-            "configuration_json": json.dumps(
-                {"conditions": {"operator": "OR", "children": []}, "actions": []}
-            ),
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
         },
         project=project,
     )
@@ -890,9 +888,7 @@ def test_automation_form_same_name_different_project(
         data={
             "name": "my-alert",
             "trigger_type": Automation.TRIGGER_ALERT,
-            "configuration_json": json.dumps(
-                {"conditions": {"operator": "OR", "children": []}, "actions": []}
-            ),
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
         },
         project=project2,
     )
@@ -1081,9 +1077,7 @@ def test_automation_form_alert_clears_schedule_fields(
             "frequency": Automation.FREQUENCY_DAILY,
             "schedule_timezone": "UTC",
             "schedule_time": "09:00",
-            "configuration_json": json.dumps(
-                {"conditions": {"operator": "OR", "children": []}, "actions": []}
-            ),
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
         },
         project=project,
     )
@@ -1188,21 +1182,54 @@ def test_automation_form_configuration_with_triggers(
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
 
+    config = {
+        **MINIMAL_ALERT_CONFIGURATION,
+        "triggers": ["cve_enters_project", "kev_added"],
+    }
     form = AutomationForm(
         data={
             "name": "with-triggers",
             "trigger_type": Automation.TRIGGER_ALERT,
-            "configuration_json": json.dumps(
-                {
-                    "triggers": ["cve_enters_project", "kev_added"],
-                    "conditions": {"operator": "OR", "children": []},
-                    "actions": [],
-                }
-            ),
+            "configuration_json": json.dumps(config),
         },
         project=project,
     )
     assert form.errors == {}
+
+
+def test_automation_form_alert_requires_trigger(create_organization, create_project):
+    """Reject alert automations without at least one trigger."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    config = {**MINIMAL_ALERT_CONFIGURATION}
+    del config["triggers"]
+    form = AutomationForm(
+        data={
+            "name": "no-trigger",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(config),
+        },
+        project=project,
+    )
+    assert "configuration_json" in form.errors
+
+
+def test_automation_form_alert_requires_action(create_organization, create_project):
+    """Reject alert automations without at least one action."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+
+    config = {**MINIMAL_ALERT_CONFIGURATION, "actions": []}
+    form = AutomationForm(
+        data={
+            "name": "no-action",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(config),
+        },
+        project=project,
+    )
+    assert "configuration_json" in form.errors
 
 
 def test_automation_form_save_sets_project(create_organization, create_project):
@@ -1210,7 +1237,7 @@ def test_automation_form_save_sets_project(create_organization, create_project):
     org = create_organization(name="my-orga")
     project = create_project(name="my-project", organization=org)
 
-    config = {"conditions": {"operator": "OR", "children": []}, "actions": ["foo"]}
+    config = {**MINIMAL_ALERT_CONFIGURATION, "actions": ["foo"]}
     form = AutomationForm(
         data={
             "name": "saved-alert",
