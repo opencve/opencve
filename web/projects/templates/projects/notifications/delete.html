@@ -12,7 +12,7 @@
             <p>Do you really want to delete the <strong>{{ object }}</strong> notification?</p>
             <form method="post">
                 {% csrf_token %}
-                <a href="{% url 'edit_notification' org_name=object.project.organization.name project_name=object.project.name notification=object.name%}" class="btn btn-default">Cancel</a>
+                <a href="{% url 'edit_notification' org_name=object.project.organization.name project_name=object.project.name notification=notification_url_name %}" class="btn btn-default">Cancel</a>
                 <input type="submit" class="btn btn-danger" value="Confirm">
             </form>
           </div>

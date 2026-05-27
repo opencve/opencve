@@ -10,7 +10,7 @@
 
     <!-- Right column: main content -->
     <div class="col-md-9 col-sm-8">
-        <form method="post" action="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation.name %}">
+        <form method="post" action="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}">
             {% csrf_token %}
             <div class="box box-primary">
                 <div class="box-header with-border">
@@ -32,7 +32,7 @@
                     {{ form.name|as_crispy_field }}
                     {{ form.is_enabled|as_crispy_field }}
                     <div class="clearfix automation-form-actions">
-                        <a href="{% url 'delete_automation' org_name=request.current_organization.name project_name=project.name automation=automation.name %}" class="btn btn-danger btn-sm pull-left">Delete</a>
+                        <a href="{% url 'delete_automation' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}" class="btn btn-danger btn-sm pull-left">Delete</a>
                         <button type="submit" class="btn btn-primary btn-sm pull-right">Save</button>
                     </div>
                 </div>
@@ -90,6 +90,6 @@
 
 {% block extra_scripts %}
 <script>
-AutomationDrawer.init("{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id='00000000-0000-0000-0000-000000000000' %}");
+AutomationDrawer.init("{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation_url_name execution_id='00000000-0000-0000-0000-000000000000' %}");
 </script>
 {% endblock %}

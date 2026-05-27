@@ -37,3 +37,17 @@ class ProjectIsActiveMixin:
             raise Http404
 
         return super().dispatch(request, *args, **kwargs)
+
+
+class ResourceUrlNameMixin:
+    """Expose the persisted resource slug from URL kwargs for template links."""
+
+    resource_url_kwarg = None
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.resource_url_kwarg:
+            context[f"{self.resource_url_kwarg}_url_name"] = self.kwargs[
+                self.resource_url_kwarg
+            ]
+        return context

@@ -50,13 +50,13 @@
                 <div class="box-footer text-center">
                     <ul class="pagination pagination-sm no-margin">
                         {% if page_obj.has_previous %}
-                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' 1 %}">&laquo; first</a></li>
-                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.previous_page_number %}">&lsaquo; prev</a></li>
+                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}?{% query_params_url 'page' 1 %}">&laquo; first</a></li>
+                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}?{% query_params_url 'page' page_obj.previous_page_number %}">&lsaquo; prev</a></li>
                         {% endif %}
                         <li class="disabled"><span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
                         {% if page_obj.has_next %}
-                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.next_page_number %}">next &rsaquo;</a></li>
-                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation.name %}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a></li>
+                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}?{% query_params_url 'page' page_obj.next_page_number %}">next &rsaquo;</a></li>
+                        <li><a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a></li>
                         {% endif %}
                     </ul>
                 </div>
@@ -72,6 +72,6 @@
 
 {% block extra_scripts %}
 <script>
-AutomationDrawer.init("{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id='00000000-0000-0000-0000-000000000000' %}");
+AutomationDrawer.init("{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation_url_name execution_id='00000000-0000-0000-0000-000000000000' %}");
 </script>
 {% endblock %}

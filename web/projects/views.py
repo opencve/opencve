@@ -39,7 +39,11 @@ from projects.forms import (
     ProjectForm,
     CveTrackerFilterForm,
 )
-from projects.mixins import ProjectObjectMixin, ProjectIsActiveMixin
+from projects.mixins import (
+    ProjectObjectMixin,
+    ProjectIsActiveMixin,
+    ResourceUrlNameMixin,
+)
 from projects.models import (
     Automation,
     AutomationExecution,
@@ -663,6 +667,7 @@ class NotificationUpdateView(
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
     ProjectIsActiveMixin,
+    ResourceUrlNameMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     UpdateView,
@@ -670,6 +675,7 @@ class NotificationUpdateView(
     model = Notification
     template_name = "projects/notifications/save.html"
     success_message = "The notification has been successfully updated."
+    resource_url_kwarg = "notification"
 
     def get_object(self, queryset=None):
         return get_object_or_404(
@@ -746,12 +752,14 @@ class NotificationDeleteView(
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
     ProjectIsActiveMixin,
+    ResourceUrlNameMixin,
     SuccessMessageMixin,
     DeleteView,
 ):
     model = Notification
     template_name = "projects/notifications/delete.html"
     success_message = "The notification has been successfully removed."
+    resource_url_kwarg = "notification"
 
     def get_object(self, queryset=None):
         return get_object_or_404(
@@ -1485,6 +1493,7 @@ class AutomationOverviewView(
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
     ProjectIsActiveMixin,
+    ResourceUrlNameMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     UpdateView,
@@ -1495,6 +1504,7 @@ class AutomationOverviewView(
     form_class = AutomationOverviewForm
     template_name = "projects/automations/overview.html"
     success_message = "The automation has been successfully updated."
+    resource_url_kwarg = "automation"
 
     def get_object(self, queryset=None):
         return get_object_or_404(
@@ -1525,7 +1535,7 @@ class AutomationOverviewView(
             kwargs={
                 "org_name": self.request.current_organization.name,
                 "project_name": self.project.name,
-                "automation": self.object.name,
+                "automation": self.kwargs["automation"],
             },
         )
         return context
@@ -1546,6 +1556,7 @@ class AutomationConfigurationView(
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
     ProjectIsActiveMixin,
+    ResourceUrlNameMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     UpdateView,
@@ -1554,6 +1565,7 @@ class AutomationConfigurationView(
     form_class = AutomationForm
     template_name = "projects/automations/configuration.html"
     success_message = "The automation has been successfully updated."
+    resource_url_kwarg = "automation"
 
     def get_object(self, queryset=None):
         return get_object_or_404(
@@ -1609,6 +1621,7 @@ class AutomationExecutionsView(
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
     ProjectIsActiveMixin,
+    ResourceUrlNameMixin,
     DetailView,
 ):
     """Executions page: full paginated list of all executions for an automation."""
@@ -1616,6 +1629,7 @@ class AutomationExecutionsView(
     model = Automation
     template_name = "projects/automations/executions.html"
     context_object_name = "automation"
+    resource_url_kwarg = "automation"
 
     def get_object(self, queryset=None):
         return get_object_or_404(
@@ -1741,7 +1755,7 @@ class AutomationExecutionDetailView(
             kwargs={
                 "org_name": request.current_organization.name,
                 "project_name": self.project.name,
-                "automation": automation.name,
+                "automation": kwargs["automation"],
             },
         )
         return render(
@@ -1750,6 +1764,7 @@ class AutomationExecutionDetailView(
             {
                 "project": self.project,
                 "automation": automation,
+                "automation_url_name": kwargs["automation"],
                 "execution": execution,
                 "results": results,
                 "activity_executions": activity_executions,
@@ -1777,12 +1792,14 @@ class AutomationDeleteView(
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
     ProjectIsActiveMixin,
+    ResourceUrlNameMixin,
     SuccessMessageMixin,
     DeleteView,
 ):
     model = Automation
     template_name = "projects/automations/delete.html"
     success_message = "The automation has been successfully removed."
+    resource_url_kwarg = "automation"
 
     def get_object(self, queryset=None):
         return get_object_or_404(
