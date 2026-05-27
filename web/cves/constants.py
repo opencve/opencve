@@ -13,6 +13,13 @@ CVSS_SCORES = [
     (9, 9),
 ]
 
+CVSS_VERSIONS = [
+    ("v4.0", "v4.0"),
+    ("v3.1", "v3.1"),
+    ("v3.0", "v3.0"),
+    ("v2.0", "v2.0"),
+]
+
 CVSS_NAME_MAPPING = {
     "v4": {
         "AV": "Attack Vector",
