@@ -78,7 +78,7 @@ def enrich_change_details_from_kb(change_details):
     return enriched_details
 
 
-@task(task_id="CollectHourlyChanges")
+@task(task_id="collect_hourly_changes")
 def collect_hourly_changes(**context):
     start, end = get_dates_from_context(context)
 
@@ -106,7 +106,7 @@ def collect_hourly_changes(**context):
     redis_set(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end, change_details)
 
 
-@task(task_id="ResolveSubscriptions")
+@task(task_id="resolve_subscriptions")
 def resolve_subscriptions(**context):
     start, end = get_dates_from_context(context)
 

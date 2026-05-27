@@ -422,7 +422,7 @@ def chunk_actions(actions_to_execute):
     return divide_list(actions_to_execute, max_map_length)
 
 
-@task(task_id="LoadEnabledAutomations")
+@task(task_id="load_enabled_automations")
 def load_enabled_automations(**context):
     start, end = get_dates_from_context(context)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
@@ -443,7 +443,7 @@ def load_enabled_automations(**context):
     redis_set(redis_hook, REDIS_PREFIX_AUTOMATIONS, start, end, automations)
 
 
-@task(task_id="BuildAlertWorkItems")
+@task(task_id="build_alert_work_items")
 def build_alert_work_items(**context):
     start, end = get_dates_from_context(context)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
@@ -533,7 +533,7 @@ def build_alert_work_items(**context):
     return True
 
 
-@task(task_id="BuildReportContentHourly")
+@task(task_id="build_report_content_hourly")
 def build_report_content_hourly(**context):
     start, end = get_dates_from_context(context)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
@@ -593,7 +593,7 @@ def build_report_content_hourly(**context):
     return True
 
 
-@task(task_id="UpsertReportContentAndEntries")
+@task(task_id="upsert_report_content_and_entries")
 def upsert_report_content_and_entries(**context):
     start, end = get_dates_from_context(context)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
@@ -658,7 +658,7 @@ def upsert_report_content_and_entries(**context):
     return {"reports_touched": len(accumulated)}
 
 
-@task(task_id="EvaluateReportDueInAutomationTimezone", trigger_rule="none_failed")
+@task(task_id="evaluate_report_due_in_automation_timezone", trigger_rule="none_failed")
 def evaluate_report_due_in_automation_timezone(**context):
     start, end = get_dates_from_context(context)
     data_interval_end = context["data_interval_end"]
@@ -735,7 +735,7 @@ def evaluate_report_due_in_automation_timezone(**context):
     return True
 
 
-@task(task_id="BuildReportNotificationPayload")
+@task(task_id="build_report_notification_payload")
 def build_report_notification_payload(**context):
     start, end = get_dates_from_context(context)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
@@ -948,11 +948,11 @@ def _execute_automation_actions(queue_name: str, **context):
     return True
 
 
-@task(task_id="ExecuteAlertActions")
+@task(task_id="execute_alert_actions")
 def execute_alert_automation_actions(**context):
     return _execute_automation_actions("alert", **context)
 
 
-@task(task_id="SendReportNotificationsDailyOrWeekly", trigger_rule="none_failed")
+@task(task_id="send_report_notifications_daily_or_weekly", trigger_rule="none_failed")
 def execute_report_due_automation_actions(**context):
     return _execute_automation_actions("report_due", **context)

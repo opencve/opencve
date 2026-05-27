@@ -28,7 +28,7 @@ def insert_variable(name, value):
     )
 
 
-@task(task_id="ComputeStatistics")
+@task(task_id="compute_statistics")
 def compute_statistics(**context):
     logger.info("Computing statistics")
     hook = PostgresHook(postgres_conn_id="opencve_postgres")

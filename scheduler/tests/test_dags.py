@@ -15,21 +15,23 @@ def test_dag_opencve_loaded(dagbag):
     assert dag is not None
     task_ids = {t.task_id for t in dag.tasks}
     # Core tasks still exist
-    assert "kb_refresh.ProcessKb" in task_ids
-    assert "kb_refresh.ComputeStatistics" in task_ids
-    assert "report_inputs.CollectHourlyChanges" in task_ids
-    assert "report_inputs.ResolveSubscriptions" in task_ids
-    assert "report_inputs.LoadEnabledAutomations" in task_ids
-    assert "automation_processing.report.BuildReportContentHourly" in task_ids
-    assert "automation_processing.report.UpsertReportContentAndEntries" in task_ids
+    assert "kb_refresh.process_kb" in task_ids
+    assert "kb_refresh.compute_statistics" in task_ids
+    assert "report_inputs.collect_hourly_changes" in task_ids
+    assert "report_inputs.resolve_subscriptions" in task_ids
+    assert "report_inputs.load_enabled_automations" in task_ids
+    assert "automation_processing.report.build_report_content_hourly" in task_ids
+    assert "automation_processing.report.upsert_report_content_and_entries" in task_ids
     assert (
-        "automation_processing.report.EvaluateReportDueInAutomationTimezone" in task_ids
+        "automation_processing.report.evaluate_report_due_in_automation_timezone"
+        in task_ids
     )
-    assert "automation_processing.report.BuildReportNotificationPayload" in task_ids
-    assert "automation_processing.alert.BuildAlertWorkItems" in task_ids
-    assert "automation_processing.alert.ExecuteAlertActions" in task_ids
+    assert "automation_processing.report.build_report_notification_payload" in task_ids
+    assert "automation_processing.alert.build_alert_work_items" in task_ids
+    assert "automation_processing.alert.execute_alert_actions" in task_ids
     assert (
-        "automation_processing.report.SendReportNotificationsDailyOrWeekly" in task_ids
+        "automation_processing.report.send_report_notifications_daily_or_weekly"
+        in task_ids
     )
     # Short-circuit guards removed
     assert "should_create_reports" not in task_ids
