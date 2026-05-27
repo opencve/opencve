@@ -6,7 +6,7 @@ from crispy_forms.layout import HTML, Layout, Submit
 from django import forms
 from django.conf import settings
 
-from cves.constants import CVSS_SCORES, PRODUCT_SEPARATOR
+from cves.constants import CVSS_VERSIONS, PRODUCT_SEPARATOR
 from cves.models import Product, Vendor
 from opencve.validators import slug_regex_validator
 from organizations.models import Organization
@@ -26,11 +26,16 @@ class OnboardingForm(forms.Form):
     # Step 3
     enable_email_notification = forms.BooleanField(required=False, initial=False)
     notification_email = forms.EmailField(required=False)
-    cvss31_min = forms.ChoiceField(
-        choices=CVSS_SCORES,
+    cvss_version = forms.ChoiceField(
+        choices=CVSS_VERSIONS,
+        required=False,
+        initial="v3.1",
+    )
+    cvss_min = forms.IntegerField(
         required=False,
         initial=0,
-        label="Minimum CVSS v3.1 score to be alerted",
+        min_value=0,
+        max_value=9,
     )
 
     def __init__(self, *args, **kwargs):
@@ -53,7 +58,8 @@ class OnboardingForm(forms.Form):
             "selected_subscriptions",
             "enable_email_notification",
             "notification_email",
-            "cvss31_min",
+            "cvss_version",
+            "cvss_min",
             FormActions(
                 HTML(
                     """<a href="{% url 'settings_profile' %}" class="btn btn-default">Settings</a>"""

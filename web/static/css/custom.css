@@ -996,6 +996,39 @@ pre.plainJSON{
   cursor: not-allowed;
 }
 
+.onboarding-cvss-condition {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.onboarding-cvss-sentence {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+.onboarding-cvss-sentence .onboarding-cvss-inline {
+  display: inline-block;
+  width: auto;
+  height: auto;
+  padding: 4px 8px;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.onboarding-cvss-sentence select.onboarding-cvss-inline {
+  width: 90px;
+}
+
+.onboarding-cvss-sentence input.onboarding-cvss-inline {
+  width: 70px;
+}
+
 .organizations-list .product-info,
 .projects-list .product-info {
   margin-left: 10px;

@@ -90,7 +90,8 @@ def test_onboarding_valid_form_minimal(auth_client, create_user):
             "project": "myproject",
             "selected_subscriptions": "[]",
             "enable_email_notification": "",
-            "cvss31_min": "0",
+            "cvss_version": "v3.1",
+            "cvss_min": "0",
         },
         follow=True,
     )
@@ -195,7 +196,8 @@ def test_onboarding_valid_form_with_subscriptions(auth_client, create_user, db):
             "project": "myproject",
             "selected_subscriptions": subscriptions,
             "enable_email_notification": "",
-            "cvss31_min": "0",
+            "cvss_version": "v3.1",
+            "cvss_min": "0",
         },
         follow=True,
     )
@@ -224,7 +226,8 @@ def test_onboarding_form_valid_subscriptions_only_vendors(auth_client, create_us
             "project": "myproject",
             "selected_subscriptions": json.dumps(["python", "linux"]),
             "enable_email_notification": "",
-            "cvss31_min": "0",
+            "cvss_version": "v3.1",
+            "cvss_min": "0",
         },
         follow=True,
     )
@@ -252,7 +255,8 @@ def test_onboarding_form_valid_subscriptions_only_products(
             "project": "myproject",
             "selected_subscriptions": json.dumps([f"python{PRODUCT_SEPARATOR}django"]),
             "enable_email_notification": "",
-            "cvss31_min": "0",
+            "cvss_version": "v3.1",
+            "cvss_min": "0",
         },
         follow=True,
     )
@@ -280,7 +284,8 @@ def test_onboarding_form_valid_notification_linked_to_project(auth_client, creat
             "selected_subscriptions": "[]",
             "enable_email_notification": "1",
             "notification_email": "alerts@example.com",
-            "cvss31_min": "7",
+            "cvss_version": "v3.1",
+            "cvss_min": "7",
         },
         follow=True,
     )
@@ -314,7 +319,8 @@ def test_onboarding_valid_form_with_notification(auth_client, create_user):
             "selected_subscriptions": "[]",
             "enable_email_notification": "1",
             "notification_email": "alerts@example.com",
-            "cvss31_min": "7",
+            "cvss_version": "v3.1",
+            "cvss_min": "7",
         },
         follow=True,
     )
@@ -439,7 +445,8 @@ def test_onboarding_no_automation_created_without_notification(
             "project": "myproject",
             "selected_subscriptions": "[]",
             "enable_email_notification": "",
-            "cvss31_min": "0",
+            "cvss_version": "v3.1",
+            "cvss_min": "0",
         },
         follow=True,
     )
@@ -464,7 +471,8 @@ def test_onboarding_creates_automation_with_notification(auth_client, create_use
             "selected_subscriptions": "[]",
             "enable_email_notification": "1",
             "notification_email": "alerts@example.com",
-            "cvss31_min": "7",
+            "cvss_version": "v3.1",
+            "cvss_min": "7",
         },
         follow=True,
     )
@@ -490,7 +498,47 @@ def test_onboarding_creates_automation_with_notification(auth_client, create_use
     conditions = automation.configuration["conditions"]
     assert conditions == {
         "operator": "OR",
-        "children": [{"operator": "AND", "children": []}],
+        "children": [
+            {
+                "operator": "AND",
+                "children": [
+                    {
+                        "type": "cvss_gte",
+                        "value": {"version": "v3.1", "value": 7},
+                    }
+                ],
+            }
+        ],
+    }
+
+
+@freeze_time("2024-01-01")
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+def test_onboarding_automation_stores_cvss_version(auth_client, create_user):
+    """The automation stores the selected CVSS version and minimum score."""
+    user = create_user(username="john", email="john@doe.com")
+    client = auth_client(user)
+    url = reverse("onboarding")
+
+    client.post(
+        url,
+        data={
+            "organization": "myorga",
+            "project": "myproject",
+            "selected_subscriptions": "[]",
+            "enable_email_notification": "1",
+            "notification_email": "alerts@example.com",
+            "cvss_version": "v4.0",
+            "cvss_min": "8",
+        },
+        follow=True,
+    )
+
+    automation = Automation.objects.first()
+    condition = automation.configuration["conditions"]["children"][0]["children"][0]
+    assert condition == {
+        "type": "cvss_gte",
+        "value": {"version": "v4.0", "value": 8},
     }
 
 
@@ -510,7 +558,8 @@ def test_onboarding_automation_linked_to_correct_project(auth_client, create_use
             "selected_subscriptions": "[]",
             "enable_email_notification": "1",
             "notification_email": "alerts@example.com",
-            "cvss31_min": "0",
+            "cvss_version": "v3.1",
+            "cvss_min": "0",
         },
         follow=True,
     )

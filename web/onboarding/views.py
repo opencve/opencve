@@ -168,6 +168,16 @@ class OnboardingFormView(
                         },
                     )
 
+                    cvss_conditions = [
+                        {
+                            "type": "cvss_gte",
+                            "value": {
+                                "version": data.get("cvss_version") or "v3.1",
+                                "value": data.get("cvss_min", 0),
+                            },
+                        }
+                    ]
+
                     Automation.objects.create(
                         name="Recently published CVEs",
                         trigger_type=Automation.TRIGGER_ALERT,
@@ -177,7 +187,12 @@ class OnboardingFormView(
                             "triggers": ["cve_enters_project"],
                             "conditions": {
                                 "operator": "OR",
-                                "children": [{"operator": "AND", "children": []}],
+                                "children": [
+                                    {
+                                        "operator": "AND",
+                                        "children": cvss_conditions,
+                                    }
+                                ],
                             },
                             "actions": [
                                 {

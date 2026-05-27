@@ -2900,7 +2900,7 @@ function getContrastedColor(str){
     });
 
     function setNotificationFieldsEnabled(enabled) {
-      $('#id_notification_email, #id_cvss31_min').prop('disabled', !enabled);
+      $('#id_notification_email, #id_cvss_version, #id_cvss_min').prop('disabled', !enabled);
       $('#onboarding-notification-fields').toggleClass('onboarding-notification-fields-disabled', !enabled);
     }
     $('#id_enable_email_notification').on('change', function() {

@@ -149,12 +149,20 @@
                 {% if form.notification_email.errors %}<p class="text-danger">{{ form.notification_email.errors.0 }}</p>{% endif %}
               </div>
               <div class="form-group">
-                <label for="id_cvss31_min">Minimum CVSS v3.1 score to be alerted</label>
-                <select name="cvss31_min" id="id_cvss31_min" class="form-control" disabled>
-                  {% for value, label in form.fields.cvss31_min.choices %}
-                  <option value="{{ value }}" {% if form.cvss31_min.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
-                  {% endfor %}
-                </select>
+                <div class="onboarding-cvss-condition">
+                  <span class="onboarding-cvss-sentence">
+                    The CVSS
+                    <select name="cvss_version" id="id_cvss_version" class="form-control onboarding-cvss-inline" disabled>
+                      {% for value, label in form.fields.cvss_version.choices %}
+                      <option value="{{ value }}" {% if form.cvss_version.value|default:"v3.1" == value %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                    score is greater than or equal to
+                    <input type="number" name="cvss_min" id="id_cvss_min" class="form-control onboarding-cvss-inline" min="0" max="9" step="1" value="{{ form.cvss_min.value|default:0 }}" disabled>
+                  </span>
+                </div>
+                {% if form.cvss_min.errors %}<p class="text-danger">{{ form.cvss_min.errors.0 }}</p>{% endif %}
+                {% if form.cvss_version.errors %}<p class="text-danger">{{ form.cvss_version.errors.0 }}</p>{% endif %}
               </div>
             </div>
             <div class="form-group">
