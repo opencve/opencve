@@ -15,7 +15,7 @@
                 <h3 class="box-title">Conditions</h3>
             </div>
             <div class="box-body">
-        <form method="post" id="automation-form" action="{% url 'automation_configuration' org_name=request.current_organization.name project_name=project.name automation=automation.name %}">
+        <form method="post" id="automation-form" action="{% url 'automation_configuration' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}">
             {% csrf_token %}
             {{ form.configuration_json }}
             {{ form.trigger_type }}

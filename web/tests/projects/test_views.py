@@ -1669,6 +1669,70 @@ def test_notification_update_view_valid_form(
 
 
 @override_settings(ENABLE_ONBOARDING=False)
+def test_notification_update_view_invalid_rename_keeps_delete_link(
+    create_organization, create_user, create_project, create_notification, auth_client
+):
+    """Invalid rename keeps persisted notification name in navigation links."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_notification(
+        name="Email notifications",
+        project=project,
+        type="webhook",
+        configuration={
+            "types": [],
+            "metrics": {"cvss31": "0"},
+            "extras": {
+                "url": "https://example.com/hook",
+                "headers": {},
+            },
+        },
+    )
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "edit_notification",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "notification": "Email notifications",
+            },
+        ),
+        data={
+            "name": "Email:notifications",
+            "url": "https://example.com/hook",
+            "headers": "{}",
+        },
+    )
+    assert response.status_code == 200
+    assert response.context["notification_url_name"] == "Email notifications"
+    delete_url = reverse(
+        "delete_notification",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "notification": "Email notifications",
+        },
+    )
+    invalid_delete_url = reverse(
+        "delete_notification",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "notification": "Email:notifications",
+        },
+    )
+    content = response.content.decode()
+    assert delete_url in content
+    assert invalid_delete_url not in content
+    assert Notification.objects.filter(
+        name="Email notifications", project=project
+    ).exists()
+
+
+@override_settings(ENABLE_ONBOARDING=False)
 def test_notification_resend_confirmation_view_requires_authentication(db, client):
     """Require authentication."""
     response = client.get(
@@ -4009,6 +4073,52 @@ def test_automation_overview_view_toggle_enabled(
     )
     automation.refresh_from_db()
     assert automation.is_enabled is False
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_overview_view_invalid_rename_keeps_menu_links(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Invalid rename keeps persisted automation name in navigation links."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="Foobar - baz", project=project)
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "Foobar - baz",
+            },
+        ),
+        data={"name": "Foobar:baz", "is_enabled": True},
+    )
+    assert response.status_code == 200
+    assert response.context["automation_url_name"] == "Foobar - baz"
+    config_url = reverse(
+        "automation_configuration",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "automation": "Foobar - baz",
+        },
+    )
+    invalid_config_url = reverse(
+        "automation_configuration",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "automation": "Foobar:baz",
+        },
+    )
+    content = response.content.decode()
+    assert config_url in content
+    assert invalid_config_url not in content
+    assert Automation.objects.filter(name="Foobar - baz", project=project).exists()
 
 
 # ---------------------------------------------------------------------------

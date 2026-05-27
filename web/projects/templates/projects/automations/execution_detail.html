@@ -15,7 +15,7 @@
                 <ul class="nav nav-pills nav-stacked">
                     {% for e in activity_executions %}
                     <li class="{% if e.id == execution.id %}active{% endif %}">
-                        <a href="{% url 'automation_execution_detail' org_name=request.current_organization.name project_name=project.name automation=automation.name execution_id=e.id %}">
+                        <a href="{% url 'automation_execution_detail' org_name=request.current_organization.name project_name=project.name automation=automation_url_name execution_id=e.id %}">
                             <span>{% if automation.trigger_type == 'alert' %}{{ e.executed_at|date:"Y-m-d" }}  [{{ e.window_start|time:"H:i" }} → {{ e.window_end|time:"H:i" }}]{% else %}{{ e.executed_at|date:"Y-m-d H:i" }}{% endif %}</span>
                             <span class="pull-right activity-execution-result-icons">
                                 {% for o in e.results.all %}
