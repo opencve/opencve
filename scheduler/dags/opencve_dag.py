@@ -35,15 +35,15 @@ start_date = pendulum.from_format(conf.get("opencve", "start_date"), "YYYY-MM-DD
 def opencve():
     with TaskGroup(group_id="kb_refresh") as kb_refresh_group:
         git_fetch_tasks = [
-            GitFetchOperator(task_id="FetchKb", kind="kb"),
-            GitFetchOperator(task_id="FetchMitre", kind="mitre"),
-            GitFetchOperator(task_id="FetchNvd", kind="nvd"),
-            GitFetchOperator(task_id="FetchRedhat", kind="redhat"),
-            GitFetchOperator(task_id="FetchVulnrichment", kind="vulnrichment"),
+            GitFetchOperator(task_id="fetch_kb", kind="kb"),
+            GitFetchOperator(task_id="fetch_mitre", kind="mitre"),
+            GitFetchOperator(task_id="fetch_nvd", kind="nvd"),
+            GitFetchOperator(task_id="fetch_redhat", kind="redhat"),
+            GitFetchOperator(task_id="fetch_vulnrichment", kind="vulnrichment"),
         ]
         (
             git_fetch_tasks
-            >> ProcessKbOperator(task_id="ProcessKb")
+            >> ProcessKbOperator(task_id="process_kb")
             >> compute_statistics()
         )
 
