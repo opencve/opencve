@@ -115,6 +115,7 @@ def test_onboarding_valid_form_minimal(auth_client, create_user):
     project = Project.objects.first()
     assert project.name == "myproject"
     assert project.organization == orga
+    assert project.description == ""
     assert project.subscriptions == {"vendors": [], "products": []}
 
     assert Notification.objects.count() == 0

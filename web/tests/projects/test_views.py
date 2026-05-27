@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import date, timedelta
 from unittest.mock import Mock, PropertyMock, patch
@@ -72,6 +73,24 @@ def test_projects_list_view_displays_projects(
     assert project1 in response.context["projects"]
     assert project2 in response.context["projects"]
     assert len(response.context["projects"]) == 2
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_projects_list_view_hides_null_description(
+    create_organization, create_user, auth_client
+):
+    """Projects with a NULL description must not render the literal 'None' text."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    Project.objects.create(name="legacy-project", organization=org)
+
+    client = auth_client(user)
+    response = client.get(reverse("list_projects", kwargs={"org_name": "org1"}))
+    assert response.status_code == 200
+    assert not re.search(
+        rb'<span class="product-description">\s+None\s+</span>',
+        response.content,
+    )
 
 
 @override_settings(ENABLE_ONBOARDING=False)

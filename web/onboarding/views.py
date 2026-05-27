@@ -147,6 +147,7 @@ class OnboardingFormView(
 
                 project = Project.objects.create(
                     name=data["project"],
+                    description="",
                     organization=organization,
                     subscriptions=subscriptions,
                 )

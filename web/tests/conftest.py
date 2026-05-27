@@ -73,7 +73,7 @@ def create_organization(create_user):
 @pytest.fixture
 def create_project():
     def _create_project(
-        name, organization, description=None, active=True, vendors=None, products=None
+        name, organization, description="", active=True, vendors=None, products=None
     ):
         subscriptions = {
             "vendors": vendors if vendors else [],
