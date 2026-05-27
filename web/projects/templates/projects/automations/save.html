@@ -98,8 +98,8 @@
                             </span>
                         </div>
                         <div id="triggers-container"></div>
-                        <select class="add-dropdown select2" id="add-trigger-dropdown" data-placeholder="Add optional event...">
-                            <option value="">Add optional event...</option>
+                        <select class="add-dropdown select2" id="add-trigger-dropdown" data-placeholder="Add event...">
+                            <option value="">Add event...</option>
                         </select>
                     </div>
                     {% endif %}
@@ -195,6 +195,11 @@
                             <option value="">Add action...</option>
                         </select>
                     </div>
+
+                    {% if form.configuration_json.errors %}
+                    <p class="text-danger automation-config-errors">{{ form.configuration_json.errors.0 }}</p>
+                    {% endif %}
+                    <div id="automation-config-errors" class="text-danger automation-config-errors" style="display:none;"></div>
                 </div>
             </div>
         </div>

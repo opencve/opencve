@@ -3139,7 +3139,7 @@ $(document).ready(function() {
     populateConditionDropdown($firstGroup.find('.add-condition-dropdown'));
     if ($('#when-section').length) {
       populateTriggerDropdown();
-      $('#add-trigger-dropdown').select2({ allowClear: false, placeholder: 'Add optional event...', minimumResultsForSearch: Infinity });
+      $('#add-trigger-dropdown').select2({ allowClear: false, placeholder: 'Add event...', minimumResultsForSearch: Infinity });
       $('#add-trigger-dropdown').val(null).trigger('change');
     }
     $firstGroup.find('.add-condition-dropdown').select2({ allowClear: false, placeholder: 'Add optional filter...', minimumResultsForSearch: Infinity });
@@ -3206,7 +3206,26 @@ $(document).ready(function() {
       updateConfigurationJSON();
     });
     $(document).on('click', '.remove-action', function() { $(this).closest('.action-item').remove(); updateActionDropdown(); updateConfigurationJSON(); });
-    $('#automation-form').on('submit', function() { updateConfigurationJSON(); });
+    $('#automation-form').on('submit', function(e) {
+      updateConfigurationJSON();
+      var $errors = $('#automation-config-errors');
+      if (!$errors.length) return;
+      $errors.hide().empty();
+      if (typeof automationTriggerType !== 'undefined' && automationTriggerType === 'alert') {
+        var missing = [];
+        if ($('#triggers-container .trigger-item').length === 0) {
+          missing.push('You must add at least one event.');
+        }
+        if ($('#actions-container .action-item').length === 0) {
+          missing.push('You must add at least one action.');
+        }
+        if (missing.length) {
+          e.preventDefault();
+          $errors.html(missing.join('<br>')).show();
+          $('html, body').animate({ scrollTop: $errors.offset().top - 80 }, 200);
+        }
+      }
+    });
     $(document).on('change', '.condition-value, .condition-version', function() { updateConfigurationJSON(); });
     $(document).on('change', '.action-value', function() { updateConfigurationJSON(); });
     updateActionDropdown();

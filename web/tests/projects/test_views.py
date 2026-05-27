@@ -3945,7 +3945,11 @@ def test_automation_create_view_creates_alert(
     project = create_project(name="project1", organization=org)
 
     client = auth_client(user)
-    config = {"conditions": {"operator": "OR", "children": []}, "actions": []}
+    config = {
+        "triggers": ["cve_enters_project"],
+        "conditions": {"operator": "OR", "children": []},
+        "actions": [{"type": "send_notification", "value": "notif-1"}],
+    }
     response = client.post(
         reverse(
             "create_automation",
@@ -3966,6 +3970,75 @@ def test_automation_create_view_creates_alert(
     assert Automation.objects.filter(name="new-alert", project=project).exists()
     automation = Automation.objects.get(name="new-alert", project=project)
     assert automation.trigger_type == Automation.TRIGGER_ALERT
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_create_view_rejects_alert_without_trigger(
+    create_organization, create_user, create_project, auth_client
+):
+    """POST rejects alert automations with no triggers."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    config = {
+        "conditions": {"operator": "OR", "children": []},
+        "actions": [{"type": "send_notification", "value": "notif-1"}],
+    }
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        ),
+        data={
+            "name": "no-trigger",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(config),
+        },
+    )
+    assert response.status_code == 200
+    assert not Automation.objects.filter(name="no-trigger", project=project).exists()
+    assert "configuration_json" in response.context["form"].errors
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_create_view_rejects_alert_without_action(
+    create_organization, create_user, create_project, auth_client
+):
+    """POST rejects alert automations with no actions."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+
+    config = {
+        "triggers": ["cve_enters_project"],
+        "conditions": {"operator": "OR", "children": []},
+        "actions": [],
+    }
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "create_automation",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "trigger_type": "alert",
+            },
+        ),
+        data={
+            "name": "no-action",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(config),
+        },
+    )
+    assert response.status_code == 200
+    assert not Automation.objects.filter(name="no-action", project=project).exists()
+    assert "configuration_json" in response.context["form"].errors
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -4200,6 +4273,7 @@ def test_automation_configuration_view_update_config(
     automation = create_automation(name="my-alert", project=project)
 
     new_config = {
+        "triggers": ["kev_added"],
         "conditions": {
             "operator": "OR",
             "children": [{"type": "kev_present", "value": True}],
