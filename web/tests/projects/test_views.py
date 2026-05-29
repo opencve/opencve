@@ -3939,7 +3939,7 @@ def test_automation_create_view_requires_owner(
 def test_automation_create_view_creates_alert(
     create_organization, create_user, create_project, auth_client
 ):
-    """POST creates a new alert automation and redirects to the list."""
+    """POST creates a new alert automation and redirects to its overview."""
     user = create_user()
     org = create_organization(name="org1", user=user)
     project = create_project(name="project1", organization=org)
@@ -3964,9 +3964,16 @@ def test_automation_create_view_creates_alert(
             "trigger_type": Automation.TRIGGER_ALERT,
             "configuration_json": json.dumps(config),
         },
-        follow=True,
     )
-    assert response.status_code == 200
+    assert response.status_code == 302
+    assert response.url == reverse(
+        "automation_overview",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "automation": "new-alert",
+        },
+    )
     assert Automation.objects.filter(name="new-alert", project=project).exists()
     automation = Automation.objects.get(name="new-alert", project=project)
     assert automation.trigger_type == Automation.TRIGGER_ALERT
@@ -4065,6 +4072,13 @@ def test_automation_create_view_context_trigger_type(
     assert response.context["trigger_type"] == "report"
 
 
+MINIMAL_ALERT_CONFIGURATION = {
+    "triggers": ["cve_enters_project"],
+    "conditions": {"operator": "OR", "children": []},
+    "actions": [{"type": "send_notification", "value": "notif-1"}],
+}
+
+
 # ---------------------------------------------------------------------------
 # AutomationOverviewView
 # ---------------------------------------------------------------------------
@@ -4110,48 +4124,61 @@ def test_automation_overview_view_displays_automation(
     assert response.status_code == 200
     assert response.context["automation"].name == "my-alert"
     assert "activity_events" in response.context
+    assert "automation_flow_graph" in response.context
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_automation_overview_view_update_name(
+def test_automation_overview_view_read_only(
     create_organization, create_user, create_project, create_automation, auth_client
 ):
-    """POST on overview renames the automation."""
+    """Overview is read-only: no edit form, displays flow diagram and summary."""
     user = create_user()
     org = create_organization(name="org1", user=user)
     project = create_project(name="project1", organization=org)
-    create_automation(name="old-name", project=project)
+    create_automation(
+        name="my-alert",
+        project=project,
+        configuration={
+            "triggers": ["cve_enters_project"],
+            "conditions": {"operator": "OR", "children": []},
+            "actions": [],
+        },
+    )
 
     client = auth_client(user)
-    response = client.post(
+    response = client.get(
         reverse(
             "automation_overview",
             kwargs={
                 "org_name": "org1",
                 "project_name": "project1",
-                "automation": "old-name",
+                "automation": "my-alert",
             },
-        ),
-        data={"name": "new-name", "is_enabled": True},
-        follow=True,
+        )
     )
+    content = response.content.decode()
     assert response.status_code == 200
-    assert Automation.objects.filter(name="new-name", project=project).exists()
-    assert not Automation.objects.filter(name="old-name", project=project).exists()
+    assert 'id="id_name"' not in content
+    assert "automation-flow-graph" in content
+    assert "automation-flow-graph-data" in content
+    assert "dagre.min.js" in content
+    assert "Summary" in content
+    assert "Delete this automation" not in content
+    assert "Edit configuration" in content
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_automation_overview_view_toggle_enabled(
+def test_automation_overview_view_post_not_allowed(
     create_organization, create_user, create_project, create_automation, auth_client
 ):
-    """POST on overview can disable the automation."""
+    """Overview does not accept POST updates."""
     user = create_user()
     org = create_organization(name="org1", user=user)
     project = create_project(name="project1", organization=org)
-    automation = create_automation(name="my-alert", project=project, is_enabled=True)
+    create_automation(name="my-alert", project=project)
 
     client = auth_client(user)
-    client.post(
+    response = client.post(
         reverse(
             "automation_overview",
             kwargs={
@@ -4160,57 +4187,10 @@ def test_automation_overview_view_toggle_enabled(
                 "automation": "my-alert",
             },
         ),
-        data={"name": "my-alert", "is_enabled": False},
-        follow=True,
+        data={"name": "hacked"},
     )
-    automation.refresh_from_db()
-    assert automation.is_enabled is False
-
-
-@override_settings(ENABLE_ONBOARDING=False)
-def test_automation_overview_view_invalid_rename_keeps_menu_links(
-    create_organization, create_user, create_project, create_automation, auth_client
-):
-    """Invalid rename keeps persisted automation name in navigation links."""
-    user = create_user()
-    org = create_organization(name="org1", user=user)
-    project = create_project(name="project1", organization=org)
-    create_automation(name="Foobar - baz", project=project)
-
-    client = auth_client(user)
-    response = client.post(
-        reverse(
-            "automation_overview",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "automation": "Foobar - baz",
-            },
-        ),
-        data={"name": "Foobar:baz", "is_enabled": True},
-    )
-    assert response.status_code == 200
-    assert response.context["automation_url_name"] == "Foobar - baz"
-    config_url = reverse(
-        "automation_configuration",
-        kwargs={
-            "org_name": "org1",
-            "project_name": "project1",
-            "automation": "Foobar - baz",
-        },
-    )
-    invalid_config_url = reverse(
-        "automation_configuration",
-        kwargs={
-            "org_name": "org1",
-            "project_name": "project1",
-            "automation": "Foobar:baz",
-        },
-    )
-    content = response.content.decode()
-    assert config_url in content
-    assert invalid_config_url not in content
-    assert Automation.objects.filter(name="Foobar - baz", project=project).exists()
+    assert response.status_code == 405
+    assert Automation.objects.filter(name="my-alert", project=project).exists()
 
 
 # ---------------------------------------------------------------------------
@@ -4260,6 +4240,126 @@ def test_automation_configuration_view_displays_form(
     assert "automation_data_json" in response.context
     assert "notifications" in response.context
     assert "status_choices" in response.context
+    content = response.content.decode()
+    assert 'id="id_name"' in content
+    assert "Automation details" in content
+    assert 'id="id_is_enabled"' in content
+    assert "Delete this automation" in content
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_configuration_view_update_name(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """POST on configuration renames the automation."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="old-name", project=project)
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "old-name",
+            },
+        ),
+        data={
+            "name": "new-name",
+            "is_enabled": True,
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
+        },
+        follow=True,
+    )
+    assert response.status_code == 200
+    assert Automation.objects.filter(name="new-name", project=project).exists()
+    assert not Automation.objects.filter(name="old-name", project=project).exists()
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_configuration_view_toggle_enabled(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """POST on configuration can disable the automation."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    automation = create_automation(name="my-alert", project=project, is_enabled=True)
+
+    client = auth_client(user)
+    client.post(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "my-alert",
+            },
+        ),
+        data={
+            "name": "my-alert",
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
+        },
+        follow=True,
+    )
+    automation.refresh_from_db()
+    assert automation.is_enabled is False
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_automation_configuration_view_invalid_rename_keeps_menu_links(
+    create_organization, create_user, create_project, create_automation, auth_client
+):
+    """Invalid rename keeps persisted automation name in navigation links."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    create_automation(name="Foobar - baz", project=project)
+
+    client = auth_client(user)
+    response = client.post(
+        reverse(
+            "automation_configuration",
+            kwargs={
+                "org_name": "org1",
+                "project_name": "project1",
+                "automation": "Foobar - baz",
+            },
+        ),
+        data={
+            "name": "Foobar:baz",
+            "is_enabled": True,
+            "trigger_type": Automation.TRIGGER_ALERT,
+            "configuration_json": json.dumps(MINIMAL_ALERT_CONFIGURATION),
+        },
+    )
+    assert response.status_code == 200
+    assert response.context["automation_url_name"] == "Foobar - baz"
+    config_url = reverse(
+        "automation_configuration",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "automation": "Foobar - baz",
+        },
+    )
+    invalid_config_url = reverse(
+        "automation_configuration",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "automation": "Foobar:baz",
+        },
+    )
+    content = response.content.decode()
+    assert config_url in content
+    assert invalid_config_url not in content
+    assert Automation.objects.filter(name="Foobar - baz", project=project).exists()
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -4292,6 +4392,7 @@ def test_automation_configuration_view_update_config(
         ),
         data={
             "name": "my-alert",
+            "is_enabled": True,
             "trigger_type": Automation.TRIGGER_ALERT,
             "configuration_json": json.dumps(new_config),
         },

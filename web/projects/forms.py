@@ -238,28 +238,6 @@ class SlackForm(NotificationForm):
     )
 
 
-class AutomationOverviewForm(forms.ModelForm):
-    """Form for updating only name and is_enabled from the Overview page."""
-
-    class Meta:
-        model = Automation
-        fields = ["name", "is_enabled"]
-
-    def __init__(self, *args, **kwargs):
-        self.project = kwargs.pop("project", None)
-        kwargs.pop("request", None)
-        super().__init__(*args, **kwargs)
-
-    def clean_name(self):
-        name = self.cleaned_data["name"]
-        if name in ("add",):
-            raise forms.ValidationError("This name is reserved.")
-        if self.project and (not self.instance.pk or self.instance.name != name):
-            if Automation.objects.filter(project=self.project, name=name).exists():
-                raise forms.ValidationError("This name already exists.")
-        return name
-
-
 class AutomationForm(forms.ModelForm):
     class Meta:
         model = Automation

@@ -12,7 +12,6 @@ from projects.forms import (
     ProjectForm,
     CveTrackerFilterForm,
     AutomationForm,
-    AutomationOverviewForm,
 )
 from projects.models import Automation
 
@@ -1250,69 +1249,3 @@ def test_automation_form_save_sets_project(create_organization, create_project):
     automation = form.save()
     assert automation.project == project
     assert automation.configuration["actions"] == ["foo"]
-
-
-# --- AutomationOverviewForm tests ---
-
-
-def test_overview_form_valid(create_organization, create_project, create_automation):
-    """Accept a valid name and is_enabled update."""
-    org = create_organization(name="my-orga")
-    project = create_project(name="my-project", organization=org)
-    automation = create_automation(name="my-alert", project=project)
-
-    form = AutomationOverviewForm(
-        data={"name": "renamed", "is_enabled": True},
-        instance=automation,
-        project=project,
-    )
-    assert form.errors == {}
-
-
-def test_overview_form_reserved_name(
-    create_organization, create_project, create_automation
-):
-    """Reject the reserved name 'add' from overview form."""
-    org = create_organization(name="my-orga")
-    project = create_project(name="my-project", organization=org)
-    automation = create_automation(name="my-alert", project=project)
-
-    form = AutomationOverviewForm(
-        data={"name": "add", "is_enabled": True},
-        instance=automation,
-        project=project,
-    )
-    assert form.errors == {"name": ["This name is reserved."]}
-
-
-def test_overview_form_duplicate_name(
-    create_organization, create_project, create_automation
-):
-    """Reject renaming to an already existing automation name in the same project."""
-    org = create_organization(name="my-orga")
-    project = create_project(name="my-project", organization=org)
-    create_automation(name="taken", project=project)
-    automation = create_automation(name="original", project=project)
-
-    form = AutomationOverviewForm(
-        data={"name": "taken", "is_enabled": True},
-        instance=automation,
-        project=project,
-    )
-    assert form.errors == {"name": ["This name already exists."]}
-
-
-def test_overview_form_keep_same_name(
-    create_organization, create_project, create_automation
-):
-    """Allow keeping the same name when editing."""
-    org = create_organization(name="my-orga")
-    project = create_project(name="my-project", organization=org)
-    automation = create_automation(name="my-alert", project=project)
-
-    form = AutomationOverviewForm(
-        data={"name": "my-alert", "is_enabled": False},
-        instance=automation,
-        project=project,
-    )
-    assert form.errors == {}
