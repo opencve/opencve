@@ -1,5 +1,5 @@
 {% extends 'projects/base_project.html' %}
-{% load crispy_forms_tags tz %}
+{% load static tz %}
 
 {% block title %}{{ automation.name }} - {{ block.super }}{% endblock %}
 
@@ -8,40 +8,73 @@
 <div class="row">
     {% include 'projects/automations/_menu.html' with active_section='overview' %}
 
-    <!-- Right column: main content -->
     <div class="col-md-9 col-sm-8">
-        <form method="post" action="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}">
-            {% csrf_token %}
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">General</h3>
-                </div>
-                <div class="box-body">
-                    <div class="form-group">
-                        <label class="control-label">Type</label>
-                        <div class="notification-type-readonly">
-                            {% if automation.trigger_type == 'report' %}
-                            <i class="fa fa-calendar automation-type-icon automation-type-icon--report"></i>
-                            <span>Report</span>
-                            {% else %}
-                            <i class="fa fa-bolt automation-type-icon automation-type-icon--alert"></i>
-                            <span>Alert</span>
-                            {% endif %}
-                        </div>
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Summary</h3>
+            </div>
+            <div class="box-body automation-summary-body">
+                <div class="row automation-summary-columns">
+                    <div class="col-sm-6">
+                        <dl class="dl-horizontal automation-summary-dl">
+                            <dt>Type</dt>
+                            <dd class="automation-summary-type">
+                                {% if automation.trigger_type == 'report' %}
+                                <i class="fa fa-calendar automation-type-icon automation-type-icon--report"></i>
+                                <span>Report</span>
+                                {% else %}
+                                <i class="fa fa-bolt automation-type-icon automation-type-icon--alert"></i>
+                                <span>Alert</span>
+                                {% endif %}
+                            </dd>
+                            <dt>Name</dt>
+                            <dd>{{ automation.name }}</dd>
+                            <dt>Status</dt>
+                            <dd>
+                                {% if automation.is_enabled %}
+                                <span class="label label-success">Enabled</span>
+                                {% else %}
+                                <span class="label label-default">Disabled</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
                     </div>
-                    {{ form.name|as_crispy_field }}
-                    {{ form.is_enabled|as_crispy_field }}
-                    <div class="clearfix automation-form-actions">
-                        <a href="{% url 'delete_automation' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}" class="btn btn-danger btn-sm pull-left">Delete</a>
-                        <button type="submit" class="btn btn-primary btn-sm pull-right">Save</button>
+                    <div class="col-sm-6">
+                        <dl class="dl-horizontal automation-summary-dl">
+                            <dt>Last execution</dt>
+                            <dd>
+                                {% if automation.last_execution_at %}
+                                {{ automation.last_execution_at|date:"Y-m-d H:i" }}
+                                {% else %}
+                                <span class="text-muted">Never</span>
+                                {% endif %}
+                            </dd>
+                            <dt>Created at</dt>
+                            <dd>{{ automation.created_at|date:"Y-m-d H:i" }}</dd>
+                            <dt>Updated at</dt>
+                            <dd>{{ automation.updated_at|date:"Y-m-d H:i" }}</dd>
+                        </dl>
                     </div>
                 </div>
             </div>
-        </form>
+        </div>
 
         <div class="box box-primary">
             <div class="box-header with-border">
-                <h3 class="box-title">Recent Executions</h3>
+                <h3 class="box-title">Automation flow</h3>
+                <div class="box-tools pull-right">
+                    <a href="{{ url_configuration }}" class="btn btn-xs btn-default"><i class="fa fa-pencil"></i> Edit configuration</a>
+                </div>
+            </div>
+            <div class="box-body">
+                {{ automation_flow_graph|json_script:"automation-flow-graph-data" }}
+                <div id="automation-flow-graph" class="automation-flow-graph"></div>
+            </div>
+        </div>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Latest executions</h3>
                 <div class="box-tools pull-right">
                     <a href="{{ url_executions }}" class="btn btn-xs btn-default"><i class="fa fa-history"></i> View all</a>
                 </div>
@@ -89,7 +122,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{% static 'js/dagre.min.js' %}" type="text/javascript"></script>
+<script src="{% static 'js/automation_flow_graph.js' %}" type="text/javascript"></script>
 <script>
 AutomationDrawer.init("{% url 'automation_execution_drawer' org_name=request.current_organization.name project_name=project.name automation=automation_url_name execution_id='00000000-0000-0000-0000-000000000000' %}");
+AutomationFlowGraph.init('#automation-flow-graph');
 </script>
 {% endblock %}

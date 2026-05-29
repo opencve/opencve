@@ -31,9 +31,12 @@ from organizations.mixins import (
     OrganizationIsMemberMixin,
     OrganizationIsOwnerMixin,
 )
+from projects.automations import (
+    AutomationLookups,
+    build_automation_flow_graph,
+)
 from projects.forms import (
     AutomationForm,
-    AutomationOverviewForm,
     FORM_MAPPING,
     NOTIFICATION_TYPE_CHOICES,
     ProjectForm,
@@ -1451,10 +1454,11 @@ class AutomationCreateView(
 
     def get_success_url(self):
         return reverse(
-            "automations",
+            "automation_overview",
             kwargs={
                 "org_name": self.request.current_organization.name,
                 "project_name": self.project.name,
+                "automation": self.object.name,
             },
         )
 
@@ -1488,22 +1492,35 @@ def _build_activity_events(automation, limit=10):
     ]
 
 
+def _get_automation_lookups(view) -> AutomationLookups:
+    organization_members = (
+        User.objects.filter(
+            membership__organization=view.request.current_organization,
+            membership__date_joined__isnull=False,
+        )
+        .distinct()
+        .order_by("username")
+    )
+    notifications = Notification.objects.filter(project=view.project).order_by("name")
+    return AutomationLookups.from_context(
+        organization_members, notifications, CveTracker.STATUS_CHOICES
+    )
+
+
 class AutomationOverviewView(
     LoginRequiredMixin,
     OrganizationIsOwnerMixin,
     ProjectObjectMixin,
     ProjectIsActiveMixin,
     ResourceUrlNameMixin,
-    SuccessMessageMixin,
     RequestViewMixin,
-    UpdateView,
+    DetailView,
 ):
-    """Overview page for an automation: header, summary, recent executions (drawer on click)."""
+    """Overview page for an automation: read-only summary, flow diagram, recent executions."""
 
     model = Automation
-    form_class = AutomationOverviewForm
     template_name = "projects/automations/overview.html"
-    success_message = "The automation has been successfully updated."
+    context_object_name = "automation"
     resource_url_kwarg = "automation"
 
     def get_object(self, queryset=None):
@@ -1513,15 +1530,14 @@ class AutomationOverviewView(
             name=self.kwargs["automation"],
         )
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["project"] = self.project
-        return kwargs
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
         context["automation"] = self.object
+        lookups = _get_automation_lookups(self)
+        context["automation_flow_graph"] = build_automation_flow_graph(
+            self.object, lookups
+        )
         context["activity_events"] = _build_activity_events(self.object, limit=10)
         context["url_back"] = reverse(
             "automations",
@@ -1538,17 +1554,15 @@ class AutomationOverviewView(
                 "automation": self.kwargs["automation"],
             },
         )
-        return context
-
-    def get_success_url(self):
-        return reverse(
-            "automation_overview",
+        context["url_configuration"] = reverse(
+            "automation_configuration",
             kwargs={
                 "org_name": self.request.current_organization.name,
                 "project_name": self.project.name,
-                "automation": self.object.name,
+                "automation": self.kwargs["automation"],
             },
         )
+        return context
 
 
 class AutomationConfigurationView(
