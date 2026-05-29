@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; <a href="{% url opts|admin_urlname:'change' user_obj.pk %}">{{ user_obj }}</a>
+    &rsaquo; Disable MFA
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Disable MFA for {{ user_obj.username }}</h1>
+
+<p>
+    This will permanently remove all two-factor authentication methods for this user
+    (authenticator app, recovery codes, and any other configured factors).
+    The user will need to set up MFA again if they want to re-enable it.
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="submit-row">
+        <input type="submit" value="Disable MFA" class="default" />
+        <a href="{% url opts|admin_urlname:'change' user_obj.pk %}" class="button cancel-link">Cancel</a>
+    </div>
+</form>
+{% endblock %}

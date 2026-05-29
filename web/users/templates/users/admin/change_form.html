@@ -10,5 +10,10 @@
           <input type="hidden" name="next" value="{% url 'home' %}">
         </form>
     </li>
+    {% if show_disable_mfa %}
+    <li>
+        <a href="{{ disable_mfa_url }}" class="historylink">Disable MFA</a>
+    </li>
+    {% endif %}
     {{ block.super }}
 {% endblock %}
