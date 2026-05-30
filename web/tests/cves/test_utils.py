@@ -3,11 +3,13 @@ from django.contrib import auth
 from django.http.request import QueryDict
 from django.test import override_settings
 
+from cves.models import Weakness
 from users.models import UserTag, CveTag
 from cves.utils import (
     affected_to_dict_vendors,
     list_filtered_cves,
     list_to_dict_vendors,
+    list_weaknesses,
     normalize_enrichment_affected,
 )
 
@@ -89,6 +91,22 @@ def test_list_filtered_cves(db, create_cve, client, params, result):
         sorted([c.cve_id for c in list_filtered_cves(QueryDict(params), user)])
         == result
     )
+
+
+def test_list_weaknesses(db):
+    """Verify list_weaknesses maps known CWE IDs to their names."""
+    Weakness.objects.create(cwe_id="CWE-79", name="Cross-site Scripting")
+    Weakness.objects.create(cwe_id="CWE-89", name="SQL Injection")
+
+    assert list_weaknesses(["CWE-79", "CWE-89"]) == {
+        "CWE-79": "Cross-site Scripting",
+        "CWE-89": "SQL Injection",
+    }
+
+
+def test_list_weaknesses_unknown_cwe(db):
+    """Verify list_weaknesses returns None for unkown CWE."""
+    assert list_weaknesses(["CWE-999"]) == {"CWE-999": None}
 
 
 def test_list_filtered_cves_with_tag(db, create_cve, create_user):
