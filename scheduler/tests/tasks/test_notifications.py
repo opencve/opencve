@@ -166,3 +166,36 @@ def test_filter_changes(open_file):
     notifications["notification_conf"]["metrics"]["cvss31"] = 6
     notifications["notification_conf"]["types"] = ["title"]
     assert filter_changes(notifications, changes, changes_details) == []
+
+
+def test_filter_changes_without_cvss31_score(open_file):
+    """
+    A change without a cvss31 score is not returned by default.
+    """
+    notifications = open_file("redis/0001/notifications.json")[
+        "d9edc06b-1d7b-43c7-8cf5-bfa6687cd9fd"
+    ][0]
+    changes_details = open_file("redis/0001/changes_details.json")
+
+    change_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    changes = [change_id]
+    changes_details = {
+        **changes_details,
+        change_id: {
+            "change_types": ["created"],
+            "change_path": "2024/CVE-2024-00001.json",
+            "cve_vendors": ["vendor"],
+            "cve_id": "CVE-2024-00001",
+            "cve_metrics": {
+                "cvssV3_1": {"data": {}, "provider": None},
+            },
+        },
+    }
+
+    notifications["notification_conf"]["types"] = ["created"]
+
+    notifications["notification_conf"]["metrics"]["cvss31"] = 9
+    assert filter_changes(notifications, changes, changes_details) == []
+
+    notifications["notification_conf"]["metrics"]["cvss31"] = 0
+    assert filter_changes(notifications, changes, changes_details) == [change_id]
