@@ -183,7 +183,7 @@ def make_notifications_chunks(**context):
 
 
 def filter_changes(notification, changes, changes_details):
-    notification_score = notification["notification_conf"]["metrics"]["cvss31"]
+    notification_score = float(notification["notification_conf"]["metrics"]["cvss31"])
     notification_types = notification["notification_conf"]["types"]
     logger.debug(
         "Notification score: %s, types: %s", notification_score, notification_types
@@ -199,8 +199,11 @@ def filter_changes(notification, changes, changes_details):
         )
 
         # Exclude change if CVSS31 score is lower than notification one
-        if change_score and float(change_score["score"]) < float(notification_score):
-            continue
+        if notification_score > 0:
+            if not change_score or change_score.get("score") is None:
+                continue
+            if float(change_score["score"]) < notification_score:
+                continue
 
         # Exclude change if types don't match notifications ones
         if not notification_types or not any(
