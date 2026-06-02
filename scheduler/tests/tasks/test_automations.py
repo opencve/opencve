@@ -1,4 +1,5 @@
 import pendulum
+from unittest.mock import patch
 
 from includes.tasks.automations import (
     _cvss_score_to_severity,
@@ -360,3 +361,24 @@ def test_chunk_actions(override_conf):
     assert len(result) == 2
     assert result[0] == [{"a": 1}, {"a": 2}]
     assert result[1] == [{"a": 3}]
+
+
+def test_chunk_actions_fallback_to_legacy_max_notifications_map_length():
+    """Uses max_notifications_map_length when max_automations_map_length is absent."""
+
+    def mock_has_option(section, key):
+        return section == "opencve" and key == "max_notifications_map_length"
+
+    def mock_getint(section, key, fallback=None):
+        assert section == "opencve"
+        assert key == "max_notifications_map_length"
+        return 2
+
+    with patch(
+        "includes.tasks.automations.conf.has_option", side_effect=mock_has_option
+    ), patch("includes.tasks.automations.conf.getint", side_effect=mock_getint):
+        actions = [{"a": 1}, {"a": 2}, {"a": 3}]
+        result = chunk_actions(actions)
+        assert len(result) == 2
+        assert result[0] == [{"a": 1}, {"a": 2}]
+        assert result[1] == [{"a": 3}]

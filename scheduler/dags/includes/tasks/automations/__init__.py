@@ -417,8 +417,17 @@ def get_trackers_for_project(postgres_hook, project_id, changes, changes_details
     }
 
 
+def _get_max_automations_map_length():
+    section = "opencve"
+
+    if conf.has_option(section, "max_automations_map_length"):
+        return conf.getint(section, "max_automations_map_length")
+
+    return conf.getint(section, "max_notifications_map_length", fallback=1)
+
+
 def chunk_actions(actions_to_execute):
-    max_map_length = conf.getint("opencve", "max_automations_map_length")
+    max_map_length = _get_max_automations_map_length()
     return divide_list(actions_to_execute, max_map_length)
 
 
