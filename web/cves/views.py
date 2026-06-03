@@ -45,8 +45,11 @@ class WeaknessListView(ListView):
 
     def get_queryset(self):
         query = Weakness.objects
-        if self.request.GET.get("search"):
-            query = query.filter(name__icontains=self.request.GET.get("search"))
+        search = self.request.GET.get("search")
+        if search:
+            query = query.filter(
+                models.Q(cwe_id__icontains=search) | models.Q(name__icontains=search)
+            )
         return query.order_by("-name")
 
 
