@@ -11,7 +11,7 @@ from django.contrib.auth.models import AnonymousUser
 
 from cves.constants import PRODUCT_SEPARATOR
 from cves.views import CveListView, CveDetailView
-from cves.models import Vendor, Product, Cve
+from cves.models import Vendor, Product, Cve, Weakness
 from opencve.pagination import keyset_cursor_payload, paginate_keyset
 from users.models import UserTag, CveTag
 from projects.models import CveComment, CveTracker
@@ -81,6 +81,48 @@ def test_list_vendors_case_insensitive(db, create_cve, auth_client):
     content = soup.find("table", {"id": "table-products"}).find_all("td")
     assert content[0].text.strip() == "Git"
     assert content[1].text.strip() == "Git-scm"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_weaknesses_search_by_cwe_id(db, auth_client):
+    """Search weaknesses using the full CWE identifier."""
+    Weakness.objects.create(cwe_id="CWE-119")
+    Weakness.objects.create(cwe_id="CWE-79")
+
+    client = auth_client()
+    response = client.get(f"{reverse('weaknesses')}?search=CWE-119")
+
+    assert response.status_code == 200
+    assert b"CWE-119" in response.content
+    assert b"CWE-79" not in response.content
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_weaknesses_search_by_short_id(db, auth_client):
+    """Search weaknesses using only the numeric part of the CWE identifier."""
+    Weakness.objects.create(cwe_id="CWE-119")
+    Weakness.objects.create(cwe_id="CWE-79")
+
+    client = auth_client()
+    response = client.get(f"{reverse('weaknesses')}?search=119")
+
+    assert response.status_code == 200
+    assert b"CWE-119" in response.content
+    assert b"CWE-79" not in response.content
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_weaknesses_search_by_name(db, auth_client):
+    """Search weaknesses using part of their display name."""
+    Weakness.objects.create(cwe_id="CWE-79", name="Cross-site Scripting")
+    Weakness.objects.create(cwe_id="CWE-119", name="Memory Buffer")
+
+    client = auth_client()
+    response = client.get(f"{reverse('weaknesses')}?search=Scripting")
+
+    assert response.status_code == 200
+    assert b"CWE-79" in response.content
+    assert b"CWE-119" not in response.content
 
 
 @override_settings(ENABLE_ONBOARDING=False)
