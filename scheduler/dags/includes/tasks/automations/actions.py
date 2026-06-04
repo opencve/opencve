@@ -198,22 +198,31 @@ class SendNotificationAction(ActionExecutor):
             )
 
         postgres_hook = context["postgres_hook"]
-        record = postgres_hook.get_first(
-            sql=SQL_NOTIFICATION_BY_ID,
-            parameters={"notification_id": notification_id},
-        )
-        if not record:
-            logger.warning("Notification %s not found or disabled", notification_id)
-            notification_name = action.get("notification_name") or notification_id
-            return _build_result_payload(
-                "send_notification",
-                RESULT_STATUS_SKIPPED,
-                {
-                    "summary": f'Notification "{notification_name}" not found or disabled'
-                },
+        notifications_cache = context.get("notifications_cache") or {}
+        cached = notifications_cache.get(str(notification_id))
+        if cached is not None:
+            n_name = cached["name"]
+            n_type = cached["type"]
+            n_conf = cached["configuration"]
+        else:
+            record = postgres_hook.get_first(
+                sql=SQL_NOTIFICATION_BY_ID,
+                parameters={"notification_id": notification_id},
             )
+            if not record:
+                logger.warning("Notification %s not found or disabled", notification_id)
+                notification_name = action.get("notification_name") or notification_id
+                return _build_result_payload(
+                    "send_notification",
+                    RESULT_STATUS_SKIPPED,
+                    {
+                        "summary": (
+                            f'Notification "{notification_name}" not found or disabled'
+                        )
+                    },
+                )
+            n_name, n_type, n_conf = record
 
-        n_name, n_type, n_conf = record
         automation = context["automation"]
 
         notification_data = {

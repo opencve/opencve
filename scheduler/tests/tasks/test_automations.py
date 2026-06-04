@@ -1,16 +1,23 @@
 import pendulum
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from includes.tasks.automations import (
+    ALL_CHUNKS_INDEX,
     _cvss_score_to_severity,
     _all_matching_subscriptions,
+    _execute_automation_actions,
+    _resolve_action_chunks,
     build_cves_table_data,
     build_impact_summary_from_cves_table,
+    build_notifications_cache,
+    build_trackers_cache,
     chunk_actions,
     filter_changes_for_automation,
     get_accumulation_period_bucket,
     get_due_period_bucket,
     get_report_period_window,
+    list_alert_action_chunk_indices,
+    use_alert_action_task_mapping,
 )
 
 
@@ -361,6 +368,159 @@ def test_chunk_actions(override_conf):
     assert len(result) == 2
     assert result[0] == [{"a": 1}, {"a": 2}]
     assert result[1] == [{"a": 3}]
+
+
+def test_build_trackers_cache_batches_by_project():
+    """One SQL query fills per-project tracker dicts keyed by CVE id."""
+    project_changes = {
+        "proj-a": ["change-1"],
+        "proj-b": ["change-2"],
+    }
+    changes_details = {
+        "change-1": {"cve_id": "CVE-2024-0001"},
+        "change-2": {"cve_id": "CVE-2024-0002"},
+    }
+    postgres_hook = type(
+        "Hook",
+        (),
+        {
+            "get_records": lambda self, sql, parameters: [
+                ("proj-a", "CVE-2024-0001", "in_triage", "user-1"),
+                ("proj-b", "CVE-2024-0002", "resolved", None),
+            ]
+        },
+    )()
+
+    cache = build_trackers_cache(postgres_hook, project_changes, changes_details)
+
+    assert cache["proj-a"]["CVE-2024-0001"] == {
+        "status": "in_triage",
+        "assignee_id": "user-1",
+    }
+    assert cache["proj-b"]["CVE-2024-0002"]["status"] == "resolved"
+
+
+def test_build_trackers_cache_empty_projects():
+    assert build_trackers_cache(None, {}, {}) == {}
+
+
+def test_resolve_action_chunks_all():
+    chunks = [[{"a": 1}], [], [{"b": 2}]]
+    assert _resolve_action_chunks(chunks, ALL_CHUNKS_INDEX) == [[{"a": 1}], [{"b": 2}]]
+
+
+def test_resolve_action_chunks_single_index():
+    chunks = [[{"a": 1}], [{"b": 2}]]
+    assert _resolve_action_chunks(chunks, 1) == [[{"b": 2}]]
+    assert _resolve_action_chunks(chunks, 99) == []
+
+
+def test_use_alert_action_task_mapping(override_conf):
+    override_conf("opencve", "max_automations_map_length", "1")
+    assert use_alert_action_task_mapping() is False
+    override_conf("opencve", "max_automations_map_length", "10")
+    assert use_alert_action_task_mapping() is True
+
+
+def _alert_automation_context():
+    start = pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC")
+    end = pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC")
+    return {"data_interval_start": start, "data_interval_end": end}
+
+
+def test_list_alert_action_chunk_indices_mapping_disabled(override_conf):
+    """Single execute task processes all chunks when map length is 1."""
+    override_conf("opencve", "max_automations_map_length", "1")
+    result = list_alert_action_chunk_indices.function(**_alert_automation_context())
+    assert result == [ALL_CHUNKS_INDEX]
+
+
+def test_list_alert_action_chunk_indices_mapping_enabled(override_conf):
+    """One mapped execute task per Redis chunk when map length > 1."""
+    override_conf("opencve", "max_automations_map_length", "10")
+    context = _alert_automation_context()
+
+    with patch("includes.tasks.automations.RedisHook") as mock_redis_hook:
+        mock_redis_hook.return_value.get_conn.return_value = MagicMock()
+        with patch(
+            "includes.tasks.automations.redis_get",
+            return_value={"chunks": [[{"a": 1}], [{"b": 2}], []]},
+        ):
+            result = list_alert_action_chunk_indices.function(**context)
+
+    assert result == [0, 1, 2]
+
+
+def test_build_notifications_cache_single_query_for_duplicate_ids():
+    """Deduplicates notification IDs and loads them in one SQL round-trip."""
+    mock_hook = MagicMock()
+    mock_hook.get_records.return_value = [
+        ("notif-1", "Email", "email", {"to": "a@b.c"}),
+        ("notif-2", "Webhook", "webhook", {"url": "https://x"}),
+    ]
+    action_items = [
+        {
+            "actions": [
+                {"type": "send_notification", "value": "notif-1"},
+                {"type": "assign_user", "value": "user-1"},
+            ]
+        },
+        {
+            "actions": [
+                {"type": "send_notification", "value": "notif-1"},
+                {"type": "send_notification", "value": "notif-2"},
+            ]
+        },
+    ]
+
+    cache = build_notifications_cache(mock_hook, action_items)
+
+    mock_hook.get_records.assert_called_once()
+    assert set(
+        mock_hook.get_records.call_args.kwargs["parameters"]["notification_ids"]
+    ) == {
+        "notif-1",
+        "notif-2",
+    }
+    assert cache["notif-1"]["name"] == "Email"
+    assert cache["notif-2"]["type"] == "webhook"
+
+
+def test_build_notifications_cache_empty_when_no_send_notification():
+    mock_hook = MagicMock()
+    assert (
+        build_notifications_cache(mock_hook, [{"actions": [{"type": "assign_user"}]}])
+        == {}
+    )
+    mock_hook.get_records.assert_not_called()
+
+
+def test_execute_automation_actions_single_chunk_index():
+    """chunk_index selects one Redis chunk instead of processing the full queue."""
+    context = _alert_automation_context()
+    captured_items = []
+
+    async def _capture_execute(**kwargs):
+        captured_items.append(kwargs["action_items"])
+
+    chunk_a = [{"automation": {"automation_id": "a"}, "changes": [], "actions": []}]
+    chunk_b = [{"automation": {"automation_id": "b"}, "changes": [], "actions": []}]
+
+    def _redis_get(conn, prefix, start, end):
+        if prefix.startswith("automation_action_queue"):
+            return {"chunks": [chunk_a, chunk_b]}
+        return {}
+
+    with patch("includes.tasks.automations.RedisHook") as mock_redis_hook:
+        mock_redis_hook.return_value.get_conn.return_value = MagicMock()
+        with patch("includes.tasks.automations.redis_get", side_effect=_redis_get):
+            with patch(
+                "includes.tasks.automations.execute_actions_async",
+                side_effect=_capture_execute,
+            ):
+                _execute_automation_actions("alert", chunk_index=1, **context)
+
+    assert captured_items == [chunk_b]
 
 
 def test_chunk_actions_fallback_to_legacy_max_notifications_map_length():

@@ -28,6 +28,7 @@ def test_dag_opencve_loaded(dagbag):
     )
     assert "automation_processing.report.build_report_notification_payload" in task_ids
     assert "automation_processing.alert.build_alert_work_items" in task_ids
+    assert "automation_processing.alert.list_alert_action_chunk_indices" in task_ids
     assert "automation_processing.alert.execute_alert_actions" in task_ids
     assert (
         "automation_processing.report.send_report_notifications_daily_or_weekly"

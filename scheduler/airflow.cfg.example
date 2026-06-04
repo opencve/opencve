@@ -1275,10 +1275,13 @@ start_date = 2024-01-01
 # It has to be set once and only once during OpenCVE initialization.
 start_date_summarize_reports = 2025-08-28
 
-# How many notifications to send in parallel per notification task
+# How many send_notification actions run concurrently inside one execute task
+# (asyncio semaphore). Increase on busy instances after validating SMTP rate limits.
 max_notifications_per_task = 10
 
-# How many automation action tasks to run in parallel
+# Max action items per Redis chunk. Values > 1 also spawn one mapped
+# execute_alert_actions task per chunk (parallel Airflow workers). Roll back to 1
+# to disable that parallelism without redeploying code.
 max_automations_map_length = 1
 
 # How many seconds to wait before raising a Timeout error
