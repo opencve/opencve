@@ -13,6 +13,7 @@ from includes.tasks.automations import (
     evaluate_report_due_in_automation_timezone,
     execute_alert_automation_actions,
     execute_report_due_automation_actions,
+    list_alert_action_chunk_indices,
     load_enabled_automations,
     upsert_report_content_and_entries,
 )
@@ -57,8 +58,11 @@ def opencve():
     with TaskGroup(group_id="automation_processing") as automation_processing_group:
         with TaskGroup(group_id="alert") as alert_group:
             build_alert_work = build_alert_work_items()
-            execute_alert_actions = execute_alert_automation_actions()
-            build_alert_work >> execute_alert_actions
+            alert_chunk_indices = list_alert_action_chunk_indices()
+            execute_alert_actions = execute_alert_automation_actions.expand(
+                chunk_index=alert_chunk_indices
+            )
+            build_alert_work >> alert_chunk_indices >> execute_alert_actions
 
         with TaskGroup(group_id="report") as report_group:
             build_report_hourly = build_report_content_hourly()

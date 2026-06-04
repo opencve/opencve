@@ -446,12 +446,23 @@ FROM opencve_cves
 WHERE cve_id IN %(cve_ids)s;
 """
 
-SQL_CVE_TRACKER_STATUS = """
-SELECT cves.cve_id, trackers.status, trackers.assignee_id
+SQL_CVE_TRACKER_STATUS_BATCH = """
+SELECT trackers.project_id, cves.cve_id, trackers.status, trackers.assignee_id
 FROM opencve_cve_trackers AS trackers
 JOIN opencve_cves AS cves ON trackers.cve_id = cves.id
-WHERE trackers.project_id = %(project_id)s
+WHERE trackers.project_id IN %(project_ids)s
   AND cves.cve_id IN %(cve_ids)s;
+"""
+
+SQL_NOTIFICATION_BY_IDS = """
+SELECT
+    notifications.id,
+    notifications.name,
+    notifications.type,
+    notifications.configuration
+FROM opencve_notifications AS notifications
+WHERE notifications.id IN %(notification_ids)s
+  AND notifications.is_enabled = 't';
 """
 
 SQL_UPSERT_CVE_TRACKER = """

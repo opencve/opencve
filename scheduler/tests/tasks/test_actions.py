@@ -1,3 +1,6 @@
+import asyncio
+
+import pendulum
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
@@ -146,6 +149,61 @@ async def test_send_notification_action_not_found():
     result = await execute_action(action, context)
     assert result["status"] == RESULT_STATUS_SKIPPED
     assert "not found or disabled" in result["details"]["summary"]
+
+
+@pytest.mark.asyncio
+async def test_send_notification_action_uses_prefetched_cache():
+    """Prefetched notifications_cache avoids per-action SQL lookups."""
+    mock_hook = MagicMock()
+    mock_notifier_cls = MagicMock()
+    mock_notifier = AsyncMock()
+    mock_notifier.execute.return_value = {
+        "status": RESULT_STATUS_SUCCESS,
+        "details": {"channel": "Email"},
+    }
+    mock_notifier_cls.return_value = mock_notifier
+
+    action = {
+        "type": "send_notification",
+        "value": "notif-uuid-1",
+        "notification_name": "Email",
+    }
+    context = {
+        "postgres_hook": mock_hook,
+        "notifications_cache": {
+            "notif-uuid-1": {
+                "name": "My Email",
+                "type": "email",
+                "configuration": {"to": "user@example.com"},
+            }
+        },
+        "semaphore": asyncio.Semaphore(1),
+        "session": MagicMock(),
+        "automation": {
+            "project_id": "project-1",
+            "project_name": "test-project",
+            "project_subscriptions": ["foo"],
+            "organization_name": "test-org",
+        },
+        "changes": ["change-1"],
+        "item_changes_details": {
+            "change-1": {"cve_id": "CVE-2024-0001"},
+        },
+        "period": {
+            "start": pendulum.datetime(2024, 1, 1, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 2, tz="UTC"),
+        },
+    }
+
+    with patch(
+        "includes.tasks.automations.actions.resolve_notifier_class",
+        return_value=mock_notifier_cls,
+    ):
+        result = await execute_action(action, context)
+
+    assert result["status"] == RESULT_STATUS_SUCCESS
+    mock_hook.get_first.assert_not_called()
+    mock_notifier_cls.assert_called_once()
 
 
 @pytest.mark.asyncio

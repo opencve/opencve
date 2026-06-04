@@ -14,7 +14,8 @@ from includes.constants import (
     REPORT_UPSERT_PROCEDURE,
     SQL_INSERT_AUTOMATION_EXECUTION,
     SQL_INSERT_AUTOMATION_EXECUTION_RESULT,
-    SQL_CVE_TRACKER_STATUS,
+    SQL_CVE_TRACKER_STATUS_BATCH,
+    SQL_NOTIFICATION_BY_IDS,
     SQL_PROJECT_WITH_AUTOMATIONS,
     SQL_REPORT_CVES_DETAILS_BY_ID,
     SQL_REPORT_SUMMARY_BY_ID,
@@ -46,9 +47,14 @@ from includes.utils import (
     group_automations_by_project,
     list_changes_by_project,
 )
+from more_itertools import chunked
 from psycopg2.extras import Json
 
 logger = logging.getLogger(__name__)
+
+AUTOMATION_IDS_UPDATE_BATCH_SIZE = 500
+# Sentinel chunk_index for a single task that processes every Redis chunk (mapping off).
+ALL_CHUNKS_INDEX = -1
 
 SQL_REPORT_BY_PERIOD = """
 SELECT id
@@ -208,13 +214,14 @@ def build_impact_summary_from_cves_table(cves_table_data):
 def update_automations_last_execution(postgres_hook, automation_ids, executed_at):
     if not automation_ids:
         return
-    postgres_hook.run(
-        sql=SQL_UPDATE_AUTOMATION_LAST_EXECUTION_AT,
-        parameters={
-            "automation_ids": tuple(automation_ids),
-            "executed_at": executed_at,
-        },
-    )
+    for batch in chunked(automation_ids, AUTOMATION_IDS_UPDATE_BATCH_SIZE):
+        postgres_hook.run(
+            sql=SQL_UPDATE_AUTOMATION_LAST_EXECUTION_AT,
+            parameters={
+                "automation_ids": tuple(batch),
+                "executed_at": executed_at,
+            },
+        )
 
 
 def insert_automation_execution(
@@ -397,24 +404,42 @@ def get_project_changes(redis_conn, start, end):
     return list_changes_by_project(vendor_changes, subscriptions)
 
 
-def get_trackers_for_project(postgres_hook, project_id, changes, changes_details):
-    cve_ids = list(
-        set(
-            changes_details[change_id]["cve_id"]
-            for change_id in changes
-            if change_id in changes_details
-        )
-    )
-    if not cve_ids:
+def build_trackers_cache(postgres_hook, project_changes, changes_details):
+    """
+    Load CVE tracker status for all projects with changes in one SQL round-trip.
+    Returns {project_id: {cve_id: {"status", "assignee_id"}}}.
+    """
+    if not project_changes:
         return {}
-    tracker_records = postgres_hook.get_records(
-        sql=SQL_CVE_TRACKER_STATUS,
-        parameters={"project_id": project_id, "cve_ids": tuple(cve_ids)},
-    )
-    return {
-        record[0]: {"status": record[1], "assignee_id": record[2]}
-        for record in tracker_records
+
+    project_ids = list(project_changes.keys())
+    cve_ids = {
+        changes_details[change_id]["cve_id"]
+        for changes in project_changes.values()
+        for change_id in changes
+        if change_id in changes_details
     }
+    cache = {project_id: {} for project_id in project_ids}
+    if not cve_ids:
+        return cache
+
+    tracker_records = postgres_hook.get_records(
+        sql=SQL_CVE_TRACKER_STATUS_BATCH,
+        parameters={
+            "project_ids": tuple(project_ids),
+            "cve_ids": tuple(cve_ids),
+        },
+    )
+    for project_id, cve_id, status, assignee_id in tracker_records:
+        cache[project_id][cve_id] = {
+            "status": status,
+            "assignee_id": assignee_id,
+        }
+    return cache
+
+
+def use_alert_action_task_mapping():
+    return _get_max_automations_map_length() > 1
 
 
 def _get_max_automations_map_length():
@@ -490,6 +515,11 @@ def build_alert_work_items(**context):
     # List the changes details
     changes_details = redis_get(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end)
 
+    # Build the trackers cache to avoid multiple SQL queries
+    trackers_cache = build_trackers_cache(
+        postgres_hook, project_changes, changes_details
+    )
+
     # For each project, build the actions to execute
     actions_to_execute = []
     for project_id, changes in project_changes.items():
@@ -502,12 +532,7 @@ def build_alert_work_items(**context):
         if not alert_automations:
             continue
 
-        # PERF: one SQL query per project per hourly run. For users with many projects
-        # this can become a bottleneck. Consider batching all CVE-ID lookups across
-        # projects in a single query before this loop, then filtering in-memory.
-        cve_trackers = get_trackers_for_project(
-            postgres_hook, project_id, changes, changes_details
-        )
+        cve_trackers = trackers_cache.get(project_id, {})
         for automation in alert_automations:
             filtered_changes = filter_changes_for_automation(
                 automation=automation,
@@ -530,8 +555,16 @@ def build_alert_work_items(**context):
                 }
             )
 
-    logger.info("Found %s actions to execute", len(actions_to_execute))
+    logger.info(
+        "build_alert_work_items: actions=%s",
+        len(actions_to_execute),
+    )
     chunks = chunk_actions(actions_to_execute)
+    logger.info(
+        "build_alert_work_items: chunks=%s (max_automations_map_length=%s)",
+        len(chunks),
+        _get_max_automations_map_length(),
+    )
     redis_set(
         redis_hook,
         automation_action_queue_prefix("alert"),
@@ -562,6 +595,11 @@ def build_report_content_hourly(**context):
     update_automations_last_execution(postgres_hook, report_automation_ids, end)
     items = []
 
+    # Build the trackers cache to avoid multiple SQL queries
+    trackers_cache = build_trackers_cache(
+        postgres_hook, project_changes, changes_details
+    )
+
     for project_id, project_automations in automations.items():
 
         # Only keep the report automations
@@ -571,11 +609,8 @@ def build_report_content_hourly(**context):
         if not report_automations:
             continue
 
-        # PERF: same N+1 pattern as in build_alert_work_items — see note there.
         project_hourly_changes = project_changes.get(project_id, [])
-        cve_trackers = get_trackers_for_project(
-            postgres_hook, project_id, project_hourly_changes, changes_details
-        )
+        cve_trackers = trackers_cache.get(project_id, {})
 
         for automation in report_automations:
             filtered_changes = filter_changes_for_automation(
@@ -839,6 +874,32 @@ def build_report_notification_payload(**context):
     return True
 
 
+def build_notifications_cache(postgres_hook, action_items):
+    """
+    Build a cache of notifications to avoid multiple SQL queries.
+    """
+    notification_ids = {
+        action["value"]
+        for item in action_items
+        for action in item.get("actions", [])
+        if action.get("type") == "send_notification" and action.get("value")
+    }
+    if not notification_ids:
+        return {}
+    records = postgres_hook.get_records(
+        sql=SQL_NOTIFICATION_BY_IDS,
+        parameters={"notification_ids": tuple(notification_ids)},
+    )
+    return {
+        str(record[0]): {
+            "name": record[1],
+            "type": record[2],
+            "configuration": record[3],
+        }
+        for record in records
+    }
+
+
 async def execute_actions_async(
     action_items, changes_details, period, executed_at=None
 ):
@@ -846,6 +907,7 @@ async def execute_actions_async(
     semaphore = asyncio.Semaphore(max_notifications_per_task)
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
     run_executed_at = executed_at if executed_at is not None else period["end"]
+    notifications_cache = build_notifications_cache(postgres_hook, action_items)
 
     async with aiohttp.ClientSession(raise_for_status=True) as session:
         for item in action_items:
@@ -880,6 +942,7 @@ async def execute_actions_async(
                 "session": session,
                 "semaphore": semaphore,
                 "postgres_hook": postgres_hook,
+                "notifications_cache": notifications_cache,
                 "automation": item["automation"],
                 "changes": item.get("changes", []),
                 "item_changes_details": item_changes_details,
@@ -927,25 +990,47 @@ async def execute_actions_async(
                     )
 
 
-def _execute_automation_actions(queue_name: str, **context):
+def _resolve_action_chunks(chunks, chunk_index):
+    if chunk_index is None or chunk_index == ALL_CHUNKS_INDEX:
+        return [c for c in chunks if c]
+    if chunk_index < 0 or chunk_index >= len(chunks):
+        return []
+    chunk = chunks[chunk_index]
+    return [chunk] if chunk else []
+
+
+def _execute_automation_actions(
+    queue_name: str, chunk_index=ALL_CHUNKS_INDEX, **context
+):
     """
     Runs notification/actions for one logical queue. Payload lives in Redis under
     ``automation_action_queue_*`` as ``{"chunks": [...]}`` (never large XCom).
+
+    When ``chunk_index`` is ALL_CHUNKS_INDEX (-1), every chunk is processed in one task.
+    Otherwise only the chunk at that index is processed (Airflow dynamic task mapping).
     """
     start, end = get_dates_from_context(context)
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     prefix = automation_action_queue_prefix(queue_name)
-    payload = redis_get(redis_hook, prefix, start, end)
+    payload = redis_get(redis_hook, prefix, start, end) or {}
     chunks = payload.get("chunks") or []
-    if not chunks:
+    chunks_to_run = _resolve_action_chunks(chunks, chunk_index)
+    if not chunks_to_run:
         return True
+
+    action_count = sum(len(chunk) for chunk in chunks_to_run)
+    logger.info(
+        "execute_%s_actions: chunk_index=%s chunks=%s actions=%s",
+        queue_name,
+        chunk_index,
+        len(chunks_to_run),
+        action_count,
+    )
 
     changes_details = redis_get(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end)
 
     loop = asyncio.get_event_loop()
-    for chunk in chunks:
-        if not chunk:
-            continue
+    for chunk in chunks_to_run:
         loop.run_until_complete(
             execute_actions_async(
                 action_items=chunk,
@@ -957,9 +1042,33 @@ def _execute_automation_actions(queue_name: str, **context):
     return True
 
 
+@task(task_id="list_alert_action_chunk_indices")
+def list_alert_action_chunk_indices(**context):
+    """
+    Drives dynamic mapping of execute_alert_actions.
+    Returns [-1] when mapping is disabled (single task, all chunks).
+    """
+    start, end = get_dates_from_context(context)
+    if not use_alert_action_task_mapping():
+        return [ALL_CHUNKS_INDEX]
+
+    redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
+    payload = (
+        redis_get(
+            redis_hook,
+            automation_action_queue_prefix("alert"),
+            start,
+            end,
+        )
+        or {}
+    )
+    chunks = payload.get("chunks") or []
+    return list(range(len(chunks)))
+
+
 @task(task_id="execute_alert_actions")
-def execute_alert_automation_actions(**context):
-    return _execute_automation_actions("alert", **context)
+def execute_alert_automation_actions(chunk_index=ALL_CHUNKS_INDEX, **context):
+    return _execute_automation_actions("alert", chunk_index=chunk_index, **context)
 
 
 @task(task_id="send_report_notifications_daily_or_weekly", trigger_rule="none_failed")
