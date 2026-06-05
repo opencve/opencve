@@ -59,6 +59,7 @@ from projects.models import (
 from projects.notifications import run_notification_try
 from projects.utils import (
     RESULT_TYPE_ICONS,
+    build_report_listing_summary,
     send_notification_confirmation_email,
 )
 from users.models import User
@@ -432,8 +433,8 @@ class ReportsView(
         )
         query = (
             Report.objects.filter(project=self.project)
+            .select_related("automation")
             .prefetch_related(changes_with_cve_prefetch)
-            .all()
         )
 
         # Apply period filter
@@ -447,6 +448,8 @@ class ReportsView(
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        for report in context["reports"]:
+            report.changes_summary = build_report_listing_summary(report.changes.all())
         context["project"] = self.project
         context["period_choices"] = Report.PERIOD_CHOICES
         return context

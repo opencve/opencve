@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
+from django.urls import reverse
 
 from cves.utils import cvss_score_to_severity, get_highest_cvss
 
@@ -13,6 +14,103 @@ RESULT_TYPE_ICONS = {
     "pdf": "fa-file-pdf-o",
     "ai_summary": "fa-lightbulb-o",
 }
+
+CVSS_SEVERITY_ORDER = ("Critical", "High", "Medium", "Low", "Unknown")
+
+CVSS_SEVERITY_LABEL_CLASS = {
+    "Critical": "critical",
+    "High": "danger",
+    "Medium": "warning",
+    "Low": "info",
+    "Unknown": "default",
+}
+
+
+def build_report_listing_summary(changes):
+    """
+    Build count, CVE excerpt and CVSS distribution for a report listing row.
+    Expects prefetched changes with select_related('cve').
+    """
+    empty_distribution = {severity: 0 for severity in CVSS_SEVERITY_ORDER}
+
+    if not changes:
+        return {
+            "count": 0,
+            "excerpt_cve_ids": [],
+            "excerpt_remains": 0,
+            "cvss_distribution": empty_distribution,
+        }
+
+    unique_cves = {}
+    for change in changes:
+        cve_id = change.cve.cve_id
+        if cve_id not in unique_cves:
+            unique_cves[cve_id] = change.cve
+
+    cve_ids = sorted(unique_cves.keys(), reverse=True)
+    count = len(cve_ids)
+    excerpt_limit = settings.COUNT_EXCERPT
+
+    distribution = empty_distribution.copy()
+    for cve in unique_cves.values():
+        score, _version = cve.highest_cvss
+        severity = cvss_score_to_severity(score) if score is not None else None
+        if severity in distribution:
+            distribution[severity] += 1
+        else:
+            distribution["Unknown"] += 1
+
+    return {
+        "count": count,
+        "excerpt_cve_ids": cve_ids[:excerpt_limit],
+        "excerpt_remains": max(0, count - excerpt_limit),
+        "cvss_distribution": distribution,
+    }
+
+
+def format_report_count_html(summary):
+    """Format the count of CVEs changed for the reports listing."""
+    count = summary.get("count", 0)
+    label = "CVE changed" if count == 1 else "CVEs changed"
+    return (
+        '<span class="report-changes-count">'
+        '<span class="badge badge-purple-light">{}</span> {}'
+        "</span>"
+    ).format(count, label)
+
+
+def format_report_excerpt_html(summary):
+    """Format the excerpt of CVEs changed for the reports listing."""
+    cve_ids = summary.get("excerpt_cve_ids") or []
+    if not cve_ids:
+        return ""
+
+    output = ""
+    remains = summary.get("excerpt_remains", 0)
+    for idx, cve_id in enumerate(cve_ids):
+        base_url = reverse("cve", kwargs={"cve_id": cve_id})
+        output += f'<a href="{base_url}">{cve_id}</a>'
+        output += ", " if idx + 1 != len(cve_ids) else " "
+
+    if remains:
+        output += "and {} others".format(remains)
+
+    return output
+
+
+def format_report_cvss_summary_html(summary):
+    """Return colored CVSS labels for the reports listing."""
+    distribution = summary.get("cvss_distribution") or {}
+    parts = [
+        '<span class="label label-{}">{} {}</span>'.format(
+            CVSS_SEVERITY_LABEL_CLASS[severity],
+            distribution[severity],
+            severity,
+        )
+        for severity in CVSS_SEVERITY_ORDER
+        if distribution.get(severity)
+    ]
+    return " ".join(parts)
 
 
 def build_impact_chart_data_from_cves_table(cves_table_data):
