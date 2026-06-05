@@ -473,10 +473,12 @@ class ReportView(
 
             # A CVE can have several changes in one day
             if db_change.cve not in changes:
-                score = db_change.cve.cvssV3_1["score"] if db_change.cve.cvssV3_1 else 0
+                score, cvss_version = db_change.cve.highest_cvss
                 changes[db_change.cve] = {
                     "cve": db_change.cve,
-                    "score": score,
+                    "score": score if score is not None else 0,
+                    "cvss_score": score,
+                    "cvss_version": cvss_version,
                     "kb_changes": [],
                 }
 

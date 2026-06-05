@@ -23,7 +23,7 @@ from projects.models import (
     Notification,
     Project,
 )
-from projects.views import ProjectVulnerabilitiesView
+from projects.views import ProjectVulnerabilitiesView, ReportView
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1227,6 +1227,41 @@ def test_report_view_statistics(
     assert "score" in change_data
     assert "kb_changes" in change_data
     assert isinstance(change_data["kb_changes"], list)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_get_report_statistics_uses_highest_cvss(
+    create_organization, create_user, create_project
+):
+    """Report detail uses the highest CVSS score across all versions."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(name="project1", organization=org)
+    cve = Cve.objects.create(
+        cve_id="CVE-2025-0001",
+        metrics={
+            "cvssV3_1": {"data": {"score": 5.0}},
+            "cvssV4_0": {"data": {"score": 9.8}},
+        },
+    )
+    report = Report.objects.create(project=project, day=date.today())
+    change = Change.objects.create(
+        cve=cve,
+        path="2025/CVE-2025-0001.json",
+        commit="a" * 40,
+        types=["created"],
+    )
+    report.changes.add(change)
+
+    with patch.object(
+        Change, "change_data", new_callable=PropertyMock, return_value=None
+    ):
+        result = ReportView.get_report_statistics(report)
+    change_data = list(result["changes"])[0]
+
+    assert change_data["cvss_score"] == 9.8
+    assert change_data["cvss_version"] == "v4.0"
+    assert change_data["score"] == 9.8
 
 
 @override_settings(ENABLE_ONBOARDING=False)
