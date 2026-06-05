@@ -2,6 +2,10 @@ from django.test import RequestFactory, override_settings
 
 from projects.utils import (
     build_impact_chart_data_from_cves_table,
+    build_report_listing_summary,
+    format_report_count_html,
+    format_report_excerpt_html,
+    format_report_cvss_summary_html,
     send_notification_confirmation_email,
     RESULT_TYPE_ICONS,
 )
@@ -115,6 +119,112 @@ def test_build_impact_chart_data_returns_none_for_empty():
     """Return None when cves_table_data is empty or None."""
     assert build_impact_chart_data_from_cves_table(None) is None
     assert build_impact_chart_data_from_cves_table([]) is None
+
+
+class MockCve:
+    def __init__(self, cve_id, score=None):
+        self.cve_id = cve_id
+        self._score = score
+
+    @property
+    def highest_cvss(self):
+        if self._score is None:
+            return (None, None)
+        return (self._score, "v3.1")
+
+
+class MockChange:
+    def __init__(self, cve):
+        self.cve = cve
+
+
+def test_build_report_listing_summary_empty():
+    summary = build_report_listing_summary([])
+    assert summary["count"] == 0
+    assert summary["excerpt_cve_ids"] == []
+    assert summary["cvss_distribution"]["Unknown"] == 0
+
+
+def test_build_report_listing_summary_deduplicates_and_sorts():
+    changes = [
+        MockChange(MockCve("CVE-2026-7777", 7.5)),
+        MockChange(MockCve("CVE-2026-7777", 7.5)),
+        MockChange(MockCve("CVE-2026-9999", 9.8)),
+        MockChange(MockCve("CVE-2026-8888", 4.5)),
+    ]
+    summary = build_report_listing_summary(changes)
+
+    assert summary["count"] == 3
+    assert summary["excerpt_cve_ids"] == [
+        "CVE-2026-9999",
+        "CVE-2026-8888",
+        "CVE-2026-7777",
+    ]
+    assert summary["excerpt_remains"] == 0
+    assert summary["cvss_distribution"]["Critical"] == 1
+    assert summary["cvss_distribution"]["High"] == 1
+    assert summary["cvss_distribution"]["Medium"] == 1
+
+
+def test_build_report_listing_summary_unknown_scores():
+    changes = [
+        MockChange(MockCve("CVE-2026-0001")),
+        MockChange(MockCve("CVE-2026-0002", 2.0)),
+    ]
+    summary = build_report_listing_summary(changes)
+
+    assert summary["count"] == 2
+    assert summary["cvss_distribution"]["Low"] == 1
+    assert summary["cvss_distribution"]["Unknown"] == 1
+
+
+def test_format_report_count_html():
+    assert (
+        format_report_count_html({"count": 1})
+        == '<span class="report-changes-count"><span class="badge badge-purple-light">1</span> CVE changed</span>'
+    )
+    assert (
+        format_report_count_html({"count": 6})
+        == '<span class="report-changes-count"><span class="badge badge-purple-light">6</span> CVEs changed</span>'
+    )
+
+
+def test_format_report_excerpt_html():
+    summary = {
+        "excerpt_cve_ids": ["CVE-2026-0001"],
+        "excerpt_remains": 0,
+    }
+    result = format_report_excerpt_html(summary)
+    assert 'href="/cve/CVE-2026-0001"' in result
+    assert "others" not in result
+
+    summary = {
+        "excerpt_cve_ids": ["CVE-2026-0012", "CVE-2026-0011", "CVE-2026-0010"],
+        "excerpt_remains": 9,
+    }
+    result = format_report_excerpt_html(summary)
+    assert result.index("CVE-2026-0012") < result.index("CVE-2026-0011")
+    assert "and 9 others" in result
+    assert format_report_excerpt_html({}) == ""
+
+
+def test_format_report_cvss_summary_html():
+    summary = {
+        "cvss_distribution": {
+            "Critical": 2,
+            "High": 1,
+            "Medium": 0,
+            "Low": 3,
+            "Unknown": 1,
+        }
+    }
+    result = format_report_cvss_summary_html(summary)
+    assert '<span class="label label-critical">2 Critical</span>' in result
+    assert '<span class="label label-danger">1 High</span>' in result
+    assert '<span class="label label-info">3 Low</span>' in result
+    assert '<span class="label label-default">1 Unknown</span>' in result
+    assert "Medium" not in result
+    assert format_report_cvss_summary_html({"cvss_distribution": {}}) == ""
 
 
 def test_build_impact_chart_data_single_cve():

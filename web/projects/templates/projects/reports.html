@@ -50,31 +50,32 @@
                     <table class="table table-hover table-striped">
                         <thead>
                             <tr>
-                                <th>Period start</th>
-                                <th>Covers</th>
-                                <th>Frequency</th>
+                                <th>Report</th>
                                 <th>Automation</th>
-                                <th>CVE changed</th>
+                                <th>Changes</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for report in reports %}
                             <tr>
-                                <td><a href="{% url 'report' org_name=request.current_organization.name project_name=project.name report_id=report.id %}">{{ report.day|date:"D d M Y" }}</a></td>
                                 <td>
-                                    {% timezone report.period_timezone %}
-                                    <small>{{ report.period_window_start|date:"M j, Y H:i:s" }} → {{ report.period_window_end|date:"M j, Y H:i:s" }}</small>
-                                    {% endtimezone %}
-                                    <br><small class="text-muted">{{ report.period_timezone }}</small>
+                                    <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name report_id=report.id %}">{{ report.day|date:"D d M Y" }}</a>
+                                    <br><small class="text-muted">{% timezone report.period_timezone %}{{ report.period_window_start|date:"M j, Y H:i" }} → {{ report.period_window_end|date:"M j, Y H:i" }}{% endtimezone %} {{ report.period_timezone }}</small>
                                 </td>
-                                <td>{% if report.period_type == "daily" %}Daily{% else %}Weekly{% endif %}</td>
-                                <td>{% if report.automation %}<a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=report.automation.name %}">{{ report.automation.name }}</a>{% else %}-{% endif %}</td>
                                 <td>
-                                    {% for change in report.changes.all|dictsortreversed:'cve.cve_id' %}
-                                    {% ifchanged %}
-                                    <a class="label label-primary" href="{% url 'cve' cve_id=change.cve.cve_id%}" data-toggle="tooltip" data-placement="right" data-container="body" title="{{ change.cve.vendors|flat_vendors }}">{{ change.cve.cve_id }}</a>
-                                    {% endifchanged %}
-                                    {% endfor %}
+                                    {% if report.automation %}<a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=report.automation.name %}">{{ report.automation.name }}</a>{% else %}-{% endif %}
+                                    <br><small class="text-muted">{% if report.period_type == "daily" %}Daily{% else %}Weekly{% endif %}</small>
+                                </td>
+                                <td>
+                                    <div class="report-changes-line">
+                                        {{ report.changes_summary|report_summary_count }}
+                                        {% if report.changes_summary.count %}
+                                        <span class="report-changes-cvss">{{ report.changes_summary|report_summary_cvss }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if report.changes_summary.count %}
+                                    <small class="text-muted report-changes-excerpt">{{ report.changes_summary|report_summary_excerpt }}</small>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

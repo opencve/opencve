@@ -21,6 +21,11 @@ from cves.constants import (
 from cves.utils import get_metric_from_vector
 from cves.utils import humanize as _humanize
 from cves.utils import is_top_vendor_product
+from projects.utils import (
+    format_report_count_html,
+    format_report_excerpt_html,
+    format_report_cvss_summary_html,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +85,21 @@ def vendors_excerpt(s):
 @register.filter(is_safe=True)
 def products_excerpt(s):
     return mark_safe(excerpt(s, "products"))
+
+
+@register.filter(is_safe=True)
+def report_summary_count(summary):
+    return mark_safe(format_report_count_html(summary))
+
+
+@register.filter(is_safe=True)
+def report_summary_excerpt(summary):
+    return mark_safe(format_report_excerpt_html(summary))
+
+
+@register.filter(is_safe=True)
+def report_summary_cvss(summary):
+    return mark_safe(format_report_cvss_summary_html(summary))
 
 
 @register.filter

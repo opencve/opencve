@@ -126,6 +126,46 @@
     background-color: #090031;
   }
 
+  .report-changes-count .badge-purple-light {
+    background-color: #ede9fc;
+    color: #1F1172;
+  }
+
+  .report-changes-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    line-height: 1.4;
+  }
+
+  .report-changes-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .report-changes-cvss {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  .report-changes-cvss .label {
+    display: inline-block;
+    font-size: 75%;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 1px 5px;
+    margin-right: 2px;
+  }
+
+  .report-changes-excerpt {
+    display: block;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
   .bg-light-blue, .label-primary, .modal-primary .modal-body {
     background-color: #5842DF !important;
   }
