@@ -1,13 +1,13 @@
 import re
 import uuid
 from unittest.mock import patch, MagicMock
-from datetime import date
+from datetime import date, datetime, timezone as dt_timezone
 
 import pytest
 from django.utils import timezone
 from changes.models import Change, Report
 from organizations.models import Membership
-from projects.models import CveTracker
+from projects.models import Automation, CveTracker
 from users.models import UserTag
 
 from dashboards.widgets import (
@@ -1119,10 +1119,13 @@ def test_last_reports_widget_index(
     create_user,
     create_organization,
     create_project,
+    create_automation,
+    create_cve,
 ):
     """
     Test LastReportsWidget.index to ensure only reports from the current
-    organization's projects are returned
+    organization's projects are returned, ordered by created_at, with
+    changes_summary attached.
     """
     user1 = create_user(username="user1")
     org1 = create_organization(name="Org Alpha", owner=user1)
@@ -1132,9 +1135,41 @@ def test_last_reports_widget_index(
     org2 = create_organization(name="Org Beta", owner=user2)
     proj_org2 = create_project(name="Project Beta", organization=org2)
 
+    automation_org1 = create_automation(
+        name="daily-report",
+        project=proj_org1,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+
     # Reports for org1
-    report_old_org1 = Report.objects.create(project=proj_org1, day=date(2024, 1, 15))
-    report_new_org1 = Report.objects.create(project=proj_org1, day=date(2024, 1, 20))
+    report_old_org1 = Report.objects.create(
+        project=proj_org1,
+        day=date(2024, 1, 15),
+        automation=automation_org1,
+    )
+    Report.objects.filter(pk=report_old_org1.pk).update(
+        created_at=datetime(2024, 1, 15, tzinfo=dt_timezone.utc)
+    )
+    report_old_org1.refresh_from_db()
+
+    report_new_org1 = Report.objects.create(
+        project=proj_org1,
+        day=date(2024, 1, 20),
+        automation=automation_org1,
+    )
+    Report.objects.filter(pk=report_new_org1.pk).update(
+        created_at=datetime(2024, 1, 20, tzinfo=dt_timezone.utc)
+    )
+    report_new_org1.refresh_from_db()
+
+    cve = create_cve("CVE-2021-34181")
+    change = Change.objects.create(
+        cve=cve,
+        path="2021/CVE-2021-34181.json",
+        commit="a" * 40,
+        types=["created"],
+    )
+    report_new_org1.changes.add(change)
 
     # Report for org2
     report_org2 = Report.objects.create(project=proj_org2, day=date(2024, 1, 18))
@@ -1176,6 +1211,320 @@ def test_last_reports_widget_index(
     assert actual_organization == org1
     assert list(actual_reports) == [report_new_org1, report_old_org1]
     assert report_org2 not in actual_reports
+
+    assert hasattr(actual_reports[0], "changes_summary")
+    assert actual_reports[0].changes_summary["count"] == 1
+    assert hasattr(actual_reports[1], "changes_summary")
+    assert actual_reports[1].changes_summary["count"] == 0
+
+
+@pytest.mark.django_db
+def test_last_reports_widget_validate_config(
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+):
+    """Test LastReportsWidget.validate_config for automation_ids validation."""
+    user1 = create_user(username="user1")
+    org1 = create_organization(name="org1", user=user1)
+    org2 = create_organization(name="org2", user=user1)
+    project_org1 = create_project(name="project1", organization=org1, active=True)
+    project_org2 = create_project(name="project2", organization=org2, active=True)
+    project_inactive = create_project(name="inactive", organization=org1, active=False)
+
+    report_automation = create_automation(
+        name="daily-report",
+        project=project_org1,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+    alert_automation = create_automation(
+        name="my-alert",
+        project=project_org1,
+        trigger_type=Automation.TRIGGER_ALERT,
+    )
+    report_automation_org2 = create_automation(
+        name="other-report",
+        project=project_org2,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+    report_automation_inactive = create_automation(
+        name="inactive-report",
+        project=project_inactive,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+
+    mock_request = MagicMock()
+    mock_request.user = user1
+    mock_request.current_organization = org1
+
+    widget = LastReportsWidget(
+        mock_request,
+        {
+            "id": "f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+            "type": "last_reports",
+            "title": "Latest Reports",
+            "config": {"automation_ids": []},
+        },
+    )
+
+    # Valid empty config
+    assert widget.validate_config({}) == {"automation_ids": []}
+
+    # Invalid automation_id format
+    with pytest.raises(
+        ValueError, match=re.escape("Invalid automation ID (not-a-uuid)")
+    ):
+        widget.validate_config({"automation_ids": "not-a-uuid"})
+
+    # Automation not found (non-existent UUID)
+    non_existent_uuid = str(uuid.uuid4())
+    with pytest.raises(
+        ValueError, match=re.escape(f"Automation not found ({non_existent_uuid})")
+    ):
+        widget.validate_config({"automation_ids": [non_existent_uuid]})
+
+    # Automation in different organization
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"Automation not found ({report_automation_org2.id})"),
+    ):
+        widget.validate_config({"automation_ids": [str(report_automation_org2.id)]})
+
+    # Alert automation (not report type)
+    with pytest.raises(
+        ValueError, match=re.escape(f"Automation not found ({alert_automation.id})")
+    ):
+        widget.validate_config({"automation_ids": [str(alert_automation.id)]})
+
+    # Automation in inactive project
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"Automation not found ({report_automation_inactive.id})"),
+    ):
+        widget.validate_config({"automation_ids": [str(report_automation_inactive.id)]})
+
+    # Valid automation_id
+    valid_config = widget.validate_config(
+        {"automation_ids": [str(report_automation.id)]}
+    )
+    assert valid_config == {"automation_ids": [str(report_automation.id)]}
+
+    # Valid multiple automation_ids
+    valid_multi = widget.validate_config(
+        {"automation_ids": [str(report_automation.id), str(report_automation.id)]}
+    )
+    assert valid_multi == {
+        "automation_ids": [str(report_automation.id), str(report_automation.id)]
+    }
+
+
+@pytest.mark.django_db
+def test_last_reports_widget_config(
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+):
+    """Test LastReportsWidget.config passes report automations to the template."""
+    user1 = create_user(username="user1")
+    org1 = create_organization(name="org1", user=user1)
+    org2 = create_organization(name="org2", user=user1)
+
+    project_active_org1 = create_project(
+        name="Active Org1", organization=org1, active=True
+    )
+    project_inactive_org1 = create_project(
+        name="Inactive Org1", organization=org1, active=False
+    )
+    project_active_org2 = create_project(
+        name="Active Org2", organization=org2, active=True
+    )
+
+    report_auto_org1 = create_automation(
+        name="daily-report",
+        project=project_active_org1,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+    create_automation(
+        name="my-alert",
+        project=project_active_org1,
+        trigger_type=Automation.TRIGGER_ALERT,
+    )
+    create_automation(
+        name="inactive-report",
+        project=project_inactive_org1,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+    create_automation(
+        name="other-report",
+        project=project_active_org2,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+
+    mock_request = MagicMock()
+    mock_request.user = user1
+    mock_request.current_organization = org1
+
+    widget = LastReportsWidget(
+        mock_request,
+        {
+            "id": "f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+            "type": "last_reports",
+            "title": "Latest Reports Config",
+            "config": {"automation_ids": []},
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.config()
+
+    mock_render.assert_called_once()
+
+    actual_call_args, _ = mock_render.call_args
+    actual_template_name = actual_call_args[0]
+    assert actual_template_name == "dashboards/widgets/last_reports/config.html"
+
+    actual_context = actual_call_args[1]
+    actual_automations = actual_context.pop("automations")
+    assert actual_context == {
+        "widget_id": "f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+        "widget_type": "last_reports",
+        "title": "Latest Reports Config",
+        "config": widget.configuration,
+        "request": mock_request,
+    }
+
+    assert list(actual_automations) == [report_auto_org1]
+
+
+@pytest.mark.django_db
+def test_last_reports_widget_index_filters_by_automation_ids(
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+):
+    """Test LastReportsWidget.index filters reports by selected automations."""
+    user1 = create_user(username="user1")
+    org1 = create_organization(name="org1", user=user1)
+    project = create_project(name="project1", organization=org1)
+
+    automation_a = create_automation(
+        name="report-a",
+        project=project,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+    automation_b = create_automation(
+        name="report-b",
+        project=project,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+
+    report_a = Report.objects.create(
+        project=project,
+        day=date(2024, 1, 10),
+        automation=automation_a,
+    )
+    Report.objects.filter(pk=report_a.pk).update(
+        created_at=datetime(2024, 1, 10, tzinfo=dt_timezone.utc)
+    )
+    report_a.refresh_from_db()
+
+    report_b = Report.objects.create(
+        project=project,
+        day=date(2024, 1, 11),
+        automation=automation_b,
+    )
+    Report.objects.filter(pk=report_b.pk).update(
+        created_at=datetime(2024, 1, 11, tzinfo=dt_timezone.utc)
+    )
+    report_b.refresh_from_db()
+
+    mock_request = MagicMock()
+    mock_request.user = user1
+    mock_request.current_organization = org1
+
+    widget = LastReportsWidget(
+        mock_request,
+        {
+            "id": "f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+            "type": "last_reports",
+            "title": "Filtered Reports",
+            "config": {"automation_ids": [str(automation_a.id)]},
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.index()
+
+    actual_reports = mock_render.call_args[0][1]["reports"]
+    assert list(actual_reports) == [report_a]
+    assert report_b not in actual_reports
+
+
+@pytest.mark.django_db
+def test_last_reports_widget_index_no_filter_shows_all_automations(
+    create_user,
+    create_organization,
+    create_project,
+    create_automation,
+):
+    """Test empty automation_ids shows reports from all automations."""
+    user1 = create_user(username="user1")
+    org1 = create_organization(name="org1", user=user1)
+    project = create_project(name="project1", organization=org1)
+
+    automation_a = create_automation(
+        name="report-a",
+        project=project,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+    automation_b = create_automation(
+        name="report-b",
+        project=project,
+        trigger_type=Automation.TRIGGER_REPORT,
+    )
+
+    report_a = Report.objects.create(
+        project=project,
+        day=date(2024, 1, 10),
+        automation=automation_a,
+    )
+    Report.objects.filter(pk=report_a.pk).update(
+        created_at=datetime(2024, 1, 10, tzinfo=dt_timezone.utc)
+    )
+    report_a.refresh_from_db()
+
+    report_b = Report.objects.create(
+        project=project,
+        day=date(2024, 1, 11),
+        automation=automation_b,
+    )
+    Report.objects.filter(pk=report_b.pk).update(
+        created_at=datetime(2024, 1, 11, tzinfo=dt_timezone.utc)
+    )
+    report_b.refresh_from_db()
+
+    mock_request = MagicMock()
+    mock_request.user = user1
+    mock_request.current_organization = org1
+
+    widget = LastReportsWidget(
+        mock_request,
+        {
+            "id": "f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6",
+            "type": "last_reports",
+            "title": "All Reports",
+            "config": {"automation_ids": []},
+        },
+    )
+
+    with patch("dashboards.widgets.render_to_string") as mock_render:
+        widget.index()
+
+    actual_reports = mock_render.call_args[0][1]["reports"]
+    assert list(actual_reports) == [report_b, report_a]
 
 
 # MyAssignedCvesWidget class

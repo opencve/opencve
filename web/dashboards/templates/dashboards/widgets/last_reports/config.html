@@ -3,4 +3,13 @@
         <label for="widget-title">Widget Title</label>
         <input type="text" class="form-control" id="widget-title" name="title" value="{{ title|default:'Last Reports' }}">
     </div>
+    <div class="form-group">
+        <label for="automation-select">Select one or more report automations</label>
+        <select class="form-control" id="automation-select" name="automation_ids" multiple>
+            {% for automation in automations %}
+            <option value="{{ automation.id }}" {% if automation.id|stringformat:"s" in config.automation_ids %}selected{% endif %}>{{ automation.project.name }} — {{ automation.name }}</option>
+            {% endfor %}
+        </select>
+        <small class="text-muted">Leave empty to show reports from all automations.</small>
+    </div>
 </form>
