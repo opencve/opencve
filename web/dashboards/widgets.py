@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Prefetch
 from django.template.loader import render_to_string
 
 from changes.models import Change, Report
@@ -7,7 +7,8 @@ from cves.models import Cve
 from cves.search import Search
 from views.models import View
 from opencve.utils import is_valid_uuid
-from projects.models import Project, CveTracker
+from projects.models import Automation, Project, CveTracker
+from projects.utils import build_report_listing_summary
 from users.models import User
 
 
@@ -307,17 +308,83 @@ class LastReportsWidget(Widget):
     description = (
         "Displays the latest CVE reports generated for your organization's projects."
     )
+    allowed_config_keys = ["automation_ids"]
+    default_config_values = {
+        "automation_ids": [],
+    }
+
+    def _normalize_automation_ids(self, value):
+        if isinstance(value, str):
+            return [value] if value else []
+        if isinstance(value, (tuple, set)):
+            return [v for v in value if v]
+        if isinstance(value, list):
+            return [v for v in value if v]
+        return []
+
+    def validate_config(self, config):
+        cleaned = super().validate_config(config)
+
+        automation_ids = self._normalize_automation_ids(
+            cleaned.get("automation_ids", [])
+        )
+        organization = self.request.current_organization
+
+        # Ensure the automation IDs are valid and belong to the current organization
+        for automation_id in automation_ids:
+            if not is_valid_uuid(automation_id):
+                raise ValueError(f"Invalid automation ID ({automation_id})")
+
+            automation = Automation.objects.filter(
+                id=automation_id,
+                project__organization=organization,
+                project__active=True,
+                trigger_type=Automation.TRIGGER_REPORT,
+            ).first()
+            if not automation:
+                raise ValueError(f"Automation not found ({automation_id})")
+
+        cleaned["automation_ids"] = automation_ids
+        return cleaned
+
+    def config(self):
+        organization = self.request.current_organization
+        automations = (
+            Automation.objects.filter(
+                project__organization=organization,
+                project__active=True,
+                trigger_type=Automation.TRIGGER_REPORT,
+            )
+            .select_related("project")
+            .order_by("project__name", "name")
+        )
+        return self.render_config(automations=automations)
 
     def index(self):
         organization = self.request.current_organization
         projects = organization.projects.all()
 
+        changes_with_cve_prefetch = Prefetch(
+            "changes",
+            queryset=Change.objects.select_related("cve"),
+        )
         reports = (
             Report.objects.filter(project__in=projects)
-            .prefetch_related("changes")
-            .select_related("project")
-            .order_by("-day")[:10]
+            .select_related("project", "automation")
+            .prefetch_related(changes_with_cve_prefetch)
+            .order_by("-created_at")
         )
+
+        # Apply automation filter if provided
+        automation_ids = self.configuration.get("automation_ids", [])
+        if automation_ids:
+            reports = reports.filter(automation_id__in=automation_ids)
+
+        # Limit the number of reports to 10
+        reports = reports[:10]
+        for report in reports:
+            report.changes_summary = build_report_listing_summary(report.changes.all())
+
         return self.render_index(organization=organization, reports=reports)
 
 

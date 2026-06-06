@@ -166,6 +166,27 @@
     line-height: 1.4;
   }
 
+  .last-reports-widget th,
+  .last-reports-widget td {
+    font-size: 13px;
+  }
+
+  .last-reports-widget th {
+    font-size: 12px;
+  }
+
+  .last-reports-widget .report-changes-cvss {
+    margin-left: 0;
+  }
+
+  .last-reports-widget .report-changes-excerpt {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .bg-light-blue, .label-primary, .modal-primary .modal-body {
     background-color: #5842DF !important;
   }
