@@ -8,6 +8,8 @@ REDHAT_LOCAL_REPO = pathlib.Path(conf.get("opencve", "redhat_repo_path"))
 VULNRICHMENT_LOCAL_REPO = pathlib.Path(conf.get("opencve", "vulnrichment_repo_path"))
 KB_LOCAL_REPO = pathlib.Path(conf.get("opencve", "kb_repo_path"))
 
+WEAKNESSES_XML_ZIP_URL = "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip"
+
 REPORTS_RETENTION_MONTHS = int(conf.get("opencve", "reports_retention", fallback="12"))
 
 PRODUCT_SEPARATOR = "$PRODUCT$"
@@ -25,6 +27,12 @@ CALL report_upsert(
 """
 
 VARIABLE_UPSERT_PROCEDURE = "CALL variable_upsert(%(p_name)s, %(p_value)s);"
+
+WEAKNESS_UPSERT_PROCEDURE = """
+CALL weakness_upsert(
+    %(cwe)s, %(created)s, %(updated)s, %(name)s, %(description)s
+);
+"""
 
 SQL_CHANGE_WITH_VENDORS = """
 SELECT

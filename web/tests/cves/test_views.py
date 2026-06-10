@@ -126,6 +126,61 @@ def test_list_weaknesses_search_by_name(db, auth_client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
+def test_list_weaknesses_order_null_names_last(db, auth_client):
+    """Weaknesses without a name are listed after named entries."""
+    Weakness.objects.create(cwe_id="CWE-1")
+    Weakness.objects.create(cwe_id="CWE-2", name="Zebra")
+    Weakness.objects.create(cwe_id="CWE-3", name="Alpha")
+
+    client = auth_client()
+    response = client.get(reverse("weaknesses"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.content, features="html.parser")
+    cwe_ids = [span.text for span in soup.select(".weakness-list-id span")]
+    assert cwe_ids == ["CWE-2", "CWE-3", "CWE-1"]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_weaknesses_card_layout(db, auth_client):
+    """Weakness list page uses the card layout and action buttons."""
+    Weakness.objects.create(
+        cwe_id="CWE-79",
+        name="Cross-site Scripting",
+        description="Allows attackers to inject client-side scripts.",
+    )
+
+    client = auth_client()
+    response = client.get(reverse("weaknesses"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert soup.select_one(".weakness-list")
+    assert soup.select_one(".weakness-list-id")
+    assert soup.find(
+        "a", href=f"{reverse('cves')}?weakness=CWE-79", class_="weakness-list-id"
+    )
+    list_cves_links = soup.select("a.weakness-list-btn")
+    assert any("List CVEs" in link.get_text() for link in list_cves_links)
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_weaknesses_empty_name_and_description(db, auth_client):
+    """Weakness list shows placeholders when name or description is missing."""
+    Weakness.objects.create(cwe_id="CWE-999")
+
+    client = auth_client()
+    response = client.get(reverse("weaknesses"))
+
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert soup.select_one(".weakness-list-title").text == "No name"
+    assert soup.select_one(".weakness-list-description em").text == (
+        "No description available."
+    )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
 def test_vendors_load_more_button_on_first_page(db, auth_client, keyset_vendors):
     client = auth_client()
     response = client.get(f"{reverse('vendors')}?search=keyset-vendor")

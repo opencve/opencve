@@ -7,48 +7,81 @@
 
 <section class="content">
     <div class="row">
-
-        <div class="col-xs-8">
+        <div class="col-md-12">
             <div class="box box-primary">
-                <div class="box-header">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Search</h3>
+                </div>
+                <div class="box-body">
+                    <form method="GET">
+                        <div class="row">
+                            <div class="col-md-9">
+                                <input type="text" name="search" class="form-control"
+                                       placeholder="Search by CWE ID or name"
+                                       value="{{ request.GET.search }}">
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                    <i class="fa fa-search"></i> Search
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="box box-primary">
+                <div class="box-header with-border">
                     <h3 class="box-title">Weaknesses</h3>
                 </div>
-                <div class="box-body table-responsive no-padding">
-                    <table class="table table-hover table-striped">
-                        {% if weaknesses %}
+                <div class="box-body weakness-list-box">
+                    {% if weaknesses %}
+                    <div class="weakness-list">
                         {% for weakness in weaknesses %}
-                        <tr>
-                            <td>{{ weakness.cwe_id }}</td>
-                            <td>{{ weakness.name|default:'No name' }}</td>
-                            <td class="col-md-1 text-center"><a class="pointer" tabindex="0" data-original-title=""
-                                                                data-content="{{ weakness.description|default:'No description' }}"
-                                                                data-placement="top" data-toggle="popover"
-                                                                data-trigger="focus" title="" data-container="body"><i
-                                    class="ion-help-circled"></i></a></td>
-                            <td class="col-md-3 text-center">
-                                <div class="btn-group">
-                                    {% if weakness.cwe_id not in 'NVD-CWE-noinfo,NVD-CWE-Other' %}
-                                    <a href="http://cwe.mitre.org/data/definitions/{{ weakness.short_id }}.html"
-                                       target="_blank" class="btn btn-xs btn-default"><i
-                                            class="fa fa-external-link"></i> Mitre</a>
+                        <div class="weakness-list-item">
+                            <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}" class="weakness-list-id">
+                                <i class="fa fa-shield" aria-hidden="true"></i>
+                                <span>{{ weakness.cwe_id }}</span>
+                            </a>
+                            <div class="weakness-list-content">
+                                <div class="weakness-list-title">{{ weakness.name|default:'No name' }}</div>
+                                <div class="weakness-list-description">
+                                    {% if weakness.description %}
+                                    {{ weakness.description }}
+                                    {% else %}
+                                    <em>No description available.</em>
                                     {% endif %}
-                                    <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}" class="btn btn-xs btn-default"><i class="fa fa-shield"></i> View CVE</a>
                                 </div>
-                            </td>
-                        </tr>
+                            </div>
+                            <div class="weakness-list-actions">
+                                {% if weakness.cwe_id not in 'NVD-CWE-noinfo,NVD-CWE-Other' %}
+                                <a href="http://cwe.mitre.org/data/definitions/{{ weakness.short_id }}.html"
+                                   target="_blank" rel="noopener noreferrer"
+                                   class="btn btn-default weakness-list-btn">
+                                    <i class="fa fa-external-link" aria-hidden="true"></i> Mitre
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}"
+                                   class="btn btn-default weakness-list-btn">
+                                    <i class="fa fa-shield" aria-hidden="true"></i> List CVEs
+                                </a>
+                            </div>
+                        </div>
                         {% endfor %}
-                        {% else %}
-                        <tr>
-                            <td colspan="4">No CWE found.</td>
-                        </tr>
-                        {% endif %}
-                    </table>
-                    <div class="center">
+                    </div>
+                    {% else %}
+                    <p class="weakness-list-empty text-muted">No CWE found.</p>
+                    {% endif %}
+                    <div class="center weakness-list-pagination">
                         <div class="pagination">
                             <span class="step-links">
                                 {% if page_obj.has_previous %}
-                                    <a href="?page=1">&laquo; first</a>
-                                    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+                                    <a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">&laquo; first</a>
+                                    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">previous</a>
                                 {% endif %}
 
                                 <span class="current">
@@ -56,8 +89,8 @@
                                 </span>
 
                                 {% if page_obj.has_next %}
-                                    <a href="?page={{ page_obj.next_page_number }}">next</a>
-                                    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+                                    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">next</a>
+                                    <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">last &raquo;</a>
                                 {% endif %}
                             </span>
                         </div>
@@ -65,31 +98,6 @@
                 </div>
             </div>
         </div>
-
-        <div class="col-xs-4">
-            <div class="box box-primary">
-                <div class="box-header">
-                    <h3 class="box-title">Search</h3>
-                </div>
-                <div class="box-body">
-                    <form role="form" class="form-horizontal">
-                        <div class="form-group">
-                            <div class="col-md-12">
-                                <div class="input-group">
-                                    <span class="input-group-btn">
-                                    <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i></button>
-                                    </span>
-                                    <form method="GET">
-                                        <input type="text" placeholder="Search" class="form-control" name="search" value="">
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
     </div>
 </section>
 

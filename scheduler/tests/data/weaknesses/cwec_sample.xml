@@ -1,0 +1,13 @@
+<Weakness_Catalog xmlns="http://cwe.mitre.org/cwe-7">
+  <Weaknesses>
+    <Weakness ID="79" Name="Cross-site Scripting">
+      <Description>Test XSS description</Description>
+    </Weakness>
+    <Weakness ID="89" Name="SQL Injection">
+      <Description>Test SQLi description</Description>
+    </Weakness>
+  </Weaknesses>
+  <Categories>
+    <Category ID="1" Name="Category only"/>
+  </Categories>
+</Weakness_Catalog>

@@ -1270,6 +1270,10 @@ vulnrichment_repo_path = /home/airflow/repositories/vulnrichment
 # It has to be set once and only once during OpenCVE initialization.
 start_date = 2024-01-01
 
+# The starting date of the sync_weaknesses workflow,
+# used to sync the weakness data from MITRE.
+start_date_sync_weaknesses = 2026-06-08
+
 # The starting date of the start_date_summarize_reports workflow,
 # used to generate summaries for each report using a LLM.
 # It has to be set once and only once during OpenCVE initialization.

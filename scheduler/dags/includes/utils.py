@@ -1,12 +1,16 @@
+import io
 import json
 import pathlib
 import time
+import zipfile
+import xml.etree.ElementTree as ET
 from logging import Logger
 from typing import Dict, List, Tuple
 
 import more_itertools
 
 import openai
+import requests
 from airflow.configuration import conf
 from airflow.exceptions import AirflowException, AirflowConfigException
 from email.mime.multipart import MIMEMultipart
@@ -14,7 +18,7 @@ from email.mime.text import MIMEText
 from email.utils import formatdate
 from git.objects.commit import Commit
 from git.repo import Repo
-from includes.constants import KB_LOCAL_REPO
+from includes.constants import KB_LOCAL_REPO, WEAKNESSES_XML_ZIP_URL
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pendulum.datetime import DateTime
 
@@ -509,3 +513,70 @@ def build_user_content_for_llm(
         text_output.append("")  # Empty line between CVEs
 
     return "\n".join(text_output)
+
+
+WEAKNESS_NAMESPACE = {"cwe": "http://cwe.mitre.org/cwe-7"}
+
+
+def download_weaknesses_zip(url: str) -> bytes:
+    """
+    This function downloads the weaknesses XML archive from the given URL.
+    """
+    response = requests.get(url, timeout=60)
+    response.raise_for_status()
+    return response.content
+
+
+def extract_weaknesses_xml(zip_content: bytes) -> bytes:
+    """
+    This function extracts the XML file from the weaknesses ZIP archive.
+    """
+    with zipfile.ZipFile(io.BytesIO(zip_content)) as archive:
+        xml_files = [name for name in archive.namelist() if name.endswith(".xml")]
+
+        if not xml_files:
+            raise RuntimeError("No XML file found in weaknesses ZIP archive")
+
+        with archive.open(xml_files[0]) as xml_file:
+            return xml_file.read()
+
+
+def get_xml_text(element: ET.Element | None) -> str:
+    """
+    This function extracts and joins the text content of an XML element.
+    """
+    if element is None:
+        return ""
+
+    return " ".join(text.strip() for text in element.itertext() if text.strip())
+
+
+def parse_weaknesses(xml_content: bytes) -> list[dict]:
+    """
+    This function parses weaknesses from the XML content.
+    """
+    root = ET.fromstring(xml_content)
+
+    weaknesses = []
+
+    for weakness in root.findall(".//cwe:Weakness", WEAKNESS_NAMESPACE):
+        description_element = weakness.find("cwe:Description", WEAKNESS_NAMESPACE)
+
+        weaknesses.append(
+            {
+                "id": weakness.attrib.get("ID", ""),
+                "name": weakness.attrib.get("Name", ""),
+                "description": get_xml_text(description_element),
+            }
+        )
+
+    return weaknesses
+
+
+def fetch_weaknesses() -> list[dict]:
+    """
+    This function downloads and parses the latest weakness data from MITRE.
+    """
+    zip_content = download_weaknesses_zip(WEAKNESSES_XML_ZIP_URL)
+    xml_content = extract_weaknesses_xml(zip_content)
+    return parse_weaknesses(xml_content)

@@ -1,6 +1,9 @@
+import io
 import json
 import logging
 import pathlib
+import zipfile
+import xml.etree.ElementTree as ET
 from unittest.mock import patch, mock_open, MagicMock
 
 from email.mime.multipart import MIMEMultipart
@@ -26,6 +29,10 @@ from includes.utils import (
     read_cve_from_kb,
     build_scores_distribution,
     build_user_content_for_llm,
+    get_xml_text,
+    parse_weaknesses,
+    extract_weaknesses_xml,
+    download_weaknesses_zip,
 )
 
 
@@ -823,6 +830,77 @@ def test_minify_change_events_skips_missing_type():
     events = [{"details": "no type"}, {"type": "title", "details": {"old": "a"}}]
     result = minify_change_events(events)
     assert result == {"title": {"old": "a"}}
+
+
+def test_get_xml_text_none():
+    """Test get_xml_text returns empty string when element is missing."""
+    assert get_xml_text(None) == ""
+
+
+def test_get_xml_text_nested():
+    """Test get_xml_text concatenates nested text content."""
+    element = ET.fromstring("<root><child>Hello</child> <child>world</child></root>")
+    assert get_xml_text(element) == "Hello world"
+
+
+def test_parse_weaknesses(tests_path):
+    """Test parse_weaknesses extracts weakness entries from MITRE XML."""
+    xml_content = (tests_path / "data" / "weaknesses" / "cwec_sample.xml").read_bytes()
+    weaknesses = parse_weaknesses(xml_content)
+
+    assert len(weaknesses) == 2
+    assert weaknesses[0] == {
+        "id": "79",
+        "name": "Cross-site Scripting",
+        "description": "Test XSS description",
+    }
+    assert weaknesses[1] == {
+        "id": "89",
+        "name": "SQL Injection",
+        "description": "Test SQLi description",
+    }
+
+
+def test_parse_weaknesses_ignores_non_weakness(tests_path):
+    """Test parse_weaknesses ignores Category elements."""
+    xml_content = (tests_path / "data" / "weaknesses" / "cwec_sample.xml").read_bytes()
+    weaknesses = parse_weaknesses(xml_content)
+
+    assert all(weakness["id"] in {"79", "89"} for weakness in weaknesses)
+
+
+def test_extract_weaknesses_xml(tests_path):
+    """Test extract_weaknesses_xml reads XML content from a ZIP archive."""
+    xml_content = (tests_path / "data" / "weaknesses" / "cwec_sample.xml").read_bytes()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("cwec_sample.xml", xml_content)
+
+    extracted = extract_weaknesses_xml(buffer.getvalue())
+    assert extracted == xml_content
+
+
+def test_extract_weaknesses_xml_no_xml_raises():
+    """Test extract_weaknesses_xml raises when ZIP has no XML file."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("readme.txt", "no xml here")
+
+    with pytest.raises(RuntimeError, match="No XML file found"):
+        extract_weaknesses_xml(buffer.getvalue())
+
+
+def test_download_weaknesses_zip():
+    """Test download_weaknesses_zip returns response content."""
+    mock_response = MagicMock()
+    mock_response.content = b"zip-content"
+    mock_response.raise_for_status = MagicMock()
+
+    with patch("includes.utils.requests.get", return_value=mock_response) as mock_get:
+        content = download_weaknesses_zip("https://example.com/weaknesses.zip")
+
+    assert content == b"zip-content"
+    mock_get.assert_called_once_with("https://example.com/weaknesses.zip", timeout=60)
 
 
 def test_format_epss_score():
