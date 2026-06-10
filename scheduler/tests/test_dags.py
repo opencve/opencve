@@ -48,6 +48,15 @@ def test_dag_check_smtp_loaded(dagbag):
     assert tasks == ["run"]
 
 
+def test_dag_sync_weaknesses_loaded(dagbag):
+    dag = dagbag.get_dag(dag_id="sync_weaknesses")
+    assert dagbag.import_errors == {}
+    assert dag is not None
+    assert dag.timetable.summary == "0 3 * * 1"
+    assert dag.catchup is False
+    assert {t.task_id for t in dag.tasks} == {"sync_weaknesses"}
+
+
 def test_shortcircuit_removed(dagbag):
     """Sanity check: removed guard tasks."""
     dag = dagbag.get_dag(dag_id="opencve")

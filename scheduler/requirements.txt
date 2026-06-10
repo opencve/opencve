@@ -12,3 +12,4 @@ aiosmtplib==3.0.1
 openai==1.98.0
 # see https://support.astronomer.io/hc/en-us/articles/44842200438931-No-module-named-flask-limiter-wrappers
 flask_limiter==3.12
+requests==2.32.3

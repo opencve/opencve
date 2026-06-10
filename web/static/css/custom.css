@@ -493,6 +493,143 @@ pre.plainJSON{
   padding-bottom: 10px;
 }
 
+.weakness-list-box {
+  padding: 0;
+}
+
+.weakness-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.weakness-list-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 7px 20px;
+  border-bottom: 1px solid #e8edf2;
+}
+
+.weakness-list-item:last-child {
+  border-bottom: none;
+}
+
+.weakness-list-item:nth-child(odd) {
+  background-color: #f7f5fc;
+}
+
+.weakness-list-item:nth-child(even) {
+  background-color: #fff;
+}
+
+a.weakness-list-id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 120px;
+  color: #7767da;
+  font-size: 15px;
+  text-decoration: none;
+}
+
+a.weakness-list-id .fa-shield {
+  font-size: 18px;
+  color: #7767da;
+}
+
+a.weakness-list-id:hover,
+a.weakness-list-id:focus {
+  color: #1f1172;
+  text-decoration: none;
+}
+
+a.weakness-list-id:hover .fa-shield,
+a.weakness-list-id:focus .fa-shield {
+  color: #1f1172;
+}
+
+.weakness-list-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.weakness-list-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #1a2b3c;
+  margin-bottom: 2px;
+  line-height: 1.25;
+}
+
+.weakness-list-description {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5c6b7a;
+}
+
+.weakness-list-description em {
+  color: #8a96a3;
+  font-style: italic;
+}
+
+.weakness-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.weakness-list-btn {
+  background-color: #fff;
+  border: 1px solid #d5dde5;
+  border-radius: 4px;
+  color: #3a4a5c;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 9px 16px;
+  line-height: 1.2;
+}
+
+.weakness-list-btn:hover,
+.weakness-list-btn:focus {
+  background-color: #f7f5fc;
+  border-color: #c4b8f0;
+  color: #090031;
+}
+
+.weakness-list-btn .fa {
+  margin-right: 6px;
+  font-size: 14px;
+}
+
+.weakness-list-empty {
+  padding: 20px;
+  margin: 0;
+}
+
+.weakness-list-pagination {
+  padding: 15px 20px;
+  border-top: 1px solid #e8edf2;
+}
+
+@media (max-width: 991px) {
+  .weakness-list-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  a.weakness-list-id {
+    flex: 0 0 100%;
+  }
+
+  .weakness-list-actions {
+    flex: 0 0 100%;
+    justify-content: flex-start;
+    margin-top: 4px;
+  }
+}
+
 .tags-list a {
   line-height: 25px;
   font-weight: 600;

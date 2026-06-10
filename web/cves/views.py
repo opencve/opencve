@@ -50,7 +50,7 @@ class WeaknessListView(ListView):
             query = query.filter(
                 models.Q(cwe_id__icontains=search) | models.Q(name__icontains=search)
             )
-        return query.order_by("-name")
+        return query.order_by(models.F("name").desc(nulls_last=True))
 
 
 VENDOR_LIST_PAGE_SIZE = 20
