@@ -140,6 +140,7 @@ add-config-files() {
         _START_DATE=$(date '+%Y-%m-%d')
         display-and-exec "updating start date for opencve dag" sed -i.bak "s/start_date = .*/start_date = $_START_DATE/g" "$_AIRFLOW_CONFIG_FILE" && rm -f "$_AIRFLOW_CONFIG_FILE.bak"
         display-and-exec "updating start date for summarize_reports dag" sed -i.bak "s/start_date_summarize_reports = .*/start_date_summarize_reports = $_START_DATE/g" "$_AIRFLOW_CONFIG_FILE" && rm -f "$_AIRFLOW_CONFIG_FILE.bak"
+        display-and-exec "updating start date for sync_weaknesses dag" sed -i.bak "s/start_date_sync_weaknesses = .*/start_date_sync_weaknesses = $_START_DATE/g" "$_AIRFLOW_CONFIG_FILE" && rm -f "$_AIRFLOW_CONFIG_FILE.bak"
         local _CONFIGURED_START_DATE
         _CONFIGURED_START_DATE=$(grep 'start_date' "$_AIRFLOW_CONFIG_FILE")
         log "Default configuration: $_CONFIGURED_START_DATE"

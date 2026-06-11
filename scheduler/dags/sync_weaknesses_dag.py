@@ -12,7 +12,8 @@ The goal of this DAG is to synchronize weakness data from MITRE.
 
 
 start_date = pendulum.from_format(
-    conf.get("opencve", "start_date_sync_weaknesses"), "YYYY-MM-DD"
+    conf.get("opencve", "start_date_sync_weaknesses", fallback="2026-06-08"),
+    "YYYY-MM-DD",
 )
 
 with DAG(
