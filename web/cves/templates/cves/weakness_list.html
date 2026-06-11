@@ -38,45 +38,56 @@
                 <div class="box-header with-border">
                     <h3 class="box-title">Weaknesses</h3>
                 </div>
-                <div class="box-body weakness-list-box">
-                    {% if weaknesses %}
-                    <div class="weakness-list">
-                        {% for weakness in weaknesses %}
-                        <div class="weakness-list-item">
-                            <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}" class="weakness-list-id">
-                                <i class="fa fa-shield" aria-hidden="true"></i>
-                                <span>{{ weakness.cwe_id }}</span>
-                            </a>
-                            <div class="weakness-list-content">
-                                <div class="weakness-list-title">{{ weakness.name|default:'No name' }}</div>
-                                <div class="weakness-list-description">
+                <div class="box-body table-responsive no-padding">
+                    <table class="table table-hover table-striped" id="table-weaknesses">
+                        <thead>
+                            <tr>
+                                <th class="cwe-column">CWE</th>
+                                <th>Weakness</th>
+                                <th class="text-center actions-column">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if weaknesses %}
+                            {% for weakness in weaknesses %}
+                            <tr>
+                                <td class="cwe-column">
+                                    <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}">{{ weakness.cwe_id }}</a>
+                                </td>
+                                <td>
+                                    <strong>{{ weakness.name|default:'No name' }}</strong>
+                                    <br>
                                     {% if weakness.description %}
-                                    {{ weakness.description }}
+                                    <small class="text-muted">{{ weakness.description }}</small>
                                     {% else %}
-                                    <em>No description available.</em>
+                                    <small class="text-muted"><em>No description available.</em></small>
                                     {% endif %}
-                                </div>
-                            </div>
-                            <div class="weakness-list-actions">
-                                {% if weakness.cwe_id not in 'NVD-CWE-noinfo,NVD-CWE-Other' %}
-                                <a href="http://cwe.mitre.org/data/definitions/{{ weakness.short_id }}.html"
-                                   target="_blank" rel="noopener noreferrer"
-                                   class="btn btn-default weakness-list-btn">
-                                    <i class="fa fa-external-link" aria-hidden="true"></i> Mitre
-                                </a>
-                                {% endif %}
-                                <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}"
-                                   class="btn btn-default weakness-list-btn">
-                                    <i class="fa fa-shield" aria-hidden="true"></i> List CVEs
-                                </a>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p class="weakness-list-empty text-muted">No CWE found.</p>
-                    {% endif %}
-                    <div class="center weakness-list-pagination">
+                                </td>
+                                <td class="text-center actions-column">
+                                    <div class="btn-group">
+                                        {% if weakness.cwe_id not in 'NVD-CWE-noinfo,NVD-CWE-Other' %}
+                                        <a href="http://cwe.mitre.org/data/definitions/{{ weakness.short_id }}.html"
+                                           target="_blank" rel="noopener noreferrer"
+                                           class="btn btn-xs btn-default">
+                                            <i class="fa fa-external-link"></i> Mitre
+                                        </a>
+                                        {% endif %}
+                                        <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}"
+                                           class="btn btn-xs btn-default">
+                                            <i class="fa fa-shield"></i> View CVE
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="3">No CWE found.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    <div class="center">
                         <div class="pagination">
                             <span class="step-links">
                                 {% if page_obj.has_previous %}

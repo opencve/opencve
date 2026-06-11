@@ -137,13 +137,14 @@ def test_list_weaknesses_order_null_names_last(db, auth_client):
 
     assert response.status_code == 200
     soup = BeautifulSoup(response.content, features="html.parser")
-    cwe_ids = [span.text for span in soup.select(".weakness-list-id span")]
+    cwe_ids = [row.find("a").text for row in soup.select("table tbody tr")]
     assert cwe_ids == ["CWE-2", "CWE-3", "CWE-1"]
+    assert soup.find("a", href=f"{reverse('cves')}?weakness=CWE-2")
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_list_weaknesses_card_layout(db, auth_client):
-    """Weakness list page uses the card layout and action buttons."""
+def test_list_weaknesses_table_layout(db, auth_client):
+    """Weakness list page uses a table layout and action buttons."""
     Weakness.objects.create(
         cwe_id="CWE-79",
         name="Cross-site Scripting",
@@ -155,13 +156,16 @@ def test_list_weaknesses_card_layout(db, auth_client):
 
     assert response.status_code == 200
     soup = BeautifulSoup(response.content, features="html.parser")
-    assert soup.select_one(".weakness-list")
-    assert soup.select_one(".weakness-list-id")
-    assert soup.find(
-        "a", href=f"{reverse('cves')}?weakness=CWE-79", class_="weakness-list-id"
-    )
-    list_cves_links = soup.select("a.weakness-list-btn")
-    assert any("List CVEs" in link.get_text() for link in list_cves_links)
+    assert soup.select_one("table.table-hover.table-striped")
+    row = soup.select_one("table tbody tr")
+    weakness_cell = row.find_all("td")[1]
+    assert weakness_cell.find("strong").text == "Cross-site Scripting"
+    assert "Allows attackers to inject client-side scripts." in weakness_cell.text
+    cwe_link = row.find("td", class_="cwe-column").find("a")
+    assert cwe_link["href"] == f"{reverse('cves')}?weakness=CWE-79"
+    assert cwe_link.text == "CWE-79"
+    view_cve_links = soup.select("a.btn.btn-xs.btn-default")
+    assert any("View CVE" in link.get_text() for link in view_cve_links)
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -174,10 +178,10 @@ def test_list_weaknesses_empty_name_and_description(db, auth_client):
 
     assert response.status_code == 200
     soup = BeautifulSoup(response.content, features="html.parser")
-    assert soup.select_one(".weakness-list-title").text == "No name"
-    assert soup.select_one(".weakness-list-description em").text == (
-        "No description available."
-    )
+    row = soup.select_one("table tbody tr")
+    weakness_cell = row.find_all("td")[1]
+    assert weakness_cell.find("strong").text == "No name"
+    assert weakness_cell.find("em").text == "No description available."
 
 
 @override_settings(ENABLE_ONBOARDING=False)
