@@ -6,6 +6,7 @@ from crispy_forms.layout import HTML, Layout, Submit
 from django import forms
 from django.conf import settings
 from django.db.models import Q
+from django.utils import timezone
 
 from projects.models import Automation, Notification, Project, CveTracker
 from users.models import User
@@ -434,4 +435,117 @@ class AutomationForm(forms.ModelForm):
 
         if commit:
             instance.save()
+        return instance
+
+
+class AutomationAdminForm(AutomationForm):
+    """Admin form for Automation with project and configuration fields."""
+
+    class Meta(AutomationForm.Meta):
+        fields = [
+            "project",
+            "name",
+            "is_enabled",
+            "trigger_type",
+            "frequency",
+            "schedule_timezone",
+            "schedule_time",
+            "schedule_weekday",
+            "configuration",
+            "last_execution_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop("configuration_json", None)
+        self.fields["last_execution_at"].required = False
+        self.fields["created_at"].required = False
+        self.fields["updated_at"].required = False
+        self.fields["trigger_type"].widget = forms.Select(
+            choices=Automation.TRIGGER_CHOICES
+        )
+        self.fields["frequency"].widget = forms.Select(
+            choices=[("", "---------"), *Automation.FREQUENCY_CHOICES]
+        )
+        self.fields["schedule_timezone"] = forms.CharField(
+            required=False,
+            max_length=64,
+            widget=forms.TextInput(attrs={"class": "vTextField"}),
+        )
+        if not self.instance._state.adding and self.instance.project_id:
+            self.project = self.instance.project
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        if name in ("add",):
+            raise forms.ValidationError("This name is reserved.")
+        return name
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        project = cleaned_data.get("project")
+        if not project and not self.instance._state.adding and self.instance.project_id:
+            project = self.instance.project
+
+        if project:
+            self.project = project
+
+        name = cleaned_data.get("name")
+        if project and name and (not self.instance.pk or self.instance.name != name):
+            if Automation.objects.filter(project=project, name=name).exists():
+                self.add_error("name", "This name already exists.")
+
+        return cleaned_data
+
+    def clean_configuration(self):
+        config = self.cleaned_data.get("configuration")
+
+        if not isinstance(config, dict):
+            raise forms.ValidationError("Invalid configuration format.")
+        if "conditions" not in config or "actions" not in config:
+            raise forms.ValidationError(
+                "Configuration must contain 'conditions' and 'actions'."
+            )
+
+        self._validate_conditions_tree(config["conditions"])
+
+        if not isinstance(config["actions"], list):
+            raise forms.ValidationError("Actions must be a list.")
+
+        if "triggers" in config:
+            if not isinstance(config["triggers"], list):
+                raise forms.ValidationError("Triggers must be a list.")
+            for trigger in config["triggers"]:
+                if not isinstance(trigger, str):
+                    raise forms.ValidationError("Each trigger must be a string.")
+
+        if self._get_trigger_type() == Automation.TRIGGER_ALERT:
+            triggers = config.get("triggers") or []
+            if not triggers:
+                raise forms.ValidationError(
+                    "At least one event is required for alert automations."
+                )
+            if not config["actions"]:
+                raise forms.ValidationError(
+                    "At least one action is required for alert automations."
+                )
+
+        return config
+
+    def save(self, commit=True):
+        instance = forms.ModelForm.save(self, commit=False)
+        instance._skip_auto_updated_at = True
+
+        if instance._state.adding:
+            if not self.cleaned_data.get("created_at"):
+                instance.created_at = timezone.now()
+            if not self.cleaned_data.get("updated_at"):
+                instance.updated_at = timezone.now()
+
+        if commit:
+            instance.save()
+
         return instance
