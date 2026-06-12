@@ -22,7 +22,10 @@ class BaseModel(models.Model):
 
 # Update the update_at field at each change
 def _pre_save(instance, **kwargs):
-    instance.updated_at = timezone.now()
+    if getattr(instance, "_skip_auto_updated_at", False):
+        return
+    if hasattr(instance, "updated_at"):
+        instance.updated_at = timezone.now()
 
 
 signals.pre_save.connect(_pre_save)
