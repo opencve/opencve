@@ -693,3 +693,95 @@ def test_cvss31_integer_value_handled(
     cvss_cond = auto.configuration["conditions"]["children"][0]["children"][0]
     assert cvss_cond["value"]["value"] == 8.0
     assert isinstance(cvss_cond["value"]["value"], float)
+
+
+# ---------------------------------------------------------------------------
+# Migration 0010: fix migrated report automation configuration
+# ---------------------------------------------------------------------------
+
+
+def _load_migration_0010_function():
+    from projects import migrations as proj_migrations
+
+    proj_migrations_dir = os.path.dirname(proj_migrations.__file__)
+    path = os.path.join(
+        proj_migrations_dir,
+        "0010_fix_migrated_report_automation_configuration.py",
+    )
+    spec = importlib.util.spec_from_file_location("migration_0010", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.fix_migrated_report_automation_configuration
+
+
+CORRECT_REPORT_CONFIGURATION = {
+    "conditions": {
+        "operator": "OR",
+        "children": [{"operator": "AND", "children": []}],
+    },
+    "actions": [{"type": "generate_report", "value": True}],
+}
+
+
+@pytest.mark.django_db
+def test_fix_migration_repairs_broken_report_configuration(
+    create_organization, create_project, create_automation
+):
+    """Report automations with the broken 0009 payload get the correct configuration."""
+    migrate_0009 = _load_migration_function()
+    fix_migration = _load_migration_0010_function()
+    org = create_organization("org1")
+    create_project("proj1", org)
+
+    migrate_0009(apps, None)
+
+    report = Automation.objects.get(trigger_type="report")
+    assert report.configuration["actions"] == []
+
+    fix_migration(apps, None)
+
+    report.refresh_from_db()
+    assert report.configuration == CORRECT_REPORT_CONFIGURATION
+
+
+@pytest.mark.django_db
+def test_fix_migration_does_not_touch_alert_automations(
+    create_organization, create_project, create_notification
+):
+    """Alert automations with empty actions are not modified."""
+    migrate_0009 = _load_migration_function()
+    fix_migration = _load_migration_0010_function()
+    org = create_organization("org1")
+    project = create_project("proj1", org)
+    create_notification("notif", project, configuration={"types": ["created"]})
+
+    migrate_0009(apps, None)
+    alert = Automation.objects.get(trigger_type="alert")
+    original_configuration = alert.configuration
+
+    fix_migration(apps, None)
+
+    alert.refresh_from_db()
+    assert alert.configuration == original_configuration
+
+
+@pytest.mark.django_db
+def test_fix_migration_does_not_touch_already_correct_report_automation(
+    create_organization, create_project, create_automation
+):
+    """Report automations already using the UI payload are left unchanged."""
+    fix_migration = _load_migration_0010_function()
+    org = create_organization("org1")
+    project = create_project("proj1", org)
+    create_automation(
+        name="weekly-summary",
+        project=project,
+        trigger_type="report",
+        frequency="weekly",
+        configuration=CORRECT_REPORT_CONFIGURATION.copy(),
+    )
+
+    fix_migration(apps, None)
+
+    report = Automation.objects.get(trigger_type="report")
+    assert report.configuration == CORRECT_REPORT_CONFIGURATION
