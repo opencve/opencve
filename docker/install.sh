@@ -106,6 +106,27 @@ is-present() {
     return 0
 }
 
+# Function to ensure the docker compose env file exists
+ensure-env-file() {
+    if [[ ! -f "./.env" ]]; then
+        log "$_RED ERROR: docker/.env file not found."
+        log "Run ./install.sh prepare (or ./install.sh -r <release>) first."
+        exit 1
+    fi
+}
+
+# Function to ensure OPENCVE_VERSION is set in docker/.env
+ensure-opencve-version-set() {
+    ensure-env-file
+    local _OPENCVE_VERSION
+    _OPENCVE_VERSION=$(grep -E '^OPENCVE_VERSION=' .env | head -1 | cut -d= -f2- | xargs)
+    if [[ -z "$_OPENCVE_VERSION" ]]; then
+        log "$_RED ERROR: OPENCVE_VERSION is not set in docker/.env"
+        log "Run ./install.sh prepare (or ./install.sh -r <release>) first."
+        exit 1
+    fi
+}
+
 # Function to add configuration files
 add-config-files() {
     local _RELEASE=$1
@@ -180,16 +201,18 @@ add-config-files() {
     log "\n $_ROCKET You can now run: ./install.sh start"
 }
 
-# Function to build Docker images
+# Function to build Docker images without cache (for upgrades)
 docker-build() {
+    ensure-opencve-version-set
     log "\n--------| Docker compose build"
     display-and-exec "building OpenCVE docker images" docker compose build --no-cache
 }
 
 # Function to start Docker containers
 docker-up() {
+    ensure-opencve-version-set
     log "\n--------| Docker compose up"
-    display-and-exec "starting OpenCVE docker stack" docker compose up -d
+    display-and-exec "starting OpenCVE docker stack" docker compose up -d --build
 
     log "\n--------| Collect static files from Django webserver"
     display-and-exec "collecting latest static files" -q docker compose exec webserver python manage.py collectstatic --no-input
@@ -317,6 +340,7 @@ display-usage() {
     printf "\n%${_S2}s This is executed if no COMMAND is given. It overrides previous setting files if any."
     printf "\n%${_S1}s start"
     printf "\n%${_S2}s Start and setup the entire OpenCVE stack. It needs to be done after the prepare command."
+    printf "\n%${_S2}s When used with -r, prepare is run automatically before starting."
 
     printf "\n\n${_BOLD}SPECIFIC COMMANDS${_NC}"
     printf "\n%${_S1}s add-config-files"
@@ -343,6 +367,8 @@ display-usage() {
     printf "\n%${_S2}s Equivalent to ./install.sh prepare."
     printf "\n%${_S1}s ./install.sh start"
     printf "\n%${_S2}s It starts and sets everything up to have a working OpenCVE stack."
+    printf "\n%${_S1}s ./install.sh -r v2.4.0 start"
+    printf "\n%${_S2}s Prepare and start OpenCVE v2.4.0 in one command."
     printf "\n%${_S1}s ./install.sh -r master"
     printf "\n%${_S2}s It sets the configuration files to install the master branch of OpenCVE. It needs to be done before the start command."
 
@@ -352,6 +378,7 @@ display-usage() {
 }
 
 _RELEASE="latest"
+_RELEASE_EXPLICIT=false
 _FORCE=false
 OPTSTRING=":r:fh"
 while getopts ${OPTSTRING} opt; do
@@ -365,6 +392,7 @@ while getopts ${OPTSTRING} opt; do
             ;;
         r)
             _RELEASE="${OPTARG}"
+            _RELEASE_EXPLICIT=true
             ;;
         :)
             echo "Option -${OPTARG} requires an argument."
@@ -385,6 +413,9 @@ case $_COMMAND in
         add-config-files "$_RELEASE"
         ;;
     "start" )
+        if $_RELEASE_EXPLICIT; then
+            add-config-files "$_RELEASE"
+        fi
         init-docker-stack
         clone-repositories
         import-opencve-kb
