@@ -11,6 +11,7 @@ from django.utils import timezone
 from projects.models import Automation, Notification, Project, CveTracker
 from users.models import User
 from views.models import View as SavedView
+from opencve.utils.ssrf import UnsafeURL, validate_public_http_url
 
 COMMON_TIMEZONES = [
     "UTC",
@@ -207,6 +208,14 @@ class CveTrackerFilterForm(forms.Form):
             ]
 
 
+def _validate_notification_outbound_url(url):
+    try:
+        validate_public_http_url(url)
+    except UnsafeURL:
+        raise forms.ValidationError("This URL is not allowed.")
+    return url
+
+
 class WebhookForm(NotificationForm):
     url = forms.URLField(assume_scheme="http" if settings.DEBUG else "https")
     headers = forms.JSONField(required=False, initial={})
@@ -229,6 +238,9 @@ class WebhookForm(NotificationForm):
 
         return headers
 
+    def clean_url(self):
+        return _validate_notification_outbound_url(self.cleaned_data["url"])
+
 
 class SlackForm(NotificationForm):
     webhook_url = forms.URLField(
@@ -237,6 +249,9 @@ class SlackForm(NotificationForm):
         label="Slack Webhook URL",
         help_text="Enter your Slack incoming webhook URL",
     )
+
+    def clean_webhook_url(self):
+        return _validate_notification_outbound_url(self.cleaned_data["webhook_url"])
 
 
 class AutomationForm(forms.ModelForm):

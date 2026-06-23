@@ -1,4 +1,6 @@
 import json
+import socket
+from unittest import mock
 from unittest.mock import Mock
 
 import pytest
@@ -8,6 +10,7 @@ from organizations.models import Membership
 from projects.forms import (
     EmailForm,
     WebhookForm,
+    SlackForm,
     NotificationForm,
     ProjectForm,
     CveTrackerFilterForm,
@@ -250,16 +253,22 @@ def test_webhook_notification_form(create_organization, create_project):
     )
     assert form.errors == {"headers": ["Enter a valid JSON."]}
 
-    form = WebhookForm(
-        data={
-            "name": "my-notification",
-            "url": "https://www.example.com",
-            "headers": {"foo": "bar"},
-            "cvss31_score": 0,
-        },
-        request=request,
-        project=project,
-    )
+    with mock.patch(
+        "opencve.utils.ssrf._real_getaddrinfo",
+        return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443)),
+        ],
+    ):
+        form = WebhookForm(
+            data={
+                "name": "my-notification",
+                "url": "https://www.example.com",
+                "headers": {"foo": "bar"},
+                "cvss31_score": 0,
+            },
+            request=request,
+            project=project,
+        )
     assert form.errors == {}
 
 
@@ -295,12 +304,75 @@ def test_webhook_notification_valid_headers(
         project=project,
     )
 
+    with mock.patch(
+        "opencve.utils.ssrf._real_getaddrinfo",
+        return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443)),
+        ],
+    ):
+        errors = form.errors
+
     if valid:
-        assert form.errors == {}
+        assert errors == {}
     else:
-        assert form.errors == {
+        assert errors == {
             "headers": ["HTTP headers must be in a simple key-value format"]
         }
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://localhost:5000",
+        "http://127.0.0.1",
+        "http://169.254.169.254",
+    ],
+)
+def test_webhook_notification_form_rejects_unsafe_url(
+    create_organization, create_project, url
+):
+    """Reject webhook URLs that target private, loopback or metadata addresses."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+    request = Mock(current_organization=org.id)
+
+    form = WebhookForm(
+        data={
+            "name": "my-notification",
+            "url": url,
+            "headers": {},
+            "cvss31_score": 0,
+        },
+        request=request,
+        project=project,
+    )
+
+    assert form.errors == {
+        "url": ["This URL is not allowed."],
+    }
+
+
+def test_slack_notification_form_rejects_unsafe_webhook_url(
+    create_organization, create_project
+):
+    """Reject Slack webhook URLs that target internal addresses."""
+    org = create_organization(name="my-orga")
+    project = create_project(name="my-project", organization=org)
+    request = Mock(current_organization=org.id)
+
+    form = SlackForm(
+        data={
+            "name": "my-notification",
+            "webhook_url": "https://localhost:5000",
+            "cvss31_score": 0,
+        },
+        request=request,
+        project=project,
+    )
+
+    assert form.errors == {
+        "webhook_url": ["This URL is not allowed."],
+    }
 
 
 def test_cve_tracker_filter_form_valid_empty(create_organization):

@@ -3,17 +3,28 @@ import logging
 from datetime import datetime, timedelta
 from abc import ABC, abstractmethod
 from urllib.parse import quote
-from urllib import error as urllib_error
-from urllib import request as urllib_request
 
+import requests
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 
+from opencve.utils.ssrf import UnsafeURL, safe_request
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_TRY_TIMEOUT_SEC = 30
+REDACTED_HEADER_VALUE = "[REDACTED]"
+SENSITIVE_REQUEST_HEADER_NAMES = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "proxy-authorization",
+        "x-api-key",
+        "x-auth-token",
+    }
+)
 
 
 def _try_timeout_seconds():
@@ -47,70 +58,76 @@ class NotificationTryResult:
         }
 
 
+def _redact_request_headers(headers):
+    """Redact sensitive header values before storing Try results."""
+    redacted = {}
+    for key, value in headers.items():
+        if key.lower() in SENSITIVE_REQUEST_HEADER_NAMES:
+            redacted[key] = REDACTED_HEADER_VALUE
+        else:
+            redacted[key] = value
+    return redacted
+
+
 def _http_post_json(
     url,
     payload,
     headers=None,
 ):
     """
-    POST JSON to URL using stdlib only. Returns a dict suitable for details.
+    POST JSON to a user-controlled URL with SSRF protections.
+    Returns a dict suitable for details.
     """
-    body = json.dumps(payload).encode("utf-8")
     req_headers = {"Content-Type": "application/json", **(headers or {})}
-    req = urllib_request.Request(
-        url,
-        data=body,
-        headers=req_headers,
-        method="POST",
-    )
     timeout = _try_timeout_seconds()
     details = {
         "request_method": "POST",
         "request_url": url,
-        "request_headers": dict(req_headers),
+        "request_headers": _redact_request_headers(req_headers),
         "request_payload": json.dumps(payload, indent=2),
     }
+
     try:
-        with urllib_request.urlopen(req, timeout=timeout) as resp:
-            resp_body = resp.read().decode("utf-8", errors="replace")
-            details["response_status"] = resp.status
-            details["response_headers"] = dict(resp.headers.items())
-            details["response_body"] = resp_body
-            success = 200 <= resp.status < 300
-            return {
-                "success": success,
-                "summary": (
-                    f"HTTP {resp.status}"
-                    if success
-                    else f"Unexpected HTTP status {resp.status}"
-                ),
-                "details": details,
-            }
-    except urllib_error.HTTPError as e:
-        try:
-            resp_body = e.read().decode("utf-8", errors="replace")
-        except Exception:
-            resp_body = ""
-        details["response_status"] = e.code
-        details["response_headers"] = dict(e.headers.items()) if e.headers else {}
+        response = safe_request(
+            "POST",
+            url,
+            json=payload,
+            headers=req_headers,
+            timeout=(5, timeout),
+        )
+        resp_body = response.text
+        details["response_status"] = response.status_code
+        details["response_headers"] = dict(response.headers)
         details["response_body"] = resp_body
+        success = 200 <= response.status_code < 300
         return {
-            "success": False,
-            "summary": f"HTTP {e.code}",
+            "success": success,
+            "summary": (
+                f"HTTP {response.status_code}"
+                if success
+                else f"Unexpected HTTP status {response.status_code}"
+            ),
             "details": details,
         }
-    except urllib_error.URLError as e:
-        details["error"] = str(e.reason) if e.reason else str(e)
+    except UnsafeURL as e:
+        details["error"] = str(e)
         return {
             "success": False,
-            "summary": f"Connection error: {details['error']}",
+            "summary": str(e),
             "details": details,
         }
-    except TimeoutError:
+    except requests.Timeout:
         details["error"] = f"Request timed out after {timeout}s"
         return {
             "success": False,
             "summary": details["error"],
+            "details": details,
+        }
+    except requests.RequestException as e:
+        details["error"] = str(e)
+        return {
+            "success": False,
+            "summary": f"Connection error: {details['error']}",
             "details": details,
         }
     except Exception as e:
