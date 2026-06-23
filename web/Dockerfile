@@ -7,7 +7,7 @@ ARG OPENCVE_REPOSITORY="https://github.com/opencve/opencve.git"
 ARG OPENCVE_VERSION="master"
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
-    git \
+    git gcc libldap2-dev libsasl2-dev libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -33,7 +33,7 @@ LABEL maintainer="dev@opencve.io"
 LABEL url="${OPENCVE_REPOSITORY}"
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y\
-    git \
+    git libldap2-dev libsasl2-dev libssl-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
