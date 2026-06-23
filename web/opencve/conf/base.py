@@ -7,6 +7,9 @@ import environ
 
 from pathlib import Path
 
+import ldap
+from django_auth_ldap.config import LDAPSearch, GroupOfNamesType, ActiveDirectoryGroupType
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -95,6 +98,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "opencve.wsgi.application"
 
 AUTHENTICATION_BACKENDS = [
+    "django_auth_ldap.backend.LDAPBackend",
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
@@ -147,6 +151,67 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.ScryptPasswordHasher",
     "django.contrib.auth.hashers.BCryptPasswordHasher",
 ]
+
+# LDAP
+
+# Server URL
+AUTH_LDAP_SERVER_URI = "ldaps://dc01.acme.org:636"
+
+# Service account
+AUTH_LDAP_BIND_DN = "CN=svc-opencve,OU=ServiceAccounts,DC=acme,DC=org"
+AUTH_LDAP_BIND_PASSWORD = "my.best.password"
+
+# Search scope
+AUTH_LDAP_USER_SEARCH = LDAPSearch(
+    "OU=Users,DC=acme,DC=org",
+    ldap.SCOPE_SUBTREE,
+    "(sAMAccountName=%(user)s)",
+)
+
+# Mapping LDAP -> Django User
+AUTH_LDAP_USER_ATTR_MAP = {
+    "first_name": "givenName",
+    "last_name": "sn",
+    "email": "mail",
+}
+
+# Group search scope
+AUTH_LDAP_GROUP_SEARCH = LDAPSearch (
+    "OU=Applications,OU=Groups,DC=acme,DC=org",
+    ldap.SCOPE_SUBTREE,
+    "(objectClass=group)",
+)
+AUTH_LDAP_GROUP_TYPE = ActiveDirectoryGroupType()
+
+# Access group
+AUTH_LDAP_REQUIRE_GROUP = "CN=OPENCVE,OU=Applications,OU=Groups,DC=acme,DC=org"
+
+# Mapping AD -> Organization
+LDAP_GROUP_ORG_MAPPING = {
+    "CN=OPENCVE,OU=Applications,OU=Groups,DC=acme,DC=org": {
+        "org": "MyOrganization",
+        "role": "member",
+    },
+}
+
+# Synchronize groups
+AUTH_LDAP_MIRROR_GROUPS = True
+
+# LDAPS certificates
+AUTH_LDAP_CONNECTION_OPTIONS = {
+    ldap.OPT_X_TLS_CACERTFILE: env.str("LDAP_CA_CERT_PATH", default="/etc/ssl/certs/ca-certitifcates.crt"),
+    ldap.OPT_X_TLS_REQUIRE_CERT: ldap.OPT_X_TLS_DEMAND if env.str("LDAP_VERIFY_CERT", default="true") else ldap.OPT_X_TLS_ALLOW,
+    ldap.OPT_X_TLS_NEWCTX: 0,
+}
+
+# STARTTLS
+# AUTH_LDAP_START_TLS = True
+
+# Create Django user at the first connexion
+AUTH_LDAP_ALWAYS_UPDATE_USER = True
+
+# Group caching (seconds) to avoid too many LDAP requests
+AUTH_LDAP_CACHE_TIMEOUT = 3600
 
 # Internationalization
 LANGUAGE_CODE = "en-us"
