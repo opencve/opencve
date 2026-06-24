@@ -1,5 +1,48 @@
 # Changelog
 
+## 3.0.0 - 2026-06-24
+### Added
+- Add automations with triggers, conditions, actions, and visual flow overview
+- Create default report and alert automations during project onboarding
+- Add filters and timezone search to automations
+- Add CVE and CVSS summaries to reports
+- Add weekly AI report summarization
+- Add enhanced reports dashboard widget
+- Add filters to notifications and reports listings
+- Add test notification action and notification type picker modal
+- Redesign organization pages with tabs, member role management, and audit logs
+- Add comments in CVE tracking
+- Display OpenCVE Analysis in CVE details
+- Add OpenCVE Enrichment versioning
+- Filter project vulnerabilities by multiple statuses or without status
+- Require minimum length for CVE text filters
+- Select CVSS version during onboarding
+- Sync MITRE weaknesses
+- Improve weaknesses browsing and search
+- Load more vendors without full page reload
+- Expose NVD CPE configurations in CVE API response
+- Add ENABLE_REGISTER setting to disable new user signups
+- Allow administrators to reset user MFA
+
+### Fixed
+- Prevent removing the last organization owner when pending invitations exist
+- Normalize invitation email addresses
+- Handle missing organization context on dashboards
+- Enforce unique organization names
+- Exclude unscored CVEs when CVSS 3.1 threshold is configured
+- Fix report date ranges for daily and weekly automations
+- Fix typos in generated reports
+- Show sidebar toggle on mobile devices
+- Do not display empty project descriptions as "None"
+
+### Changed
+- Reorganize project navigation and CVE detail sections
+- Align notifications, reports, and automations pages
+- Improve README and add contributing guidelines
+
+### Security
+- Block SSRF in webhook and Slack notifications
+
 ## 2.4.0 - 2026-02-18
 ### Added
 - Add support for multiple dashboards
