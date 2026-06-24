@@ -128,7 +128,7 @@ services:
       PGDATA: /var/lib/postgreqsql/data
     restart: on-failure
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "$POSTGRES_USER"]
+      test: ["CMD", "pg_isready", "-U", "$POSTGRES_USER", "-d", "${POSTGRES_DB:-opencve}"]
       interval: 10s
       retries: 5
       start_period: 5s
