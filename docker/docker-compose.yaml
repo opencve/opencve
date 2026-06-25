@@ -1,14 +1,18 @@
 # OPENCVE DOCKER COMPOSE
+# DAG code is baked into the scheduler image at OPENCVE_VERSION (see scheduler/Dockerfile).
+# For local DAG hot-reload, use a docker-compose.override.yaml mounting ../scheduler/dags/.
 ---
 name: opencve
 x-airflow-common: &airflow-common
   build:
     context: ../scheduler
     dockerfile: Dockerfile
+    args:
+      - OPENCVE_REPOSITORY=${OPENCVE_REPOSITORY}
+      - OPENCVE_VERSION=${OPENCVE_VERSION}
   env_file:
     - .env
   volumes:
-    - ../scheduler/dags/:/opt/airflow/dags
     - ../scheduler/airflow.cfg:/opt/airflow/airflow.cfg:ro
     - repositories:/home/airflow/repositories/
   depends_on:

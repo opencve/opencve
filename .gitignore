@@ -13,6 +13,7 @@ opencve.egg-info/
 env/
 venv/
 docker/.env
+docker/.install-state
 
 # Celery
 celerybeat-schedule.db

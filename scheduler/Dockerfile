@@ -1,6 +1,22 @@
 ARG AIRFLOW_VERSION="2.10.4"
-ARG PYTHON_VERSION="3.11"
+ARG PYTHON_VERSION="3.12"
 ARG AIRFLOW_IMAGE="apache/airflow:slim-${AIRFLOW_VERSION}-python${PYTHON_VERSION}"
+
+FROM ${AIRFLOW_IMAGE} AS builder
+
+USER root
+
+RUN apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+ARG OPENCVE_REPOSITORY="https://github.com/opencve/opencve.git"
+ARG OPENCVE_VERSION="master"
+
+RUN git clone --depth 1 -b "${OPENCVE_VERSION}" --single-branch "${OPENCVE_REPOSITORY}"
 
 FROM ${AIRFLOW_IMAGE}
 
@@ -12,11 +28,17 @@ RUN apt-get update \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-USER airflow
+ARG OPENCVE_VERSION="master"
+
+ENV OPENCVE_VERSION=${OPENCVE_VERSION}
 
 RUN mkdir -p /home/airflow/repositories
 
+COPY --from=builder --chown=airflow:root /app/opencve/scheduler/dags/ /opt/airflow/dags/
+
 COPY requirements.txt /
 
-RUN python3 -m pip install --upgrade pip
-RUN pip install --no-cache-dir -r /requirements.txt
+RUN python3 -m pip install --upgrade pip \
+    && pip install --no-cache-dir -r /requirements.txt
+
+USER airflow
