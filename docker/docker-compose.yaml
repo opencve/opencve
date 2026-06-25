@@ -1,14 +1,18 @@
 # OPENCVE DOCKER COMPOSE
+# Application code (web + DAGs) is baked into images at OPENCVE_VERSION (see Dockerfiles).
+# For local DAG hot-reload during development, use docker-compose.override.yaml.
 ---
 name: opencve
 x-airflow-common: &airflow-common
   build:
-    context: ../scheduler
-    dockerfile: Dockerfile
+    context: ..
+    dockerfile: scheduler/Dockerfile
+    args:
+      - OPENCVE_REPOSITORY=${OPENCVE_REPOSITORY}
+      - OPENCVE_VERSION=${OPENCVE_VERSION}
   env_file:
     - .env
   volumes:
-    - ../scheduler/dags/:/opt/airflow/dags
     - ../scheduler/airflow.cfg:/opt/airflow/airflow.cfg:ro
     - repositories:/home/airflow/repositories/
   depends_on:
@@ -87,12 +91,12 @@ services:
     env_file:
       - .env
     build:
-      context: ../web/
+      context: ..
+      dockerfile: web/Dockerfile
       args:
         - OPENCVE_REPOSITORY=${OPENCVE_REPOSITORY}
         - OPENCVE_VERSION=${OPENCVE_VERSION}
         - GUNICORN_CMD_ARGS=${GUNICORN_CMD_ARGS}
-      dockerfile: Dockerfile
     volumes:
       - ../web/opencve/conf/.env:/app/opencve/web/opencve/conf/.env:ro
       - ../web/opencve/conf/settings.py:/app/opencve/web/opencve/conf/settings.py:ro
