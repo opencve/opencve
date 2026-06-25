@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import include, path
+from opencve.api.openapi.v1 import V1SpectacularAPIView, V1SpectacularSwaggerView
+from opencve.api.v2.openapi import V2SpectacularAPIView, V2SpectacularSwaggerView
 from rest_framework_nested import routers
 
 from cves.resources import (
@@ -75,13 +77,26 @@ urlpatterns = [
         NotificationUnsubscribeView.as_view(),
         name="notification_unsubscribe",
     ),
-    # API routes
+    # API routes (v1 — default without OpenCVE-Api-Version header)
     path("api/", include(router.urls)),
     path("api/", include(organizations_router.urls)),
     path("api/", include(projects_cves_router.urls)),
     path("api/", include(vendors_router.urls)),
     path("api/", include(products_cves_router.urls)),
     path("api/", include(weaknesses_router.urls)),
+    path("api/v2/", include("opencve.api.v2.urls")),
+    path("api/schema/", V1SpectacularAPIView.as_view(), name="api-schema"),
+    path(
+        "api/docs/",
+        V1SpectacularSwaggerView.as_view(url_name="api-schema"),
+        name="api-docs",
+    ),
+    path("api/v2/schema/", V2SpectacularAPIView.as_view(), name="api-v2-schema"),
+    path(
+        "api/v2/docs/",
+        V2SpectacularSwaggerView.as_view(url_name="api-v2-schema"),
+        name="api-v2-docs",
+    ),
 ]
 
 # Custom errors

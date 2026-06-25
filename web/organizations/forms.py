@@ -81,6 +81,15 @@ class OrganizationAPITokenForm(forms.Form):
         label="Description",
         help_text="Optional description for this token",
     )
+    access_mode = forms.ChoiceField(
+        choices=[
+            ("read", "Read-only"),
+            ("write", "Read-write"),
+        ],
+        initial="read",
+        label="Access mode",
+        help_text="Read-only tokens cannot create or modify resources via the API.",
+    )
 
     def __init__(self, *args, **kwargs):
         # Pop request if passed (from RequestViewMixin)
@@ -90,6 +99,7 @@ class OrganizationAPITokenForm(forms.Form):
         self.helper.layout = Layout(
             "name",
             "description",
+            "access_mode",
             FormActions(
                 Submit("save", "Create Token"),
                 css_class="pull-right",

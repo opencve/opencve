@@ -14,6 +14,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "name",
             "description",
         ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
@@ -29,6 +30,7 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "description",
             "subscriptions",
         ]
+        read_only_fields = ["id", "created_at", "updated_at", "subscriptions"]
 
     @staticmethod
     def get_subscriptions(instance):

@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import permissions, viewsets
+from rest_framework import viewsets
 
 from organizations.models import Organization
 from organizations.serializers import (
@@ -18,6 +18,14 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     }
 
     def get_queryset(self):
+        if hasattr(self.request, "authenticated_organization"):
+            return (
+                Organization.objects.filter(
+                    id=self.request.authenticated_organization.id
+                )
+                .order_by("name")
+                .all()
+            )
         return (
             Organization.objects.filter(members=self.request.user)
             .order_by("name")

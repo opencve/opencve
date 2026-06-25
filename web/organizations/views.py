@@ -313,6 +313,7 @@ class OrganizationEditTokensView(
                 name=form.cleaned_data["name"],
                 description=form.cleaned_data["description"] or None,
                 created_by=request.user,
+                access_mode=form.cleaned_data["access_mode"],
             )
 
             # Store the new token in the session to display it in the template

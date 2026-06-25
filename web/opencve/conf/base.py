@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "hijack",
     "hijack.contrib.admin",
     "rest_framework",
+    "drf_spectacular",
     "dashboards",
     "changes",
     "cves",
@@ -257,13 +258,48 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
-        "opencve.api.OrganizationTokenAuthentication",
+        "opencve.api.authentication.OrganizationTokenAuthentication",
     ],
-    "DEFAULT_PERMISSION_CLASSES": ["opencve.api.IsAuthenticatedOrOrganizationToken"],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "opencve.api.permissions.IsAuthenticatedOrOrganizationToken"
+    ],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "opencve.api.throttling.AnonRateThrottle",
+        "opencve.api.throttling.UserRateThrottle",
+        "opencve.api.throttling.OrganizationTokenRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",
+        "user": "1000/hour",
+        "org_token": "2000/hour",
+        "org_token_write": "500/hour",
+    },
+    "EXCEPTION_HANDLER": "opencve.api.exceptions.api_exception_handler",
 }
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "OpenCVE API v1",
+    "DESCRIPTION": (
+        "OpenCVE REST API v1 (read-only).\n\n"
+        "Endpoints under `/api/` support Basic Auth or organization Bearer tokens. "
+        "Write operations are available in v2 at `/api/v2/`."
+    ),
+    "VERSION": "2024-01-01",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+        "tryItOutEnabled": True,
+    },
+    "ENUM_NAME_OVERRIDES": {},
+    "COMPONENT_SPLIT_REQUEST": True,
+}
+
+# When True, org token creation UI exposes granular scope selection (Cloud).
+API_SCOPES_ENABLED = env.bool("API_SCOPES_ENABLED", default=False)
 
 # Number of days to keep the activation link active
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7

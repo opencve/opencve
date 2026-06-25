@@ -12,9 +12,11 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "updated_at",
             "name",
         ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class OrganizationDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = ["id", "created_at", "updated_at", "name"]
+        read_only_fields = ["id", "created_at", "updated_at"]

@@ -91,6 +91,10 @@ class OrganizationAPIToken(BaseModel):
     SECRET_LENGTH = 32
     TOKEN_PREFIX = "opc_org"
 
+    class AccessMode(models.TextChoices):
+        READ = "read", "Read-only"
+        WRITE = "write", "Read-write"
+
     token_id = models.CharField(max_length=12, unique=True, db_index=True)
     token_hash = models.CharField(max_length=128)
     organization = models.ForeignKey(
@@ -115,6 +119,12 @@ class OrganizationAPIToken(BaseModel):
         related_name="revoked_api_tokens",
     )
     revoked_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    access_mode = models.CharField(
+        max_length=10,
+        choices=AccessMode.choices,
+        default=AccessMode.READ,
+    )
+    scopes = models.JSONField(default=list, blank=True)
 
     class Meta:
         db_table = "opencve_organization_api_tokens"
@@ -138,7 +148,15 @@ class OrganizationAPIToken(BaseModel):
         return "".join(secrets.choice(chars) for _ in range(cls.SECRET_LENGTH))
 
     @classmethod
-    def create_token(cls, organization, name, description, created_by):
+    def create_token(
+        cls,
+        organization,
+        name,
+        description,
+        created_by,
+        access_mode=None,
+        scopes=None,
+    ):
         """Create a new token and return the full token string."""
         token_id = cls.generate_token_id()
         secret = cls.generate_secret()
@@ -151,6 +169,8 @@ class OrganizationAPIToken(BaseModel):
             name=name,
             description=description,
             created_by=created_by,
+            access_mode=access_mode or cls.AccessMode.READ,
+            scopes=scopes or [],
         )
 
         return f"{cls.TOKEN_PREFIX}.{token_id}.{secret}"

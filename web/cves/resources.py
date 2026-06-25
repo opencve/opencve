@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AnonymousUser
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, permissions, viewsets
+from rest_framework import mixins, viewsets
 from rest_framework.response import Response
 
 from cves.constants import PRODUCT_SEPARATOR
@@ -19,7 +19,6 @@ class CveViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CveListSerializer
     queryset = Cve.objects.order_by("-updated_at").all()
     lookup_field = "cve_id"
-
     serializer_classes = {
         "list": CveListSerializer,
         "retrieve": CveDetailSerializer,
@@ -28,8 +27,6 @@ class CveViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         if self.action == "retrieve":
             return self.queryset
-
-        # For organization tokens, use AnonymousUser to avoid tag filtering
         user = getattr(self.request, "api_token", None)
         if user:
             user = AnonymousUser()
@@ -44,13 +41,11 @@ class CveViewSet(viewsets.ReadOnlyModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         data = serializer.data
-
         includes = {
             item.strip() for item in request.query_params.get("include", "").split(",")
         }
         if "nvd_cpe_configurations" in includes:
             data["nvd_cpe_configurations"] = instance.nvd_json.get("configurations", [])
-
         return Response(data)
 
 
