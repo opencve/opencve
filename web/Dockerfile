@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm AS base
+FROM python:3.12-slim-trixie AS base
 
 # Builder
 FROM base AS builder
@@ -26,21 +26,19 @@ RUN python3 -m pip install -r opencve/web/requirements.txt
 FROM base
 
 ARG OPENCVE_REPOSITORY
+ARG OPENCVE_VERSION
 ARG GUNICORN_CMD_ARGS
 
 LABEL name="opencve"
 LABEL maintainer="dev@opencve.io"
 LABEL url="${OPENCVE_REPOSITORY}"
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y\
-    git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /app/ /app/
+COPY --from=builder /app/venv /app/venv
+COPY --from=builder /app/opencve/web /app/opencve/web
 
 ENV PATH="/app/venv/bin:$PATH"
 ENV GUNICORN_CMD_ARGS="${GUNICORN_CMD_ARGS}"
+ENV OPENCVE_VERSION="${OPENCVE_VERSION}"
 
 WORKDIR /app/opencve/web/
 
