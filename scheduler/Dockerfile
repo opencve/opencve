@@ -32,11 +32,10 @@ ARG OPENCVE_VERSION="master"
 
 ENV OPENCVE_VERSION=${OPENCVE_VERSION}
 
-RUN mkdir -p /home/airflow/repositories
-
 COPY --from=builder --chown=airflow:root /app/opencve/scheduler/dags/ /opt/airflow/dags/
 COPY --chown=airflow:root requirements.txt /requirements.txt
 
 USER airflow
 
-RUN pip install --no-cache-dir -r /requirements.txt
+RUN mkdir -p /home/airflow/repositories \
+    && pip install --no-cache-dir -r /requirements.txt
