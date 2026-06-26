@@ -33,7 +33,7 @@ ARG OPENCVE_VERSION="master"
 ENV OPENCVE_VERSION=${OPENCVE_VERSION}
 
 COPY --from=builder --chown=airflow:root /app/opencve/scheduler/dags/ /opt/airflow/dags/
-COPY --chown=airflow:root requirements.txt /requirements.txt
+COPY --from=builder --chown=airflow:root /app/opencve/scheduler/requirements.txt /requirements.txt
 
 USER airflow
 

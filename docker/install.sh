@@ -17,7 +17,7 @@
 # Commands:
 #   prepare           Prepare and add default configuration files for OpenCVE.
 #   start             Start and set up the entire OpenCVE stack.
-#   upgrade           Upgrade an existing installation (pull, rebuild, migrate).
+#   upgrade           Upgrade an existing installation (rebuild images, migrate).
 #   reset             Stop stack, remove Docker volumes and install state.
 #   add-config-files  Add default configuration files.
 #   init-docker-stack Initialize the Docker stack and connections.
@@ -34,7 +34,7 @@
 #   For more details, see the documentation at https://docs.opencve.io/deployment/
 #
 # Prerequisites:
-#   Ensure that the following commands are available: docker, git, sed, grep, tr.
+#   Ensure that the following commands are available: docker, sed, grep, tr.
 
 _GREEN="\360\237\237\242"
 _YELLOW="\360\237\237\241"
@@ -47,7 +47,7 @@ _INSTALL_STATE_FILE="./.install-state"
 _AIRFLOW_DAGS=(opencve summarize_reports sync_weaknesses clean_reports check_smtp)
 
 # Check for required commands
-required_commands=("docker" "git" "sed" "grep" "tr")
+required_commands=("docker" "sed" "grep" "tr")
 for cmd in "${required_commands[@]}"; do
     if ! command -v "$cmd" &> /dev/null; then
         echo "Error: $cmd is not installed." >&2
@@ -161,45 +161,6 @@ ensure-env-file() {
     fi
 }
 
-# Ensure the OpenCVE repository is a git clone (required for upgrade).
-ensure-git-repo() {
-    if [[ ! -d "../.git" ]]; then
-        log "$_RED ERROR: No git repository detected."
-        log "Upgrade requires a git clone. For tarball installs use: ./install.sh -r <version> prepare && ./install.sh start"
-        exit 1
-    fi
-}
-
-# Return the current local git branch, tag, or commit reference.
-get-local-git-ref() {
-    local _REF
-    _REF=$(git -C .. rev-parse --abbrev-ref HEAD 2>/dev/null || true)
-    if [[ "$_REF" == "HEAD" ]]; then
-        _REF=$(git -C .. describe --tags --exact-match 2>/dev/null || git -C .. rev-parse --short HEAD)
-    fi
-    printf "%s" "$_REF"
-}
-
-# Abort if OPENCVE_VERSION in .env does not match the local git checkout.
-ensure-version-consistency() {
-    ensure-env-file
-    export $(grep -v '^#' .env | grep -E '^OPENCVE_VERSION=' | tr '\n' ' ')
-    local _ENV_VERSION="${OPENCVE_VERSION:-}"
-    unset OPENCVE_VERSION
-
-    if [[ ! -d "../.git" ]]; then
-        return 0
-    fi
-
-    local _GIT_REF
-    _GIT_REF=$(get-local-git-ref)
-    if [[ "$_ENV_VERSION" != "$_GIT_REF" ]]; then
-        log "$_RED ERROR: OPENCVE_VERSION in .env ($_ENV_VERSION) does not match local git checkout ($_GIT_REF)."
-        log "Run: ./install.sh -r $_ENV_VERSION prepare"
-        exit 1
-    fi
-}
-
 # Verify webserver and scheduler containers match OPENCVE_VERSION from .env.
 verify-container-versions() {
     ensure-env-file
@@ -228,32 +189,6 @@ update-opencve-version-in-env() {
     ensure-env-file
     display-and-exec "updating OpenCVE release to $_RELEASE" sed -i.bak "s,OPENCVE_VERSION=.*,OPENCVE_VERSION=$_RELEASE,g" "./.env" && rm -f "./.env.bak"
     install-state-set OPENCVE_VERSION "$_RELEASE"
-}
-
-# Checkout the requested release in the local git repository.
-checkout-release() {
-    local _RELEASE="$1"
-    _RELEASE=$(normalize-release "$_RELEASE")
-    if [[ -d "../.git" ]]; then
-        display-and-exec "checking out $_RELEASE" git -C .. checkout -B "$_RELEASE"
-    fi
-}
-
-# Fetch and pull the requested release from the remote git repository.
-pull-release() {
-    local _RELEASE="$1"
-    _RELEASE=$(normalize-release "$_RELEASE")
-    ensure-git-repo
-    display-and-exec "fetching git updates" git -C .. fetch --all --tags
-    if [[ "$_RELEASE" == "master" ]]; then
-        display-and-exec "pulling master branch" git -C .. checkout master
-        display-and-exec "updating master branch" git -C .. pull --ff-only origin master
-    else
-        display-and-exec "checking out $_RELEASE" git -C .. checkout "$_RELEASE"
-        if git -C .. rev-parse --verify "origin/${_RELEASE}" &>/dev/null; then
-            display-and-exec "pulling $_RELEASE branch" git -C .. pull --ff-only origin "$_RELEASE"
-        fi
-    fi
 }
 
 # Pause all OpenCVE Airflow DAGs.
@@ -310,7 +245,7 @@ add-config-files() {
         log "$_RED ERROR: this script works only for release >= 2.0.0, release given: $_RELEASE"
         exit 1
     fi
-    checkout-release "$_RELEASE"
+    log "> OpenCVE version $_RELEASE will be baked into Docker images at build time."
 
     step-header "Airflow configuration"
     is-present "$_AIRFLOW_CONFIG_FILE"
@@ -521,17 +456,15 @@ create-superuser() {
     install-state-set SUPERUSER_CREATED true
 }
 
-# Upgrade an existing installation: pull, rebuild, migrate, and restart services.
+# Upgrade an existing installation: rebuild images at OPENCVE_VERSION and migrate.
 upgrade-stack() {
     local _RELEASE
     _RELEASE=$(normalize-release "${1:-master}")
 
     ensure-env-file
-    ensure-git-repo
 
     log "\n$_YELLOW Recommended: back up your PostgreSQL database before upgrading."
 
-    pull-release "$_RELEASE"
     update-opencve-version-in-env "$_RELEASE"
 
     pause-all-dags
@@ -645,7 +578,7 @@ display-usage() {
     printf "\n%${_S1}s start"
     printf "\n%${_S2}s Start and setup the entire OpenCVE stack. Run after prepare."
     printf "\n%${_S1}s upgrade"
-    printf "\n%${_S2}s Upgrade an existing installation (pull, rebuild, migrate)."
+    printf "\n%${_S2}s Upgrade an existing installation (rebuild images, migrate)."
     printf "\n%${_S1}s reset"
     printf "\n%${_S2}s Stop stack, remove Docker volumes and install state. Requires confirmation."
 
@@ -730,7 +663,6 @@ case $_COMMAND in
         ;;
     "start" )
         begin-steps 10
-        ensure-version-consistency
         init-docker-stack
         clone-repositories
         import-opencve-kb
