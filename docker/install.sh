@@ -61,6 +61,22 @@ log() {
     printf "%b\n" "$_MSG"
 }
 
+_STEP_CURRENT=0
+_STEP_TOTAL=0
+
+# Initialize step counter for the current command (X in n/X progress).
+begin-steps() {
+    _STEP_TOTAL=$1
+    _STEP_CURRENT=0
+}
+
+# Log a numbered installation step header.
+step-header() {
+    local _TITLE="$1"
+    _STEP_CURRENT=$((_STEP_CURRENT + 1))
+    log "\n--------| $_TITLE (${_STEP_CURRENT}/${_STEP_TOTAL})"
+}
+
 # Function to execute a command and display its status
 display-and-exec() {
     local _TXT="$1"
@@ -242,7 +258,7 @@ pull-release() {
 
 # Pause all OpenCVE Airflow DAGs.
 pause-all-dags() {
-    log "\n--------| Pause Airflow DAGs"
+    step-header "Pause Airflow DAGs"
     local _DAG
     for _DAG in "${_AIRFLOW_DAGS[@]}"; do
         docker compose exec airflow-scheduler airflow dags pause "$_DAG" > /dev/null 2>&1 || true
@@ -252,7 +268,7 @@ pause-all-dags() {
 
 # Unpause all OpenCVE Airflow DAGs.
 unpause-all-dags() {
-    log "\n--------| Unpause Airflow DAGs"
+    step-header "Unpause Airflow DAGs"
     local _DAG
     for _DAG in "${_AIRFLOW_DAGS[@]}"; do
         display-and-exec "unpausing $_DAG dag" -q docker compose exec airflow-scheduler airflow dags unpause "$_DAG"
@@ -263,7 +279,7 @@ unpause-all-dags() {
 wait-for-running-dag-runs() {
     local _TIMEOUT=600
     local _ELAPSED=0
-    log "\n--------| Wait for running DAG tasks to finish"
+    step-header "Wait for running DAG tasks to finish"
     while [[ $_ELAPSED -lt $_TIMEOUT ]]; do
         local _RUNNING
         _RUNNING=$(docker compose exec -T airflow-scheduler airflow dags list-runs -s running 2>/dev/null | grep -c running || true)
@@ -289,14 +305,14 @@ add-config-files() {
     local _NGINX_TEMPLATE="./conf/opencve.conf.template"
     local _CONFIG_BLOCKED=false
 
-    log "\n--------| Find the release to install"
+    step-header "Find the release to install"
     if [[ $_MAJOR_VERSION =~ ^[v0-1|0-1.]+$ ]]; then
         log "$_RED ERROR: this script works only for release >= 2.0.0, release given: $_RELEASE"
         exit 1
     fi
     checkout-release "$_RELEASE"
 
-    log "\n--------| Airflow configuration"
+    step-header "Airflow configuration"
     is-present "$_AIRFLOW_CONFIG_FILE"
     if [[ $? == 0 ]]; then
         display-and-exec "copying airflow config file" cp "$_AIRFLOW_CONFIG_FILE.example" "$_AIRFLOW_CONFIG_FILE"
@@ -312,7 +328,7 @@ add-config-files() {
         _CONFIG_BLOCKED=true
     fi
 
-    log "\n--------| Django settings and .env file"
+    step-header "Django settings and .env file"
     is-present "$_DJANGO_SETTINGS_FILE"
     if [[ $? == 0 ]]; then
         display-and-exec "copying Django settings" cp "$_DJANGO_SETTINGS_FILE.example" "$_DJANGO_SETTINGS_FILE"
@@ -326,7 +342,7 @@ add-config-files() {
         _CONFIG_BLOCKED=true
     fi
 
-    log "\n--------| Docker compose .env file"
+    step-header "Docker compose .env file"
     is-present "$_DOCKER_COMPOSE_ENV"
     if [[ $? == 0 ]]; then
         display-and-exec "copying Docker compose env file" cp "./conf/$_DOCKER_COMPOSE_ENV.example" "$_DOCKER_COMPOSE_ENV"
@@ -336,7 +352,7 @@ add-config-files() {
 
     update-opencve-version-in-env "$_RELEASE"
 
-    log "\n--------| Nginx OpenCVE template"
+    step-header "Nginx OpenCVE template"
     is-present "$_NGINX_TEMPLATE"
     if [[ $? == 0 ]]; then
         display-and-exec "copying OpenCVE configuration" cp "$_NGINX_TEMPLATE.example" "$_NGINX_TEMPLATE"
@@ -360,19 +376,19 @@ add-config-files() {
 
 # Build all OpenCVE Docker images without using the cache.
 docker-build() {
-    log "\n--------| Docker compose build"
+    step-header "Docker compose build"
     display-and-exec "building OpenCVE docker images" docker compose build --no-cache
 }
 
 # Start the Docker stack, run migrations, and collect static files.
 docker-up() {
-    log "\n--------| Docker compose up"
+    step-header "Docker compose up"
     display-and-exec "starting OpenCVE docker stack" docker compose up -d --build --wait
 
-    log "\n--------| Apply Django webserver DB migration"
+    step-header "Apply Django webserver DB migration"
     display-and-exec "migrating DB schema with latest changes" -q docker compose exec webserver python manage.py migrate
 
-    log "\n--------| Collect static files from Django webserver"
+    step-header "Collect static files from Django webserver"
     display-and-exec "collecting latest static files" -q docker compose exec webserver python manage.py collectstatic --no-input
 }
 
@@ -390,7 +406,7 @@ ensure-airflow-connection() {
 set-airflow-connections() {
     export $(grep -v '^#' .env | grep -E '^POSTGRES' | tr '\n' ' ')
 
-    log "\n--------| Add Airflow connections"
+    step-header "Add Airflow connections"
     ensure-airflow-connection opencve_postgres \
         --conn-uri "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/opencve"
     ensure-airflow-connection opencve_redis \
@@ -402,6 +418,7 @@ set-airflow-connections() {
 
 # Generate the Django secret key once and store it in the webserver .env file.
 init-secret-key() {
+    step-header "Generate OpenCVE secret key"
     if install-state-is SECRET_KEY_SET; then
         log "> OPENCVE_SECRET_KEY already set (install state), skipping."
         return 0
@@ -411,8 +428,6 @@ init-secret-key() {
         log "> OPENCVE_SECRET_KEY already present in .env, skipping."
         return 0
     fi
-
-    log "\n--------| Generate OpenCVE secret key"
 
     export _OPENCVE_SECRET_KEY=$(docker compose exec webserver python manage.py generate_secret_key | sed -e 's/[&!$]//g')
 
@@ -452,7 +467,7 @@ clone-repo-if-missing() {
 
 # Clone all KB repositories into the repositories Docker volume.
 clone-repositories() {
-    log "\n--------| Initialize OpenCVE repositories"
+    step-header "Initialize OpenCVE repositories"
     clone-repo-if-missing "https://github.com/opencve/opencve-kb.git" "/home/airflow/repositories/opencve-kb" "opencve-kb"
     clone-repo-if-missing "https://github.com/opencve/opencve-nvd.git" "/home/airflow/repositories/opencve-nvd" "opencve-nvd"
     clone-repo-if-missing "https://github.com/opencve/opencve-redhat.git" "/home/airflow/repositories/opencve-redhat" "opencve-redhat"
@@ -463,11 +478,11 @@ clone-repositories() {
 
 # Import CVEs from the KB into PostgreSQL (one-time operation).
 import-opencve-kb() {
+    step-header "Import OpenCVE KB inside the database, it can take 10 to 30 min"
     if install-state-is IMPORTED_KB; then
         log "> CVEs already imported (install state), skipping."
         return 0
     fi
-    log "\n--------| Import OpenCVE KB inside the database, it can take 10 to 30 min"
     display-and-exec "importing CVEs" docker compose exec webserver python manage.py import_cves
     install-state-set IMPORTED_KB true
 }
@@ -479,17 +494,26 @@ start-opencve-dag() {
 
 # Create the OpenCVE admin user and auto-verify their email address.
 create-superuser() {
+    local _SKIP=false
     if install-state-is SUPERUSER_CREATED; then
+        _SKIP=true
+    fi
+
+    step-header "Create OpenCVE admin user"
+    if $_SKIP; then
+        log "> Superuser already created (install state), skipping."
+    else
+        display-and-exec "creating OpenCVE admin user" docker compose exec -it webserver python manage.py createsuperuser
+    fi
+
+    step-header "Auto confirm the created user"
+    if $_SKIP; then
         log "> Superuser already created (install state), skipping."
         return 0
     fi
 
-    log "\n--------| Create OpenCVE admin user"
-    display-and-exec "creating OpenCVE admin user" docker compose exec -it webserver python manage.py createsuperuser
-
     export $(grep -v '^#' .env | grep -E '^POSTGRES' | tr '\n' ' ')
 
-    log "\n--------| Auto confirm the created user"
     display-and-exec "confirming the created admin user" -q docker compose exec postgres psql -U "$POSTGRES_USER" -c "INSERT INTO account_emailaddress(email, verified, \"primary\", user_id) SELECT email, 1::bool, 1::bool, id FROM opencve_users ON CONFLICT (user_id, email) DO NOTHING;"
 
     unset POSTGRES_USER
@@ -513,21 +537,21 @@ upgrade-stack() {
     pause-all-dags
     wait-for-running-dag-runs
 
-    log "\n--------| Start infrastructure services"
+    step-header "Start infrastructure services"
     display-and-exec "starting postgres and redis" docker compose up -d postgres redis
 
-    log "\n--------| Rebuild and start webserver"
+    step-header "Rebuild and start webserver"
     display-and-exec "starting webserver" docker compose up -d --build --wait webserver
 
-    log "\n--------| Apply Django webserver DB migration"
+    step-header "Apply Django webserver DB migration"
     display-and-exec "migrating DB schema with latest changes" -q docker compose exec webserver python manage.py migrate
 
-    log "\n--------| Collect static files from Django webserver"
+    step-header "Collect static files from Django webserver"
     display-and-exec "collecting latest static files" -q docker compose exec webserver python manage.py collectstatic --no-input
 
     verify-container-versions
 
-    log "\n--------| Rebuild and start Airflow and nginx"
+    step-header "Rebuild and start Airflow and nginx"
     display-and-exec "starting Airflow stack and nginx" docker compose up -d --build --wait \
         airflow-init airflow-webserver airflow-scheduler airflow-worker nginx
 
@@ -557,10 +581,12 @@ reset-stack() {
         fi
     fi
 
-    log "\n--------| Stop stack and remove volumes"
+    begin-steps 2
+
+    step-header "Stop stack and remove volumes"
     display-and-exec "stopping OpenCVE stack" docker compose down -v
 
-    log "\n--------| Remove install state"
+    step-header "Remove install state"
     rm -f "$_INSTALL_STATE_FILE"
 
     log "\n$_GREEN Reset complete. Run ./install.sh prepare && ./install.sh start to reinstall."
@@ -699,9 +725,11 @@ shift $((OPTIND - 1))
 _COMMAND=$1
 case $_COMMAND in
     "prepare" )
+        begin-steps 5
         add-config-files "$_RELEASE"
         ;;
     "start" )
+        begin-steps 10
         ensure-version-consistency
         init-docker-stack
         clone-repositories
@@ -712,42 +740,53 @@ case $_COMMAND in
         install-end
         ;;
     "upgrade" )
+        begin-steps 9
         upgrade-stack "$_RELEASE"
         ;;
     "reset" )
         reset-stack
         ;;
     "add-config-files" )
+        begin-steps 5
         add-config-files "$_RELEASE"
         ;;
     "init-docker-stack" )
+        begin-steps 5
         init-docker-stack
         ;;
     "clone-repositories" )
+        begin-steps 1
         clone-repositories
         ;;
     "import-opencve-kb" )
+        begin-steps 1
         import-opencve-kb
         ;;
     "start-opencve-dag" )
+        begin-steps 1
         start-opencve-dag
         ;;
     "create-superuser" )
+        begin-steps 2
         create-superuser
         ;;
     "docker-up" )
+        begin-steps 3
         docker-up
         ;;
     "docker-build" )
+        begin-steps 1
         docker-build
         ;;
     "init-secret-key" )
+        begin-steps 1
         init-secret-key
         ;;
     "bye" )
         install-end
         ;;
     "" )
+        begin-steps 5
         add-config-files "$_RELEASE"
         ;;
     * )
