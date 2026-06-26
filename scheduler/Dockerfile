@@ -35,10 +35,8 @@ ENV OPENCVE_VERSION=${OPENCVE_VERSION}
 RUN mkdir -p /home/airflow/repositories
 
 COPY --from=builder --chown=airflow:root /app/opencve/scheduler/dags/ /opt/airflow/dags/
-
-COPY requirements.txt /
-
-RUN python3 -m pip install --upgrade pip \
-    && pip install --no-cache-dir -r /requirements.txt
+COPY --chown=airflow:root requirements.txt /requirements.txt
 
 USER airflow
+
+RUN pip install --no-cache-dir -r /requirements.txt

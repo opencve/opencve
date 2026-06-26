@@ -352,7 +352,7 @@ add-config-files() {
     log " Docker compose: $_DOCKER_COMPOSE_ENV"
     log "\nSee the documentation for details: https://docs.opencve.io/deployment/#configuration"
     if $_CONFIG_BLOCKED; then
-        log "\n $_YELLOW Some config files already exist. OPENCVE_VERSION was updated in $_DOCKER_COMPOSE_ENV."
+        log "\n $_YELLOW Some config files already exist. OPENCVE_VERSION was updated in $_DOCKER_COMPOSE_ENV ($_RELEASE)."
         log " Use -f to replace existing config files from examples."
     fi
     log "\n $_ROCKET You can now run: ./install.sh start"
