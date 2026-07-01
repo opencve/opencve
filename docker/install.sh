@@ -12,7 +12,7 @@
 #   -h                Print usage statement.
 #   -r <release>      Specify the release or branch to install. Default is master.
 #   -f                Force overwrite of existing configuration files.
-#   -y                Skip confirmation prompts (reset command).
+#   -y                Skip confirmation prompts (reset and upgrade commands).
 #
 # Commands:
 #   prepare           Prepare and add default configuration files for OpenCVE.
@@ -176,6 +176,7 @@ verify-container-versions() {
 
 # Update OPENCVE_VERSION in docker/.env.
 update-opencve-version-in-env() {
+    step-header "Update OpenCVE version in .env"
     local _RELEASE="$1"
     _RELEASE=$(normalize-release "$_RELEASE")
     ensure-env-file
@@ -458,6 +459,14 @@ upgrade-stack() {
 
     log "\n$_YELLOW Recommended: back up your PostgreSQL database before upgrading."
 
+    if ! $_SKIP_CONFIRM; then
+        read -r -p "Type 'yes' to continue upgrade: " _CONFIRM
+        if [[ "$_CONFIRM" != "yes" ]]; then
+            log "$_RED Aborted."
+            exit 1
+        fi
+    fi
+
     update-opencve-version-in-env "$_RELEASE"
 
     pause-all-dags
@@ -498,7 +507,7 @@ reset-stack() {
     log "\nAfter reset, run: ./install.sh prepare && ./install.sh start"
     log "For fresh configuration files: ./install.sh reset && ./install.sh -f prepare && ./install.sh start"
 
-    if ! $_RESET_CONFIRM; then
+    if ! $_SKIP_CONFIRM; then
         read -r -p "Type 'yes' to confirm destruction: " _CONFIRM
         if [[ "$_CONFIRM" != "yes" ]]; then
             log "$_RED Aborted."
@@ -558,7 +567,7 @@ display-usage() {
     printf "\n%${_S1}s -f"
     printf "\n%${_S2}s Force overwrite of existing configuration files."
     printf "\n%${_S1}s -y"
-    printf "\n%${_S2}s Skip confirmation prompts (reset command)."
+    printf "\n%${_S2}s Skip confirmation prompts (reset and upgrade commands)."
 
     printf "\n\n${_BOLD}COMMANDS${_NC}"
     printf "\n%${_S1}s prepare"
@@ -566,7 +575,7 @@ display-usage() {
     printf "\n%${_S1}s start"
     printf "\n%${_S2}s Start and setup the entire OpenCVE stack. Run after prepare."
     printf "\n%${_S1}s upgrade"
-    printf "\n%${_S2}s Upgrade an existing installation (rebuild images, migrate)."
+    printf "\n%${_S2}s Upgrade an existing installation (rebuild images, migrate). Requires confirmation."
     printf "\n%${_S1}s reset"
     printf "\n%${_S2}s Stop stack, remove Docker volumes and install state. Requires confirmation."
 
@@ -613,7 +622,7 @@ display-usage() {
 
 _RELEASE="master"
 _FORCE=false
-_RESET_CONFIRM=false
+_SKIP_CONFIRM=false
 OPTSTRING=":r:fhy"
 while getopts ${OPTSTRING} opt; do
     case ${opt} in
@@ -628,7 +637,7 @@ while getopts ${OPTSTRING} opt; do
             _RELEASE="${OPTARG}"
             ;;
         y)
-            _RESET_CONFIRM=true
+            _SKIP_CONFIRM=true
             ;;
         :)
             echo "Option -${OPTARG} requires an argument."
@@ -646,7 +655,7 @@ shift $((OPTIND - 1))
 _COMMAND=$1
 case $_COMMAND in
     "prepare" )
-        begin-steps 5
+        begin-steps 6
         add-config-files "$_RELEASE"
         ;;
     "start" )
@@ -660,14 +669,14 @@ case $_COMMAND in
         install-end
         ;;
     "upgrade" )
-        begin-steps 10
+        begin-steps 11
         upgrade-stack "$_RELEASE"
         ;;
     "reset" )
         reset-stack
         ;;
     "add-config-files" )
-        begin-steps 5
+        begin-steps 6
         add-config-files "$_RELEASE"
         ;;
     "init-docker-stack" )
@@ -706,7 +715,7 @@ case $_COMMAND in
         install-end
         ;;
     "" )
-        begin-steps 5
+        begin-steps 6
         add-config-files "$_RELEASE"
         ;;
     * )
