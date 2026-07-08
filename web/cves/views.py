@@ -33,6 +33,7 @@ from opencve.pagination import (
 )
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project, CveComment, CveTracker
+from projects.services.subscriptions import subscribe_project, unsubscribe_project
 from users.models import CveTag, UserTag
 from views.forms import ViewForm
 from views.models import View as SavedView
@@ -619,36 +620,32 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
             Project, id=project_id, organization=request.current_organization
         )
 
-        # Vendor subscription
         if obj_type == "vendor":
             vendor = get_object_or_404(Vendor, id=obj_id)
-            project_vendors = set(project.subscriptions.get("vendors"))
-
             if action == "subscribe":
-                project_vendors.add(vendor.name)
+                subscribe_project(project, vendor_name=vendor.name)
             else:
-                try:
-                    project_vendors.remove(vendor.name)
-                except KeyError:
+                if vendor.name not in project.subscriptions.get("vendors", []):
                     raise Http404()
-
-            project.subscriptions["vendors"] = list(project_vendors)
-            project.save()
-
-        if obj_type == "product":
+                unsubscribe_project(project, vendor_name=vendor.name)
+        else:
             product = get_object_or_404(Product, id=obj_id)
-            project_products = set(project.subscriptions.get("products"))
-
             if action == "subscribe":
-                project_products.add(product.vendored_name)
+                subscribe_project(
+                    project,
+                    vendor_name=product.vendor.name,
+                    product_name=product.name,
+                )
             else:
-                try:
-                    project_products.remove(product.vendored_name)
-                except KeyError:
+                if product.vendored_name not in project.subscriptions.get(
+                    "products", []
+                ):
                     raise Http404()
-
-            project.subscriptions["products"] = list(project_products)
-            project.save()
+                unsubscribe_project(
+                    project,
+                    vendor_name=product.vendor.name,
+                    product_name=product.name,
+                )
 
         return JsonResponse({"status": "ok"})
 

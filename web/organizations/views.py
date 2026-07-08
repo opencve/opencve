@@ -6,7 +6,6 @@ from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
-from django.utils.crypto import get_random_string
 from django.utils.timezone import now
 from django.views.generic import (
     CreateView,
@@ -34,12 +33,26 @@ from organizations.auditlog import (
     get_audit_log_filter_choices,
     get_organization_audit_log_pks,
 )
-from organizations.utils import (
-    is_organization_name_unique_violation,
-    send_organization_invitation_email,
-    send_organization_signup_invitation_email,
+from organizations.services.memberships import (
+    invite_member,
+    remove_member,
+    update_member_role,
+    validate_member_removal,
 )
+from organizations.utils import is_organization_name_unique_violation
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from users.models import User
+
+
+def _field_validation_message(detail, field):
+    """Get the validation message for a field"""
+    if not isinstance(detail, dict) or field not in detail:
+        return str(detail)
+
+    value = detail[field]
+    if isinstance(value, (list, tuple)):
+        return str(value[0])
+    return str(value)
 
 
 class OrganizationsListView(LoginRequiredMixin, ListView):
@@ -155,56 +168,24 @@ class OrganizationEditMembersView(
 
         email = form.cleaned_data["email"].strip().lower()
 
-        # Check if the invited user exists
-        user = User.objects.filter(email=email).first()
-
-        # The user exists
-        if user:
-            # Check if he's already a member of the organization
-            if Membership.objects.filter(user=user, organization=organization).exists():
-                messages.error(request, "Member already exist")
-                context = self.get_context_data(members_form=form)
-                return self.render_to_response(context)
-
-            # Create the membership for existing user
-            membership = Membership.objects.create(
-                user=user,
+        try:
+            invite_member(
                 organization=organization,
+                email=email,
                 role=form.cleaned_data["role"],
-                key=get_random_string(64).lower(),
+                request=request,
             )
+        except DRFValidationError as exc:
+            messages.error(request, _field_validation_message(exc.detail, "email"))
+            context = self.get_context_data(members_form=form)
+            return self.render_to_response(context)
 
-            # Send invitation email
-            send_organization_invitation_email(membership, request)
+        if User.objects.filter(email=email).exists():
             messages.success(
                 request,
                 f"Invitation email has been sent to {email}",
             )
-
-        # The user doesn't exist
         else:
-            # Check if there's already a pending invitation for this email
-            if Membership.objects.filter(
-                email=email, organization=organization, user__isnull=True
-            ).exists():
-                messages.error(
-                    request,
-                    "An invitation has already been sent to this email address",
-                )
-                context = self.get_context_data(members_form=form)
-                return self.render_to_response(context)
-
-            # Create the membership with email only
-            membership = Membership.objects.create(
-                user=None,
-                email=email,
-                organization=organization,
-                role=form.cleaned_data["role"],
-                key=get_random_string(64).lower(),
-            )
-
-            # Send signup invitation email
-            send_organization_signup_invitation_email(membership, request)
             messages.success(
                 request,
                 f"Signup invitation email has been sent to {email}",
@@ -354,14 +335,12 @@ class OrganizationMemberDeleteView(
 
     def dispatch(self, request, *args, **kwargs):
         member = self.get_object()
-        owners = request.current_organization.membership_set.filter(
-            role=Membership.OWNER,
-            date_joined__isnull=False,
-        ).all()
-
-        if len(owners) == 1 and owners[0] == member:
+        try:
+            validate_member_removal(membership=member)
+        except DRFValidationError:
             messages.error(
-                request, "You cannot leave this organization as you are the only owner."
+                request,
+                "You cannot leave this organization as you are the only owner.",
             )
             return redirect(
                 reverse(
@@ -372,15 +351,26 @@ class OrganizationMemberDeleteView(
 
         return super().dispatch(request, *args, **kwargs)
 
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            self.model,
-            organization=self.request.current_organization,
-            id=self.kwargs["member_id"],
-        )
+    def form_valid(self, form):
+        try:
+            remove_member(membership=self.object)
+        except DRFValidationError:
+            messages.error(
+                self.request,
+                "You cannot leave this organization as you are the only owner.",
+            )
+            return redirect(
+                reverse(
+                    "edit_organization_members",
+                    kwargs={"org_name": self.request.current_organization.name},
+                )
+            )
+
+        messages.success(self.request, self.success_message)
+        return redirect(self.get_success_url())
 
     def get_success_url(self):
-        removed_user = self.get_object().user
+        removed_user = self.object.user
 
         # The current user can no longer access the organization if he removed himself
         if removed_user == self.request.user:
@@ -389,6 +379,13 @@ class OrganizationMemberDeleteView(
         return reverse_lazy(
             "edit_organization_members",
             kwargs={"org_name": self.request.current_organization.name},
+        )
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            self.model,
+            organization=self.request.current_organization,
+            id=self.kwargs["member_id"],
         )
 
 
@@ -410,67 +407,19 @@ class OrganizationMemberRoleUpdateView(
             id=self.kwargs["member_id"],
         )
 
-    def check_role_update_errors(self, request, membership, new_role):
-        """
-        Checks all possible errors before updating a member's role in the organization.
-        """
-        # Check if a role has been provided in the request
-        if not new_role:
-            return JsonResponse(
-                {"status": "error", "message": "Role is required."},
-                status=400,
-            )
-
-        # Check if the provided role is valid
-        valid_roles = [r[0] for r in Membership.ROLES]
-        if new_role not in valid_roles:
-            return JsonResponse(
-                {"status": "error", "message": "Invalid role."},
-                status=400,
-            )
-
-        # Prevent changing role for members who have not yet joined
-        if not membership.date_joined:
-            return JsonResponse(
-                {
-                    "status": "error",
-                    "message": "Cannot change role for pending invitations.",
-                },
-                status=400,
-            )
-
-        # Get all owners in the organization
-        owners = request.current_organization.membership_set.filter(
-            role=Membership.OWNER
-        ).all()
-
-        # Prevent demoting the only owner to member
-        if (
-            membership.role == Membership.OWNER
-            and len(owners) == 1
-            and new_role == Membership.MEMBER
-        ):
-            return JsonResponse(
-                {
-                    "status": "error",
-                    "message": "You cannot demote the only owner of the organization.",
-                },
-                status=400,
-            )
-        return None
-
     def post(self, request, *args, **kwargs):
         membership = self.get_object()
         role = request.POST.get("role")
 
-        # Run all the necessary checks before updating the role
-        errors = self.check_role_update_errors(request, membership, role)
-        if errors:
-            return errors
-
-        # All checks passed, update the role and save
-        membership.role = role
-        membership.save(update_fields=["role"])
+        try:
+            update_member_role(membership=membership, role=role)
+        except DRFValidationError as exc:
+            detail = exc.detail
+            message = detail[0] if isinstance(detail, list) else str(detail)
+            return JsonResponse(
+                {"status": "error", "message": message},
+                status=400,
+            )
 
         return JsonResponse(
             {"status": "ok", "message": "Role has been updated successfully."}
@@ -499,7 +448,9 @@ class OrganizationInvitationView(LoginRequiredMixin, SingleObjectMixin, View):
 
     def get_object(self, queryset=None):
         return get_object_or_404(
-            self.model, user=self.request.user, key=self.kwargs["key"].lower()
+            self.model,
+            user=self.request.user,
+            key=self.kwargs["key"].lower(),
         )
 
 

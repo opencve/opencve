@@ -4,12 +4,13 @@ from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Layout, Submit
 from django import forms
-from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from cves.constants import CVSS_VERSIONS, PRODUCT_SEPARATOR
 from cves.models import Product, Vendor
 from opencve.validators import slug_regex_validator
-from organizations.models import Organization
+from organizations.services.organizations import validate_organization_name
+from projects.services.projects import validate_project_name
 
 
 MAX_SUBSCRIPTIONS = 5
@@ -70,21 +71,18 @@ class OnboardingForm(forms.Form):
 
     def clean_organization(self):
         name = self.cleaned_data["organization"]
-
-        if name in ("add",):
-            raise forms.ValidationError("This organization is reserved.")
-
-        if Organization.objects.filter(name=name).exists():
-            raise forms.ValidationError("This organization name is not available.")
-
+        try:
+            validate_organization_name(name)
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
         return name
 
     def clean_project(self):
         name = self.cleaned_data["project"]
-
-        if name in ("add",):
-            raise forms.ValidationError("This project is reserved.")
-
+        try:
+            validate_project_name(name)
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
         return name
 
     def clean_selected_subscriptions(self):

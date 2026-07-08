@@ -2,8 +2,10 @@ from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Div, Field, Layout, Submit
 from django import forms
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from organizations.models import Membership, Organization
+from organizations.services.organizations import validate_organization_name
 
 
 class OrganizationForm(forms.ModelForm):
@@ -34,16 +36,11 @@ class OrganizationForm(forms.ModelForm):
 
     def clean_name(self):
         name = self.cleaned_data["name"]
-
-        # Check if the organization is not a reserved keyword
-        if name in ("add",):
-            raise forms.ValidationError("This organization is reserved.")
-
-        # Check if the organization already exists
-        if self.instance.name != name:
-            if Organization.objects.filter(name=name).exists():
-                raise forms.ValidationError("This organization name is not available.")
-
+        instance = None if self.instance._state.adding else self.instance
+        try:
+            validate_organization_name(name, exclude_organization=instance)
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
         return name
 
 
