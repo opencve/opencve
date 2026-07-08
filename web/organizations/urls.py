@@ -1,11 +1,12 @@
+from django.conf import settings
 from django.urls import path, re_path
+from django.utils.module_loading import import_string
 
 from organizations.views import (
     OrganizationCreateView,
     OrganizationDeleteView,
     OrganizationEditView,
     OrganizationEditMembersView,
-    OrganizationEditTokensView,
     OrganizationInvitationView,
     OrganizationMemberDeleteView,
     OrganizationMemberRoleUpdateView,
@@ -15,6 +16,12 @@ from organizations.views import (
     change_organization,
 )
 
+
+def organization_tokens_view():
+    view_class = import_string(settings.ORGANIZATION_TOKENS_VIEW_CLASS)
+    return view_class.as_view()
+
+
 urlpatterns = [
     path("ajax/change_organization", change_organization, name="change_organization"),
     path("org/", OrganizationsListView.as_view(), name="list_organizations"),
@@ -22,7 +29,7 @@ urlpatterns = [
     path("org/<org_name>", OrganizationEditView.as_view(), name="edit_organization"),
     path(
         "org/<org_name>/tokens",
-        OrganizationEditTokensView.as_view(),
+        organization_tokens_view(),
         name="edit_organization_tokens",
     ),
     path(

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.paginator import Paginator
@@ -17,11 +18,12 @@ from django.views.generic import (
 )
 from django.views.generic.detail import SingleObjectMixin
 
+from opencve.api.v2.scopes import get_available_scopes, get_scope_choices
 from opencve.mixins import RequestViewMixin
 from organizations.forms import (
     MembershipForm,
-    OrganizationAPITokenForm,
     OrganizationForm,
+    get_organization_token_form_class,
 )
 from organizations.mixins import OrganizationIsOwnerMixin
 from organizations.models import Membership, Organization, OrganizationAPIToken
@@ -264,12 +266,16 @@ class OrganizationEditTokensView(
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         organization = self.request.current_organization
+        token_form_class = get_organization_token_form_class()
         context["organization"] = organization
         context["active_tab"] = "tokens"
+        context["api_scopes_enabled"] = settings.API_SCOPES_ENABLED
+        context["available_scopes"] = get_available_scopes()
+        context["scope_choices"] = get_scope_choices()
         context["api_tokens"] = OrganizationAPIToken.objects.filter(
             organization=organization
         ).order_by("-created_at")
-        context["token_form"] = kwargs.get("token_form") or OrganizationAPITokenForm()
+        context["token_form"] = kwargs.get("token_form") or token_form_class()
 
         # Retrieve the new token from the session and display it if it exists
         new_token = self.request.session.pop("new_token", None)
@@ -286,14 +292,14 @@ class OrganizationEditTokensView(
 
     def post(self, request, *args, **kwargs):
         organization = request.current_organization
-        form = OrganizationAPITokenForm(request.POST)
+        token_form_class = get_organization_token_form_class()
+        form = token_form_class(request.POST)
 
         if form.is_valid():
             token_string = OrganizationAPIToken.create_token(
                 organization=organization,
-                name=form.cleaned_data["name"],
-                description=form.cleaned_data["description"] or None,
                 created_by=request.user,
+                **form.get_token_create_kwargs(),
             )
 
             # Store the new token in the session to display it in the template
