@@ -1,4 +1,4 @@
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
+from zoneinfo import available_timezones
 
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
@@ -8,10 +8,23 @@ from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+
 from projects.models import Automation, Notification, Project, CveTracker
+from projects.services.automations import (
+    SCHEDULE_FIELDS,
+    normalize_automation_schedule_fields,
+    validate_automation_configuration,
+    validate_automation_name,
+    validate_automation_schedule,
+)
+from projects.services.notifications import (
+    validate_notification_name,
+    validate_notification_outbound_url,
+)
+from projects.services.projects import validate_project_name
 from users.models import User
 from views.models import View as SavedView
-from opencve.utils.ssrf import UnsafeURL, validate_public_http_url
 
 COMMON_TIMEZONES = [
     "UTC",
@@ -89,18 +102,14 @@ class ProjectForm(forms.ModelForm):
 
     def clean_name(self):
         name = self.cleaned_data["name"]
-
-        # Check if the project is not a reserved keyword
-        if name in ("add",):
-            raise forms.ValidationError("This project is reserved.")
-
-        # Check if the project already exists for this user
-        if self.instance.name != name:
-            if Project.objects.filter(
-                organization=self.request.current_organization, name=name
-            ).exists():
-                raise forms.ValidationError("This project already exists.")
-
+        try:
+            validate_project_name(
+                name,
+                organization=self.request.current_organization,
+                exclude_project=None if self.instance._state.adding else self.instance,
+            )
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
         return name
 
 
@@ -124,16 +133,15 @@ class NotificationForm(forms.ModelForm):
 
     def clean_name(self):
         name = self.cleaned_data["name"]
-
-        # Check if the project is not a reserved keyword
-        if name in ("add",):
-            raise forms.ValidationError("This name is reserved.")
-
-        # Check if the project already exists for this user
-        if self.instance.name != name:
-            if Notification.objects.filter(project=self.project, name=name).exists():
-                raise forms.ValidationError("This name already exists.")
-
+        exclude = None if self.instance._state.adding else self.instance
+        try:
+            validate_notification_name(
+                name,
+                project=self.project,
+                exclude_notification=exclude,
+            )
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
         return name
 
 
@@ -208,14 +216,6 @@ class CveTrackerFilterForm(forms.Form):
             ]
 
 
-def _validate_notification_outbound_url(url):
-    try:
-        validate_public_http_url(url)
-    except UnsafeURL:
-        raise forms.ValidationError("This URL is not allowed.")
-    return url
-
-
 class WebhookForm(NotificationForm):
     url = forms.URLField(assume_scheme="http" if settings.DEBUG else "https")
     headers = forms.JSONField(required=False, initial={})
@@ -239,7 +239,10 @@ class WebhookForm(NotificationForm):
         return headers
 
     def clean_url(self):
-        return _validate_notification_outbound_url(self.cleaned_data["url"])
+        try:
+            return validate_notification_outbound_url(self.cleaned_data["url"])
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
 
 
 class SlackForm(NotificationForm):
@@ -251,7 +254,10 @@ class SlackForm(NotificationForm):
     )
 
     def clean_webhook_url(self):
-        return _validate_notification_outbound_url(self.cleaned_data["webhook_url"])
+        try:
+            return validate_notification_outbound_url(self.cleaned_data["webhook_url"])
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
 
 
 class AutomationForm(forms.ModelForm):
@@ -302,71 +308,34 @@ class AutomationForm(forms.ModelForm):
 
     def clean_name(self):
         name = self.cleaned_data["name"]
-
-        # Check if the name is not a reserved keyword
-        if name in ("add",):
-            raise forms.ValidationError("This name is reserved.")
-
-        # Check if the automation already exists for this project
-        if self.project and (not self.instance.pk or self.instance.name != name):
-            if Automation.objects.filter(project=self.project, name=name).exists():
-                raise forms.ValidationError("This name already exists.")
-
+        exclude = self.instance if self.instance.pk else None
+        try:
+            validate_automation_name(
+                name,
+                project=self.project,
+                exclude_automation=exclude,
+            )
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
         return name
 
     def clean(self):
         data = super().clean()
         trigger = data.get("trigger_type")
-        frequency = data.get("frequency")
-        schedule_timezone = data.get("schedule_timezone")
-        schedule_time = data.get("schedule_time")
-        schedule_weekday = data.get("schedule_weekday")
+        if not trigger:
+            return data
 
-        if trigger == Automation.TRIGGER_REPORT and not frequency:
-            self.add_error(
-                "frequency", "Frequency is required when trigger type is report."
-            )
-        if trigger == Automation.TRIGGER_REPORT and not schedule_timezone:
-            self.add_error(
-                "schedule_timezone",
-                "Timezone is required when trigger type is report.",
-            )
-        if trigger == Automation.TRIGGER_REPORT and not schedule_time:
-            self.add_error(
-                "schedule_time", "Run time is required when trigger type is report."
-            )
-        if schedule_timezone:
-            try:
-                ZoneInfo(schedule_timezone)
-            except ZoneInfoNotFoundError:
-                self.add_error(
-                    "schedule_timezone",
-                    "Invalid timezone, please use an IANA timezone (example: Europe/Paris).",
-                )
-        if schedule_time and schedule_time.minute != 0:
-            self.add_error(
-                "schedule_time",
-                "Run time must be aligned to a full hour (HH:00) because the DAG runs hourly.",
-            )
-        if (
-            trigger == Automation.TRIGGER_REPORT
-            and frequency == Automation.FREQUENCY_WEEKLY
-        ):
-            if not schedule_weekday:
-                self.add_error(
-                    "schedule_weekday",
-                    "A weekday is required for weekly report automations.",
-                )
-        if (
-            trigger == Automation.TRIGGER_REPORT
-            and frequency == Automation.FREQUENCY_DAILY
-        ):
-            data["schedule_weekday"] = None
-        if trigger == Automation.TRIGGER_ALERT:
-            data["frequency"] = None
-            data["schedule_timezone"] = None
-            data["schedule_time"] = None
-            data["schedule_weekday"] = None
+        try:
+            validate_automation_schedule(data, trigger_type=trigger)
+        except DjangoValidationError as exc:
+            for field, messages in exc.message_dict.items():
+                for message in messages:
+                    self.add_error(field, message)
+            return data
+
+        normalized = normalize_automation_schedule_fields(data, trigger_type=trigger)
+        for field in SCHEDULE_FIELDS:
+            data[field] = normalized[field]
         return data
 
     def _get_trigger_type(self):
@@ -376,26 +345,6 @@ class AutomationForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             return self.instance.trigger_type
         return self.data.get("trigger_type")
-
-    def _validate_conditions_tree(self, node):
-        """Validate conditions tree: { operator: OR|AND, children: [...] } or leaf { type, value }."""
-        if not isinstance(node, dict):
-            raise forms.ValidationError("Condition node must be an object.")
-        if "operator" in node:
-            if node["operator"] not in ("OR", "AND"):
-                raise forms.ValidationError("Operator must be OR or AND.")
-            children = node.get("children")
-            if not isinstance(children, list):
-                raise forms.ValidationError("Children must be a list.")
-            for child in children:
-                self._validate_conditions_tree(child)
-        elif "type" in node:
-            if "value" not in node:
-                raise forms.ValidationError("Condition leaf must have 'value'.")
-        else:
-            raise forms.ValidationError(
-                "Condition node must have 'operator' and 'children' or 'type' and 'value'."
-            )
 
     def clean_configuration_json(self):
         import json
@@ -408,35 +357,17 @@ class AutomationForm(forms.ModelForm):
 
         try:
             config = json.loads(config_json)
-            # Validate structure
-            if not isinstance(config, dict):
-                raise forms.ValidationError("Invalid configuration format.")
-            if "conditions" not in config or "actions" not in config:
-                raise forms.ValidationError(
-                    "Configuration must contain 'conditions' and 'actions'."
-                )
-            self._validate_conditions_tree(config["conditions"])
-            if not isinstance(config["actions"], list):
-                raise forms.ValidationError("Actions must be a list.")
-            if "triggers" in config:
-                if not isinstance(config["triggers"], list):
-                    raise forms.ValidationError("Triggers must be a list.")
-                for t in config["triggers"]:
-                    if not isinstance(t, str):
-                        raise forms.ValidationError("Each trigger must be a string.")
-            if self._get_trigger_type() == Automation.TRIGGER_ALERT:
-                triggers = config.get("triggers") or []
-                if not triggers:
-                    raise forms.ValidationError(
-                        "At least one event is required for alert automations."
-                    )
-                if not config["actions"]:
-                    raise forms.ValidationError(
-                        "At least one action is required for alert automations."
-                    )
-            return config
         except json.JSONDecodeError:
             raise forms.ValidationError("Invalid JSON format.")
+
+        trigger_type = self._get_trigger_type()
+        try:
+            return validate_automation_configuration(
+                config,
+                trigger_type=trigger_type or Automation.TRIGGER_ALERT,
+            )
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -492,12 +423,6 @@ class AutomationAdminForm(AutomationForm):
         if not self.instance._state.adding and self.instance.project_id:
             self.project = self.instance.project
 
-    def clean_name(self):
-        name = self.cleaned_data["name"]
-        if name in ("add",):
-            raise forms.ValidationError("This name is reserved.")
-        return name
-
     def clean(self):
         cleaned_data = super().clean()
 
@@ -509,46 +434,28 @@ class AutomationAdminForm(AutomationForm):
             self.project = project
 
         name = cleaned_data.get("name")
-        if project and name and (not self.instance.pk or self.instance.name != name):
-            if Automation.objects.filter(project=project, name=name).exists():
-                self.add_error("name", "This name already exists.")
+        if project and name:
+            try:
+                validate_automation_name(
+                    name,
+                    project=project,
+                    exclude_automation=self.instance if self.instance.pk else None,
+                )
+            except DjangoValidationError as exc:
+                self.add_error("name", list(exc.messages)[0])
 
         return cleaned_data
 
     def clean_configuration(self):
         config = self.cleaned_data.get("configuration")
-
-        if not isinstance(config, dict):
-            raise forms.ValidationError("Invalid configuration format.")
-        if "conditions" not in config or "actions" not in config:
-            raise forms.ValidationError(
-                "Configuration must contain 'conditions' and 'actions'."
+        trigger_type = self._get_trigger_type()
+        try:
+            return validate_automation_configuration(
+                config,
+                trigger_type=trigger_type or Automation.TRIGGER_ALERT,
             )
-
-        self._validate_conditions_tree(config["conditions"])
-
-        if not isinstance(config["actions"], list):
-            raise forms.ValidationError("Actions must be a list.")
-
-        if "triggers" in config:
-            if not isinstance(config["triggers"], list):
-                raise forms.ValidationError("Triggers must be a list.")
-            for trigger in config["triggers"]:
-                if not isinstance(trigger, str):
-                    raise forms.ValidationError("Each trigger must be a string.")
-
-        if self._get_trigger_type() == Automation.TRIGGER_ALERT:
-            triggers = config.get("triggers") or []
-            if not triggers:
-                raise forms.ValidationError(
-                    "At least one event is required for alert automations."
-                )
-            if not config["actions"]:
-                raise forms.ValidationError(
-                    "At least one action is required for alert automations."
-                )
-
-        return config
+        except DjangoValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)) from exc
 
     def save(self, commit=True):
         instance = forms.ModelForm.save(self, commit=False)
