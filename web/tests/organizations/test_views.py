@@ -10,6 +10,7 @@ from django.utils.timezone import now
 from freezegun import freeze_time
 
 from organizations.models import Membership, Organization, OrganizationAPIToken
+from organizations.services.memberships import invite_member
 
 
 # List Organizations
@@ -297,11 +298,11 @@ def test_create_memberships_is_owner(auth_client, create_user, create_organizati
     assert response.status_code == 200
 
 
-@patch("organizations.views.get_random_string")
+@patch("organizations.services.memberships.generate_invitation_key")
 def test_create_memberships(
-    mock_random_string, auth_client, create_user, create_organization
+    mock_generate_invitation_key, auth_client, create_user, create_organization
 ):
-    mock_random_string.return_value = "foobar"
+    mock_generate_invitation_key.return_value = "foobar"
 
     user = create_user(username="user1", email="user1@example.com")
     client = auth_client(user)
@@ -421,6 +422,36 @@ def test_delete_memberships(auth_client, create_user, create_organization):
     assert not Membership.objects.filter(user=member).exists()
 
 
+@patch("organizations.services.memberships.send_organization_invitation_email")
+def test_delete_pending_owner_invitation(
+    mock_send_invitation, auth_client, create_user, create_organization
+):
+    """Allow deleting a pending owner invitation from the UI."""
+    user1 = create_user(username="user1", email="user1@example.com")
+    organization = create_organization(name="orga1", user=user1, owner=True)
+    create_user(username="invited", email="invited@example.com")
+    membership = invite_member(
+        organization=organization,
+        email="invited@example.com",
+        role=Membership.OWNER,
+    )
+    url = reverse(
+        "delete_organization_member",
+        kwargs={"org_name": "orga1", "member_id": membership.id},
+    )
+
+    client = auth_client(user1)
+    response = client.post(url, data={}, follow=True)
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    assert (
+        "The member has been removed."
+        in soup.find("div", {"class": "alert-success"}).text
+    )
+    assert not Membership.objects.filter(pk=membership.pk).exists()
+    mock_send_invitation.assert_not_called()
+
+
 def test_delete_memberships_without_owners(
     auth_client, create_user, create_organization
 ):
@@ -497,6 +528,51 @@ def test_delete_membership_success_url(auth_client, create_user, create_organiza
 
 
 # Memberships Invitation
+
+
+@patch("organizations.services.memberships.send_organization_invitation_email")
+@override_settings(ENABLE_ONBOARDING=False)
+def test_organization_invitation_e2e_via_invite_member(
+    mock_send_invitation, auth_client, create_user, create_organization
+):
+    """Invite via UI then accept with the real generated invitation key."""
+    user1 = create_user(username="user1", email="user1@example.com")
+    organization = create_organization(name="orga1", user=user1, owner=True)
+    user2 = create_user(username="user2", email="user2@example.com")
+    invite_url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
+
+    client = auth_client(user1)
+    response = client.post(
+        invite_url,
+        data={"email": "user2@example.com", "role": Membership.OWNER},
+        follow=True,
+    )
+    assert response.status_code == 200
+
+    membership = Membership.objects.get(
+        organization=organization,
+        user=user2,
+        date_joined__isnull=True,
+    )
+    assert len(membership.key) == 64
+    assert membership.key == membership.key.lower()
+    mock_send_invitation.assert_called_once()
+
+    client = auth_client(user2)
+    accept_url = reverse(
+        "accept_organization_invitation",
+        kwargs={"org_name": "orga1", "key": membership.key},
+    )
+    response = client.get(accept_url, follow=True)
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    assert (
+        "The invitation has been accepted"
+        in soup.find("div", {"class": "alert-success"}).text
+    )
+    membership.refresh_from_db()
+    assert membership.key is None
+    assert membership.date_joined is not None
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -864,10 +940,29 @@ def test_create_token_view(auth_client, create_user, create_organization):
     )
     assert token.description == "Token for CI/CD"
     assert token.created_by == user
+    assert token.scopes == []
 
     # Check session has new token
     assert "new_token" in client.session
     assert client.session["new_token_name"] == "My API Token"
+
+
+@override_settings(API_SCOPES_ENABLED=True)
+def test_edit_organization_tokens_view_exposes_scope_context(
+    auth_client, create_user, create_organization
+):
+    """Expose API scope settings and choices in the tokens management page context."""
+    user = create_user()
+    organization = create_organization(name="test-org", user=user, owner=True)
+    client = auth_client(user)
+
+    url = reverse("edit_organization_tokens", kwargs={"org_name": organization.name})
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert response.context["api_scopes_enabled"] is True
+    assert len(response.context["available_scopes"]) > 0
+    assert len(response.context["scope_choices"]) > 0
 
 
 def test_revoke_token_view(auth_client, create_user, create_organization):
@@ -1039,6 +1134,39 @@ def test_update_member_role_last_owner(auth_client, create_user, create_organiza
     owner = create_user(username="owner")
     organization = create_organization(name="test-org", user=owner, owner=True)
     membership = Membership.objects.get(user=owner, organization=organization)
+
+    client = auth_client(owner)
+    url = reverse(
+        "update_organization_member_role",
+        kwargs={"org_name": organization.name, "member_id": membership.id},
+    )
+    response = client.post(url, data={"role": Membership.MEMBER})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data == {
+        "status": "error",
+        "message": "You cannot demote the only owner of the organization.",
+    }
+    membership.refresh_from_db()
+    assert membership.role == Membership.OWNER
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_update_member_role_last_owner_with_pending_owner_invite(
+    auth_client, create_user, create_organization
+):
+    """Reject demoting the only joined owner when a pending owner invite exists."""
+    owner = create_user(username="owner")
+    organization = create_organization(name="test-org", user=owner, owner=True)
+    membership = Membership.objects.get(user=owner, organization=organization)
+    invited = create_user(username="invited", email="invited@example.com")
+    Membership.objects.create(
+        user=invited,
+        organization=organization,
+        role=Membership.OWNER,
+        date_joined=None,
+    )
 
     client = auth_client(owner)
     url = reverse(

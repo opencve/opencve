@@ -6,6 +6,8 @@ from projects.utils import (
     format_report_count_html,
     format_report_excerpt_html,
     format_report_cvss_summary_html,
+    report_unique_cves,
+    report_unique_cves_count,
     send_notification_confirmation_email,
     RESULT_TYPE_ICONS,
 )
@@ -176,6 +178,31 @@ def test_build_report_listing_summary_unknown_scores():
     assert summary["count"] == 2
     assert summary["cvss_distribution"]["Low"] == 1
     assert summary["cvss_distribution"]["Unknown"] == 1
+
+
+def test_report_unique_cves_count():
+    """Count distinct CVEs in a report's changes, ignoring duplicates."""
+    changes = [
+        MockChange(MockCve("CVE-2026-0001")),
+        MockChange(MockCve("CVE-2026-0001")),
+        MockChange(MockCve("CVE-2026-0002")),
+    ]
+    assert report_unique_cves_count(changes) == 2
+    assert report_unique_cves_count([]) == 0
+
+
+def test_report_unique_cves():
+    """Return distinct CVEs from report changes, ordered by CVE ID descending."""
+    cve1 = MockCve("CVE-2026-0001")
+    cve2 = MockCve("CVE-2026-0002")
+    changes = [
+        MockChange(cve1),
+        MockChange(cve1),
+        MockChange(cve2),
+    ]
+    cves = report_unique_cves(changes)
+    assert [cve.cve_id for cve in cves] == ["CVE-2026-0002", "CVE-2026-0001"]
+    assert report_unique_cves([]) == []
 
 
 def test_format_report_count_html():
