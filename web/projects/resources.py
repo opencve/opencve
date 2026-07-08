@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, permissions, viewsets
+from rest_framework import mixins, viewsets
 
 from cves.models import Cve
 from cves.serializers import CveListSerializer
@@ -12,29 +12,25 @@ class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProjectSerializer
     lookup_field = "name"
     lookup_url_kwarg = "name"
-
     serializer_classes = {
         "list": ProjectSerializer,
         "retrieve": ProjectDetailSerializer,
     }
 
     def get_queryset(self):
-
-        # Auth with organization token set the organization on the request
         if hasattr(self.request, "authenticated_organization"):
             organization = get_object_or_404(
                 Organization,
                 id=self.request.authenticated_organization.id,
                 name=self.kwargs["organization_name"],
             )
-
-        # Auth with user
         else:
             organization = get_object_or_404(
                 Organization,
                 members=self.request.user,
                 name=self.kwargs["organization_name"],
             )
+        self.organization = organization
         return Project.objects.filter(organization=organization).order_by("name").all()
 
     def get_serializer_class(self):
@@ -45,16 +41,12 @@ class ProjectCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
 
     def get_queryset(self):
-
-        # Auth with organization token set the organization on the request
         if hasattr(self.request, "authenticated_organization"):
             organization = get_object_or_404(
                 Organization,
                 id=self.request.authenticated_organization.id,
                 name=self.kwargs["organization_name"],
             )
-
-        # Auth with user
         else:
             organization = get_object_or_404(
                 Organization,
@@ -64,7 +56,6 @@ class ProjectCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
         project = get_object_or_404(
             Project, organization=organization, name=self.kwargs["project_name"]
         )
-
         vendors = project.subscriptions["vendors"] + project.subscriptions["products"]
         if not vendors:
             return Cve.objects.none()

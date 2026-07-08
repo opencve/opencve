@@ -257,9 +257,11 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
-        "opencve.api.OrganizationTokenAuthentication",
+        "opencve.api.v1.authentication.OrganizationTokenAuthentication",
     ],
-    "DEFAULT_PERMISSION_CLASSES": ["opencve.api.IsAuthenticatedOrOrganizationToken"],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "opencve.api.v1.permissions.IsAuthenticatedOrOrganizationToken"
+    ],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
