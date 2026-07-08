@@ -9,6 +9,7 @@ django-prometheus==2.3.1
 django-auditlog==3.0.0
 djangorestframework==3.15.2
 drf-nested-routers==0.94.1
+drf-spectacular==0.28.0
 
 arrow==1.2.3
 crispy-bootstrap3==2022.1

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "hijack",
     "hijack.contrib.admin",
     "rest_framework",
+    "drf_spectacular",
     "dashboards",
     "changes",
     "cves",
@@ -265,7 +266,31 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "opencve.api.exceptions.api_exception_handler",
 }
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "OpenCVE API v2",
+    "DESCRIPTION": "OpenCVE REST API v2.",
+    "VERSION": "2.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+        "tryItOutEnabled": True,
+    },
+    "ENUM_NAME_OVERRIDES": {},
+    "COMPONENT_SPLIT_REQUEST": True,
+}
+
+# Enforce per-endpoint scopes on tokens
+API_SCOPES_ENABLED = env.bool("API_SCOPES_ENABLED", default=False)
+
+# Paths to the form class used on the organization tokens page
+ORGANIZATION_TOKEN_FORM_CLASS = "organizations.forms.OrganizationAPITokenForm"
+
+# Paths to the view class used on the organization tokens page
+ORGANIZATION_TOKENS_VIEW_CLASS = "organizations.views.OrganizationEditTokensView"
 
 # Number of days to keep the activation link active
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7
