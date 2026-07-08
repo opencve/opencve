@@ -4,8 +4,15 @@ from crispy_forms.layout import HTML, Div, Field, Layout, Submit
 from django import forms
 from django.core.exceptions import ValidationError as DjangoValidationError
 
-from organizations.models import Membership, Organization
+from django.conf import settings
+from django.utils.module_loading import import_string
+
+from organizations.models import Membership, Organization, OrganizationAPIToken
 from organizations.services.organizations import validate_organization_name
+
+
+def get_organization_token_form_class():
+    return import_string(settings.ORGANIZATION_TOKEN_FORM_CLASS)
 
 
 class OrganizationForm(forms.ModelForm):
@@ -78,6 +85,16 @@ class OrganizationAPITokenForm(forms.Form):
         label="Description",
         help_text="Optional description for this token",
     )
+    access_mode = forms.ChoiceField(
+        choices=[
+            ("read", "Read-only"),
+            ("write", "Read-write"),
+        ],
+        initial=OrganizationAPIToken.AccessMode.READ,
+        required=False,
+        label="Access mode",
+        help_text="Read-only tokens cannot create or modify resources via the API.",
+    )
 
     def __init__(self, *args, **kwargs):
         # Pop request if passed (from RequestViewMixin)
@@ -87,8 +104,20 @@ class OrganizationAPITokenForm(forms.Form):
         self.helper.layout = Layout(
             "name",
             "description",
+            "access_mode",
             FormActions(
                 Submit("save", "Create Token"),
                 css_class="pull-right",
             ),
         )
+
+    def get_token_create_kwargs(self):
+        return {
+            "name": self.cleaned_data["name"],
+            "description": self.cleaned_data.get("description") or None,
+            "access_mode": (
+                self.cleaned_data.get("access_mode")
+                or OrganizationAPIToken.AccessMode.READ
+            ),
+            "scopes": self.cleaned_data.get("scopes", []),
+        }
