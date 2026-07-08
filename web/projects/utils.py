@@ -26,6 +26,16 @@ CVSS_SEVERITY_LABEL_CLASS = {
 }
 
 
+def _unique_cves_from_changes(changes):
+    """Return a dictionary of unique CVEs from a list of changes."""
+    unique_cves = {}
+    for change in changes:
+        cve_id = change.cve.cve_id
+        if cve_id not in unique_cves:
+            unique_cves[cve_id] = change.cve
+    return unique_cves
+
+
 def build_report_listing_summary(changes):
     """
     Build count, CVE excerpt and CVSS distribution for a report listing row.
@@ -41,12 +51,7 @@ def build_report_listing_summary(changes):
             "cvss_distribution": empty_distribution,
         }
 
-    unique_cves = {}
-    for change in changes:
-        cve_id = change.cve.cve_id
-        if cve_id not in unique_cves:
-            unique_cves[cve_id] = change.cve
-
+    unique_cves = _unique_cves_from_changes(changes)
     cve_ids = sorted(unique_cves.keys(), reverse=True)
     count = len(cve_ids)
     excerpt_limit = settings.COUNT_EXCERPT
@@ -66,6 +71,17 @@ def build_report_listing_summary(changes):
         "excerpt_remains": max(0, count - excerpt_limit),
         "cvss_distribution": distribution,
     }
+
+
+def report_unique_cves_count(changes):
+    """Return the number of distinct CVEs in a report's changes."""
+    return len(_unique_cves_from_changes(changes))
+
+
+def report_unique_cves(changes):
+    """Return distinct CVE instances from prefetched changes, newest CVE IDs first."""
+    unique_cves = _unique_cves_from_changes(changes)
+    return [unique_cves[cve_id] for cve_id in sorted(unique_cves.keys(), reverse=True)]
 
 
 def format_report_count_html(summary):
