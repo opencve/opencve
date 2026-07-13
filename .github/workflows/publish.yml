@@ -1,0 +1,32 @@
+name: Publish Docker images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write  
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: airflow
+            file: scheduler/Dockerfile
+          - name: opencve
+            file: web/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Build & push ${{ matrix.name }}
+        uses: skriptfabrik/github-actions/build-docker-image@5135b8c16deacf3ca7f3dd018f7c3e9d8d50ddf6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          name: ${{ matrix.name }}
+          
