@@ -1,14 +1,22 @@
 {% extends "organizations/edit_organization_base.html" %}
 {% load crispy_forms_tags %}
 
-{% block tab_content %}
-<div class="callout callout-info">
+{% block sidebar_footer %}
+<div class="box box-primary">
+  <div class="box-header with-border">
+    <h3 class="box-title"><i class="fa fa-info-circle"></i> Information</h3>
+  </div>
+  <div class="box-body">
   <p>Use the API documentation to learn how authentication works, browse available endpoints, and copy example requests.</p>
   <p>
-    <a href="https://docs.opencve.io/api/" target="_blank" rel="noopener">Read the API documentation <i class="fa fa-external-link"></i></a><br>
-    <a href="{% url 'api-v2-docs' %}">Explore the Swagger reference</a>
+    - <a href="https://docs.opencve.io/api/" target="_blank" rel="noopener">Read the API documentation</a><br>
+    - <a href="{% url 'api-v2-docs' %}">Explore the Swagger reference</a>
   </p>
+  </div>
 </div>
+{% endblock %}
+
+{% block tab_content %}
 {% if new_token %}
 <div class="box box-primary">
   <div class="box-body">
@@ -123,3 +131,5 @@
   </div>
 </div>
 {% endblock %}
+
+{% block extra_scripts %}{% endblock %}

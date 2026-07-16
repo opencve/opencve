@@ -1,7 +1,9 @@
 import json
 
 import pytest
+from django.test import override_settings
 
+from organizations.models import OrganizationAPIToken
 from projects.models import Notification
 from projects.services.notifications import NOTIFICATION_NAME_TAKEN_MESSAGE
 from tests.api.v2.conftest import (
@@ -424,3 +426,26 @@ def test_patch_email_change_disables_notification(
     notification = Notification.objects.get(name="email-alerts")
     assert notification.is_enabled is False
     assert notification.configuration["extras"]["email"] == "new@example.com"
+
+
+@pytest.mark.django_db
+@override_settings(API_SCOPES_ENABLED=True)
+def test_missing_notifications_read_scope_returns_403(
+    client, api_context, create_org_token, create_project
+):
+    """List rejects tokens missing the notifications:read scope."""
+    _user, organization, _create_token = api_context
+    create_project(name="prod", organization=organization)
+    token_string = create_org_token(
+        access_mode=OrganizationAPIToken.AccessMode.WRITE,
+        scopes=["projects:write"],
+    )
+
+    response = client.get(notification_list_url(), **bearer(token_string))
+
+    assert_v2_error(
+        response,
+        "missing_scope",
+        status_code=403,
+        required_scope="notifications:read",
+    )

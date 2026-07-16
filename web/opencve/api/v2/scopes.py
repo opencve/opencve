@@ -6,38 +6,44 @@ from organizations.models import OrganizationAPIToken
 
 
 SCOPE_LABELS = {
-    "org:read": "Organization (read)",
-    "org:write": "Organization (write)",
+    "catalog:read": "Vulnerability catalog (read)",
+    "org:read": "Organization settings (read)",
+    "org:write": "Organization settings (write)",
     "members:read": "Members (read)",
     "members:write": "Members (write)",
+    "audit_logs:read": "Audit logs (read)",
     "projects:read": "Projects (read)",
     "projects:write": "Projects (write)",
+    "subscriptions:read": "Subscriptions (read)",
     "subscriptions:write": "Subscriptions (write)",
+    "tracker:read": "CVE tracker (read)",
     "tracker:write": "CVE tracker (write)",
-    "notifications:write": "Notifications (write)",
-    "automations:write": "Automations (write)",
     "reports:read": "Reports (read)",
-    "tags:write": "Tags (write)",
-    "views:write": "Saved views (write)",
-    "tokens:write": "API tokens (write)",
+    "notifications:read": "Notifications (read)",
+    "notifications:write": "Notifications (write)",
+    "automations:read": "Automations (read)",
+    "automations:write": "Automations (write)",
 }
 
 
 class APIScope(str, Enum):
+    CATALOG_READ = "catalog:read"
     ORG_READ = "org:read"
     ORG_WRITE = "org:write"
     MEMBERS_READ = "members:read"
     MEMBERS_WRITE = "members:write"
+    AUDIT_LOGS_READ = "audit_logs:read"
     PROJECTS_READ = "projects:read"
     PROJECTS_WRITE = "projects:write"
+    SUBSCRIPTIONS_READ = "subscriptions:read"
     SUBSCRIPTIONS_WRITE = "subscriptions:write"
+    TRACKER_READ = "tracker:read"
     TRACKER_WRITE = "tracker:write"
-    NOTIFICATIONS_WRITE = "notifications:write"
-    AUTOMATIONS_WRITE = "automations:write"
     REPORTS_READ = "reports:read"
-    TAGS_WRITE = "tags:write"
-    VIEWS_WRITE = "views:write"
-    TOKENS_WRITE = "tokens:write"
+    NOTIFICATIONS_READ = "notifications:read"
+    NOTIFICATIONS_WRITE = "notifications:write"
+    AUTOMATIONS_READ = "automations:read"
+    AUTOMATIONS_WRITE = "automations:write"
 
 
 def get_available_scopes():

@@ -1,9 +1,11 @@
 from unittest.mock import PropertyMock, patch
 
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 
 from changes.models import Change
+from organizations.models import OrganizationAPIToken
 from tests.api.v2.conftest import assert_v2_error, bearer, read_token
 
 
@@ -355,3 +357,22 @@ def test_product_retrieve_not_found(client, read_token, create_cve):
     )
 
     assert_v2_error(response, "not_found", status_code=404)
+
+
+@pytest.mark.django_db
+@override_settings(API_SCOPES_ENABLED=True)
+def test_missing_catalog_read_scope_returns_403(client, create_org_token):
+    """List rejects tokens missing the catalog:read scope."""
+    token_string = create_org_token(
+        access_mode=OrganizationAPIToken.AccessMode.WRITE,
+        scopes=["projects:write"],
+    )
+
+    response = client.get(cve_list_url(), **bearer(token_string))
+
+    assert_v2_error(
+        response,
+        "missing_scope",
+        status_code=403,
+        required_scope="catalog:read",
+    )
