@@ -247,6 +247,29 @@ def test_missing_subscriptions_write_scope_returns_403(
 
 
 @pytest.mark.django_db
+@override_settings(API_SCOPES_ENABLED=True)
+def test_missing_subscriptions_read_scope_returns_403(
+    client, api_context, create_org_token, create_project
+):
+    """GET rejects tokens missing the subscriptions:read scope."""
+    _user, organization, _create_token = api_context
+    create_project(name="prod", organization=organization)
+    token_string = create_org_token(
+        access_mode=OrganizationAPIToken.AccessMode.WRITE,
+        scopes=["projects:write"],
+    )
+
+    response = client.get(subscriptions_url(), **bearer(token_string))
+
+    assert_v2_error(
+        response,
+        "missing_scope",
+        status_code=403,
+        required_scope="subscriptions:read",
+    )
+
+
+@pytest.mark.django_db
 def test_post_idempotent_re_add(client, api_context, write_token, create_project):
     """POST re-adding the same subscription is idempotent."""
     _user, organization, _create_token = api_context

@@ -10,6 +10,7 @@ from changes.models import Change
 from cves.models import Cve, Product, Vendor, Weakness
 from cves.search import BadQueryException, MaxFieldsExceededException, Search
 from opencve.api.v2.mixins import ViewSetMixin
+from opencve.api.v2.scopes import APIScope
 from opencve.api.v2.pagination import pagination_openapi_parameters
 from opencve.api.v2.openapi import (
     CVES_TAG,
@@ -53,10 +54,10 @@ class CveViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
     lookup_field = "cve_id"
     queryset = Cve.objects.order_by("-updated_at").all()
     scope_map = {
-        "list": None,
-        "retrieve": None,
-        "changes": None,
-        "change_detail": None,
+        "list": APIScope.CATALOG_READ,
+        "retrieve": APIScope.CATALOG_READ,
+        "changes": APIScope.CATALOG_READ,
+        "change_detail": APIScope.CATALOG_READ,
     }
 
     def get_serializer_class(self):
@@ -162,8 +163,8 @@ class WeaknessViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Weakness.objects.all().order_by(F("name").desc(nulls_last=True))
     lookup_field = "cwe_id"
     scope_map = {
-        "list": None,
-        "retrieve": None,
+        "list": APIScope.CATALOG_READ,
+        "retrieve": APIScope.CATALOG_READ,
     }
 
 
@@ -174,7 +175,7 @@ class WeaknessViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
 class WeaknessCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
     scope_map = {
-        "list": None,
+        "list": APIScope.CATALOG_READ,
     }
 
     def get_queryset(self):
@@ -197,8 +198,8 @@ class VendorViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
     lookup_field = "name"
     lookup_url_kwarg = "name"
     scope_map = {
-        "list": None,
-        "retrieve": None,
+        "list": APIScope.CATALOG_READ,
+        "retrieve": APIScope.CATALOG_READ,
     }
 
 
@@ -209,7 +210,7 @@ class VendorViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
 class VendorCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
     scope_map = {
-        "list": None,
+        "list": APIScope.CATALOG_READ,
     }
 
     def get_queryset(self):
@@ -237,8 +238,8 @@ class ProductViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
     lookup_field = "name"
     lookup_url_kwarg = "name"
     scope_map = {
-        "list": None,
-        "retrieve": None,
+        "list": APIScope.CATALOG_READ,
+        "retrieve": APIScope.CATALOG_READ,
     }
 
     def get_queryset(self):
@@ -253,7 +254,7 @@ class ProductViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
 class ProductCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = CveListSerializer
     scope_map = {
-        "list": None,
+        "list": APIScope.CATALOG_READ,
     }
 
     def get_queryset(self):

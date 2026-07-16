@@ -3,6 +3,7 @@ import json
 import pytest
 from django.test import override_settings
 
+from organizations.models import OrganizationAPIToken
 from projects.models import Automation
 from tests.api.v2.conftest import (
     assert_v2_error,
@@ -325,3 +326,26 @@ def test_read_only_token_on_post_returns_403(
     )
 
     assert_v2_error(response, "read_only_token", status_code=403)
+
+
+@pytest.mark.django_db
+@override_settings(API_SCOPES_ENABLED=True)
+def test_missing_automations_read_scope_returns_403(
+    client, api_context, create_org_token, create_project
+):
+    """List rejects tokens missing the automations:read scope."""
+    _user, organization, _create_token = api_context
+    create_project(name="prod", organization=organization)
+    token_string = create_org_token(
+        access_mode=OrganizationAPIToken.AccessMode.WRITE,
+        scopes=["projects:write"],
+    )
+
+    response = client.get(automation_list_url(), **bearer(token_string))
+
+    assert_v2_error(
+        response,
+        "missing_scope",
+        status_code=403,
+        required_scope="automations:read",
+    )

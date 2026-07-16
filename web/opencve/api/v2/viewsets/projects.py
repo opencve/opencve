@@ -255,7 +255,7 @@ class ProjectSubscriptionViewSet(
     queryset = Project.objects.none()
     pagination_class = None
     scope_map = {
-        "list": APIScope.PROJECTS_READ,
+        "list": APIScope.SUBSCRIPTIONS_READ,
         "create": APIScope.SUBSCRIPTIONS_WRITE,
         "update": APIScope.SUBSCRIPTIONS_WRITE,
         "destroy": APIScope.SUBSCRIPTIONS_WRITE,
@@ -337,7 +337,7 @@ class ProjectCveViewSet(
 ):
     queryset = Cve.objects.none()
     scope_map = {
-        "list": APIScope.PROJECTS_READ,
+        "list": APIScope.TRACKER_READ,
     }
 
     def get_queryset(self):
@@ -431,7 +431,7 @@ class ProjectCveDetailViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ViewSet
     serializer_class = ProjectCveSerializer
     queryset = Cve.objects.none()
     scope_map = {
-        "retrieve": APIScope.PROJECTS_READ,
+        "retrieve": APIScope.TRACKER_READ,
         "partial_update": APIScope.TRACKER_WRITE,
     }
 
@@ -527,8 +527,8 @@ class NotificationViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ModelViewSe
     lookup_url_kwarg = "notification_name"
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     scope_map = {
-        "list": APIScope.PROJECTS_READ,
-        "retrieve": APIScope.PROJECTS_READ,
+        "list": APIScope.NOTIFICATIONS_READ,
+        "retrieve": APIScope.NOTIFICATIONS_READ,
         "create": APIScope.NOTIFICATIONS_WRITE,
         "partial_update": APIScope.NOTIFICATIONS_WRITE,
         "destroy": APIScope.NOTIFICATIONS_WRITE,
@@ -653,8 +653,8 @@ class AutomationViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ModelViewSet)
     queryset = Automation.objects.none()
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     scope_map = {
-        "list": APIScope.PROJECTS_READ,
-        "retrieve": APIScope.PROJECTS_READ,
+        "list": APIScope.AUTOMATIONS_READ,
+        "retrieve": APIScope.AUTOMATIONS_READ,
         "create": APIScope.AUTOMATIONS_WRITE,
         "partial_update": APIScope.AUTOMATIONS_WRITE,
         "destroy": APIScope.AUTOMATIONS_WRITE,
@@ -737,8 +737,8 @@ class AutomationExecutionViewSet(
     lookup_field = "id"
     lookup_url_kwarg = "execution_id"
     scope_map = {
-        "list": APIScope.PROJECTS_READ,
-        "retrieve": APIScope.PROJECTS_READ,
+        "list": APIScope.AUTOMATIONS_READ,
+        "retrieve": APIScope.AUTOMATIONS_READ,
     }
 
     def _automation_name(self):

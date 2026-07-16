@@ -14,7 +14,9 @@ from tests.api.v2.conftest import (
     assert_v2_error,
     bearer,
     org_url,
+    project_cves_url,
     projects_url,
+    subscriptions_url,
 )
 
 
@@ -110,6 +112,44 @@ def test_projects_write_grants_projects_read(
     assert response.status_code == 200
     assert response.json()["count"] == 1
     assert response.json()["results"][0]["name"] == "prod"
+
+
+@pytest.mark.django_db
+@override_settings(API_SCOPES_ENABLED=True)
+def test_subscriptions_write_grants_subscriptions_read(
+    client, api_context, create_org_token, create_project
+):
+    """Allow subscription reads when the token has subscriptions:write."""
+    _user, organization, _create_token = api_context
+    create_project(name="prod", organization=organization, vendors=["python"])
+    token_string = create_org_token(
+        access_mode=OrganizationAPIToken.AccessMode.WRITE,
+        scopes=["subscriptions:write"],
+    )
+
+    response = client.get(subscriptions_url(), **bearer(token_string))
+
+    assert response.status_code == 200
+    assert response.json() == {"vendors": ["python"], "products": {}}
+
+
+@pytest.mark.django_db
+@override_settings(API_SCOPES_ENABLED=True)
+def test_tracker_write_grants_tracker_read(
+    client, api_context, create_org_token, create_project
+):
+    """Allow tracker list when the token has tracker:write."""
+    _user, organization, _create_token = api_context
+    create_project(name="prod", organization=organization)
+    token_string = create_org_token(
+        access_mode=OrganizationAPIToken.AccessMode.WRITE,
+        scopes=["tracker:write"],
+    )
+
+    response = client.get(project_cves_url(), **bearer(token_string))
+
+    assert response.status_code == 200
+    assert response.json()["count"] == 0
 
 
 @pytest.mark.django_db

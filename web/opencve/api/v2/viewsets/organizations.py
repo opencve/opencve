@@ -179,7 +179,7 @@ class OrganizationAuditLogViewSet(
     serializer_class = AuditLogEntrySerializer
     queryset = LogEntry.objects.none()
     scope_map = {
-        "list": APIScope.ORG_READ,
+        "list": APIScope.AUDIT_LOGS_READ,
     }
 
     def get_queryset(self):
