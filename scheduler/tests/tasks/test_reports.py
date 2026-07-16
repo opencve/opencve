@@ -535,6 +535,117 @@ def test_clean_reports_deletes_expired(web_pg_hook, override_conf):
     assert remaining_links == [(new_report_id,)]
 
 
+@pytest.mark.web_db
+def test_clean_reports_clears_automation_execution_report_links(
+    web_pg_hook, override_conf
+):
+    """Expired reports linked to automation executions must be cleaned without FK errors."""
+    override_conf("opencve", "reports_retention", "1")
+
+    import includes.constants as constants
+    import includes.tasks.reports as reports_module
+
+    importlib.reload(constants)
+    importlib.reload(reports_module)
+
+    org_id = "11111111-1111-1111-1111-111111111111"
+    project_id = "22222222-2222-2222-2222-222222222222"
+    automation_id = "33333333-3333-3333-3333-333333333333"
+    expired_report_id = "44444444-4444-4444-4444-444444444444"
+    recent_report_id = "55555555-5555-5555-5555-555555555555"
+    expired_execution_id = "66666666-6666-6666-6666-666666666666"
+    recent_execution_id = "77777777-7777-7777-7777-777777777777"
+
+    web_pg_hook.run(
+        f"""
+        INSERT INTO opencve_organizations (id, created_at, updated_at, name)
+        VALUES ('{org_id}', now(), now(), 'orga1');
+
+        INSERT INTO opencve_projects (
+            id, created_at, updated_at, name, description, subscriptions, organization_id, active
+        )
+        VALUES (
+            '{project_id}', now(), now(), 'orga1-project1', '',
+            '{{"vendors": [], "products": []}}'::jsonb, '{org_id}', 't'
+        );
+        """
+    )
+    web_pg_hook.run(
+        f"""
+        INSERT INTO opencve_automations (
+            id, created_at, updated_at, name, trigger_type, frequency,
+            schedule_timezone, schedule_time, schedule_weekday,
+            configuration, project_id, is_enabled
+        )
+        VALUES (
+            '{automation_id}', now(), now(), 'Daily report', 'report', 'daily',
+            'UTC', '09:00:00', NULL, '{{}}'::jsonb, '{project_id}', true
+        );
+        """
+    )
+    web_pg_hook.run(
+        f"""
+        INSERT INTO opencve_reports (
+            id, created_at, updated_at, seen, day, project_id, ai_summary,
+            period_type, period_timezone, automation_id
+        )
+        VALUES
+            (
+                '{expired_report_id}', now() - interval '2 months',
+                now() - interval '2 months', 'f', (now() - interval '2 months')::date,
+                '{project_id}', NULL, 'daily', 'UTC', '{automation_id}'
+            ),
+            (
+                '{recent_report_id}', now() - interval '20 days',
+                now() - interval '20 days', 'f', (now() - interval '20 days')::date,
+                '{project_id}', NULL, 'daily', 'UTC', '{automation_id}'
+            );
+        """
+    )
+    web_pg_hook.run(
+        f"""
+        INSERT INTO opencve_automation_executions (
+            id, created_at, updated_at, executed_at, window_start, window_end,
+            matched_cves_count, automation_id, report_id
+        )
+        VALUES
+            (
+                '{expired_execution_id}', now(), now(),
+                now() - interval '2 months', now() - interval '2 months',
+                now() - interval '2 months' + interval '1 day', 0,
+                '{automation_id}', '{expired_report_id}'
+            ),
+            (
+                '{recent_execution_id}', now(), now(),
+                now() - interval '20 days', now() - interval '20 days',
+                now() - interval '20 days' + interval '1 day', 0,
+                '{automation_id}', '{recent_report_id}'
+            );
+        """
+    )
+
+    reports_module.clean_reports()
+
+    remaining_reports = {
+        str(row[0])
+        for row in web_pg_hook.get_records("SELECT id FROM opencve_reports;")
+    }
+    assert expired_report_id not in remaining_reports
+    assert recent_report_id in remaining_reports
+
+    execution_links = web_pg_hook.get_records(
+        """
+        SELECT id::text, report_id::text
+        FROM opencve_automation_executions
+        ORDER BY id;
+        """
+    )
+    assert execution_links == [
+        (expired_execution_id, None),
+        (recent_execution_id, recent_report_id),
+    ]
+
+
 def test_summarize_weekly_reports_missing_api_key():
     """Test summarize_weekly_reports with missing LLM API key"""
     mock_context = {
