@@ -380,6 +380,13 @@ SQL_DELETE_EXPIRED_REPORTS = """
 WITH expired AS (
   {expired_select}
 ),
+cleared_executions AS (
+  UPDATE opencve_automation_executions ae
+  SET report_id = NULL
+  FROM expired e
+  WHERE ae.report_id = e.id
+  RETURNING ae.id
+),
 deleted_changes AS (
   DELETE FROM opencve_reports_changes rc
   USING expired e
