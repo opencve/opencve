@@ -308,6 +308,7 @@ class SlackNotifier(BaseNotifier):
         title = payload["title"]
         organization = payload["organization"]
         project = payload["project"]
+        web_url = conf.get("opencve", "web_base_url")
 
         # Group changes by CVE ID
         cves = {}
@@ -372,7 +373,7 @@ class SlackNotifier(BaseNotifier):
 
             for cve in grouped[severity]:
                 text = (
-                    f"*<https://app.opencve.io/cve/{cve['cve_id']}|{cve['cve_id']}>*\n"
+                    f"*<{web_url}/cve/{cve['cve_id']}|{cve['cve_id']}>*\n"
                     f"*CVSS:* {cve['score'] or 'N/A'} | "
                     f"*Events:* {', '.join(cve['events']) or 'None'} | "
                     f"*Subscriptions:* {cve['subscriptions']}\n"
