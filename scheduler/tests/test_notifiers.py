@@ -730,6 +730,64 @@ def test_slack_notifier_format_slack_blocks(tests_path, tmp_path_factory):
     assert "test-project" in first_block["text"]["text"]
 
 
+def test_slack_notifier_format_slack_blocks_uses_web_base_url(
+    tests_path, tmp_path_factory
+):
+    """CVE links in Slack blocks use the configured web_base_url."""
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {
+                "webhook_url": "https://hooks.slack.com/webhook",
+            }
+        },
+    }
+
+    change_details = {
+        "114e2218-49c5-43fe-bcd7-18a1adc17a25": {
+            "change_id": "114e2218-49c5-43fe-bcd7-18a1adc17a25",
+            "change_path": "0001/CVE-2024-6962.v1.json",
+            "cve_vendors": ["foo"],
+            "cve_id": "CVE-2024-6962",
+            "cve_metrics": {},
+        }
+    }
+
+    repo = TestRepo("changes", tests_path, tmp_path_factory)
+    repo.commit(["0001/CVE-2024-6962.v1.json"], hour=1, minute=00)
+
+    notifier = SlackNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=["114e2218-49c5-43fe-bcd7-18a1adc17a25"],
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", repo.repo_path), patch(
+        "includes.notifiers.conf"
+    ) as mock_conf:
+        mock_conf.get.return_value = "https://opencve.example.com"
+        messages = notifier.format_slack_blocks()
+
+    block_texts = [
+        block["text"]["text"]
+        for message in messages
+        for block in message["blocks"]
+        if block.get("type") == "section" and "text" in block
+    ]
+    combined = "\n".join(block_texts)
+    assert "*<https://opencve.example.com/cve/CVE-2024-6962|CVE-2024-6962>*" in combined
+    assert "app.opencve.io" not in combined
+
+
 def test_slack_notifier_format_slack_blocks_multiple_severities(
     tests_path, tmp_path_factory
 ):
