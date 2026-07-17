@@ -307,16 +307,12 @@ def metric_class_from_ssvc(metric, value):
 
 @register.simple_tag(takes_context=True)
 def query_params_url(context, *args):
-    query_params = dict(context["request"].GET)
-    for key, value in query_params.items():
-        if isinstance(value, list):
-            query_params[key] = value[0]
+    query_params = context["request"].GET.copy()
 
-    # Update query values with new ones provided in the tag
-    grouped_params = {args[i]: args[i + 1] for i in range(0, len(args), 2)}
-    query_params.update(grouped_params)
+    for i in range(0, len(args), 2):
+        query_params[args[i]] = args[i + 1]
 
-    return urlencode(query_params)
+    return query_params.urlencode()
 
 
 @register.filter

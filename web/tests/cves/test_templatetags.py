@@ -1,3 +1,5 @@
+from django.http import HttpRequest, QueryDict
+
 from cves.templatetags.opencve_extras import (
     get_item,
     get_active_cvss_tab,
@@ -6,7 +8,36 @@ from cves.templatetags.opencve_extras import (
     advisory_source_display,
     tracker_status_badge_class,
     enrichment_scores_tooltip,
+    query_params_url,
 )
+
+
+def test_query_params_url_preserves_multiple_values():
+    """Repeated query params are kept when building pagination URLs."""
+    request = HttpRequest()
+    request.GET = QueryDict(
+        "assignee=&status=to_evaluate&status=analysis_in_progress&view=&query="
+    )
+    context = {"request": request}
+
+    result = query_params_url(context, "page", 2)
+
+    assert "status=to_evaluate" in result
+    assert "status=analysis_in_progress" in result
+    assert "page=2" in result
+
+
+def test_query_params_url_updates_page_while_keeping_filters():
+    """Single-value filters are kept when overriding the page query param."""
+    request = HttpRequest()
+    request.GET = QueryDict("vendor=debian&page=1")
+    context = {"request": request}
+
+    result = query_params_url(context, "page", 2)
+
+    assert "vendor=debian" in result
+    assert "page=2" in result
+    assert "page=1" not in result
 
 
 def test_get_item():
