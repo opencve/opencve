@@ -325,6 +325,9 @@ def test_generate_email_previews(tests_path, tmp_path_factory):
     txt_template = env.get_template("email_notification.txt")
     txt_content = txt_template.render(context)
 
+    assert txt_content.count("Manage notification settings:") == 1
+    assert txt_content.count("&copy;") == 1
+
     # Save previews
     previews_dir = pathlib.Path(__file__).parent / "previews"
     previews_dir.mkdir(exist_ok=True)
@@ -400,6 +403,17 @@ def test_email_notifier_template_context_created_by_and_unsubscribe_url(
     assert context["unsubscribe_url"] == (
         "https://opencve.example.com/notifications/unsubscribe/my-unsubscribe-token"
     )
+
+    env = Environment(
+        loader=FileSystemLoader(
+            pathlib.Path(__file__).parent.parent / "dags/templates"
+        ),
+        autoescape=select_autoescape(),
+    )
+    txt_content = env.get_template("email_notification.txt").render(context)
+    assert txt_content.count("Manage notification settings:") == 1
+    assert txt_content.count("Unsubscribe from this notification:") == 1
+    assert "creator@example.com" in txt_content
 
 
 # Tests for BaseNotifier utility methods
