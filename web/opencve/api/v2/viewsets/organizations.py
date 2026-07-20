@@ -4,10 +4,12 @@ from rest_framework.response import Response
 
 from opencve.api.v2.scopes import APIScope
 from opencve.api.v2.openapi import (
+    AUDIT_LOGS_TAG,
     MEMBERSHIP_CREATE_REQUEST_EXAMPLE,
     MEMBERSHIP_CREATE_RESPONSE_EXAMPLE,
     MEMBERSHIP_UPDATE_REQUEST_EXAMPLE,
     MEMBERSHIP_UPDATE_RESPONSE_EXAMPLE,
+    MEMBERS_TAG,
     ORGANIZATIONS_TAG,
     ORGANIZATION_UPDATE_REQUEST_EXAMPLE,
     ORGANIZATION_UPDATE_RESPONSE_EXAMPLE,
@@ -88,7 +90,7 @@ class OrganizationViewSet(
         return OrganizationSerializer
 
 
-@extend_schema(parameters=ORG_PATH_PARAMS, tags=[ORGANIZATIONS_TAG])
+@extend_schema(parameters=ORG_PATH_PARAMS, tags=[MEMBERS_TAG])
 @extend_schema_view(
     list=extend_schema(summary="List members of an organization."),
     create=extend_schema(
@@ -166,7 +168,7 @@ class OrganizationMemberViewSet(
         remove_member(membership=instance)
 
 
-@extend_schema(parameters=ORG_PATH_PARAMS, tags=[ORGANIZATIONS_TAG])
+@extend_schema(parameters=ORG_PATH_PARAMS, tags=[AUDIT_LOGS_TAG])
 @extend_schema_view(
     list=extend_schema(summary="List audit log entries for an organization."),
 )

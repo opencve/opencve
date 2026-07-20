@@ -24,27 +24,32 @@ from opencve.api.v2.openapi import (
     AUTOMATION_EXECUTION_DETAIL_RESPONSE_EXAMPLE,
     AUTOMATION_UPDATE_REQUEST_EXAMPLE,
     AUTOMATION_UPDATE_RESPONSE_EXAMPLE,
+    AUTOMATIONS_TAG,
     NOTIFICATION_CREATE_REQUEST_EXAMPLE,
     NOTIFICATION_RESPONSE_EXAMPLE,
     NOTIFICATION_UPDATE_REQUEST_EXAMPLE,
+    NOTIFICATIONS_TAG,
     ORG_PATH_PARAMS,
     ORG_PROJECT_AUTOMATION_PATH_PARAMS,
     ORG_PROJECT_CVE_PATH_PARAMS,
     ORG_PROJECT_PATH_PARAMS,
     ORG_PROJECT_REPORT_PATH_PARAMS,
-    PROJECT_CVE_DETAIL_RESPONSE_EXAMPLE,
-    PROJECT_CVE_TRACKER_UPDATE_REQUEST_EXAMPLE,
-    PROJECTS_TAG,
     PROJECT_CREATE_EXAMPLE,
     PROJECT_CREATE_RESPONSE_EXAMPLE,
+    PROJECT_CVE_DETAIL_RESPONSE_EXAMPLE,
+    PROJECT_CVE_TRACKER_UPDATE_REQUEST_EXAMPLE,
     PROJECT_DETAIL_RESPONSE_EXAMPLE,
     PROJECT_UPDATE_EXAMPLE,
+    PROJECTS_TAG,
     REPORT_DETAIL_RESPONSE_EXAMPLE,
     REPORT_LIST_ITEM_EXAMPLE,
+    REPORTS_TAG,
     SUBSCRIPTION_CREATE_REQUEST_EXAMPLE,
     SUBSCRIPTION_DELETE_QUERY_PARAMS,
     SUBSCRIPTION_LIST_RESPONSE_EXAMPLE,
     SUBSCRIPTION_REPLACE_REQUEST_EXAMPLE,
+    SUBSCRIPTIONS_TAG,
+    TRACKER_TAG,
 )
 from opencve.api.v2.serializers import (
     AutomationExecutionDetailSerializer,
@@ -221,7 +226,7 @@ class ProjectViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ModelViewSet):
         return Response(data)
 
 
-@extend_schema(tags=[PROJECTS_TAG])
+@extend_schema(tags=[SUBSCRIPTIONS_TAG])
 @extend_schema(parameters=ORG_PROJECT_PATH_PARAMS)
 @extend_schema_view(
     create=extend_schema(
@@ -327,7 +332,7 @@ class ProjectSubscriptionViewSet(
         return self._subscriptions_response(project)
 
 
-@extend_schema(tags=[PROJECTS_TAG])
+@extend_schema(tags=[TRACKER_TAG])
 @extend_schema(parameters=ORG_PROJECT_PATH_PARAMS)
 @extend_schema_view(
     list=extend_schema(summary="List CVEs tracked by a project."),
@@ -412,13 +417,13 @@ class ProjectCveViewSet(
 @extend_schema_view(
     retrieve=extend_schema(
         summary="Retrieve a CVE tracked by a project.",
-        tags=[PROJECTS_TAG],
+        tags=[TRACKER_TAG],
         responses={200: ProjectCveSerializer},
         examples=[PROJECT_CVE_DETAIL_RESPONSE_EXAMPLE],
     ),
     partial_update=extend_schema(
         summary="Update CVE tracker fields for a project.",
-        tags=[PROJECTS_TAG],
+        tags=[TRACKER_TAG],
         request=CveTrackerUpdateSerializer,
         responses={200: ProjectCveSerializer},
         examples=[
@@ -492,7 +497,7 @@ class ProjectCveDetailViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ViewSet
         return Response(ProjectCveSerializer(cve, context=context).data)
 
 
-@extend_schema(parameters=ORG_PROJECT_PATH_PARAMS, tags=[PROJECTS_TAG])
+@extend_schema(parameters=ORG_PROJECT_PATH_PARAMS, tags=[NOTIFICATIONS_TAG])
 @extend_schema_view(
     list=extend_schema(summary="List notifications for a project."),
     create=extend_schema(
@@ -619,7 +624,7 @@ class NotificationViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ModelViewSe
             send_notification_confirmation_email(notification, self.request)
 
 
-@extend_schema(tags=[PROJECTS_TAG])
+@extend_schema(tags=[AUTOMATIONS_TAG])
 @extend_schema(parameters=ORG_PROJECT_PATH_PARAMS)
 @extend_schema_view(
     list=extend_schema(summary="List automations for a project."),
@@ -719,7 +724,7 @@ class AutomationViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ModelViewSet)
         return Response(AutomationSerializer(instance).data)
 
 
-@extend_schema(tags=[PROJECTS_TAG])
+@extend_schema(tags=[AUTOMATIONS_TAG])
 @extend_schema(parameters=ORG_PROJECT_AUTOMATION_PATH_PARAMS)
 @extend_schema_view(
     list=extend_schema(summary="List execution history for an automation."),
@@ -773,7 +778,7 @@ class AutomationExecutionViewSet(
         return Response(data)
 
 
-@extend_schema(tags=[PROJECTS_TAG])
+@extend_schema(tags=[REPORTS_TAG])
 @extend_schema(parameters=ORG_PROJECT_PATH_PARAMS)
 @extend_schema_view(
     list=extend_schema(
