@@ -28,13 +28,13 @@
 
                     <div class="navbar-custom-menu">
                         <ul class="nav navbar-nav">
-                            {% if user.is_authenticated %}
                             <li>
                                 <a href="{% url 'api-v2-docs' %}" target="_blank" rel="noopener noreferrer">
                                     <i class="fa fa-code"></i> <span class="hidden-xs">API Docs</span>
                                     <span class="navbar-new-badge">New</span>
                                 </a>
                             </li>
+                            {% if user.is_authenticated %}
                             <li class="user user-menu">
                                 <a href="{% url 'settings_profile' %}">
                                     <img src="{{ user.email | gravatar_url:30 }}" class="user-image" alt="User Image">
