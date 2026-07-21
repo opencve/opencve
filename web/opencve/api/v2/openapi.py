@@ -844,10 +844,14 @@ class SpectacularAPIView(DrfSpectacularAPIView):
         "TITLE": "OpenCVE API v2",
         "VERSION": "2026-06-24",
         "DESCRIPTION": (
-            "OpenCVE REST API v2.\n\n"
-            "All endpoints live under `/api/v2/` and require a Bearer organization "
-            "API token (`opc_org.<token_id>.<secret>`).\n\n"
-            "Use the **Authorize** button to set your token."
+            "OpenCVE API v2 provides read and write access to the CVE catalog, "
+            "organizations, projects, subscriptions, CVE triage, notifications, "
+            "automations, reports, and audit logs.\n\n"
+            "All endpoints are available under `/api/v2/` and require an "
+            "Organization API Token using Bearer authentication.\n\n"
+            "[Read the API documentation →](https://docs.opencve.io/api/)\n\n"
+            "Use the **Authorize** button to authenticate and try requests directly "
+            "from this page."
         ),
         "PREPROCESSING_HOOKS": [
             "opencve.api.v2.openapi.preprocessing_filter",
