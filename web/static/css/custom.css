@@ -46,6 +46,28 @@
     font-size: 16px;
   }
 
+  .skin-opencve .main-header .navbar .navbar-new-badge {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 5px;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #7767da;
+    background-color: rgba(119, 103, 218, 0.12);
+    border-radius: 3px;
+    vertical-align: middle;
+  }
+
+  .skin-opencve .main-header .navbar .nav > li > a:hover .navbar-new-badge,
+  .skin-opencve .main-header .navbar .nav > li > a:focus .navbar-new-badge,
+  .skin-opencve .main-header .navbar .nav > li > a:active .navbar-new-badge {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.18);
+  }
+
   .skin-opencve .main-header .navbar .navbar-title a.navbar-title-cve-link {
     color: inherit;
     text-decoration: none;
