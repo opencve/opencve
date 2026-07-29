@@ -234,6 +234,18 @@ AUDITLOG_INCLUDE_TRACKING_MODELS = (
         "serialize_data": True,
         "serialize_auditlog_fields_only": True,
     },
+    {
+        "model": "projects.Automation",
+        "exclude_fields": ["updated_at", "last_execution_at"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
+    },
+    {
+        "model": "projects.CveComment",
+        "exclude_fields": ["updated_at", "edited"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
+    },
     {"model": "users.UserTag", "exclude_fields": ["updated_at"]},
     {"model": "users.CveTag", "exclude_fields": ["updated_at"]},
     {

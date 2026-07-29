@@ -4,6 +4,8 @@ RESOURCE_LABELS = {
     "organizations.membership": "Membership",
     "organizations.organization": "Organization",
     "organizations.organizationapitoken": "API Token",
+    "projects.automation": "Automation",
+    "projects.cvecomment": "CVE Comment",
     "projects.cvetracker": "CVE Tracker",
     "projects.notification": "Notification",
     "projects.project": "Project",

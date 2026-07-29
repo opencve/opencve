@@ -3,6 +3,7 @@ import json
 import pytest
 from auditlog.models import LogEntry
 from django.test import override_settings
+from django.urls import reverse
 
 from organizations.models import OrganizationAPIToken
 from tests.api.v2.conftest import (
@@ -75,3 +76,40 @@ def test_missing_audit_logs_read_scope_returns_403(
         status_code=403,
         required_scope="audit_logs:read",
     )
+
+
+@pytest.mark.django_db
+def test_list_returns_automation_entries_after_update(
+    client, api_context, write_token, create_project, create_automation
+):
+    """List returns audit log entries after an automation update."""
+    _user, _organization, _create_token = api_context
+    project = create_project(name="prod", organization=_organization)
+    create_automation(name="weekly-report", project=project)
+
+    patch_response = client.patch(
+        reverse(
+            "v2-project-automation-detail",
+            kwargs={
+                "organization_name": _organization.name,
+                "project_name": project.name,
+                "name": "weekly-report",
+            },
+        ),
+        data=json.dumps({"is_enabled": False}),
+        content_type="application/json",
+        **bearer(write_token),
+    )
+    assert patch_response.status_code == 200
+
+    response = client.get(audit_logs_url(), **bearer(write_token))
+
+    assert response.status_code == 200
+    data = response.json()
+    automation_updates = [
+        entry
+        for entry in data["results"]
+        if entry.get("resource") == "Automation"
+        and entry.get("action") == LogEntry.Action.UPDATE
+    ]
+    assert automation_updates

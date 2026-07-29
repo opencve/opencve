@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 
 from django.apps import apps
@@ -10,7 +11,7 @@ from cves.constants import PRODUCT_SEPARATOR
 from opencve.constants import RESOURCE_LABELS
 from opencve.utils import normalize_pk_for_model, safe_load_json, get_resource_label
 from organizations.models import Membership, Organization, OrganizationAPIToken
-from projects.models import CveTracker, Notification, Project
+from projects.models import Automation, CveComment, CveTracker, Notification, Project
 from views.models import View as SavedView
 
 # Fields to hide for all resources
@@ -21,7 +22,19 @@ FIELDS_ALWAYS_HIDDEN = frozenset({"updated_at"})
 # You can configure visibility per model (string key); applies to CREATE and DELETE.
 # If no entry is found, all fields (except FIELDS_ALWAYS_HIDDEN) are shown.
 DISPLAY_FIELDS_BY_RESOURCE_ACTION = {
+    "automation": (
+        "name",
+        "is_enabled",
+        "trigger_type",
+        "frequency",
+        "schedule_time",
+        "schedule_weekday",
+        "schedule_timezone",
+        "project",
+        "configuration",
+    ),
     "cvetracker": ("cve", "project", "assignee", "status"),
+    "cvecomment": ("body", "cve", "project", "author"),
     "membership": ("role", "email", "date_joined"),
     "organizationapitoken": ("name", "is_active", "description"),
     "view": ("name", "query", "privacy"),
@@ -49,6 +62,7 @@ def _user_repr(obj):
 
 # (content_type.model) -> callable(obj) -> str for the "Target" column
 OBJECT_REPR_FUNCTIONS = {
+    "automation": _name_repr,
     "membership": _membership_repr,
     "organizationapitoken": _name_repr,
     "view": _name_repr,
@@ -180,6 +194,14 @@ def _format_notification_configuration_value(raw_value):
         return raw_value
 
     return "\n".join(lines)
+
+
+def _format_json_value(raw_value):
+    """Pretty-print JSON field values for audit log display."""
+    data = safe_load_json(raw_value)
+    if data is None:
+        return raw_value
+    return json.dumps(data, indent=2, sort_keys=True)
 
 
 def _format_notification_configuration_changes(before_raw, after_raw):
@@ -357,16 +379,33 @@ def get_displayable_changes(entry):
             )
             continue
 
+        elif model == "automation" and field_name == "configuration":
+            payload = {"is_json_configuration": True}
+            if action == 1 and after is not None:
+                payload["before"] = _format_json_value(before)
+                payload["after"] = _format_json_value(after)
+            elif action == 2:
+                payload["value"] = _format_json_value(before)
+            else:
+                payload["value"] = _format_json_value(
+                    after if after is not None else before
+                )
+            filtered[field_name] = payload
+            continue
+
         # Resolve FK IDs to human-readable names for display
         elif (
-            model == "notification" or model == "cvetracker"
+            model in ("notification", "cvetracker", "automation", "cvecomment")
         ) and field_name == "project":
             before, after = _resolve_pair(before, after, _resolve_project_id_to_name)
 
-        elif model == "cvetracker" and field_name == "cve":
+        elif model in ("cvetracker", "cvecomment") and field_name == "cve":
             before, after = _resolve_pair(before, after, _resolve_cve_id_to_display)
 
         elif model == "cvetracker" and field_name == "assignee":
+            before, after = _resolve_pair(before, after, _resolve_user_id_to_display)
+
+        elif model == "cvecomment" and field_name == "author":
             before, after = _resolve_pair(before, after, _resolve_user_id_to_display)
 
         filtered[field_name] = [before, after] if after is not None else [before]
@@ -411,6 +450,18 @@ def get_organization_audit_log_pks(organization):
                 project__organization=organization
             ).values_list("pk", flat=True)
         ],
+        Automation: [
+            str(pk)
+            for pk in Automation.objects.filter(
+                project__organization=organization
+            ).values_list("pk", flat=True)
+        ],
+        CveComment: [
+            str(pk)
+            for pk in CveComment.objects.filter(
+                project__organization=organization
+            ).values_list("pk", flat=True)
+        ],
     }
 
 
@@ -442,10 +493,10 @@ def extend_audit_log_pks_with_deleted(organization, pks_dict):
         if pk not in result[SavedView]:
             result[SavedView].append(pk)
 
-    # Notification and CveTracker are linked via project
+    # Notification, CveTracker, Automation and CveComment are linked via project
     project_ids = result[Project]
     if project_ids:
-        for model in (Notification, CveTracker):
+        for model in (Notification, CveTracker, Automation, CveComment):
             ct = ContentType.objects.get_for_model(model)
             for pk in LogEntry.objects.filter(
                 delete_q,

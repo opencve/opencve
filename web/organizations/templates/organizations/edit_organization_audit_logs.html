@@ -202,6 +202,12 @@
                                     <span class="text-muted">—</span>
                                   {% endif %}
                                 {% endwith %}
+                              {% elif values.is_json_configuration %}
+                                {% if values.value %}
+                                  <pre class="auditlog-json">{{ values.value }}</pre>
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
                               {% elif entry.content_type.model == "notification" and field == "configuration" and values.is_notification_configuration %}
                                 {% if values.before %}
                                   {{ values.before|linebreaksbr }}
@@ -240,6 +246,12 @@
                                     <span class="text-muted">—</span>
                                   {% endif %}
                                 {% endwith %}
+                              {% elif values.is_json_configuration %}
+                                {% if values.value %}
+                                  <pre class="auditlog-json">{{ values.value }}</pre>
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
                               {% elif entry.content_type.model == "notification" and field == "configuration" and values.is_notification_configuration %}
                                 {% if values.before %}
                                   {{ values.before|linebreaksbr }}
@@ -278,6 +290,12 @@
                                     <span class="text-muted">—</span>
                                   {% endif %}
                                 {% endwith %}
+                              {% elif values.is_json_configuration %}
+                                {% if values.before %}
+                                  <pre class="auditlog-json">{{ values.before }}</pre>
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
                               {% elif entry.content_type.model == "notification" and field == "configuration" and values.is_notification_configuration %}
                                 {% if values.before %}
                                   {{ values.before|linebreaksbr }}
@@ -319,6 +337,12 @@
                                     <span class="text-muted">—</span>
                                   {% endif %}
                                 {% endwith %}
+                              {% elif values.is_json_configuration %}
+                                {% if values.after %}
+                                  <pre class="auditlog-json">{{ values.after }}</pre>
+                                {% else %}
+                                  <span class="text-muted">—</span>
+                                {% endif %}
                               {% elif entry.content_type.model == "notification" and field == "configuration" and values.is_notification_configuration %}
                                 {% if values.after %}
                                   {{ values.after|linebreaksbr }}

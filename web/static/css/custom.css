@@ -2487,6 +2487,18 @@ tr.auditlog-detail-row > td {
   padding: 8px 12px;
   word-break: break-word;
 }
+.auditlog-json {
+  white-space: pre-wrap;
+  word-break: normal;
+  margin: 0;
+  padding: 8px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 12px;
+  max-height: 300px;
+  overflow: auto;
+}
 
 
 .try-result-code {

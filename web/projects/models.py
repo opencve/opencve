@@ -423,3 +423,10 @@ class CveComment(BaseModel):
     class Meta:
         db_table = "opencve_cve_comments"
         ordering = ["created_at"]
+
+    def __str__(self):
+        cve = getattr(self, "cve", None)
+        cve_id = getattr(cve, "cve_id", None) if cve is not None else None
+        if cve_id:
+            return f"Comment on {cve_id}"
+        return str(self.id)
