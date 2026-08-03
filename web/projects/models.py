@@ -428,5 +428,5 @@ class CveComment(BaseModel):
         cve = getattr(self, "cve", None)
         cve_id = getattr(cve, "cve_id", None) if cve is not None else None
         if cve_id:
-            return f"Comment on {cve_id}"
+            return f"{cve_id}"
         return str(self.id)

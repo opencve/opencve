@@ -367,7 +367,7 @@ def test_cvecomment_delete_display_object_repr_uses_cve_id(
 
     assert (
         get_display_object_repr_for_entries([delete_entry])[delete_entry.id]
-        == "Comment on CVE-2021-34181"
+        == "CVE-2021-34181"
     )
 
 
