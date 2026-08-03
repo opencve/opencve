@@ -119,6 +119,7 @@
                                 <td class="col-md-1 rowspaned" rowspan="{{ node.cpeMatch|length }}">OR</td>
                                 {% endif %}
                                 <td>{{ cpe.criteria }}</td>
+                                <td class="text-muted cpe-version-range">{{ cpe|cpe_version_range|default:"—" }}</td>
                             </tr>
                             {% endfor %}
                         </table>
