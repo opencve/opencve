@@ -27,7 +27,6 @@ class User(BaseModel, AbstractUser):
         memberships = (
             Membership.objects.filter(
                 user=self,
-                role__in=[Membership.OWNER, Membership.MEMBER],
                 date_joined__isnull=False,
             )
             .order_by("organization__name")

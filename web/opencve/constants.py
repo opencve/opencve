@@ -9,5 +9,6 @@ RESOURCE_LABELS = {
     "projects.cvetracker": "CVE Tracker",
     "projects.notification": "Notification",
     "projects.project": "Project",
+    "projects.projectmembership": "Project Membership",
     "views.view": "View",
 }

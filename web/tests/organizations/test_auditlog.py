@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import pytest
 from auditlog.models import LogEntry
 from django.contrib.contenttypes.models import ContentType
+from django.utils.timezone import now
 
 from cves.constants import PRODUCT_SEPARATOR
 from organizations.auditlog import (
@@ -30,7 +31,14 @@ from organizations.auditlog import (
 from dashboards.models import Dashboard
 from organizations.models import Membership, Organization, OrganizationAPIToken
 from opencve.constants import RESOURCE_LABELS
-from projects.models import Automation, CveComment, CveTracker, Notification, Project
+from projects.models import (
+    Automation,
+    CveComment,
+    CveTracker,
+    Notification,
+    Project,
+    ProjectMembership,
+)
 from views.models import View as SavedView
 
 
@@ -337,7 +345,7 @@ def test_get_displayable_changes_cvecomment_resolves_fk_fields(
         ]
     )
     assert display
-    assert next(iter(display.values())) == "Comment on CVE-2021-34181"
+    assert next(iter(display.values())) == "CVE-2021-34181"
 
 
 @pytest.mark.django_db
@@ -409,6 +417,183 @@ def test_get_display_object_repr_for_entries_uses_model_specific_formatters(
         str(membership),
     }
     assert mapping[e_project.id] == project.name
+
+
+@pytest.mark.django_db
+def test_get_display_object_repr_for_entries_project_membership(
+    create_user, create_organization, create_project
+):
+    """Project membership target uses the org member email or username."""
+    owner = create_user(username="owner", email="owner@example.com")
+    org = create_organization(name="org1", user=owner)
+    project = create_project(name="alpha", organization=org)
+
+    member = create_user(username="alice", email="alice@example.com")
+    membership = Membership.objects.create(
+        user=member,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    project_membership = ProjectMembership.objects.create(
+        project=project,
+        membership=membership,
+        role=ProjectMembership.CONTRIBUTOR,
+    )
+
+    entry = _create_log_entry_for_obj(
+        project_membership, object_repr=str(project_membership)
+    )
+    mapping = get_display_object_repr_for_entries([entry])
+
+    assert mapping[entry.id] in {member.email, member.username}
+
+
+@pytest.mark.django_db
+def test_get_displayable_changes_projectmembership(
+    create_user, create_organization, create_project
+):
+    """Show project name and role only for project membership audit entries."""
+    owner = create_user(username="owner", email="owner@example.com")
+    org = create_organization(name="org1", user=owner)
+    project = create_project(name="alpha", organization=org)
+
+    member = create_user(username="alice", email="alice@example.com")
+    membership = Membership.objects.create(
+        user=member,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    project_membership = ProjectMembership.objects.create(
+        project=project,
+        membership=membership,
+        role=ProjectMembership.CONTRIBUTOR,
+    )
+
+    ct = ContentType.objects.get_for_model(ProjectMembership)
+    entry = DummyEntry(
+        changes_dict={
+            "role": [None, ProjectMembership.CONTRIBUTOR],
+            "project": [None, str(project.pk)],
+            "membership": [None, str(membership.pk)],
+        },
+        content_type=ct,
+        action=LogEntry.Action.CREATE,
+    )
+
+    result = get_displayable_changes(entry)
+    assert result["role"] == [None, ProjectMembership.CONTRIBUTOR]
+    assert result["project"] == [None, "alpha"]
+    assert "membership" not in result
+
+
+@pytest.mark.django_db
+def test_projectmembership_delete_display_object_repr_uses_member_name(
+    create_user, create_organization, create_project
+):
+    """Show member email/username when a deleted project membership is logged."""
+    owner = create_user(username="owner", email="owner@example.com")
+    org = create_organization(name="org1", user=owner)
+    project = create_project(name="alpha", organization=org)
+
+    member = create_user(username="alice", email="alice@example.com")
+    membership = Membership.objects.create(
+        user=member,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    project_membership = ProjectMembership.objects.create(
+        project=project,
+        membership=membership,
+        role=ProjectMembership.VIEWER,
+    )
+    pm_pk = str(project_membership.pk)
+    project_membership.delete()
+
+    pm_ct = ContentType.objects.get_for_model(ProjectMembership)
+    delete_entry = LogEntry.objects.filter(
+        content_type=pm_ct,
+        object_pk=pm_pk,
+        action=LogEntry.Action.DELETE,
+    ).latest("timestamp")
+    create_entry = LogEntry.objects.filter(
+        content_type=pm_ct,
+        object_pk=pm_pk,
+        action=LogEntry.Action.CREATE,
+    ).latest("timestamp")
+
+    mapping = get_display_object_repr_for_entries([delete_entry, create_entry])
+    expected = member.username
+    assert mapping[delete_entry.id] == expected
+    assert mapping[create_entry.id] == expected
+
+
+@pytest.mark.django_db
+def test_membership_delete_display_object_repr_uses_member_name(
+    create_user, create_organization
+):
+    """Show member email/username when an organization membership is deleted."""
+    owner = create_user(username="owner", email="owner@example.com")
+    org = create_organization(name="org1", user=owner)
+
+    member = create_user(username="alice", email="alice@example.com")
+    membership = Membership.objects.create(
+        user=member,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    membership_pk = str(membership.pk)
+    membership.delete()
+
+    membership_ct = ContentType.objects.get_for_model(Membership)
+    delete_entry = LogEntry.objects.filter(
+        content_type=membership_ct,
+        object_pk=membership_pk,
+        action=LogEntry.Action.DELETE,
+    ).latest("timestamp")
+
+    mapping = get_display_object_repr_for_entries([delete_entry])
+    assert mapping[delete_entry.id] == "alice"
+
+
+@pytest.mark.django_db
+def test_projectmembership_logs_keep_member_name_after_org_membership_deleted(
+    create_user, create_organization, create_project
+):
+    """Project membership audit rows still show the user after org membership removal."""
+    owner = create_user(username="owner", email="owner@example.com")
+    org = create_organization(name="org1", user=owner)
+    project = create_project(name="alpha", organization=org)
+
+    member = create_user(username="alice", email="alice@example.com")
+    membership = Membership.objects.create(
+        user=member,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    ProjectMembership.objects.create(
+        project=project,
+        membership=membership,
+        role=ProjectMembership.VIEWER,
+    )
+    membership.delete()
+
+    pm_ct = ContentType.objects.get_for_model(ProjectMembership)
+    pm_entries = LogEntry.objects.filter(content_type=pm_ct).order_by("timestamp")
+    mapping = get_display_object_repr_for_entries(list(pm_entries))
+
+    assert pm_entries.exists()
+    for entry in pm_entries:
+        assert mapping[entry.id] == "alice"
 
 
 @pytest.mark.django_db
@@ -497,6 +682,7 @@ def test_extend_audit_log_pks_with_deleted_adds_deleted_objects(
     notif_ct = ContentType.objects.get_for_model(Notification)
     automation_ct = ContentType.objects.get_for_model(Automation)
     cvecomment_ct = ContentType.objects.get_for_model(CveComment)
+    pm_ct = ContentType.objects.get_for_model(ProjectMembership)
 
     # Deleted project and notification via project FK
     LogEntry.objects.create(
@@ -531,12 +717,21 @@ def test_extend_audit_log_pks_with_deleted_adds_deleted_objects(
         action=LogEntry.Action.DELETE,
         serialized_data={"fields": {"project": str(project.pk)}},
     )
+    LogEntry.objects.create(
+        content_type=pm_ct,
+        object_pk="444",
+        object_repr="deleted project membership",
+        actor=None,
+        action=LogEntry.Action.DELETE,
+        serialized_data={"fields": {"project": str(project.pk)}},
+    )
 
     extended = extend_audit_log_pks_with_deleted(org, base_pks)
     assert "888" in extended[Project]
     assert "777" in extended[Notification]
     assert "666" in extended[Automation]
     assert "555" in extended[CveComment]
+    assert "444" in extended[ProjectMembership]
     # Original dict must not be mutated
 
     # Silence unused variable if fixture is not used in logic above
