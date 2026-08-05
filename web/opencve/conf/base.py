@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "changes",
     "cves",
     "onboarding",
+    "authorization",
     "organizations",
     "projects",
     "users",
@@ -88,6 +89,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "opencve.context_processors.canonical_url_context",
                 "opencve.context_processors.feature_flags",
+                "authorization.context_processors.accessible_projects_for_request",
             ],
         },
     },
@@ -229,6 +231,12 @@ AUDITLOG_INCLUDE_TRACKING_MODELS = (
         "serialize_auditlog_fields_only": True,
     },
     {
+        "model": "projects.ProjectMembership",
+        "exclude_fields": ["updated_at"],
+        "serialize_data": True,
+        "serialize_auditlog_fields_only": True,
+    },
+    {
         "model": "projects.Notification",
         "exclude_fields": ["updated_at"],
         "serialize_data": True,
@@ -303,6 +311,13 @@ ORGANIZATION_TOKEN_FORM_CLASS = "organizations.forms.OrganizationAPITokenForm"
 
 # Paths to the view class used on the organization tokens page
 ORGANIZATION_TOKENS_VIEW_CLASS = "organizations.views.OrganizationEditTokensView"
+
+# Authorization (ACL)
+AUTHORIZATION_PROJECT_PERMISSION_SOURCES = [
+    "authorization.resolvers.sources.OrgImplicitPermissionSource",
+    "authorization.resolvers.sources.DirectProjectMembershipSource",
+]
+AUTHORIZATION_ACCESSIBLE_PROJECTS_QUERYSET_EXTENSIONS = []
 
 # Number of days to keep the activation link active
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7
