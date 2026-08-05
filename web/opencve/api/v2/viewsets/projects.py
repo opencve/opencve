@@ -8,6 +8,7 @@ from rest_framework import mixins, status, viewsets
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 
+from authorization.helpers import assignable_tracker_users
 from changes.models import Change, Report
 from cves.models import Cve
 from cves.search import (
@@ -485,6 +486,13 @@ class ProjectCveDetailViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ViewSet
                     membership__organization=project.organization,
                     membership__date_joined__isnull=False,
                 )
+                assignable_emails = set(
+                    assignable_tracker_users(project.organization, project).values_list(
+                        "email", flat=True
+                    )
+                )
+                if assignee_user.email not in assignable_emails:
+                    raise ValidationError({"assignee": "Invalid assignee."})
 
         tracker = CveTracker.update_tracker(
             project=project,

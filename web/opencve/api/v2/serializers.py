@@ -7,6 +7,7 @@ from cves.serializers import DateTimeWithoutMicrosecondsField
 from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from changes.models import Change, Report
 from organizations.models import Membership, Organization
+from authorization.registry import RoleRegistry
 from organizations.services.organizations import validate_organization_name
 from projects.models import (
     Automation,
@@ -575,11 +576,11 @@ class AuditLogEntrySerializer(serializers.Serializer):
 
 class MembershipCreateSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    role = serializers.ChoiceField(choices=Membership.ROLES)
+    role = serializers.ChoiceField(choices=RoleRegistry.get_org_role_choices())
 
 
 class MembershipUpdateSerializer(serializers.Serializer):
-    role = serializers.ChoiceField(choices=Membership.ROLES)
+    role = serializers.ChoiceField(choices=RoleRegistry.get_org_role_choices())
 
 
 @extend_schema_serializer(

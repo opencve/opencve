@@ -135,7 +135,7 @@ def test_invite_invalid_role(client, write_token):
     """Reject member invite with an invalid role."""
     response = client.post(
         members_url(),
-        data=json.dumps({"email": "newuser@example.com", "role": "admin"}),
+        data=json.dumps({"email": "newuser@example.com", "role": "superuser"}),
         content_type="application/json",
         **bearer(write_token),
     )
@@ -143,7 +143,7 @@ def test_invite_invalid_role(client, write_token):
     assert_v2_error(
         response,
         "validation_error",
-        details={"role": ['"admin" is not a valid choice.']},
+        details={"role": ['"superuser" is not a valid choice.']},
     )
 
 

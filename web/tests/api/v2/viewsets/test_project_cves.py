@@ -2,9 +2,11 @@ import json
 
 import pytest
 from django.test import override_settings
+from django.utils.timezone import now
 
-from organizations.models import OrganizationAPIToken
+from organizations.models import Membership, OrganizationAPIToken
 from projects.models import CveTracker
+from users.models import User
 from tests.api.v2.conftest import (
     assert_v2_error,
     bearer,
@@ -74,7 +76,16 @@ def test_patch_status_and_assignee_then_clear_tracker(
     user, organization, _create_token = api_context
     user.email = "owner@example.com"
     user.save(update_fields=["email"])
-    create_project(name="prod", organization=organization, vendors=["cisco"])
+    project = create_project(name="prod", organization=organization, vendors=["cisco"])
+    from organizations.models import Membership
+    from projects.models import ProjectMembership
+
+    owner_membership = Membership.objects.get(user=user, organization=organization)
+    ProjectMembership.objects.create(
+        project=project,
+        membership=owner_membership,
+        role=ProjectMembership.CONTRIBUTOR,
+    )
     create_cve("CVE-2021-44228")
 
     set_response = client.patch(
@@ -130,6 +141,36 @@ def test_patch_invalid_assignee_returns_404(
     )
 
     assert_v2_error(response, "not_found", status_code=404)
+
+
+@pytest.mark.django_db
+def test_patch_assignee_must_be_project_contributor_or_admin(
+    client, api_context, write_token, create_project, create_cve
+):
+    """Patch rejects an org member who has no project membership on the project."""
+    _owner, organization, _create_token = api_context
+    member = User.objects.create_user(username="member", email="member@example.com")
+    Membership.objects.create(
+        user=member,
+        organization=organization,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
+    create_project(name="prod", organization=organization, vendors=["cisco"])
+    create_cve("CVE-2021-44228")
+
+    response = client.patch(
+        project_cve_detail_url("CVE-2021-44228"),
+        data=json.dumps({"assignee": "member@example.com"}),
+        content_type="application/json",
+        **bearer(write_token),
+    )
+
+    assert response.status_code == 400
+    error = response.json()["error"]
+    assert error["code"] == "validation_error"
+    assert error["details"]["assignee"] == "Invalid assignee."
 
 
 @pytest.mark.django_db
