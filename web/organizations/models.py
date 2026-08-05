@@ -32,7 +32,12 @@ class Organization(BaseModel):
             )
         ]
 
-    def get_projects_vendors(self):
+    def get_projects_vendors(self, user=None):
+        if user is not None:
+            from authorization.helpers import get_accessible_projects_vendors
+
+            return get_accessible_projects_vendors(self, user)
+
         projects_vendors = self.projects.values_list("subscriptions", flat=True)
         unique_vendors = set()
 
@@ -59,17 +64,14 @@ class Organization(BaseModel):
 
 class Membership(models.Model):
     OWNER = "owner"
+    ADMIN = "admin"
     MEMBER = "member"
-    ROLES = [
-        (OWNER, "owner"),
-        (MEMBER, "member"),
-    ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="membership_set"
     )
-    role = models.CharField(max_length=20, choices=ROLES, default=MEMBER)
+    role = models.CharField(max_length=32, default=MEMBER)
     date_invited = models.DateTimeField(default=timezone.now, db_index=True)
     date_joined = models.DateTimeField(null=True, blank=True, db_index=True)
     key = models.CharField(max_length=64, blank=True, null=True)
@@ -80,6 +82,14 @@ class Membership(models.Model):
     @property
     def is_owner(self):
         return self.role == Membership.OWNER
+
+    @property
+    def is_admin(self):
+        return self.role == Membership.ADMIN
+
+    @property
+    def is_active_member(self):
+        return self.date_joined is not None
 
     @property
     def is_invited(self):

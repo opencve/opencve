@@ -73,6 +73,50 @@ class Project(BaseModel):
         return len(self.subscriptions["vendors"]) + len(self.subscriptions["products"])
 
 
+class ProjectMembership(models.Model):
+    PROJECT_ADMIN = "project_admin"
+    CONTRIBUTOR = "contributor"
+    VIEWER = "viewer"
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="memberships"
+    )
+    membership = models.ForeignKey(
+        "organizations.Membership",
+        on_delete=models.CASCADE,
+        related_name="project_memberships",
+    )
+    role = models.CharField(max_length=32)
+
+    class Meta:
+        db_table = "opencve_project_memberships"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "membership"],
+                name="ix_unique_project_membership",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["membership"], name="ix_pm_membership"),
+            models.Index(fields=["project"], name="ix_pm_project"),
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if (
+            self.project_id
+            and self.membership_id
+            and self.project.organization_id != self.membership.organization_id
+        ):
+            raise ValidationError(
+                "Membership does not belong to the project's organization."
+            )
+
+    def __str__(self):
+        return f"{self.membership_id} -> {self.project.name} ({self.role})"
+
+
 class Notification(BaseModel):
     name = models.CharField(
         max_length=256,
