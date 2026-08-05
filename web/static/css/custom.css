@@ -2445,6 +2445,15 @@ a.cve-section-nav-item i {
   max-width: 120px;
 }
 
+#table-project-members .project-role-select {
+  width: 160px;
+  max-width: 160px;
+}
+
+#table-project-members .select2-container {
+  width: 160px !important;
+}
+
 /* Audit logs */
 #table-audit-logs tr.auditlog-row {
   cursor: pointer;

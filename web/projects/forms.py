@@ -2,7 +2,7 @@ from zoneinfo import available_timezones
 
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import HTML, Layout, Submit
+from crispy_forms.layout import HTML, Div, Field, Layout, Submit
 from django import forms
 from django.conf import settings
 from django.db.models import Q
@@ -10,7 +10,16 @@ from django.utils import timezone
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 
-from projects.models import Automation, Notification, Project, CveTracker
+from organizations.models import Membership
+from authorization.helpers import assignable_tracker_users
+from authorization.registry import RoleRegistry
+from projects.models import (
+    Automation,
+    Notification,
+    Project,
+    CveTracker,
+    ProjectMembership,
+)
 from projects.services.automations import (
     SCHEDULE_FIELDS,
     normalize_automation_schedule_fields,
@@ -185,23 +194,25 @@ class CveTrackerFilterForm(forms.Form):
     def __init__(self, *args, **kwargs):
         organization = kwargs.pop("organization", None)
         user = kwargs.pop("user", None)
+        project = kwargs.pop("project", None)
         super().__init__(*args, **kwargs)
 
         if organization:
-            # Only show organization members in the assignee dropdown
-            members = (
-                User.objects.filter(
-                    membership__organization=organization,
-                    membership__date_joined__isnull=False,
+            if project:
+                members = assignable_tracker_users(organization, project)
+            else:
+                members = (
+                    User.objects.filter(
+                        membership__organization=organization,
+                        membership__date_joined__isnull=False,
+                    )
+                    .distinct()
+                    .order_by("username")
                 )
-                .distinct()
-                .order_by("username")
-            )
             self.fields["assignee"].choices = [("", "All assignees")] + [
-                (user.username, user.username) for user in members
+                (member.username, member.username) for member in members
             ]
 
-            # Show available views (public and user's private views)
             views = SavedView.objects.filter(
                 Q(privacy="public", organization=organization)
                 | Q(
@@ -471,3 +482,47 @@ class AutomationAdminForm(AutomationForm):
             instance.save()
 
         return instance
+
+
+class ProjectMembershipForm(forms.Form):
+    membership_id = forms.ChoiceField(choices=[], label="Member")
+    role = forms.ChoiceField(choices=[])
+
+    def __init__(self, *args, project=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.project = project
+        self.fields["role"].choices = RoleRegistry.get_project_role_choices()
+
+        if project is not None:
+            assigned_ids = ProjectMembership.objects.filter(
+                project=project
+            ).values_list("membership_id", flat=True)
+            available = (
+                Membership.objects.filter(
+                    organization=project.organization,
+                    date_joined__isnull=False,
+                )
+                .exclude(pk__in=assigned_ids)
+                .select_related("user")
+                .order_by("user__username")
+            )
+            self.fields["membership_id"].choices = [
+                (
+                    membership.pk,
+                    membership.user.username if membership.user else membership.email,
+                )
+                for membership in available
+            ]
+
+        self.helper = FormHelper()
+        self.helper.form_show_labels = False
+        self.helper.layout = Layout(
+            Div(Field("membership_id"), css_class="col-md-6"),
+            Div(Field("role"), css_class="col-md-4"),
+            Div(
+                FormActions(
+                    Submit("save", "Add"),
+                ),
+                css_class="col-md-2",
+            ),
+        )

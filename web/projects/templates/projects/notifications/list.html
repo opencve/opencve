@@ -8,10 +8,13 @@
 <div class="row">
     <div class="col-md-3 col-sm-4">
 
+        {% if can_manage_notifications %}
         <button type="button" class="btn btn-primary btn-block margin-bottom" data-toggle="modal" data-target="#newNotificationModal">
             <i class="fa fa-plus"></i> New Notification
         </button>
+        {% endif %}
 
+        {% if can_manage_notifications %}
         <div class="modal fade" id="newNotificationModal" tabindex="-1" role="dialog" aria-labelledby="newNotificationModalLabel">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -47,6 +50,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <div class="box box-solid">
             <div class="box-header with-border">
@@ -87,7 +91,11 @@
                                 <img src="{% static 'img/'|add:notification.type|add:'.png' %}" alt="{{ notification.type }}" />
                             </div>
                             <div class="product-info">
+                                {% if can_manage_notifications %}
                                 <a href="{% url 'edit_notification' org_name=request.current_organization.name project_name=project.name notification=notification.name %}" class="product-title">{{ notification.name }}
+                                {% else %}
+                                <span class="product-title">{{ notification.name }}
+                                {% endif %}
                                     {% if notification.is_enabled %}
                                     <span class="label label-success pull-right">Enabled</span>
                                     {% elif notification.is_pending_email_confirmation %}
@@ -95,7 +103,7 @@
                                     {% else %}
                                     <span class="label label-danger pull-right">Disabled</span>
                                     {% endif %}
-                                </a>
+                                {% if can_manage_notifications %}</a>{% else %}</span>{% endif %}
                                 <span class="product-description">{{ notification.type|capfirst }} notification</span>
                           </div>
                         </li>

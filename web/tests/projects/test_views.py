@@ -22,6 +22,7 @@ from projects.models import (
     CveTracker,
     Notification,
     Project,
+    ProjectMembership,
 )
 from projects.views import ProjectVulnerabilitiesView, ReportView
 
@@ -258,30 +259,47 @@ def test_project_create_view_requires_authentication(client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_project_create_view_requires_owner(
+def test_project_create_view_requires_org_project_create_permission(
     create_organization, create_user, auth_client
 ):
-    """Test that only organization owners can create projects"""
-    user1 = create_user()
-    org = create_organization(name="org1", user=user1, owner=True)
+    """Owner and admin can create projects; org members cannot."""
+    owner = create_user()
+    org = create_organization(name="org1", user=owner, owner=True)
 
-    user2 = create_user()
+    admin = create_user()
     Membership.objects.create(
-        user=user2,
+        user=admin,
+        organization=org,
+        role=Membership.ADMIN,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    member = create_user()
+    Membership.objects.create(
+        user=member,
         organization=org,
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
     )
 
-    # Owner can access
-    client = auth_client(user1)
-    response = client.get(reverse("create_project", kwargs={"org_name": "org1"}))
-    assert response.status_code == 200
+    assert (
+        auth_client(owner)
+        .get(reverse("create_project", kwargs={"org_name": "org1"}))
+        .status_code
+        == 200
+    )
+    assert (
+        auth_client(admin)
+        .get(reverse("create_project", kwargs={"org_name": "org1"}))
+        .status_code
+        == 200
+    )
 
-    # Member cannot access
-    client = auth_client(user2)
-    response = client.get(reverse("create_project", kwargs={"org_name": "org1"}))
+    response = auth_client(member).get(
+        reverse("create_project", kwargs={"org_name": "org1"})
+    )
     assert response.status_code == 302
     assert response.url == reverse("list_organizations")
 
@@ -345,37 +363,39 @@ def test_project_edit_view_requires_authentication(client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_project_edit_view_requires_owner(
+def test_project_edit_view_requires_project_admin(
     create_organization, create_user, create_project, auth_client
 ):
-    """Test that only organization owners can edit projects"""
-    user1 = create_user()
-    org = create_organization(name="org1", user=user1)
-    project = create_project(name="project1", organization=org)
+    """Only users with project edit permission can access project edit."""
+    owner = create_user()
+    org = create_organization(name="org1", user=owner)
+    create_project(name="project1", organization=org)
 
-    user2 = create_user()
+    member = create_user()
     Membership.objects.create(
-        user=user2,
+        user=member,
         organization=org,
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
     )
 
-    # Owner can access
-    client = auth_client(user1)
-    response = client.get(
-        reverse("edit_project", kwargs={"org_name": "org1", "project_name": "project1"})
+    assert (
+        auth_client(owner)
+        .get(
+            reverse(
+                "edit_project", kwargs={"org_name": "org1", "project_name": "project1"}
+            )
+        )
+        .status_code
+        == 200
     )
-    assert response.status_code == 200
 
-    # Member cannot access
-    client = auth_client(user2)
-    response = client.get(
+    response = auth_client(member).get(
         reverse("edit_project", kwargs={"org_name": "org1", "project_name": "project1"})
     )
     assert response.status_code == 302
-    assert response.url == reverse("list_organizations")
+    assert response.url == reverse("list_projects", kwargs={"org_name": "org1"})
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -488,39 +508,39 @@ def test_project_delete_view_requires_authentication(client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_project_delete_view_requires_owner(
+def test_project_delete_view_requires_org_project_delete_permission(
     create_organization, create_user, create_project, auth_client
 ):
-    """Test that only organization owners can delete projects"""
-    user1 = create_user()
-    org = create_organization(name="org1", user=user1)
-    project = create_project(name="project1", organization=org)
+    """Owner and admin can delete projects; org members cannot."""
+    owner = create_user()
+    org = create_organization(name="org1", user=owner)
+    create_project(name="project1", organization=org)
 
-    user2 = create_user()
+    admin = create_user()
     Membership.objects.create(
-        user=user2,
+        user=admin,
+        organization=org,
+        role=Membership.ADMIN,
+        date_invited=now(),
+        date_joined=now(),
+    )
+
+    member = create_user()
+    Membership.objects.create(
+        user=member,
         organization=org,
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
     )
 
-    # Owner can access
-    client = auth_client(user1)
-    response = client.get(
-        reverse(
-            "delete_project", kwargs={"org_name": "org1", "project_name": "project1"}
-        )
+    delete_url = reverse(
+        "delete_project", kwargs={"org_name": "org1", "project_name": "project1"}
     )
-    assert response.status_code == 200
+    assert auth_client(owner).get(delete_url).status_code == 200
+    assert auth_client(admin).get(delete_url).status_code == 200
 
-    # Member cannot access
-    client = auth_client(user2)
-    response = client.get(
-        reverse(
-            "delete_project", kwargs={"org_name": "org1", "project_name": "project1"}
-        )
-    )
+    response = auth_client(member).get(delete_url)
     assert response.status_code == 302
     assert response.url == reverse("list_organizations")
 
@@ -1428,45 +1448,35 @@ def test_notification_create_view_requires_authentication(client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_notification_create_view_requires_owner(
+def test_notification_create_view_requires_project_admin(
     create_organization, create_user, create_project, auth_client
 ):
-    """Test that only organization owners can create notifications"""
-    user1 = create_user()
-    org = create_organization(name="org1", user=user1)
-    project = create_project(name="project1", organization=org)
+    """Org owner and project admin can create notifications; org member without access cannot."""
+    owner = create_user()
+    org = create_organization(name="org1", user=owner)
+    create_project(name="project1", organization=org)
 
-    user2 = create_user()
+    member = create_user()
     Membership.objects.create(
-        user=user2,
+        user=member,
         organization=org,
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
     )
 
-    # Owner can access
-    client = auth_client(user1)
-    response = client.get(
+    create_url = (
         reverse(
             "create_notification",
             kwargs={"org_name": "org1", "project_name": "project1"},
         )
-        + "?type=email",
+        + "?type=email"
     )
-    assert response.status_code == 200
+    assert auth_client(owner).get(create_url).status_code == 200
 
-    # Member cannot access
-    client = auth_client(user2)
-    response = client.get(
-        reverse(
-            "create_notification",
-            kwargs={"org_name": "org1", "project_name": "project1"},
-        )
-        + "?type=email",
-    )
+    response = auth_client(member).get(create_url)
     assert response.status_code == 302
-    assert response.url == reverse("list_organizations")
+    assert response.url == reverse("list_projects", kwargs={"org_name": "org1"})
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1611,14 +1621,14 @@ def test_notification_update_view_requires_authentication(client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_notification_update_view_requires_owner(
+def test_notification_update_view_requires_project_admin(
     create_organization, create_user, create_project, create_notification, auth_client
 ):
-    """Test that only organization owners can update notifications"""
-    user1 = create_user()
-    org = create_organization(name="org1", user=user1)
+    """Org owner can update notifications; org member without project access cannot."""
+    owner = create_user()
+    org = create_organization(name="org1", user=owner)
     project = create_project(name="project1", organization=org)
-    notification = create_notification(
+    create_notification(
         name="notif1",
         project=project,
         type="email",
@@ -1629,43 +1639,28 @@ def test_notification_update_view_requires_owner(
         },
     )
 
-    user2 = create_user()
+    member = create_user()
     Membership.objects.create(
-        user=user2,
+        user=member,
         organization=org,
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
     )
 
-    # Owner can access
-    client = auth_client(user1)
-    response = client.get(
-        reverse(
-            "edit_notification",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "notification": "notif1",
-            },
-        )
+    edit_url = reverse(
+        "edit_notification",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "notification": "notif1",
+        },
     )
-    assert response.status_code == 200
+    assert auth_client(owner).get(edit_url).status_code == 200
 
-    # Member cannot access
-    client = auth_client(user2)
-    response = client.get(
-        reverse(
-            "edit_notification",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "notification": "notif1",
-            },
-        )
-    )
+    response = auth_client(member).get(edit_url)
     assert response.status_code == 302
-    assert response.url == reverse("list_organizations")
+    assert response.url == reverse("list_projects", kwargs={"org_name": "org1"})
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -2147,52 +2142,37 @@ def test_notification_delete_view_requires_authentication(client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_notification_delete_view_requires_owner(
+def test_notification_delete_view_requires_project_admin(
     create_organization, create_user, create_project, create_notification, auth_client
 ):
-    """Test that only organization owners can delete notifications"""
-    user1 = create_user()
-    org = create_organization(name="org1", user=user1)
+    """Org owner can delete notifications; org member without project access cannot."""
+    owner = create_user()
+    org = create_organization(name="org1", user=owner)
     project = create_project(name="project1", organization=org)
-    notification = create_notification(name="notif1", project=project)
+    create_notification(name="notif1", project=project)
 
-    user2 = create_user()
+    member = create_user()
     Membership.objects.create(
-        user=user2,
+        user=member,
         organization=org,
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
     )
 
-    # Owner can access
-    client = auth_client(user1)
-    response = client.get(
-        reverse(
-            "delete_notification",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "notification": "notif1",
-            },
-        )
+    delete_url = reverse(
+        "delete_notification",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "notification": "notif1",
+        },
     )
-    assert response.status_code == 200
+    assert auth_client(owner).get(delete_url).status_code == 200
 
-    # Member cannot access
-    client = auth_client(user2)
-    response = client.get(
-        reverse(
-            "delete_notification",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "notification": "notif1",
-            },
-        )
-    )
+    response = auth_client(member).get(delete_url)
     assert response.status_code == 302
-    assert response.url == reverse("list_organizations")
+    assert response.url == reverse("list_projects", kwargs={"org_name": "org1"})
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -2296,6 +2276,12 @@ def test_assign_cve_user_view_assign_user(
     )
     project = create_project(name="project1", organization=org)
     cve = create_cve("CVE-2023-22490")
+    user2_membership = Membership.objects.get(user=user2, organization=org)
+    ProjectMembership.objects.create(
+        project=project,
+        membership=user2_membership,
+        role=ProjectMembership.CONTRIBUTOR,
+    )
 
     client = auth_client(user1)
     response = client.post(
@@ -2953,56 +2939,7 @@ def test_project_vulnerabilities_get_context_data_basic_context(
     assert "views_data" in context
     assert context["status_choices"] == CveTracker.STATUS_CHOICES
     members = list(context["organization_members"])
-    assert user in members
-
-
-@override_settings(ENABLE_ONBOARDING=False)
-def test_project_vulnerabilities_get_context_data_organization_members_filtering(
-    create_organization, create_user, create_project, auth_client
-):
-    """Test that organization_members only includes users who have joined"""
-    user1 = create_user(username="user1")
-    user2 = create_user(username="user2")
-    user3 = create_user(username="user3")
-    org = create_organization(name="org1", user=user1)
-
-    # User2 has joined
-    Membership.objects.create(
-        user=user2,
-        organization=org,
-        role=Membership.MEMBER,
-        date_invited=now(),
-        date_joined=now(),
-    )
-
-    # User3 has been invited but hasn't joined yet
-    Membership.objects.create(
-        user=user3,
-        organization=org,
-        role=Membership.MEMBER,
-        date_invited=now(),
-        date_joined=None,
-    )
-
-    project = create_project(name="project1", organization=org)
-
-    client = auth_client(user1)
-    response = client.get(
-        reverse(
-            "project_vulnerabilities",
-            kwargs={"org_name": "org1", "project_name": "project1"},
-        )
-    )
-
-    assert response.status_code == 200
-    members = list(response.context["organization_members"])
-    usernames = [m.username for m in members]
-
-    # Should include user1 (owner) and user2 (joined member)
-    assert "user1" in usernames
-    assert "user2" in usernames
-    # Should NOT include user3 (not joined)
-    assert "user3" not in usernames
+    assert members == []
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -3550,6 +3487,12 @@ def test_update_cve_comment_only_author_can_update(
         date_invited=now(),
         date_joined=now(),
     )
+    member_membership = Membership.objects.get(user=member, organization=org)
+    ProjectMembership.objects.create(
+        project=project,
+        membership=member_membership,
+        role=ProjectMembership.CONTRIBUTOR,
+    )
     client = auth_client(member)
 
     cve = Cve.objects.create(
@@ -3706,6 +3649,12 @@ def test_delete_cve_comment_only_author_can_delete(
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
+    )
+    member_membership = Membership.objects.get(user=member, organization=org)
+    ProjectMembership.objects.create(
+        project=project,
+        membership=member_membership,
+        role=ProjectMembership.CONTRIBUTOR,
     )
     client = auth_client(member)
 
@@ -3925,49 +3874,36 @@ def test_automation_create_view_requires_authentication(client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_automation_create_view_requires_owner(
+def test_automation_create_view_requires_project_admin(
     create_organization, create_user, create_project, auth_client
 ):
-    """Only organization owners can create automations."""
-    user1 = create_user()
-    org = create_organization(name="org1", user=user1)
+    """Org owner can create automations; org member without project access cannot."""
+    owner = create_user()
+    org = create_organization(name="org1", user=owner)
     create_project(name="project1", organization=org)
 
-    user2 = create_user()
+    member = create_user()
     Membership.objects.create(
-        user=user2,
+        user=member,
         organization=org,
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
     )
 
-    client = auth_client(user1)
-    response = client.get(
-        reverse(
-            "create_automation",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "trigger_type": "alert",
-            },
-        )
+    create_url = reverse(
+        "create_automation",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "trigger_type": "alert",
+        },
     )
-    assert response.status_code == 200
+    assert auth_client(owner).get(create_url).status_code == 200
 
-    client = auth_client(user2)
-    response = client.get(
-        reverse(
-            "create_automation",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "trigger_type": "alert",
-            },
-        )
-    )
+    response = auth_client(member).get(create_url)
     assert response.status_code == 302
-    assert response.url == reverse("list_organizations")
+    assert response.url == reverse("list_projects", kwargs={"org_name": "org1"})
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -4674,50 +4610,37 @@ def test_automation_delete_view_requires_authentication(client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
-def test_automation_delete_view_requires_owner(
+def test_automation_delete_view_requires_project_admin(
     create_organization, create_user, create_project, create_automation, auth_client
 ):
-    """Only organization owners can delete automations."""
-    user1 = create_user()
-    org = create_organization(name="org1", user=user1)
+    """Org owner can delete automations; org member without project access cannot."""
+    owner = create_user()
+    org = create_organization(name="org1", user=owner)
     project = create_project(name="project1", organization=org)
     create_automation(name="my-alert", project=project)
 
-    user2 = create_user()
+    member = create_user()
     Membership.objects.create(
-        user=user2,
+        user=member,
         organization=org,
         role=Membership.MEMBER,
         date_invited=now(),
         date_joined=now(),
     )
 
-    client = auth_client(user1)
-    response = client.get(
-        reverse(
-            "delete_automation",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "automation": "my-alert",
-            },
-        )
+    delete_url = reverse(
+        "delete_automation",
+        kwargs={
+            "org_name": "org1",
+            "project_name": "project1",
+            "automation": "my-alert",
+        },
     )
-    assert response.status_code == 200
+    assert auth_client(owner).get(delete_url).status_code == 200
 
-    client = auth_client(user2)
-    response = client.get(
-        reverse(
-            "delete_automation",
-            kwargs={
-                "org_name": "org1",
-                "project_name": "project1",
-                "automation": "my-alert",
-            },
-        )
-    )
+    response = auth_client(member).get(delete_url)
     assert response.status_code == 302
-    assert response.url == reverse("list_organizations")
+    assert response.url == reverse("list_projects", kwargs={"org_name": "org1"})
 
 
 @override_settings(ENABLE_ONBOARDING=False)

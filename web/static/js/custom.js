@@ -202,6 +202,52 @@ function getContrastedColor(str){
         $(this).data('previous-role', $(this).val());
     });
 
+    $('.select2-project-role').select2({
+        allowClear: false,
+        minimumResultsForSearch: Infinity,
+        width: '160px',
+    });
+
+    $(document).on('change', '#table-project-members .project-role-select', function() {
+        var select = $(this);
+        var url = select.data('update-role-url');
+        var role = select.val();
+        var previousRole = select.data('previous-role');
+        if (previousRole === role) return;
+        select.data('previous-role', role);
+        $.ajax({
+            url: url,
+            data: { role: role },
+            dataType: 'json',
+            type: 'POST',
+            success: function(data) {
+                if (data.status === 'ok') {
+                    var msg = data.message || 'Project role has been updated successfully.';
+                    var alertHtml = '<div class="alert alert-success alert-dismissible fade in">' +
+                        '<button aria-label="Close" data-dismiss="alert" class="close" type="button"><span aria-hidden="true">×</span></button>' +
+                        '<p>' + msg + '</p></div>';
+                    $('#project-ajax-messages').prepend(alertHtml);
+                } else {
+                    select.val(previousRole).data('previous-role', previousRole);
+                }
+            },
+            error: function(xhr) {
+                var msg = 'An error occurred while updating the role.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                var alertHtml = '<div class="alert alert-error alert-dismissible fade in">' +
+                    '<button aria-label="Close" data-dismiss="alert" class="close" type="button"><span aria-hidden="true">×</span></button>' +
+                    '<p>' + msg + '</p></div>';
+                $('#project-ajax-messages').prepend(alertHtml);
+                select.val(previousRole).data('previous-role', previousRole);
+            }
+        });
+    });
+    $('#table-project-members .project-role-select').each(function() {
+        $(this).data('previous-role', $(this).val());
+    });
+
     // Fill the query input before opening the Save view modal in CVEs page
     $("#save-view-button").click(function(e) {
       const filter = $("#id_q").val();
@@ -1418,8 +1464,16 @@ function getContrastedColor(str){
     }
 
     // Menu creation functions
+    function getAssignableMembers(projectName) {
+        const data = window.cveTrackingData || {};
+        if (data.assignableMembersByProject && projectName) {
+            return data.assignableMembersByProject[projectName] || [];
+        }
+        return data.organizationMembers || [];
+    }
+
     function createAssigneeMenu(cveId, currentAssigneeId, projectName, orgName) {
-        const members = window.cveTrackingData.organizationMembers;
+        const members = getAssignableMembers(projectName);
         let menuHtml = '<div class="floating-menu">';
         menuHtml += '<div class="floating-menu-title" style="text-align: left;">Select an assignee</div>';
 

@@ -1,28 +1,30 @@
 from django.contrib import messages
 from django.http import Http404
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 
-from projects.models import Project
+from authorization.querysets import get_project_for_user
 
 
 class ProjectObjectMixin:
-    """Populate the self.project object"""
+    """Populate the self.project object with ACL check."""
 
     def dispatch(self, request, *args, **kwargs):
-        try:
-            self.project = get_object_or_404(
-                Project,
-                organization=self.request.current_organization,
-                name=self.kwargs["project_name"],
+        if not request.current_organization:
+            messages.error(request, "The requested project does not exist.")
+            return redirect("list_organizations")
+
+        project_name = self.kwargs.get("project_name")
+        project = get_project_for_user(
+            request.user, request.current_organization, project_name
+        )
+        if project is None:
+            messages.error(request, "The requested project does not exist.")
+            return redirect(
+                "list_projects",
+                org_name=request.current_organization.name,
             )
-        except Http404:
-            if request.current_organization:
-                messages.error(request, "The requested project does not exist.")
-                return redirect(
-                    "list_projects",
-                    org_name=request.current_organization.name,
-                )
-            raise
+
+        self.project = project
         return super().dispatch(request, *args, **kwargs)
 
     def get_object(self, queryset=None):

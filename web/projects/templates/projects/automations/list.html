@@ -7,10 +7,13 @@
     <!-- Left column: New Automation + Filters (mailbox-style sidebar) -->
     <div class="col-md-3 col-sm-4">
 
+        {% if can_manage_automations %}
         <button type="button" class="btn btn-primary btn-block margin-bottom" data-toggle="modal" data-target="#newAutomationModal">
             <i class="fa fa-plus"></i> New Automation
         </button>
+        {% endif %}
 
+        {% if can_manage_automations %}
         <!-- Modal: choose trigger type then template -->
         <div class="modal fade" id="newAutomationModal" tabindex="-1" role="dialog" aria-labelledby="newAutomationModalLabel">
             <div class="modal-dialog" role="document">
@@ -99,6 +102,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <div class="box box-solid">
             <div class="box-header with-border">

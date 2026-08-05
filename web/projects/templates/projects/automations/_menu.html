@@ -8,9 +8,11 @@
                 <li class="{% if active_section == 'overview' %}active{% endif %}">
                     <a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}"><i class="fa fa-dashboard"></i> Overview</a>
                 </li>
+                {% if can_manage_automations %}
                 <li class="{% if active_section == 'config' %}active{% endif %}">
                     <a href="{% url 'automation_configuration' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}"><i class="fa fa-cog"></i> Configuration</a>
                 </li>
+                {% endif %}
                 <li class="{% if active_section == 'executions' %}active{% endif %}">
                     <a href="{% url 'automation_executions' org_name=request.current_organization.name project_name=project.name automation=automation_url_name %}"><i class="fa fa-history"></i> Executions</a>
                 </li>

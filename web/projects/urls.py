@@ -18,6 +18,9 @@ from projects.views import (
     NotificationDeleteView,
     NotificationResendConfirmationView,
     NotificationUpdateView,
+    ProjectMemberDeleteView,
+    ProjectMemberRoleUpdateView,
+    ProjectMembersView,
     ProjectCreateView,
     ProjectDeleteView,
     ProjectDetailView,
@@ -45,6 +48,21 @@ urlpatterns = [
         "org/<org_name>/projects/<project_name>",
         ProjectDetailView.as_view(),
         name="project",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/members",
+        ProjectMembersView.as_view(),
+        name="project_members",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/members/<int:member_id>/role",
+        ProjectMemberRoleUpdateView.as_view(),
+        name="update_project_member_role",
+    ),
+    path(
+        "org/<org_name>/projects/<project_name>/members/<int:member_id>/delete",
+        ProjectMemberDeleteView.as_view(),
+        name="delete_project_member",
     ),
     path(
         "org/<org_name>/projects/<project_name>/edit",

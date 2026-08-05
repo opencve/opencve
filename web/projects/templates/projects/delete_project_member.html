@@ -1,0 +1,22 @@
+{% extends 'projects/base_project.html' %}
+
+{% block title %}Remove Member - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+<div class="box box-danger">
+  <div class="box-header with-border">
+    <h3 class="box-title">Remove project member</h3>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <div class="box-body">
+      <p>Are you sure you want to remove this member from the project?</p>
+      <p><strong>{% if object.membership.user %}{{ object.membership.user.username }}{% else %}{{ object.membership.email }}{% endif %}</strong></p>
+    </div>
+    <div class="box-footer">
+      <button type="submit" class="btn btn-danger">Remove</button>
+      <a href="{% url 'project_members' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

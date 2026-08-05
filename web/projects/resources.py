@@ -3,6 +3,7 @@ from rest_framework import mixins, viewsets
 
 from cves.models import Cve
 from cves.serializers import CveListSerializer
+from authorization.querysets import accessible_projects, get_project_for_user
 from organizations.models import Organization
 from projects.models import Project
 from projects.serializers import ProjectDetailSerializer, ProjectSerializer
@@ -31,7 +32,11 @@ class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
                 name=self.kwargs["organization_name"],
             )
         self.organization = organization
-        return Project.objects.filter(organization=organization).order_by("name").all()
+        if hasattr(self.request, "authenticated_organization"):
+            return (
+                Project.objects.filter(organization=organization).order_by("name").all()
+            )
+        return accessible_projects(self.request.user, organization)
 
     def get_serializer_class(self):
         return self.serializer_classes.get(self.action, self.serializer_class)
@@ -53,9 +58,18 @@ class ProjectCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
                 members=self.request.user,
                 name=self.kwargs["organization_name"],
             )
-        project = get_object_or_404(
-            Project, organization=organization, name=self.kwargs["project_name"]
-        )
+        if hasattr(self.request, "authenticated_organization"):
+            project = get_object_or_404(
+                Project, organization=organization, name=self.kwargs["project_name"]
+            )
+        else:
+            project = get_project_for_user(
+                self.request.user,
+                organization,
+                self.kwargs["project_name"],
+            )
+            if project is None:
+                return Cve.objects.none()
         vendors = project.subscriptions["vendors"] + project.subscriptions["products"]
         if not vendors:
             return Cve.objects.none()

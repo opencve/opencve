@@ -8,9 +8,11 @@
 <div class="row">
     <div class="col-md-3 col-sm-4">
 
+        {% if can_manage_automations %}
         <a href="{% url 'create_automation' org_name=request.current_organization.name project_name=project.name trigger_type='report' %}" class="btn btn-primary btn-block margin-bottom">
             <i class="fa fa-plus"></i> New Report Automation
         </a>
+        {% endif %}
 
         <div class="box box-solid">
             <div class="box-header with-border">

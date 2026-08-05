@@ -27,10 +27,34 @@ from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
 from cves.models import Cve
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from opencve.mixins import RequestViewMixin
-from organizations.mixins import (
-    OrganizationIsMemberMixin,
-    OrganizationIsOwnerMixin,
+from authorization.context import get_authorization_context
+from authorization.helpers import assignable_tracker_users
+from authorization.mixins import (
+    RequiresOrgPermissionMixin,
+    RequiresProjectPermissionMixin,
 )
+from authorization.registry import RoleRegistry
+from authorization.permissions import (
+    ORG_PROJECTS_CREATE,
+    ORG_PROJECTS_DELETE,
+    PROJECT_AUTOMATIONS_MANAGE,
+    PROJECT_AUTOMATIONS_VIEW,
+    PROJECT_CVES_EXPORT,
+    PROJECT_EDIT,
+    PROJECT_MEMBERS_MANAGE,
+    PROJECT_MEMBERS_VIEW,
+    PROJECT_NOTIFICATIONS_MANAGE,
+    PROJECT_NOTIFICATIONS_VIEW,
+    PROJECT_REPORTS_VIEW,
+    PROJECT_SUBSCRIPTIONS_VIEW,
+    PROJECT_TRACKER_ASSIGN,
+    PROJECT_TRACKER_COMMENT,
+    PROJECT_TRACKER_UPDATE_STATUS,
+    PROJECT_VIEW,
+)
+from authorization.view_helpers import check_project_permission
+from authorization.querysets import accessible_projects
+from organizations.mixins import OrganizationIsMemberMixin
 from projects.automations import (
     AutomationLookups,
     build_automation_flow_graph,
@@ -40,6 +64,7 @@ from projects.forms import (
     FORM_MAPPING,
     NOTIFICATION_TYPE_CHOICES,
     ProjectForm,
+    ProjectMembershipForm,
     CveTrackerFilterForm,
 )
 from projects.mixins import (
@@ -55,6 +80,12 @@ from projects.models import (
     CveTracker,
     Notification,
     Project,
+    ProjectMembership,
+)
+from projects.services.project_memberships import (
+    add_project_member,
+    remove_project_member,
+    update_project_member_role,
 )
 from projects.notifications import run_notification_try
 from projects.utils import (
@@ -62,6 +93,8 @@ from projects.utils import (
     build_report_listing_summary,
     send_notification_confirmation_email,
 )
+from organizations.models import Membership
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from users.models import User
 from views.models import View as SavedView
 
@@ -71,19 +104,18 @@ class ProjectsListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
     template_name = "projects/list_projects.html"
 
     def get_queryset(self):
-        query = Project.objects.filter(
-            organization=self.request.current_organization
-        ).all()
-        return query.order_by("name")
+        return accessible_projects(self.request.user, self.request.current_organization)
 
 
 class ProjectDetailView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     DetailView,
 ):
+    required_project_permission = PROJECT_VIEW
     # TODO: change this view into a ListView based on Changes,
     #  so we'll have a pagination instead of [:10]
     model = Project
@@ -159,11 +191,12 @@ class ProjectDetailView(
 
 class ProjectCreateView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     CreateView,
 ):
+    required_org_permission = ORG_PROJECTS_CREATE
     model = Project
     form_class = ProjectForm
     template_name = "projects/create_update.html"
@@ -176,12 +209,14 @@ class ProjectCreateView(
 
 class ProjectEditView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     RequestViewMixin,
     SuccessMessageMixin,
     UpdateView,
 ):
+    required_project_permission = PROJECT_EDIT
     model = Project
     form_class = ProjectForm
     template_name = "projects/create_update.html"
@@ -195,11 +230,12 @@ class ProjectEditView(
 
 class ProjectDeleteView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     ProjectObjectMixin,
     SuccessMessageMixin,
     DeleteView,
 ):
+    required_org_permission = ORG_PROJECTS_DELETE
     model = Project
     template_name = "projects/delete_project.html"
     success_message = "The project has been deleted."
@@ -214,9 +250,11 @@ class ProjectVulnerabilitiesView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     ListView,
 ):
+    required_project_permission = PROJECT_VIEW
     model = Cve
     context_object_name = "cves"
     template_name = "projects/vulnerabilities.html"
@@ -336,6 +374,7 @@ class ProjectVulnerabilitiesView(
             data=self.request.GET or None,
             organization=self.request.current_organization,
             user=self.request.user,
+            project=self.project,
         )
 
         # Validate query if provided
@@ -354,13 +393,8 @@ class ProjectVulnerabilitiesView(
         context["filter_form"] = filter_form
 
         # Add organization members for dropdowns
-        context["organization_members"] = (
-            User.objects.filter(
-                membership__organization=self.request.current_organization,
-                membership__date_joined__isnull=False,
-            )
-            .distinct()
-            .order_by("username")
+        context["organization_members"] = assignable_tracker_users(
+            self.request.current_organization, self.project
         )
 
         # Add status choices
@@ -391,6 +425,8 @@ class ProjectVulnerabilitiesCsvExportView(ProjectVulnerabilitiesView):
     result set exceeds CVE_CSV_EXPORT_MAX_ROWS.
     """
 
+    required_project_permission = PROJECT_CVES_EXPORT
+
     def get(self, request, *args, **kwargs):
         self.object_list = self.get_queryset()
         count = self.object_list.count()
@@ -418,9 +454,11 @@ class ReportsView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     ListView,
 ):
+    required_project_permission = PROJECT_REPORTS_VIEW
     model = Report
     context_object_name = "reports"
     template_name = "projects/reports.html"
@@ -452,6 +490,9 @@ class ReportsView(
             report.changes_summary = build_report_listing_summary(report.changes.all())
         context["project"] = self.project
         context["period_choices"] = Report.PERIOD_CHOICES
+        context["can_manage_automations"] = get_authorization_context(
+            self.request
+        ).has_project_permission(self.project, PROJECT_AUTOMATIONS_MANAGE)
         return context
 
 
@@ -459,9 +500,11 @@ class ReportView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     DetailView,
 ):
+    required_project_permission = PROJECT_REPORTS_VIEW
     model = Report
     template_name = "projects/report.html"
 
@@ -516,9 +559,11 @@ class SubscriptionsView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     DetailView,
 ):
+    required_project_permission = PROJECT_SUBSCRIPTIONS_VIEW
     model = Project
     template_name = "projects/subscriptions.html"
 
@@ -582,9 +627,11 @@ class NotificationsView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     DetailView,
 ):
+    required_project_permission = PROJECT_NOTIFICATIONS_VIEW
     model = Project
     template_name = "projects/notifications/list.html"
 
@@ -600,19 +647,24 @@ class NotificationsView(
 
         context["notifications"] = list(queryset)
         context["notification_types"] = NOTIFICATION_TYPE_CHOICES
+        context["can_manage_notifications"] = get_authorization_context(
+            self.request
+        ).has_project_permission(self.project, PROJECT_NOTIFICATIONS_MANAGE)
         return context
 
 
 class NotificationCreateView(
     NotificationFormTryMixin,
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     CreateView,
 ):
+    required_project_permission = PROJECT_NOTIFICATIONS_MANAGE
     model = Notification
     template_name = "projects/notifications/save.html"
     success_message = "The notification has been successfully created."
@@ -672,18 +724,29 @@ class NotificationCreateView(
 class NotificationUpdateView(
     NotificationFormTryMixin,
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     ResourceUrlNameMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     UpdateView,
 ):
+    required_project_permission = PROJECT_NOTIFICATIONS_MANAGE
     model = Notification
     template_name = "projects/notifications/save.html"
     success_message = "The notification has been successfully updated."
     resource_url_kwarg = "notification"
+
+    def get_permission_denied_redirect_url(self, request):
+        return reverse(
+            "notifications",
+            kwargs={
+                "org_name": request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
 
     def get_object(self, queryset=None):
         return get_object_or_404(
@@ -757,13 +820,15 @@ class NotificationUpdateView(
 
 class NotificationDeleteView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     ResourceUrlNameMixin,
     SuccessMessageMixin,
     DeleteView,
 ):
+    required_project_permission = PROJECT_NOTIFICATIONS_MANAGE
     model = Notification
     template_name = "projects/notifications/delete.html"
     success_message = "The notification has been successfully removed."
@@ -788,11 +853,13 @@ class NotificationDeleteView(
 
 class NotificationResendConfirmationView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     View,
 ):
+    required_project_permission = PROJECT_NOTIFICATIONS_MANAGE
     """Resend the confirmation email for an email notification pending validation."""
 
     def get(self, request, *args, **kwargs):
@@ -931,8 +998,13 @@ class NotificationUnsubscribeView(TemplateView):
 
 
 class AssignCveUserView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
+    View,
 ):
+    required_project_permission = PROJECT_TRACKER_ASSIGN
     """AJAX endpoint to assign a user to a CVE"""
 
     def post(self, request, *args, **kwargs):
@@ -958,6 +1030,15 @@ class AssignCveUserView(
                 membership__organization=self.request.current_organization,
                 membership__date_joined__isnull=False,
             )
+            assignable_ids = set(
+                assignable_tracker_users(
+                    self.request.current_organization, self.project
+                ).values_list("id", flat=True)
+            )
+            if assignee.id not in assignable_ids:
+                return JsonResponse(
+                    {"success": False, "error": "Invalid assignee"}, status=400
+                )
 
         # Update tracker (will delete if no status and no assignee)
         tracker = CveTracker.update_tracker(
@@ -985,8 +1066,13 @@ class AssignCveUserView(
 
 
 class UpdateCveStatusView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
+    View,
 ):
+    required_project_permission = PROJECT_TRACKER_UPDATE_STATUS
     """AJAX endpoint to update CVE status"""
 
     def post(self, request, *args, **kwargs):
@@ -1033,8 +1119,13 @@ class UpdateCveStatusView(
 
 
 class CreateCveCommentView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
+    View,
 ):
+    required_project_permission = PROJECT_TRACKER_COMMENT
     """AJAX endpoint to create a comment for a CVE within a project"""
 
     def post(self, request, *args, **kwargs):
@@ -1100,8 +1191,13 @@ class CreateCveCommentView(
 
 
 class UpdateCveCommentView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
+    View,
 ):
+    required_project_permission = PROJECT_TRACKER_COMMENT
     """AJAX endpoint to update an existing CVE comment/reply"""
 
     def post(self, request, *args, **kwargs):
@@ -1152,8 +1248,13 @@ class UpdateCveCommentView(
 
 
 class DeleteCveCommentView(
-    LoginRequiredMixin, OrganizationIsMemberMixin, ProjectObjectMixin, View
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
+    View,
 ):
+    required_project_permission = PROJECT_TRACKER_COMMENT
     """AJAX endpoint to delete an existing CVE comment/reply"""
 
     def post(self, request, *args, **kwargs):
@@ -1193,9 +1294,11 @@ class AutomationsView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     DetailView,
 ):
+    required_project_permission = PROJECT_AUTOMATIONS_VIEW
     model = Project
     template_name = "projects/automations/list.html"
 
@@ -1231,6 +1334,9 @@ class AutomationsView(
                 "trigger_type": "report",
             },
         )
+        context["can_manage_automations"] = get_authorization_context(
+            self.request
+        ).has_project_permission(self.project, PROJECT_AUTOMATIONS_MANAGE)
         return context
 
 
@@ -1276,13 +1382,15 @@ def _populate_automation_form_context(view, context, default_config):
 
 class AutomationCreateView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     CreateView,
 ):
+    required_project_permission = PROJECT_AUTOMATIONS_MANAGE
     model = Automation
     form_class = AutomationForm
     template_name = "projects/automations/save.html"
@@ -1514,13 +1622,15 @@ def _get_automation_lookups(view) -> AutomationLookups:
 
 class AutomationOverviewView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     ResourceUrlNameMixin,
     RequestViewMixin,
     DetailView,
 ):
+    required_project_permission = PROJECT_AUTOMATIONS_VIEW
     """Overview page for an automation: read-only summary, flow diagram, recent executions."""
 
     model = Automation
@@ -1567,24 +1677,39 @@ class AutomationOverviewView(
                 "automation": self.kwargs["automation"],
             },
         )
+        context["can_manage_automations"] = get_authorization_context(
+            self.request
+        ).has_project_permission(self.project, PROJECT_AUTOMATIONS_MANAGE)
         return context
 
 
 class AutomationConfigurationView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     ResourceUrlNameMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     UpdateView,
 ):
+    required_project_permission = PROJECT_AUTOMATIONS_MANAGE
     model = Automation
     form_class = AutomationForm
     template_name = "projects/automations/configuration.html"
     success_message = "The automation has been successfully updated."
     resource_url_kwarg = "automation"
+
+    def get_permission_denied_redirect_url(self, request):
+        return reverse(
+            "automation_overview",
+            kwargs={
+                "org_name": request.current_organization.name,
+                "project_name": self.project.name,
+                "automation": self.kwargs["automation"],
+            },
+        )
 
     def get_object(self, queryset=None):
         return get_object_or_404(
@@ -1622,6 +1747,7 @@ class AutomationConfigurationView(
             else {"conditions": {"operator": "OR", "children": []}, "actions": []}
         )
         _populate_automation_form_context(self, context, default_config)
+        context["can_manage_automations"] = True
         return context
 
     def get_success_url(self):
@@ -1637,12 +1763,14 @@ class AutomationConfigurationView(
 
 class AutomationExecutionsView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     ResourceUrlNameMixin,
     DetailView,
 ):
+    required_project_permission = PROJECT_AUTOMATIONS_VIEW
     """Executions page: full paginated list of all executions for an automation."""
 
     model = Automation
@@ -1691,6 +1819,9 @@ class AutomationExecutionsView(
             }
             for execution in page.object_list
         ]
+        context["can_manage_automations"] = get_authorization_context(
+            self.request
+        ).has_project_permission(self.project, PROJECT_AUTOMATIONS_MANAGE)
         return context
 
 
@@ -1698,9 +1829,11 @@ class AutomationExecutionDrawerView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     View,
 ):
+    required_project_permission = PROJECT_AUTOMATIONS_VIEW
     """Returns HTML fragment for the execution detail drawer (execution info, CVEs, results in cards)."""
 
     def get(self, request, *args, **kwargs):
@@ -1742,9 +1875,11 @@ class AutomationExecutionDetailView(
     LoginRequiredMixin,
     OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     View,
 ):
+    required_project_permission = PROJECT_AUTOMATIONS_VIEW
     """Full-page detail view for a single automation execution."""
 
     def get(self, request, *args, **kwargs):
@@ -1808,13 +1943,15 @@ def _get_automation_execution_by_id(project, automation_name, execution_id):
 
 class AutomationDeleteView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    OrganizationIsMemberMixin,
     ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
     ResourceUrlNameMixin,
     SuccessMessageMixin,
     DeleteView,
 ):
+    required_project_permission = PROJECT_AUTOMATIONS_MANAGE
     model = Automation
     template_name = "projects/automations/delete.html"
     success_message = "The automation has been successfully removed."
@@ -1835,6 +1972,172 @@ class AutomationDeleteView(
     def get_success_url(self):
         return reverse(
             "automations",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+
+
+class ProjectMembersView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
+    ProjectIsActiveMixin,
+    TemplateView,
+):
+    required_project_permission = PROJECT_MEMBERS_VIEW
+    template_name = "projects/project_members.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        context["project_members"] = (
+            ProjectMembership.objects.filter(project=self.project)
+            .select_related("membership__user")
+            .order_by("membership__user__username")
+        )
+        context["project_role_choices"] = RoleRegistry.get_project_role_choices()
+        context["can_manage_members"] = get_authorization_context(
+            self.request
+        ).has_project_permission(self.project, PROJECT_MEMBERS_MANAGE)
+        if context["can_manage_members"]:
+            context["members_form"] = kwargs.get(
+                "members_form"
+            ) or ProjectMembershipForm(project=self.project)
+        return context
+
+    def post(self, request, *args, **kwargs):
+        check_project_permission(request, self.project, PROJECT_MEMBERS_MANAGE)
+        form = ProjectMembershipForm(request.POST, project=self.project)
+        if not form.is_valid():
+            messages.error(request, "Error in the form")
+            context = self.get_context_data(members_form=form)
+            return self.render_to_response(context)
+
+        membership = get_object_or_404(
+            Membership,
+            pk=form.cleaned_data["membership_id"],
+            organization=request.current_organization,
+            date_joined__isnull=False,
+        )
+
+        try:
+            add_project_member(
+                project=self.project,
+                membership=membership,
+                role=form.cleaned_data["role"],
+                actor_user=request.user,
+                actor_organization=request.current_organization,
+            )
+        except DRFValidationError as exc:
+            detail = exc.detail
+            if isinstance(detail, dict):
+                message = next(iter(detail.values()))
+                if isinstance(message, (list, tuple)):
+                    message = message[0]
+            else:
+                message = detail[0] if isinstance(detail, list) else str(detail)
+            messages.error(request, str(message))
+            context = self.get_context_data(members_form=form)
+            return self.render_to_response(context)
+
+        messages.success(request, "The member has been added to the project.")
+        return redirect(
+            reverse(
+                "project_members",
+                kwargs={
+                    "org_name": request.current_organization.name,
+                    "project_name": self.project.name,
+                },
+            )
+        )
+
+
+class ProjectMemberRoleUpdateView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
+    View,
+):
+    required_project_permission = PROJECT_MEMBERS_MANAGE
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        project_membership = get_object_or_404(
+            ProjectMembership,
+            pk=self.kwargs["member_id"],
+            project=self.project,
+        )
+        role = request.POST.get("role")
+
+        try:
+            update_project_member_role(
+                project_membership=project_membership,
+                role=role,
+                actor_user=request.user,
+                actor_organization=request.current_organization,
+            )
+        except DRFValidationError as exc:
+            detail = exc.detail
+            message = detail[0] if isinstance(detail, list) else str(detail)
+            return JsonResponse(
+                {"status": "error", "message": message},
+                status=400,
+            )
+
+        return JsonResponse(
+            {"status": "ok", "message": "Project role has been updated successfully."}
+        )
+
+
+class ProjectMemberDeleteView(
+    LoginRequiredMixin,
+    OrganizationIsMemberMixin,
+    ProjectObjectMixin,
+    RequiresProjectPermissionMixin,
+    ProjectIsActiveMixin,
+    SuccessMessageMixin,
+    DeleteView,
+):
+    required_project_permission = PROJECT_MEMBERS_MANAGE
+    model = ProjectMembership
+    template_name = "projects/delete_project_member.html"
+    success_message = "The member has been removed from the project."
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(
+            ProjectMembership,
+            pk=self.kwargs["member_id"],
+            project=self.project,
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["project"] = self.project
+        return context
+
+    def form_valid(self, form):
+        try:
+            remove_project_member(
+                project_membership=self.object,
+                actor_user=self.request.user,
+                actor_organization=self.request.current_organization,
+            )
+        except DRFValidationError as exc:
+            detail = exc.detail
+            message = detail[0] if isinstance(detail, list) else str(detail)
+            messages.error(self.request, str(message))
+            return redirect(self.get_success_url())
+
+        messages.success(self.request, self.success_message)
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse(
+            "project_members",
             kwargs={
                 "org_name": self.request.current_organization.name,
                 "project_name": self.project.name,

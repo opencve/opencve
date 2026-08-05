@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load opencve_extras %}
+{% load authorization_tags %}
 
 {% block title %}Project {{ project.name }} - {{ block.super }}{% endblock %}
 
@@ -21,20 +22,38 @@
                 <li class="{% is_active_link 'subscriptions' %}">
                     <a href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}">Subscriptions</a>
                 </li>
+                {% has_project_permission project 'project.automations.view' as can_view_automations %}
+                {% if can_view_automations %}
                 <li class="{% is_active_link 'automations' 'create_automation' 'automation_overview' 'automation_configuration' 'automation_executions' %}">
                     <a href="{% url 'automations' org_name=request.current_organization.name project_name=project.name %}">Automations</a>
                 </li>
+                {% endif %}
+                {% has_project_permission project 'project.notifications.view' as can_view_notifications %}
+                {% if can_view_notifications %}
                 <li class="{% is_active_link 'notifications' 'create_notification' 'edit_notification' %}">
                     <a href="{% url 'notifications' org_name=request.current_organization.name project_name=project.name %}">Notifications</a>
                 </li>
+                {% endif %}
+                {% has_project_permission project 'project.reports.view' as can_view_reports %}
+                {% if can_view_reports %}
                 <li class="{% is_active_link 'reports' 'report' %}">
                     <a href="{% url 'reports' org_name=request.current_organization.name project_name=project.name %}">Reports</a>
                 </li>
+                {% endif %}
+                {% has_project_permission project 'project.members.view' as can_view_members %}
+                {% if can_view_members %}
+                <li class="{% is_active_link 'project_members' 'delete_project_member' %}">
+                    <a href="{% url 'project_members' org_name=request.current_organization.name project_name=project.name %}">Members</a>
+                </li>
+                {% endif %}
+                {% has_project_permission project 'project.edit' as can_edit_project %}
+                {% if can_edit_project %}
                 <li class="pull-right">
                     <a href="{% url 'edit_project' org_name=request.current_organization.name project_name=project.name %}">
                         <i class="fa fa-gear"></i>
                     </a>
                 </li>
+                {% endif %}
             </ul>
         </div>
     </div>
@@ -43,6 +62,7 @@
 <section class="content">
     <div class="row">
         <div class="col-md-12">
+            <div id="project-ajax-messages"></div>
             {% include "messages.html" %}
             {% block content_project %}{% endblock %}
         </div>
