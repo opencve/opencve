@@ -7,6 +7,7 @@ from cves.models import Cve
 from cves.search import Search
 from views.models import View
 from opencve.utils import is_valid_uuid
+from authorization.querysets import accessible_projects
 from projects.models import Automation, Project, CveTracker
 from projects.utils import build_report_listing_summary
 from users.models import User
@@ -134,7 +135,9 @@ class ActivityWidget(Widget):
         # Filter on user subscriptions if needed
         activities_view = self.configuration.get("activities_view", "all")
         if activities_view == "subscriptions":
-            vendors = self.request.current_organization.get_projects_vendors()
+            vendors = self.request.current_organization.get_projects_vendors(
+                self.request.user
+            )
             if vendors:
                 query = query.filter(cve__vendors__has_any_keys=vendors)
 
@@ -235,9 +238,8 @@ class ProjectCvesWidget(Widget):
 
         # Ensure the project is owned by the current organization
         project = (
-            Project.objects.filter(
-                id=project_id, organization=self.request.current_organization
-            )
+            accessible_projects(self.request.user, self.request.current_organization)
+            .filter(id=project_id)
             .only("active")
             .first()
         )
@@ -254,17 +256,17 @@ class ProjectCvesWidget(Widget):
         return cleaned
 
     def config(self):
-        projects = Project.objects.filter(
-            organization=self.request.current_organization,
-            active=True,
-        ).all()
+        projects = accessible_projects(
+            self.request.user, self.request.current_organization
+        ).filter(active=True)
         return self.render_config(projects=projects)
 
     def index(self):
-        project = Project.objects.filter(
-            organization=self.request.current_organization,
-            id=self.configuration["project_id"],
-        ).first()
+        project = (
+            accessible_projects(self.request.user, self.request.current_organization)
+            .filter(id=self.configuration["project_id"])
+            .first()
+        )
 
         vendors = project.subscriptions["vendors"] + project.subscriptions["products"]
         if not vendors:
@@ -296,7 +298,7 @@ class ProjectsWidget(Widget):
 
     def index(self):
         organization = self.request.current_organization
-        projects = organization.projects.all()
+        projects = accessible_projects(self.request.user, organization)
         return self.render_index(
             organization=organization, projects=projects.order_by("name")
         )
@@ -362,14 +364,16 @@ class LastReportsWidget(Widget):
 
     def index(self):
         organization = self.request.current_organization
-        projects = organization.projects.all()
+        accessible_ids = accessible_projects(
+            self.request.user, organization
+        ).values_list("pk", flat=True)
 
         changes_with_cve_prefetch = Prefetch(
             "changes",
             queryset=Change.objects.select_related("cve"),
         )
         reports = (
-            Report.objects.filter(project__in=projects)
+            Report.objects.filter(project_id__in=accessible_ids)
             .select_related("project", "automation")
             .prefetch_related(changes_with_cve_prefetch)
             .order_by("-created_at")
@@ -394,10 +398,13 @@ class MyAssignedCvesWidget(Widget):
     description = "Displays the most recent CVEs assigned to you."
 
     def index(self):
+        accessible_ids = accessible_projects(
+            self.request.user, self.request.current_organization
+        ).values_list("pk", flat=True)
         trackers = (
             CveTracker.objects.filter(
                 assignee=self.request.user,
-                project__organization=self.request.current_organization,
+                project_id__in=accessible_ids,
             )
             .select_related("cve", "project", "assignee")
             .order_by("-cve__updated_at")[:20]
@@ -462,9 +469,10 @@ class AssignmentCvesWidget(Widget):
 
             # Verify project exists and belongs to organization
             project = (
-                Project.objects.filter(
-                    id=project_id, organization=self.request.current_organization
+                accessible_projects(
+                    self.request.user, self.request.current_organization
                 )
+                .filter(id=project_id)
                 .only("active")
                 .first()
             )
@@ -487,10 +495,11 @@ class AssignmentCvesWidget(Widget):
             .order_by("username")
         )
 
-        projects = Project.objects.filter(
-            organization=self.request.current_organization,
-            active=True,
-        ).order_by("name")
+        projects = (
+            accessible_projects(self.request.user, self.request.current_organization)
+            .filter(active=True)
+            .order_by("name")
+        )
 
         return self.render_config(
             members=members,
@@ -500,12 +509,18 @@ class AssignmentCvesWidget(Widget):
         )
 
     def index(self):
-        # Build tracker filter conditions
-        tracker_filters = {"project__organization": self.request.current_organization}
-
+        accessible_ids = list(
+            accessible_projects(
+                self.request.user, self.request.current_organization
+            ).values_list("pk", flat=True)
+        )
         project_id = self.configuration.get("project_id", "")
         if project_id:
-            tracker_filters["project_id"] = project_id
+            if project_id not in {str(pk) for pk in accessible_ids}:
+                return self.render_index(trackers=[])
+            tracker_filters = {"project_id": project_id}
+        else:
+            tracker_filters = {"project_id__in": accessible_ids}
 
         # Apply assignee filter if provided
         assignee_id = self.configuration.get("assignee_id", "")
@@ -544,16 +559,13 @@ class AssignmentCvesWidget(Widget):
         if include_no_status and not assignee_id:
             # Scope to one project when selected, otherwise all active projects.
             if project_id:
-                projects = Project.objects.filter(
-                    id=project_id,
-                    organization=self.request.current_organization,
-                    active=True,
-                )
+                projects = accessible_projects(
+                    self.request.user, self.request.current_organization
+                ).filter(id=project_id, active=True)
             else:
-                projects = Project.objects.filter(
-                    organization=self.request.current_organization,
-                    active=True,
-                )
+                projects = accessible_projects(
+                    self.request.user, self.request.current_organization
+                ).filter(active=True)
 
             # Avoid duplicates when mixing real trackers and synthetic no-status rows.
             existing_pairs = {

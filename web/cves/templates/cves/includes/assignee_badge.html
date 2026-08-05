@@ -1,5 +1,8 @@
-{% load opencve_extras %}
+{% load opencve_extras authorization_tags %}
 
+{% has_project_permission project 'project.tracker.assign' as can_edit_assignee %}
+
+{% if can_edit_assignee %}
 {% if tracker and tracker.assignee %}
     <span class="editable-assignee badge badge-info"
           data-cve-id="{{ cve_id }}"
@@ -26,4 +29,11 @@
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
         </svg>
     </span>
+{% endif %}
+{% else %}
+{% if tracker and tracker.assignee %}
+    <span class="badge badge-info">{{ tracker.assignee.username }}</span>
+{% else %}
+    <span class="badge badge-secondary">Unassigned</span>
+{% endif %}
 {% endif %}

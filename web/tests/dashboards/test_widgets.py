@@ -746,12 +746,12 @@ def test_project_cves_widget_validate_config(
     Test the ProjectCvesWidget.validate_config method.
     """
     user1 = create_user(username="user1")
-    org1 = create_organization(name="org1", owner=user1)
+    org1 = create_organization(name="org1", user=user1)
     project1 = create_project(name="project1", organization=org1, active=True)
     project2 = create_project(name="project2", organization=org1, active=False)
 
     user2 = create_user(username="user2")
-    org2 = create_organization(name="org2", owner=user2)
+    org2 = create_organization(name="org2", user=user2)
     project3 = create_project(name="project3", organization=org2)
 
     request = MagicMock()
@@ -830,7 +830,7 @@ def test_project_cves_widget_config(
     Test ProjectCvesWidget.config to ensure correct projects are passed to the config template.
     """
     user1 = create_user(username="user1")
-    org1 = create_organization(name="org1", owner=user1)
+    org1 = create_organization(name="org1", user=user1)
     project_active_org1 = create_project(
         name="Active Org1", organization=org1, active=True
     )
@@ -839,7 +839,7 @@ def test_project_cves_widget_config(
     )
 
     user2 = create_user(username="user2")
-    org2 = create_organization(name="org2", owner=user2)
+    org2 = create_organization(name="org2", user=user2)
     project_active_org2 = create_project(
         name="Active Org2", organization=org2, active=True
     )
@@ -901,7 +901,7 @@ def test_project_cves_widget_index(
     Test ProjectCvesWidget.index to ensure correct project and associated CVEs are passed to the template.
     """
     user = create_user(username="testuser")
-    org = create_organization(name="org1", owner=user)
+    org = create_organization(name="org1", user=user)
 
     project_tomexam = create_project(
         name="Project TomExam",
@@ -1008,7 +1008,7 @@ def test_tags_widget_index(
     """
     user1 = create_user(username="user1")
     user2 = create_user(username="user2")
-    org = create_organization(name="org1", owner=user1)
+    org = create_organization(name="org1", user=user1)
 
     tag1_user1 = UserTag.objects.create(name="tag1_u1", user=user1)
     tag2_user1 = UserTag.objects.create(name="tag2_u1", user=user1)
@@ -1064,9 +1064,9 @@ def test_projects_widget_index(
     Test ProjectsWidget.index to ensure only projects from the current organization are returned.
     """
     user1 = create_user(username="user1")
-    org1 = create_organization(name="Org Alpha", owner=user1)
+    org1 = create_organization(name="Org Alpha", user=user1)
     user2 = create_user(username="user2")
-    org2 = create_organization(name="Org Beta", owner=user2)
+    org2 = create_organization(name="Org Beta", user=user2)
 
     proj_b_org1 = create_project(name="Project B", organization=org1)
     proj_a_org1 = create_project(name="Project A", organization=org1)
@@ -1128,11 +1128,11 @@ def test_last_reports_widget_index(
     changes_summary attached.
     """
     user1 = create_user(username="user1")
-    org1 = create_organization(name="Org Alpha", owner=user1)
+    org1 = create_organization(name="Org Alpha", user=user1)
     proj_org1 = create_project(name="Project Alpha", organization=org1)
 
     user2 = create_user(username="user2")
-    org2 = create_organization(name="Org Beta", owner=user2)
+    org2 = create_organization(name="Org Beta", user=user2)
     proj_org2 = create_project(name="Project Beta", organization=org2)
 
     automation_org1 = create_automation(
@@ -1543,8 +1543,8 @@ def test_my_assigned_cves_widget_index(
     """
     user1 = create_user(username="user1")
     user2 = create_user(username="user2")
-    org1 = create_organization(name="org1", owner=user1)
-    org2 = create_organization(name="org2", owner=user2)
+    org1 = create_organization(name="org1", user=user1)
+    org2 = create_organization(name="org2", user=user2)
 
     project1_org1 = create_project(name="Project1 Org1", organization=org1, active=True)
     project2_org1 = create_project(name="Project2 Org1", organization=org1, active=True)

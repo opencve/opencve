@@ -8,13 +8,16 @@ from django.urls import reverse
 from bs4 import BeautifulSoup
 from django.test.client import RequestFactory
 from django.contrib.auth.models import AnonymousUser
+from django.utils.timezone import now
 
 from cves.constants import PRODUCT_SEPARATOR
 from cves.views import CveListView, CveDetailView
 from cves.models import Vendor, Product, Cve, Weakness
 from opencve.pagination import keyset_cursor_payload, paginate_keyset
+from organizations.models import Membership
 from users.models import UserTag, CveTag
-from projects.models import CveComment, CveTracker
+from projects.models import CveComment, CveTracker, ProjectMembership
+from authorization.roles import PROJECT_ADMIN, PROJECT_CONTRIBUTOR, PROJECT_VIEWER
 
 
 def _vendor_names(soup):
@@ -860,6 +863,7 @@ def test_cve_detail_list_cve_projects(
     rf = RequestFactory()
     request = rf.get("/")
     request.user = user
+    request.current_organization = project1.organization
     view = CveDetailView()
     view.request = request
 
@@ -1002,8 +1006,6 @@ def test_cve_detail_get_context_data_authenticated(
     assert "enrichment_vendors_data" in context
     assert "enrichment_affected" in context
     assert "filtered_projects" in context
-    assert "filtered_projects" in context
-    assert "organization_members" in context
     assert "status_choices" in context
 
 

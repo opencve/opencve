@@ -31,6 +31,10 @@ from opencve.pagination import (
     paginate_keyset,
     parse_keyset_cursor,
 )
+from authorization.helpers import assignable_tracker_users
+from authorization.permissions import PROJECT_SUBSCRIPTIONS_MANAGE
+from authorization.querysets import subscription_manageable_projects
+from authorization.view_helpers import check_project_permission
 from organizations.mixins import OrganizationRequiredMixin
 from projects.models import Project, CveComment, CveTracker
 from projects.services.subscriptions import subscribe_project, unsubscribe_project
@@ -482,6 +486,9 @@ class CveDetailView(DetailView):
                     "tracker": trackers_by_project.get(project.id),
                     "comments": threaded_comments,
                     "comment_count": total_comments,
+                    "assignable_members": assignable_tracker_users(
+                        self.request.current_organization, project
+                    ),
                 }
             )
 
@@ -529,9 +536,6 @@ class CveDetailView(DetailView):
             )
 
             context["filtered_projects"] = self.list_cve_projects(cve, projects)
-            context["organization_members"] = (
-                self.request.current_organization.get_members(active=True)
-            )
             context["status_choices"] = CveTracker.STATUS_CHOICES
 
         return context
@@ -590,11 +594,9 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
                 "object": obj,
                 "object_type": obj_type,
                 "object_name": obj_name,
-                "projects": Project.objects.filter(
-                    organization=self.request.current_organization
-                )
-                .order_by("name")
-                .all(),
+                "projects": subscription_manageable_projects(
+                    self.request.user, self.request.current_organization
+                ),
             }
         )
 
@@ -615,10 +617,22 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
         ):
             raise Http404()
 
-        # Check if the project belongs to the current organization
         project = get_object_or_404(
-            Project, id=project_id, organization=request.current_organization
+            Project,
+            id=project_id,
+            organization=request.current_organization,
+            active=True,
         )
+        if (
+            not subscription_manageable_projects(
+                request.user, request.current_organization
+            )
+            .filter(pk=project.pk)
+            .exists()
+        ):
+            raise Http404()
+
+        check_project_permission(request, project, PROJECT_SUBSCRIPTIONS_MANAGE)
 
         if obj_type == "vendor":
             vendor = get_object_or_404(Vendor, id=obj_id)

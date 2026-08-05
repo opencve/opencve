@@ -401,15 +401,19 @@ window.vendorSubscriptionData = {
 {% if user.is_authenticated and filtered_projects %}
 <script>
 window.cveTrackingData = {
-    organizationMembers: [
-        {% for member in organization_members %}
-        {
-            id: "{{ member.id }}",
-            username: "{{ member.username|escapejs }}",
-            email: "{{ member.email|escapejs }}"
-        }{% if not forloop.last %},{% endif %}
+    assignableMembersByProject: {
+        {% for project_data in filtered_projects %}
+        "{{ project_data.project.name|escapejs }}": [
+            {% for member in project_data.assignable_members %}
+            {
+                id: "{{ member.id }}",
+                username: "{{ member.username|escapejs }}",
+                email: "{{ member.email|escapejs }}"
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]{% if not forloop.last %},{% endif %}
         {% endfor %}
-    ],
+    },
     statusChoices: [
         {% for status_key, status_label in status_choices %}
         {

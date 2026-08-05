@@ -6,9 +6,11 @@
         </div>
     </div>
     <div class="box-body" id="cves-tracking-list">
+        {% load authorization_tags %}
         {% if user.is_authenticated and filtered_projects %}
             {% for project_data in filtered_projects %}
                 {% with project=project_data.project tracker=project_data.tracker threads=project_data.comments comment_count=project_data.comment_count %}
+                {% has_project_permission project 'project.tracker.comment' as can_comment %}
                 <div class="project-assignment-item" data-project-name="{{ project.name }}">
                     <div class="project-assignment-item-header">
                         <strong>{{ project.name }}</strong>
@@ -16,11 +18,11 @@
                     <div class="project-assignment-item-badges">
                         <div class="project-assignment-badge project-assignment-badge-inline">
                             <span class="project-assignment-label">Assignee</span>
-                            {% include "cves/includes/assignee_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
+                            {% include "cves/includes/assignee_badge.html" with cve_id=cve.cve_id project=project project_name=project.name org_name=request.current_organization.name %}
                         </div>
                         <div class="project-assignment-badge project-assignment-badge-inline">
                             <span class="project-assignment-label">Status</span>
-                            {% include "cves/includes/status_badge.html" with cve_id=cve.cve_id project_name=project.name org_name=request.current_organization.name %}
+                            {% include "cves/includes/status_badge.html" with cve_id=cve.cve_id project=project project_name=project.name org_name=request.current_organization.name %}
                         </div>
                     </div>
 
@@ -59,6 +61,7 @@
                                                             {% endif %}
                                                         </span>
                                                     </div>
+                                                    {% if can_comment %}
                                                     <div class="project-comment-actions">
                                                         <button type="button" class="project-comment-action-btn project-comment-edit-btn" title="Edit">
                                                             <i class="fa fa-pencil"></i>
@@ -67,6 +70,7 @@
                                                             <i class="fa fa-trash"></i>
                                                         </button>
                                                     </div>
+                                                    {% endif %}
                                                 </div>
                                                 <div class="project-comment-body">
                                                     {{ comment.body|linebreaksbr }}
@@ -87,6 +91,7 @@
                                                                             {% endif %}
                                                                         </span>
                                                                     </div>
+                                                                    {% if can_comment %}
                                                                     <div class="project-comment-actions">
                                                                         <button type="button" class="project-comment-action-btn project-comment-edit-btn" title="Edit">
                                                                             <i class="fa fa-pencil"></i>
@@ -95,6 +100,7 @@
                                                                             <i class="fa fa-trash"></i>
                                                                         </button>
                                                                     </div>
+                                                                    {% endif %}
                                                                 </div>
                                                                 <div class="project-comment-body">
                                                                     {{ reply.body|linebreaksbr }}
@@ -105,6 +111,7 @@
                                                 </ul>
                                             {% endif %}
 
+                                            {% if can_comment %}
                                             <button type="button"
                                                     class="btn btn-link btn-xs project-comment-reply-toggle"
                                                     data-project-name="{{ project.name }}"
@@ -131,12 +138,14 @@
                                                     </button>
                                                 </div>
                                             </form>
+                                            {% endif %}
                                         </li>
                                         {% endwith %}
                                     {% endfor %}
                                 {% endif %}
                             </ul>
 
+                            {% if can_comment %}
                             <form class="project-comment-form"
                                   data-project-name="{{ project.name }}"
                                   data-org-name="{{ request.current_organization.name }}"
@@ -154,6 +163,7 @@
                                     </button>
                                 </div>
                             </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
