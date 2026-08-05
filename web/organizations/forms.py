@@ -24,6 +24,7 @@ class OrganizationForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop("request")
+        read_only = kwargs.pop("read_only", False)
         super(OrganizationForm, self).__init__(*args, **kwargs)
 
         # Add help text to name field only when editing
@@ -32,14 +33,19 @@ class OrganizationForm(forms.ModelForm):
                 "Renaming the organization will break any external links to it, as the URL changes."
             )
 
+        if read_only:
+            self.fields["name"].disabled = True
+
         self.helper = FormHelper()
-        self.helper.layout = Layout(
-            "name",
-            FormActions(
-                Submit("save", "Save"),
-                css_class="pull-right",
-            ),
-        )
+        layout_fields = ["name"]
+        if not read_only:
+            layout_fields.append(
+                FormActions(
+                    Submit("save", "Save"),
+                    css_class="pull-right",
+                )
+            )
+        self.helper.layout = Layout(*layout_fields)
 
     def clean_name(self):
         name = self.cleaned_data["name"]
@@ -53,10 +59,15 @@ class OrganizationForm(forms.ModelForm):
 
 class MembershipForm(forms.Form):
     email = forms.EmailField(label="Email")
-    role = forms.ChoiceField(choices=Membership.ROLES)
+    role = forms.ChoiceField(choices=[])
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, actor_membership=None, **kwargs):
         super(MembershipForm, self).__init__(*args, **kwargs)
+        from authorization.registry import RoleRegistry
+
+        self.fields["role"].choices = RoleRegistry.get_org_role_choices(
+            actor_membership=actor_membership
+        )
         self.fields["email"].widget.attrs["placeholder"] = self.fields["email"].label
         self.helper = FormHelper()
         self.helper.form_show_labels = False

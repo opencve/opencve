@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load authorization_tags %}
 
 {% block title %}Organizations - {{ block.super }}{% endblock %}
 {% block navbar_title%}Organizations{% endblock %}
@@ -26,7 +27,8 @@
                         <li class="item">
                             <div class="product-info">
                                 <div class="product-title">
-                                    {% if membership.is_invited or not membership.is_owner %}
+                                    {% membership_can_access_org_settings membership as can_access_settings %}
+                                    {% if membership.is_invited or not can_access_settings %}
                                     {{ membership.organization.name }}
                                     {% else %}
                                     <a href="{% url 'edit_organization' org_name=membership.organization.name %}">{{ membership.organization.name }}</a>
@@ -36,8 +38,10 @@
                                             {% if membership.is_invited %}
                                             <a href="{% url 'accept_organization_invitation' org_name=membership.organization.name key=membership.key %}" class="btn btn-primary btn-xs" type="button">Accept Invitation</a>
                                             {% endif %}
-                                            {% if membership.is_owner and not membership.is_invited %}
+                                            {% if can_access_settings and not membership.is_invited %}
                                             <a href="{% url 'edit_organization' org_name=membership.organization.name %}" class="btn btn-default btn-xs">Edit</a>
+                                            {% endif %}
+                                            {% if membership.is_owner and not membership.is_invited %}
                                             <a href="{% url 'delete_organization' org_name=membership.organization.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
                                             {% endif %}
                                         </div>
@@ -46,7 +50,7 @@
                                 <span class="product-description">
                                     Role: {{ membership.role }}
                                 </span>
-                                {% if membership.is_owner and not membership.is_invited %}
+                                {% if can_access_settings and not membership.is_invited %}
                                 {% with members=membership.organization.membership_set.all %}
                                 <div class="product-vendors">
                                     <div class="pointer change-collapsed collapsed" data-toggle="collapse" href="#org-{{ membership.organization.id }}" aria-expanded="false">

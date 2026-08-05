@@ -195,7 +195,7 @@ def test_organization_is_owner_mixin_invited_owner(
     assert response.url == reverse("list_organizations")
     messages = list(request._messages)
     assert any(
-        message.message == "The requested organization does not exist."
+        message.message == "You are not an owner of the organization."
         for message in messages
     )
 

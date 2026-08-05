@@ -25,7 +25,18 @@ from organizations.forms import (
     OrganizationForm,
     get_organization_token_form_class,
 )
-from organizations.mixins import OrganizationIsOwnerMixin
+from authorization.context import get_authorization_context
+from authorization.mixins import RequiresOrgPermissionMixin
+from authorization.permissions import (
+    ORG_AUDIT_LOGS_VIEW,
+    ORG_DELETE,
+    ORG_EDIT,
+    ORG_MEMBERS_VIEW,
+    ORG_TOKENS_MANAGE,
+)
+from authorization.policies import get_active_membership
+from authorization.registry import RoleRegistry
+from organizations.mixins import OrganizationIsMemberMixin
 from organizations.models import Membership, Organization, OrganizationAPIToken
 from organizations.auditlog import (
     apply_audit_log_get_filters,
@@ -55,6 +66,14 @@ def _field_validation_message(detail, field):
     if isinstance(value, (list, tuple)):
         return str(value[0])
     return str(value)
+
+
+def _member_removal_error_message(exc):
+    detail = exc.detail
+    message = detail[0] if isinstance(detail, list) else str(detail)
+    if message == "Cannot remove the last owner.":
+        return "You cannot leave this organization as you are the only owner."
+    return message
 
 
 class OrganizationsListView(LoginRequiredMixin, ListView):
@@ -104,11 +123,12 @@ class OrganizationCreateView(
 
 class OrganizationEditView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     SuccessMessageMixin,
     RequestViewMixin,
     UpdateView,
 ):
+    required_org_permission = ORG_MEMBERS_VIEW
     model = Organization
     form_class = OrganizationForm
     template_name = "organizations/edit_organization_general.html"
@@ -121,13 +141,36 @@ class OrganizationEditView(
         context = super().get_context_data(**kwargs)
         context["active_tab"] = "general"
         context["organization"] = self.object
+        context["can_edit_organization"] = get_authorization_context(
+            self.request
+        ).has_org_permission(ORG_EDIT)
         return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["read_only"] = not get_authorization_context(
+            self.request
+        ).has_org_permission(ORG_EDIT)
+        return kwargs
 
     def get_success_url(self):
         return reverse(
             "edit_organization",
             kwargs={"org_name": self.object.name},
         )
+
+    def post(self, request, *args, **kwargs):
+        if not get_authorization_context(request).has_org_permission(ORG_EDIT):
+            messages.error(
+                request, "You do not have permission to perform this action."
+            )
+            return redirect(
+                reverse(
+                    "edit_organization",
+                    kwargs={"org_name": kwargs["org_name"]},
+                )
+            )
+        return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         try:
@@ -142,27 +185,34 @@ class OrganizationEditView(
 
 class OrganizationEditMembersView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     TemplateView,
 ):
+    required_org_permission = ORG_MEMBERS_VIEW
     template_name = "organizations/edit_organization_members.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         organization = self.request.current_organization
+        actor_membership = get_active_membership(self.request.user, organization)
         context["organization"] = organization
         context["active_tab"] = "members"
         context["members"] = Membership.objects.filter(organization=organization)
+        context["actor_membership"] = actor_membership
+        context["org_role_choices"] = RoleRegistry.get_org_role_choices(
+            actor_membership=actor_membership
+        )
         context["members_form"] = kwargs.get("members_form") or MembershipForm(
-            initial={"role": Membership.MEMBER}
+            initial={"role": Membership.MEMBER},
+            actor_membership=actor_membership,
         )
         return context
 
     def post(self, request, *args, **kwargs):
         organization = request.current_organization
+        actor_membership = get_active_membership(request.user, organization)
 
-        # Check the form validity
-        form = MembershipForm(request.POST)
+        form = MembershipForm(request.POST, actor_membership=actor_membership)
         if not form.is_valid():
             messages.error(request, "Error in the form")
             context = self.get_context_data(members_form=form)
@@ -176,6 +226,7 @@ class OrganizationEditMembersView(
                 email=email,
                 role=form.cleaned_data["role"],
                 request=request,
+                actor_membership=actor_membership,
             )
         except DRFValidationError as exc:
             messages.error(request, _field_validation_message(exc.detail, "email"))
@@ -203,9 +254,10 @@ class OrganizationEditMembersView(
 
 class OrganizationEditAuditLogsView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     TemplateView,
 ):
+    required_org_permission = ORG_AUDIT_LOGS_VIEW
     template_name = "organizations/edit_organization_audit_logs.html"
 
     def get_context_data(self, **kwargs):
@@ -257,10 +309,11 @@ class OrganizationEditAuditLogsView(
 
 class OrganizationEditTokensView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     RequestViewMixin,
     TemplateView,
 ):
+    required_org_permission = ORG_TOKENS_MANAGE
     template_name = "organizations/edit_organization_tokens.html"
 
     def get_context_data(self, **kwargs):
@@ -318,8 +371,12 @@ class OrganizationEditTokensView(
 
 
 class OrganizationDeleteView(
-    LoginRequiredMixin, OrganizationIsOwnerMixin, SuccessMessageMixin, DeleteView
+    LoginRequiredMixin,
+    RequiresOrgPermissionMixin,
+    SuccessMessageMixin,
+    DeleteView,
 ):
+    required_org_permission = ORG_DELETE
     model = Organization
     slug_field = "name"
     slug_url_kwarg = "org_name"
@@ -330,10 +387,11 @@ class OrganizationDeleteView(
 
 class OrganizationMemberDeleteView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     SuccessMessageMixin,
     DeleteView,
 ):
+    required_org_permission = ORG_MEMBERS_VIEW
     model = Membership
     template_name = "organizations/delete_member.html"
     success_message = "The member has been removed."
@@ -341,13 +399,15 @@ class OrganizationMemberDeleteView(
 
     def dispatch(self, request, *args, **kwargs):
         member = self.get_object()
+        actor_membership = get_active_membership(
+            request.user, request.current_organization
+        )
         try:
-            validate_member_removal(membership=member)
-        except DRFValidationError:
-            messages.error(
-                request,
-                "You cannot leave this organization as you are the only owner.",
+            validate_member_removal(
+                membership=member, actor_membership=actor_membership
             )
+        except DRFValidationError as exc:
+            messages.error(request, _member_removal_error_message(exc))
             return redirect(
                 reverse(
                     "edit_organization_members",
@@ -358,13 +418,13 @@ class OrganizationMemberDeleteView(
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
+        actor_membership = get_active_membership(
+            self.request.user, self.request.current_organization
+        )
         try:
-            remove_member(membership=self.object)
-        except DRFValidationError:
-            messages.error(
-                self.request,
-                "You cannot leave this organization as you are the only owner.",
-            )
+            remove_member(membership=self.object, actor_membership=actor_membership)
+        except DRFValidationError as exc:
+            messages.error(self.request, _member_removal_error_message(exc))
             return redirect(
                 reverse(
                     "edit_organization_members",
@@ -397,10 +457,11 @@ class OrganizationMemberDeleteView(
 
 class OrganizationMemberRoleUpdateView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     SingleObjectMixin,
     View,
 ):
+    required_org_permission = ORG_MEMBERS_VIEW
     """Allow owners to update the role of a member who has already joined."""
 
     model = Membership
@@ -416,9 +477,16 @@ class OrganizationMemberRoleUpdateView(
     def post(self, request, *args, **kwargs):
         membership = self.get_object()
         role = request.POST.get("role")
+        actor_membership = get_active_membership(
+            request.user, request.current_organization
+        )
 
         try:
-            update_member_role(membership=membership, role=role)
+            update_member_role(
+                membership=membership,
+                role=role,
+                actor_membership=actor_membership,
+            )
         except DRFValidationError as exc:
             detail = exc.detail
             message = detail[0] if isinstance(detail, list) else str(detail)
@@ -487,10 +555,11 @@ def change_organization(request):
 
 class OrganizationTokenDeleteView(
     LoginRequiredMixin,
-    OrganizationIsOwnerMixin,
+    RequiresOrgPermissionMixin,
     SuccessMessageMixin,
     DeleteView,
 ):
+    required_org_permission = ORG_TOKENS_MANAGE
     model = OrganizationAPIToken
     template_name = "organizations/delete_token.html"
     success_message = "The API token has been revoked."

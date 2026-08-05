@@ -1,8 +1,11 @@
 from django.contrib import messages
-from django.http import Http404
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect
 
-from organizations.models import Membership, Organization
+from authorization.context import get_authorization_context
+from authorization.permissions import ORG_VIEW
+from authorization.policies import get_active_membership
+from authorization.roles import ORG_OWNER
+from authorization.mixins import RequiresOrgPermissionMixin
 
 
 class OrganizationRequiredMixin:
@@ -15,10 +18,19 @@ class OrganizationRequiredMixin:
 
 
 class OrganizationIsMemberMixin:
-    """Check if the user is member of the organization"""
+    """Check if the user is an active member of the organization."""
 
     def dispatch(self, request, *args, **kwargs):
         if not request.current_organization:
+            messages.error(request, "The requested organization does not exist.")
+            return redirect("list_organizations")
+
+        membership = get_active_membership(request.user, request.current_organization)
+        if membership is None:
+            messages.error(request, "The requested organization does not exist.")
+            return redirect("list_organizations")
+
+        if not get_authorization_context(request).has_org_permission(ORG_VIEW):
             messages.error(request, "The requested organization does not exist.")
             return redirect("list_organizations")
 
@@ -26,33 +38,24 @@ class OrganizationIsMemberMixin:
 
 
 class OrganizationIsOwnerMixin:
-    """Check if the user is owner of the organization"""
+    """Owner-only organization role. Prefer RequiresOrgPermissionMixin for new code."""
 
     def dispatch(self, request, *args, **kwargs):
         if not request.current_organization:
             messages.error(request, "The requested organization does not exist.")
             return redirect("list_organizations")
 
-        # Check if user is owner or member
-        try:
-            membership = get_object_or_404(
-                Membership,
-                user=request.user,
-                organization=request.current_organization,
-                role__in=[Membership.OWNER, Membership.MEMBER],
-            )
-        except Http404:
-            messages.error(request, "The requested organization does not exist.")
-            return redirect("list_organizations")
-
-        # The user is member but not owner
-        if membership.role == Membership.MEMBER:
+        membership = get_active_membership(request.user, request.current_organization)
+        if membership is None or membership.role != ORG_OWNER:
             messages.error(request, "You are not an owner of the organization.")
             return redirect("list_organizations")
 
-        # The user is invited but not yet joined the organization
-        if membership.is_invited:
-            messages.error(request, "The requested organization does not exist.")
-            return redirect("list_organizations")
-
         return super().dispatch(request, *args, **kwargs)
+
+
+__all__ = [
+    "OrganizationRequiredMixin",
+    "OrganizationIsMemberMixin",
+    "OrganizationIsOwnerMixin",
+    "RequiresOrgPermissionMixin",
+]

@@ -152,7 +152,7 @@ def test_validate_member_role_update_empty_role(create_user, create_organization
     organization = create_organization(name="acme", user=owner)
     membership = organization.membership_set.get(user=owner)
 
-    with pytest.raises(ValidationError, match="Role is required."):
+    with pytest.raises(ValidationError, match="Invalid role."):
         validate_member_role_update(membership=membership, role="")
 
 
@@ -164,7 +164,7 @@ def test_validate_member_role_update_invalid_role(create_user, create_organizati
     membership = organization.membership_set.get(user=owner)
 
     with pytest.raises(ValidationError, match="Invalid role."):
-        validate_member_role_update(membership=membership, role="admin")
+        validate_member_role_update(membership=membership, role="superuser")
 
 
 @pytest.mark.django_db

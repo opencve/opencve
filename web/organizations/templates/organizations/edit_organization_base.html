@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load authorization_tags %}
 
 {% block title %}Edit Organization - {{ block.super }}{% endblock %}
 {% block navbar_title %}Edit Organization{% endblock %}
@@ -29,11 +30,14 @@
                     <i class="fa fa-key"></i> API Tokens
                   </a>
                 </li>
+                {% has_org_permission 'org.audit_logs.view' as can_view_audit_logs %}
+                {% if can_view_audit_logs %}
                 <li class="{% if active_tab == 'audit-logs' %}active{% endif %}">
                   <a href="{% url 'edit_organization_audit_logs' org_name=organization.name %}">
                     <i class="fa fa-list-alt"></i> Audit logs
                   </a>
                 </li>
+                {% endif %}
               </ul>
             </div>
           </div>

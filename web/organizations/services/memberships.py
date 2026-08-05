@@ -1,6 +1,9 @@
 from django.utils.crypto import get_random_string
 from rest_framework.exceptions import ValidationError
 
+from authorization.policies import can_assign_org_role, can_manage_membership
+from authorization.registry import RoleRegistry
+from authorization.roles import ORG_ADMIN, ORG_MEMBER, ORG_OWNER
 from organizations.models import Membership
 from organizations.utils import (
     send_organization_invitation_email,
@@ -13,18 +16,24 @@ def generate_invitation_key():
     return get_random_string(64).lower()
 
 
-def invite_member(*, organization, email, role, request=None):
+def validate_org_role(role: str) -> None:
+    if not role or not RoleRegistry.is_valid_org_role(role):
+        raise ValidationError("Invalid role.")
+
+
+def invite_member(*, organization, email, role, request=None, actor_membership=None):
     """Invite a member to an organization"""
+    validate_org_role(role)
+    if actor_membership and not can_assign_org_role(actor_membership, role):
+        raise ValidationError("You do not have permission to assign this role.")
+
     email = email.strip().lower()
     user = User.objects.filter(email=email).first()
 
     if user:
-
-        # Check if the user is already a member of the organization
         if organization.membership_set.filter(user=user).exists():
             raise ValidationError({"email": "Member already exist"})
 
-        # Create a membership for the existing user
         membership = Membership.objects.create(
             user=user,
             organization=organization,
@@ -37,13 +46,11 @@ def invite_member(*, organization, email, role, request=None):
 
         return membership
 
-    # Check if an invitation has already been sent to this email address
     if organization.membership_set.filter(email=email, user__isnull=True).exists():
         raise ValidationError(
             {"email": "An invitation has already been sent to this email address"}
         )
 
-    # Create a membership for the email address
     membership = Membership.objects.create(
         user=None,
         email=email,
@@ -56,50 +63,65 @@ def invite_member(*, organization, email, role, request=None):
     return membership
 
 
-def validate_member_role_update(*, membership, role):
-    """Validate role of the nmember"""
-    if not role:
-        raise ValidationError("Role is required.")
+def validate_member_role_update(*, membership, role, actor_membership=None):
+    """Validate role of the member"""
+    validate_org_role(role)
 
-    # Validate the role value
-    valid_roles = {choice[0] for choice in Membership.ROLES}
-    if role not in valid_roles:
-        raise ValidationError("Invalid role.")
+    if actor_membership:
+        if actor_membership.pk == membership.pk:
+            raise ValidationError("You cannot change your own role.")
+        if not can_manage_membership(actor_membership, membership):
+            raise ValidationError("You do not have permission to manage this member.")
+        if not can_assign_org_role(actor_membership, role):
+            raise ValidationError("You do not have permission to assign this role.")
 
-    # Check if the membership is pending
     if not membership.date_joined:
         raise ValidationError("Cannot change role for pending invitations.")
 
-    # Check if the membership is the only remaining owner
-    owners = membership.organization.membership_set.filter(
-        role=Membership.OWNER, date_joined__isnull=False
+    joined_owners = membership.organization.membership_set.filter(
+        role=ORG_OWNER, date_joined__isnull=False
     )
     if (
-        membership.role == Membership.OWNER
-        and owners.count() == 1
-        and role == Membership.MEMBER
+        membership.role == ORG_OWNER
+        and joined_owners.count() == 1
+        and role != ORG_OWNER
     ):
         raise ValidationError("You cannot demote the only owner of the organization.")
 
 
-def update_member_role(*, membership, role):
+def update_member_role(*, membership, role, actor_membership=None):
     """Update the role of the member"""
-    validate_member_role_update(membership=membership, role=role)
+    validate_member_role_update(
+        membership=membership, role=role, actor_membership=actor_membership
+    )
     membership.role = role
     membership.save(update_fields=["role"])
     return membership
 
 
-def validate_member_removal(*, membership):
+def validate_member_removal(*, membership, actor_membership=None):
     """Validate that a membership can be removed from its organization."""
+    if actor_membership:
+        if actor_membership.pk == membership.pk and membership.role == ORG_OWNER:
+            joined_owners = membership.organization.membership_set.filter(
+                role=ORG_OWNER, date_joined__isnull=False
+            )
+            if joined_owners.count() == 1:
+                raise ValidationError("Cannot remove the last owner.")
+        if not can_manage_membership(actor_membership, membership):
+            if actor_membership.pk != membership.pk:
+                raise ValidationError(
+                    "You do not have permission to remove this member."
+                )
+
     joined_owners = membership.organization.membership_set.filter(
-        role=Membership.OWNER, date_joined__isnull=False
+        role=ORG_OWNER, date_joined__isnull=False
     )
     if joined_owners.count() == 1 and joined_owners.first() == membership:
         raise ValidationError("Cannot remove the last owner.")
 
 
-def remove_member(*, membership):
+def remove_member(*, membership, actor_membership=None):
     """Remove the member from its organization"""
-    validate_member_removal(membership=membership)
+    validate_member_removal(membership=membership, actor_membership=actor_membership)
     membership.delete()

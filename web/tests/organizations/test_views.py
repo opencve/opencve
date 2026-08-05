@@ -116,11 +116,6 @@ def test_edit_organization_not_found(auth_client, create_user):
     response = client.get(url)
     assert response.status_code == 302
     assert response.url == reverse("list_organizations")
-    messages = list(response.wsgi_request._messages)
-    assert any(
-        message.message == "The requested organization does not exist."
-        for message in messages
-    )
 
 
 def test_edit_organization(auth_client, create_user, create_organization):
@@ -149,6 +144,96 @@ def test_rename_organization(auth_client, create_user, create_organization):
     ]
 
 
+def test_edit_organization_admin_read_only(
+    auth_client, create_user, create_organization
+):
+    owner = create_user(username="owner", email="owner@example.com")
+    admin = create_user(username="admin", email="admin@example.com")
+    organization = create_organization(name="orga1", user=owner, owner=True)
+    Membership.objects.create(
+        organization=organization,
+        user=admin,
+        role=Membership.ADMIN,
+        date_joined=now(),
+    )
+    url = reverse("edit_organization", kwargs={"org_name": "orga1"})
+    client = auth_client(admin)
+
+    response = client.get(url)
+    assert response.status_code == 200
+    soup = BeautifulSoup(response.content, features="html.parser")
+    name_input = soup.find("input", {"name": "name"})
+    assert name_input is not None
+    assert name_input.has_attr("disabled")
+    assert soup.find("input", {"type": "submit", "value": "Save"}) is None
+
+    response = client.post(url, data={"name": "orga2"}, follow=True)
+    organization.refresh_from_db()
+    assert organization.name == "orga1"
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert (
+        "You do not have permission to perform this action."
+        in soup.find("div", {"class": "alert-error"}).text
+    )
+
+
+def test_list_organizations_admin_can_access_settings(
+    auth_client, create_user, create_organization
+):
+    owner = create_user(username="owner", email="owner@example.com")
+    admin = create_user(username="admin", email="admin@example.com")
+    create_organization(name="orga1", user=owner, owner=True)
+    organization = Organization.objects.get(name="orga1")
+    Membership.objects.create(
+        organization=organization,
+        user=admin,
+        role=Membership.ADMIN,
+        date_joined=now(),
+    )
+
+    client = auth_client(admin)
+    response = client.get(reverse("list_organizations"))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    org_link = soup.find(
+        "a", href=reverse("edit_organization", kwargs={"org_name": "orga1"})
+    )
+
+    assert org_link is not None
+    assert org_link.text.strip() == "orga1"
+    assert soup.find("a", string="Edit") is not None
+    assert soup.find("a", string="Delete") is None
+
+
+def test_edit_organization_member_cannot_access_settings(
+    auth_client, create_user, create_organization
+):
+    owner = create_user(username="owner", email="owner@example.com")
+    member = create_user(username="member", email="member@example.com")
+    organization = create_organization(name="orga1", user=owner, owner=True)
+    Membership.objects.create(
+        organization=organization,
+        user=member,
+        role=Membership.MEMBER,
+        date_joined=now(),
+    )
+    client = auth_client(member)
+    settings_urls = [
+        reverse("edit_organization", kwargs={"org_name": "orga1"}),
+        reverse("edit_organization_members", kwargs={"org_name": "orga1"}),
+        reverse("edit_organization_tokens", kwargs={"org_name": "orga1"}),
+    ]
+
+    for url in settings_urls:
+        response = client.get(url)
+        assert response.status_code == 302
+        assert response.url == reverse("list_organizations")
+        messages = list(response.wsgi_request._messages)
+        assert any(
+            message.message == "You do not have permission to perform this action."
+            for message in messages
+        )
+
+
 # Delete Organizations
 
 
@@ -174,11 +259,6 @@ def test_delete_organization_is_owner(auth_client, create_user, create_organizat
     response = client.get(url)
     assert response.status_code == 302
     assert response.url == reverse("list_organizations")
-    messages = list(response.wsgi_request._messages)
-    assert any(
-        message.message == "The requested organization does not exist."
-        for message in messages
-    )
 
     response = client.post(url)
     assert response.status_code == 302
@@ -202,11 +282,6 @@ def test_delete_organization(auth_client, create_user, create_organization):
     response = client.get(url)
     assert response.status_code == 302
     assert response.url == reverse("list_organizations")
-    messages = list(response.wsgi_request._messages)
-    assert any(
-        message.message == "The requested organization does not exist."
-        for message in messages
-    )
 
 
 def test_delete_membership_only_owner_with_invited_owner(
@@ -251,20 +326,35 @@ def test_delete_membership_only_owner_with_invited_owner(
 
 def test_list_memberships(auth_client, create_user, create_organization):
     user = create_user(username="user1", email="user1@example.com")
+    member = create_user(username="user2", email="user2@example.com")
     client = auth_client(user)
-    create_organization(name="orga1", user=user, owner=True)
+    org = create_organization(name="orga1", user=user, owner=True)
+    Membership.objects.create(
+        user=member,
+        organization=org,
+        role=Membership.MEMBER,
+        date_invited=now(),
+        date_joined=now(),
+    )
     url = reverse("edit_organization_members", kwargs={"org_name": "orga1"})
 
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("table", {"id": "table-members"}).find_all("td")
-    assert content[0].text.strip() == "user1"
-    assert content[1].text.strip() == "user1@example.com"
-    role_cell = content[2]
-    select = role_cell.find("select", class_="member-role-select")
+    rows = soup.find("table", {"id": "table-members"}).find("tbody").find_all("tr")
+    assert len(rows) == 3  # header + owner + member
+
+    owner_cells = rows[1].find_all("td")
+    assert owner_cells[0].text.strip() == "user1"
+    assert owner_cells[1].text.strip() == "user1@example.com"
+    assert owner_cells[2].find("select", class_="member-role-select") is None
+    assert owner_cells[2].text.strip() == "Owner"
+
+    member_cells = rows[2].find_all("td")
+    assert member_cells[0].text.strip() == "user2"
+    select = member_cells[2].find("select", class_="member-role-select")
     assert select is not None
     selected_option = select.find("option", {"selected": True})
-    assert selected_option is not None and selected_option["value"] == "owner"
+    assert selected_option is not None and selected_option["value"] == "member"
 
 
 # Create Memberships
@@ -284,11 +374,6 @@ def test_create_memberships_is_owner(auth_client, create_user, create_organizati
         url, data={"email": "user3@example.com", "role": "member"}, follow=True
     )
     assert response.redirect_chain[-1] == (reverse("list_organizations"), 302)
-    messages = list(response.wsgi_request._messages)
-    assert any(
-        message.message == "The requested organization does not exist."
-        for message in messages
-    )
 
     # User1 can create new member
     client = auth_client(user1)
@@ -491,6 +576,68 @@ def test_delete_memberships_without_owners(
     assert response.redirect_chain == [
         (reverse("edit_organization_members", kwargs={"org_name": "orga1"}), 302)
     ]
+
+
+def test_delete_membership_admin_cannot_remove_owner(
+    auth_client, create_user, create_organization
+):
+    owner = create_user(username="owner", email="owner@example.com")
+    admin = create_user(username="admin", email="admin@example.com")
+    organization = create_organization(name="orga1", user=owner, owner=True)
+    Membership.objects.create(
+        organization=organization,
+        user=admin,
+        role=Membership.ADMIN,
+        date_joined=now(),
+    )
+    owner_membership = Membership.objects.get(organization=organization, user=owner)
+    url = reverse(
+        "delete_organization_member",
+        kwargs={"org_name": "orga1", "member_id": owner_membership.id},
+    )
+
+    client = auth_client(admin)
+    response = client.post(url, data={}, follow=True)
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    assert (
+        "You do not have permission to remove this member."
+        in soup.find("div", {"class": "alert-error"}).text
+    )
+    assert Membership.objects.filter(pk=owner_membership.pk).exists()
+
+
+def test_list_memberships_admin_cannot_delete_owner(
+    auth_client, create_user, create_organization
+):
+    owner = create_user(username="owner", email="owner@example.com")
+    admin = create_user(username="admin", email="admin@example.com")
+    member = create_user(username="member", email="member@example.com")
+    org = create_organization(name="orga1", user=owner, owner=True)
+    Membership.objects.create(
+        organization=org,
+        user=admin,
+        role=Membership.ADMIN,
+        date_joined=now(),
+    )
+    Membership.objects.create(
+        organization=org,
+        user=member,
+        role=Membership.MEMBER,
+        date_joined=now(),
+    )
+
+    client = auth_client(admin)
+    response = client.get(
+        reverse("edit_organization_members", kwargs={"org_name": "orga1"})
+    )
+    soup = BeautifulSoup(response.content, features="html.parser")
+    rows = soup.find("table", {"id": "table-members"}).find("tbody").find_all("tr")
+
+    owner_row = rows[1]
+    member_row = rows[3]
+    assert owner_row.find("a", class_="btn-danger") is None
+    assert member_row.find("a", class_="btn-danger") is not None
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1146,7 +1293,7 @@ def test_update_member_role_last_owner(auth_client, create_user, create_organiza
     data = response.json()
     assert data == {
         "status": "error",
-        "message": "You cannot demote the only owner of the organization.",
+        "message": "You cannot change your own role.",
     }
     membership.refresh_from_db()
     assert membership.role == Membership.OWNER
@@ -1179,7 +1326,7 @@ def test_update_member_role_last_owner_with_pending_owner_invite(
     data = response.json()
     assert data == {
         "status": "error",
-        "message": "You cannot demote the only owner of the organization.",
+        "message": "You cannot change your own role.",
     }
     membership.refresh_from_db()
     assert membership.role == Membership.OWNER

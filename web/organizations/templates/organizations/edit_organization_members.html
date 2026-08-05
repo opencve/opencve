@@ -1,5 +1,6 @@
 {% extends "organizations/edit_organization_base.html" %}
 {% load crispy_forms_tags %}
+{% load authorization_tags %}
 
 {% block tab_content %}
 <div class="box box-primary">
@@ -34,10 +35,16 @@
               {% if member.user %}
                 {% if member.date_joined %}
                 <td>
+                  {% can_edit_org_member_role actor_membership member org_role_choices as can_edit_role %}
+                  {% if can_edit_role %}
                   <select class="form-control input-sm member-role-select select2-member-role" data-update-role-url="{% url 'update_organization_member_role' org_name=request.current_organization.name member_id=member.id %}">
-                    <option value="owner" {% if member.role == 'owner' %}selected{% endif %}>owner</option>
-                    <option value="member" {% if member.role == 'member' %}selected{% endif %}>member</option>
+                    {% for role_value, role_label in org_role_choices %}
+                    <option value="{{ role_value }}" {% if member.role == role_value %}selected{% endif %}>{{ role_label }}</option>
+                    {% endfor %}
                   </select>
+                  {% else %}
+                  {% org_role_label member.role %}
+                  {% endif %}
                 </td>
                 {% else %}
                 <td><span class="label label-default">invited</span></td>
@@ -47,9 +54,12 @@
               {% endif %}
 
               <td class="pull-right">
+                {% can_remove_org_member actor_membership member as can_remove %}
+                {% if can_remove %}
                 <div class="btn-group" role="group">
                   <a href="{% url 'delete_organization_member' org_name=request.resolver_match.kwargs.org_name member_id=member.id %}" class="btn btn-danger btn-xs" type="button">Delete</a>
                 </div>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}
