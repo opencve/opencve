@@ -65,20 +65,40 @@ class MembershipForm(forms.Form):
         super(MembershipForm, self).__init__(*args, **kwargs)
         from authorization.registry import RoleRegistry
 
-        self.fields["role"].choices = RoleRegistry.get_org_role_choices(
-            actor_membership=actor_membership
+        self.fields["role"].choices = [("", "Select a role...")] + list(
+            RoleRegistry.get_org_role_choices(
+                actor_membership=actor_membership,
+                include_summary=True,
+            )
         )
+        self.fields["role"].widget.attrs[
+            "class"
+        ] = "form-control select2-new-member-role"
         self.fields["email"].widget.attrs["placeholder"] = self.fields["email"].label
         self.helper = FormHelper()
         self.helper.form_show_labels = False
         self.helper.layout = Layout(
-            Div(Field("email"), css_class="col-md-6"),
-            Div(Field("role"), css_class="col-md-4"),
             Div(
-                FormActions(
-                    Submit("save", "Add"),
+                Div(Field("email"), css_class="col-md-5"),
+                Div(Field("role"), css_class="col-md-5"),
+                Div(
+                    FormActions(
+                        Submit("save", "Add"),
+                    ),
+                    css_class="col-md-2",
                 ),
-                css_class="col-md-2",
+                css_class="row",
+            ),
+            Div(
+                Div(
+                    HTML(
+                        '<p class="help-block">Learn about organization and project roles in the '
+                        '<a href="https://docs.opencve.io/guides/access_control/" '
+                        'target="_blank" rel="noopener">Access Control guide</a>.</p>'
+                    ),
+                    css_class="col-md-12",
+                ),
+                css_class="row new-member-role-help",
             ),
         )
 

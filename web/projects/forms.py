@@ -485,13 +485,24 @@ class AutomationAdminForm(AutomationForm):
 
 
 class ProjectMembershipForm(forms.Form):
-    membership_id = forms.ChoiceField(choices=[], label="Member")
+    membership_id = forms.ChoiceField(
+        choices=[],
+        label="Member",
+        widget=forms.Select(attrs={"class": "form-control select2-new-member-user"}),
+    )
     role = forms.ChoiceField(choices=[])
 
     def __init__(self, *args, project=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.project = project
-        self.fields["role"].choices = RoleRegistry.get_project_role_choices()
+        self.fields["role"].choices = [("", "Select a role...")] + list(
+            RoleRegistry.get_project_role_choices(
+                include_summary=True,
+            )
+        )
+        self.fields["role"].widget.attrs[
+            "class"
+        ] = "form-control select2-new-member-role"
 
         if project is not None:
             assigned_ids = ProjectMembership.objects.filter(
@@ -506,7 +517,7 @@ class ProjectMembershipForm(forms.Form):
                 .select_related("user")
                 .order_by("user__username")
             )
-            self.fields["membership_id"].choices = [
+            self.fields["membership_id"].choices = [("", "Select a member...")] + [
                 (
                     membership.pk,
                     membership.user.username if membership.user else membership.email,
@@ -517,12 +528,26 @@ class ProjectMembershipForm(forms.Form):
         self.helper = FormHelper()
         self.helper.form_show_labels = False
         self.helper.layout = Layout(
-            Div(Field("membership_id"), css_class="col-md-6"),
-            Div(Field("role"), css_class="col-md-4"),
             Div(
-                FormActions(
-                    Submit("save", "Add"),
+                Div(Field("membership_id"), css_class="col-md-5"),
+                Div(Field("role"), css_class="col-md-5"),
+                Div(
+                    FormActions(
+                        Submit("save", "Add"),
+                    ),
+                    css_class="col-md-2",
                 ),
-                css_class="col-md-2",
+                css_class="row",
+            ),
+            Div(
+                Div(
+                    HTML(
+                        '<p class="help-block">Learn about organization and project roles in the '
+                        '<a href="https://docs.opencve.io/guides/access_control/" '
+                        'target="_blank" rel="noopener">Access Control guide</a>.</p>'
+                    ),
+                    css_class="col-md-12",
+                ),
+                css_class="row new-member-role-help",
             ),
         )

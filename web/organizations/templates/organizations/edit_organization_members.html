@@ -5,7 +5,7 @@
 {% block tab_content %}
 <div class="box box-primary">
   <div class="box-header with-border">
-    <h3 class="box-title">New Member</h3>
+    <h3 class="box-title">New Organization Member</h3>
   </div>
   <div class="box-body">
     <form action="{% url 'edit_organization_members' org_name=request.resolver_match.kwargs.org_name %}" method="post" class="form-inline form-new-member">
@@ -16,7 +16,7 @@
 
 <div class="box box-primary">
   <div class="box-header with-border">
-    <h3 class="box-title">Members</h3>
+    <h3 class="box-title">Organization Members</h3>
   </div>
   <div class="box-body">
       <div class="table-responsive no-padding">

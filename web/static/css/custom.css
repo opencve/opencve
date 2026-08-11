@@ -791,6 +791,18 @@ pre.plainJSON{
   width: 100%
 }
 
+.form-new-member .select2-container {
+  width: 100% !important;
+}
+
+.form-new-member .new-member-role-help {
+  margin-top: 12px;
+}
+
+.form-new-member .new-member-role-help .help-block {
+  margin-bottom: 0;
+}
+
 .page-header {
     margin-top: 25px;
     border-bottom: 1px solid #ddd;

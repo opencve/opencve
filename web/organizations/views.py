@@ -203,7 +203,6 @@ class OrganizationEditMembersView(
             actor_membership=actor_membership
         )
         context["members_form"] = kwargs.get("members_form") or MembershipForm(
-            initial={"role": Membership.MEMBER},
             actor_membership=actor_membership,
         )
         return context

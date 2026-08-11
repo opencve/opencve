@@ -44,3 +44,47 @@ def test_project_admin_inherits_contributor_and_adds_management():
     assert PROJECT_SUBSCRIPTIONS_MANAGE in perms
     assert PROJECT_AUTOMATIONS_MANAGE in perms
     assert PROJECT_NOTIFICATIONS_MANAGE in perms
+
+
+def test_org_role_choices_ordered_by_importance():
+    """Organization role choices are ordered from highest to lowest privilege."""
+    choices = RoleRegistry.get_org_role_choices()
+    assert [key for key, _ in choices] == ["owner", "admin", "member"]
+    assert choices[0][1] == "Owner"
+    assert choices[1][1] == "Admin"
+    assert choices[2][1] == "Member"
+
+
+def test_org_role_choices_include_summaries_when_requested():
+    """Organization role choices include summaries when include_summary is True."""
+    choices = RoleRegistry.get_org_role_choices(include_summary=True)
+    assert choices[0][1] == "Owner (full control)"
+    assert choices[1][1] == "Admin (manage projects and members)"
+    assert choices[2][1] == "Member (project access only)"
+
+
+def test_project_role_choices_ordered_by_importance():
+    """Project role choices are ordered from highest to lowest privilege."""
+    choices = RoleRegistry.get_project_role_choices()
+    assert [key for key, _ in choices] == [
+        "project_admin",
+        "contributor",
+        "viewer",
+    ]
+    assert choices[0][1] == "Project Admin"
+    assert choices[1][1] == "Contributor"
+    assert choices[2][1] == "Viewer"
+
+
+def test_project_role_choices_include_summaries_when_requested():
+    """Project role choices include summaries when include_summary is True."""
+    choices = RoleRegistry.get_project_role_choices(include_summary=True)
+    assert choices[0][1] == "Project Admin (project management)"
+    assert choices[1][1] == "Contributor (Viewer with operational CVE workflow)"
+    assert choices[2][1] == "Viewer (read only access)"
+
+
+def test_role_labels_stay_short_outside_dropdowns():
+    """Role labels remain short when summaries are not requested."""
+    assert RoleRegistry.get_org_role("owner").label == "Owner"
+    assert RoleRegistry.get_project_role("viewer").label == "Viewer"

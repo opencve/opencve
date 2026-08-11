@@ -36,7 +36,15 @@ class OrgRoleDefinition:
     key: str
     label: str
     permissions: frozenset[str]
+    summary: str = ""
+    order: int = 0
     assignable_by: Optional[Callable] = None
+
+    @property
+    def choice_label(self) -> str:
+        if self.summary:
+            return f"{self.label} ({self.summary})"
+        return self.label
 
 
 @dataclass(frozen=True)
@@ -48,6 +56,14 @@ class ProjectRoleDefinition:
     permissions: frozenset[str] = field(default_factory=frozenset)
     base_role: Optional[str] = None
     extra_permissions: frozenset[str] = field(default_factory=frozenset)
+    summary: str = ""
+    order: int = 0
+
+    @property
+    def choice_label(self) -> str:
+        if self.summary:
+            return f"{self.label} ({self.summary})"
+        return self.label
 
 
 class RoleRegistry:
@@ -123,20 +139,29 @@ class RoleRegistry:
         return defn.permissions | defn.extra_permissions
 
     @classmethod
-    def get_org_role_choices(cls, *, actor_membership=None) -> list[tuple[str, str]]:
+    def get_org_role_choices(
+        cls, *, actor_membership=None, include_summary: bool = False
+    ) -> list[tuple[str, str]]:
         choices = []
-        for key, defn in sorted(_org_roles.items(), key=lambda x: x[1].label):
+        for key, defn in sorted(
+            _org_roles.items(), key=lambda x: (x[1].order, x[1].label)
+        ):
+            label = defn.choice_label if include_summary else defn.label
             if actor_membership is None:
-                choices.append((key, defn.label))
+                choices.append((key, label))
             elif defn.assignable_by is None or defn.assignable_by(actor_membership):
-                choices.append((key, defn.label))
+                choices.append((key, label))
         return choices
 
     @classmethod
-    def get_project_role_choices(cls, *, actor=None) -> list[tuple[str, str]]:
+    def get_project_role_choices(
+        cls, *, actor=None, include_summary: bool = False
+    ) -> list[tuple[str, str]]:
         return [
-            (key, defn.label)
-            for key, defn in sorted(_project_roles.items(), key=lambda x: x[1].label)
+            (key, defn.choice_label if include_summary else defn.label)
+            for key, defn in sorted(
+                _project_roles.items(), key=lambda x: (x[1].order, x[1].label)
+            )
         ]
 
     @classmethod
@@ -153,6 +178,8 @@ class RoleRegistry:
             OrgRoleDefinition(
                 key=ORG_OWNER,
                 label="Owner",
+                summary="full control",
+                order=0,
                 permissions=OWNER_ORG_PERMISSIONS,
                 assignable_by=owner_can_assign,
             )
@@ -161,6 +188,8 @@ class RoleRegistry:
             OrgRoleDefinition(
                 key=ORG_ADMIN,
                 label="Admin",
+                summary="manage projects and members",
+                order=1,
                 permissions=ADMIN_ORG_PERMISSIONS,
                 assignable_by=owner_can_assign,
             )
@@ -169,6 +198,8 @@ class RoleRegistry:
             OrgRoleDefinition(
                 key=ORG_MEMBER,
                 label="Member",
+                summary="project access only",
+                order=2,
                 permissions=MEMBER_ORG_PERMISSIONS,
                 assignable_by=owner_or_admin_can_assign_member,
             )
@@ -177,6 +208,8 @@ class RoleRegistry:
             ProjectRoleDefinition(
                 key=PROJECT_VIEWER,
                 label="Viewer",
+                summary="read only access",
+                order=2,
                 permissions=VIEWER_PERMISSIONS,
             )
         )
@@ -184,6 +217,8 @@ class RoleRegistry:
             ProjectRoleDefinition(
                 key=PROJECT_CONTRIBUTOR,
                 label="Contributor",
+                summary="Viewer with operational CVE workflow",
+                order=1,
                 base_role=PROJECT_VIEWER,
                 extra_permissions=CONTRIBUTOR_OPERATIONAL_PERMISSIONS,
             )
@@ -192,6 +227,8 @@ class RoleRegistry:
             ProjectRoleDefinition(
                 key=PROJECT_ADMIN,
                 label="Project Admin",
+                summary="project management",
+                order=0,
                 base_role=PROJECT_CONTRIBUTOR,
                 extra_permissions=PROJECT_ADMIN_MANAGE_PERMISSIONS,
             )

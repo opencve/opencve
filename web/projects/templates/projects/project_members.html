@@ -8,7 +8,7 @@
 {% if can_manage_members %}
 <div class="box box-primary">
   <div class="box-header with-border">
-    <h3 class="box-title">Add Member</h3>
+    <h3 class="box-title">Add Project Member</h3>
   </div>
   <div class="box-body">
     <form action="{% url 'project_members' org_name=request.current_organization.name project_name=project.name %}" method="post" class="form-inline form-new-member">

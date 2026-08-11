@@ -85,6 +85,17 @@ function getContrastedColor(str){
       placeholder: 'Select a view',
     });
     $('.select2-member-role').select2({allowClear: false});
+    $('.select2-new-member-role').select2({
+        allowClear: false,
+        minimumResultsForSearch: Infinity,
+        placeholder: 'Select a role...',
+        width: '100%',
+    });
+    $('.select2-new-member-user').select2({
+        allowClear: false,
+        placeholder: 'Select a member...',
+        width: '100%',
+    });
     $('.select2-auditlog-users').select2({
       allowClear: true,
       placeholder: 'All users',
