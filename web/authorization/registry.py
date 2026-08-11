@@ -178,7 +178,7 @@ class RoleRegistry:
             OrgRoleDefinition(
                 key=ORG_OWNER,
                 label="Owner",
-                summary="full control",
+                summary="Full control",
                 order=0,
                 permissions=OWNER_ORG_PERMISSIONS,
                 assignable_by=owner_can_assign,
@@ -188,7 +188,7 @@ class RoleRegistry:
             OrgRoleDefinition(
                 key=ORG_ADMIN,
                 label="Admin",
-                summary="manage projects and members",
+                summary="Manage projects and members",
                 order=1,
                 permissions=ADMIN_ORG_PERMISSIONS,
                 assignable_by=owner_can_assign,
@@ -198,7 +198,7 @@ class RoleRegistry:
             OrgRoleDefinition(
                 key=ORG_MEMBER,
                 label="Member",
-                summary="project access only",
+                summary="Access assigned projects",
                 order=2,
                 permissions=MEMBER_ORG_PERMISSIONS,
                 assignable_by=owner_or_admin_can_assign_member,
@@ -208,7 +208,7 @@ class RoleRegistry:
             ProjectRoleDefinition(
                 key=PROJECT_VIEWER,
                 label="Viewer",
-                summary="read only access",
+                summary="Read-only access",
                 order=2,
                 permissions=VIEWER_PERMISSIONS,
             )
@@ -217,7 +217,7 @@ class RoleRegistry:
             ProjectRoleDefinition(
                 key=PROJECT_CONTRIBUTOR,
                 label="Contributor",
-                summary="Viewer with operational CVE workflow",
+                summary="View and manage CVE workflows",
                 order=1,
                 base_role=PROJECT_VIEWER,
                 extra_permissions=CONTRIBUTOR_OPERATIONAL_PERMISSIONS,
@@ -227,7 +227,7 @@ class RoleRegistry:
             ProjectRoleDefinition(
                 key=PROJECT_ADMIN,
                 label="Project Admin",
-                summary="project management",
+                summary="Manage project settings and members",
                 order=0,
                 base_role=PROJECT_CONTRIBUTOR,
                 extra_permissions=PROJECT_ADMIN_MANAGE_PERMISSIONS,

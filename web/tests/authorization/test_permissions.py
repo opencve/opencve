@@ -58,9 +58,9 @@ def test_org_role_choices_ordered_by_importance():
 def test_org_role_choices_include_summaries_when_requested():
     """Organization role choices include summaries when include_summary is True."""
     choices = RoleRegistry.get_org_role_choices(include_summary=True)
-    assert choices[0][1] == "Owner (full control)"
-    assert choices[1][1] == "Admin (manage projects and members)"
-    assert choices[2][1] == "Member (project access only)"
+    assert choices[0][1] == "Owner (Full control)"
+    assert choices[1][1] == "Admin (Manage projects and members)"
+    assert choices[2][1] == "Member (Access assigned projects)"
 
 
 def test_project_role_choices_ordered_by_importance():
@@ -79,9 +79,9 @@ def test_project_role_choices_ordered_by_importance():
 def test_project_role_choices_include_summaries_when_requested():
     """Project role choices include summaries when include_summary is True."""
     choices = RoleRegistry.get_project_role_choices(include_summary=True)
-    assert choices[0][1] == "Project Admin (project management)"
-    assert choices[1][1] == "Contributor (Viewer with operational CVE workflow)"
-    assert choices[2][1] == "Viewer (read only access)"
+    assert choices[0][1] == "Project Admin (Manage project settings and members)"
+    assert choices[1][1] == "Contributor (View and manage CVE workflows)"
+    assert choices[2][1] == "Viewer (Read-only access)"
 
 
 def test_role_labels_stay_short_outside_dropdowns():
