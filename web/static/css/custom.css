@@ -1794,6 +1794,10 @@ pre.plainJSON{
   gap: 5px 10px;
 }
 
+#project-subscriptions-box .subscription-grid-readonly {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 #project-subscriptions-box .subscription-group-divider {
   grid-column: 1 / -1;
   border-bottom: 1px solid #e3e2ef;

@@ -1,12 +1,13 @@
 {% load opencve_extras %}
 
 {% if vendors_dict %}
-<div class="subscription-grid">
+<div class="subscription-grid{% if user.is_authenticated and not projects %} subscription-grid-readonly{% endif %}">
 {% for vendor, products in vendors_dict.items %}
     <span class="subscription-vendor-name">
         <span class="subscription-vendor-name-text">{{ vendor | humanize }}</span>{% if vendor|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" data-container="body" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}
     </span>
-    {% if user.is_authenticated and vendors_data_dict %}
+    {% if user.is_authenticated %}
+        {% if vendors_data_dict and projects %}
         {% with vendor_data=vendors_data_dict|get:vendor %}
         <button class="btn btn-default btn-xs subscribe-vendor"
                 data-vendor-id="{{ vendor_data.vendor.id }}"
@@ -17,6 +18,7 @@
             <i class="fa fa-bell-o" aria-hidden="true"></i>{% if vendor_data.subscription_count > 0 %} <span class="subscribe-btn-count">({{ vendor_data.subscription_count }})</span> <span class="subscribe-btn-label">Subscribed ({{ vendor_data.subscription_count }})</span>{% else %} <span class="subscribe-btn-label">Subscribe</span>{% endif %}
         </button>
         {% endwith %}
+        {% endif %}
     {% else %}
         <a href="{% url 'account_signup' %}" class="btn btn-default btn-xs subscribe-vendor-link" aria-label="Sign up to subscribe to {{ vendor|humanize }}">
             <i class="fa fa-bell-o" aria-hidden="true"></i> <span class="subscribe-btn-label">Subscribe</span>
@@ -31,7 +33,8 @@
             {% endif %}
         {% endwith %}
     </span>
-    {% if user.is_authenticated and vendors_data_dict %}
+    {% if user.is_authenticated %}
+        {% if vendors_data_dict and projects %}
         {% with vendor_data=vendors_data_dict|get:vendor %}
             {% with products_dict=vendor_data.products %}
                 {% with product_obj=products_dict|get:product %}
@@ -48,6 +51,7 @@
                 {% endwith %}
             {% endwith %}
         {% endwith %}
+        {% endif %}
     {% else %}
         <a href="{% url 'account_signup' %}" class="btn btn-default btn-xs subscribe-product-link" aria-label="Sign up to subscribe to {{ product|humanize }}">
             <i class="fa fa-bell-o" aria-hidden="true"></i> <span class="subscribe-btn-label">Subscribe</span>
