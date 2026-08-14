@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.1.0 - 2026-08-14
+### Added
+- Add REST API v2 with OpenAPI documentation and scoped tokens
+- Add access mode and scopes to organization API tokens
+- Add API Docs link in header
+- Add project-level access control with membership roles
+- Add project members management UI
+- Extend organization member management for ACL roles
+- Extend organization audit log for automations, CVE comments, and project memberships
+- Improve organization API token management UI
+- Improve role clarity in organization and project member forms
+
+### Fixed
+- Restrict CVE detail subscriptions and tracking to accessible projects
+- Validate API v2 CVE assignee against project membership
+- Unlink automation executions before cleaning expired reports
+- Print notification email footer once in plain-text templates
+- Remove hardcoded URL in Slack notifier
+- Keep repeated query params when building pagination URLs
+- Show API Docs link to all users
+- Clarify organization and project role labels in member forms
+
+### Changed
+- Enforce project ACL in CVE views and dashboard widgets
+- Extract organization and project service layer
+- Reorganize API v1 authentication into opencve.api package
+- Update Dockerfiles and install.sh for improved version handling
+- Add confirmation prompt to install.sh upgrade command
+
 ## 3.0.0 - 2026-06-24
 ### Added
 - Add automations with triggers, conditions, actions, and visual flow overview
