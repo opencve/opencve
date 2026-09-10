@@ -119,6 +119,30 @@ def enrichment_scores_tooltip(scores):
     return mark_safe("<br />".join(lines))
 
 
+CPE_VERSION_RANGE_LABELS = (
+    ("versionStartIncluding", "From (including)"),
+    ("versionStartExcluding", "From (excluding)"),
+    ("versionEndIncluding", "Up to (including)"),
+    ("versionEndExcluding", "Up to (excluding)"),
+)
+
+
+@register.filter
+def cpe_version_range(cpe):
+    """
+    Return the human readable version range of a NVD cpeMatch item
+    (ex: `From (including) 1.0 Up to (excluding) 2.0`).
+    """
+    if not isinstance(cpe, dict):
+        return ""
+
+    return " ".join(
+        f"{label} {cpe[field]}"
+        for field, label in CPE_VERSION_RANGE_LABELS
+        if cpe.get(field)
+    )
+
+
 @register.filter
 def is_top_vendor_or_product(name):
     """Return True if the vendor/product is in the static warning list (many CVEs)."""

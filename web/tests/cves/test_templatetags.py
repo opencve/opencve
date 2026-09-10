@@ -1,6 +1,7 @@
 from django.http import HttpRequest, QueryDict
 
 from cves.templatetags.opencve_extras import (
+    cpe_version_range,
     get_item,
     get_active_cvss_tab,
     get_cvss_score,
@@ -293,3 +294,42 @@ def test_tracker_status_badge_class(status, expected):
     Test tracker_status_badge_class function.
     """
     assert tracker_status_badge_class(status) == expected
+
+
+@pytest.mark.parametrize(
+    "cpe, expected",
+    [
+        # No version range
+        ({"criteria": "cpe:2.3:a:zabbix:zabbix:*:*:*:*:*:*:*:*"}, ""),
+        # Only a lower bound
+        ({"versionStartIncluding": "5.4.0"}, "From (including) 5.4.0"),
+        ({"versionStartExcluding": "5.4.0"}, "From (excluding) 5.4.0"),
+        # Only an upper bound
+        ({"versionEndIncluding": "5.4.14"}, "Up to (including) 5.4.14"),
+        ({"versionEndExcluding": "5.4.14"}, "Up to (excluding) 5.4.14"),
+        # Both bounds
+        (
+            {"versionStartIncluding": "5.4.0", "versionEndExcluding": "5.4.14"},
+            "From (including) 5.4.0 Up to (excluding) 5.4.14",
+        ),
+        (
+            {"versionStartExcluding": "5.4.0", "versionEndIncluding": "5.4.14"},
+            "From (excluding) 5.4.0 Up to (including) 5.4.14",
+        ),
+        # Empty values are ignored
+        (
+            {"versionStartIncluding": "", "versionEndIncluding": "5.4.14"},
+            "Up to (including) 5.4.14",
+        ),
+        # Unexpected types are ignored
+        ({}, ""),
+        (None, ""),
+        ("cpe:2.3:a:zabbix:zabbix:*:*:*:*:*:*:*:*", ""),
+    ],
+)
+def test_cpe_version_range(cpe, expected):
+    """
+    Test cpe_version_range function used to display the version ranges
+    of the NVD CPE configurations.
+    """
+    assert cpe_version_range(cpe) == expected

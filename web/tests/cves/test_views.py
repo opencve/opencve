@@ -1635,3 +1635,58 @@ def test_cves_export_csv_redirects_when_over_limit(create_cve, auth_client):
         messages_list[0].message
         == "Export limit exceeded: 1 CVEs match your query. Please refine your search to export 10,000 CVEs or fewer."
     )
+
+
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.redhat_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_page_displays_cpe_version_ranges(
+    mock_enrichment,
+    mock_vulnrichment,
+    mock_redhat,
+    mock_mitre,
+    mock_nvd,
+    db,
+    create_cve,
+    client,
+):
+    """The CPE configurations display the version ranges of each CPE."""
+    mock_nvd.return_value = {
+        "configurations": [
+            {
+                "nodes": [
+                    {
+                        "operator": "OR",
+                        "cpeMatch": [
+                            {
+                                "criteria": "cpe:2.3:a:zabbix:zabbix:*:*:*:*:*:*:*:*",
+                                "versionStartIncluding": "5.4.0",
+                                "versionEndExcluding": "5.4.9",
+                            },
+                            {
+                                "criteria": "cpe:2.3:a:zabbix:zabbix:6.0.0:*:*:*:*:*:*:*",
+                            },
+                        ],
+                    }
+                ]
+            }
+        ]
+    }
+    mock_mitre.return_value = {}
+    mock_redhat.return_value = {}
+    mock_vulnrichment.return_value = {}
+    mock_enrichment.return_value = {}
+
+    create_cve("CVE-2024-31331")
+
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    soup = BeautifulSoup(response.content, features="html.parser")
+    ranges = [
+        cell.text.strip()
+        for cell in soup.find_all("td", {"class": "cpe-version-range"})
+    ]
+
+    assert ranges == ["From (including) 5.4.0 Up to (excluding) 5.4.9", "—"]
