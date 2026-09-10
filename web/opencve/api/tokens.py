@@ -45,3 +45,4 @@ def bind_organization_token(request, org_token):
     org_token.update_last_used()
     request.authenticated_organization = org_token.organization
     request.api_token = org_token
+    request.current_organization = org_token.organization

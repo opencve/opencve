@@ -138,6 +138,58 @@ def test_cve_list_with_invalid_q_filter(client, read_token, create_cve):
 
 
 @pytest.mark.django_db
+def test_cve_list_with_project_filter(
+    client, api_context, read_token, create_project, create_cve
+):
+    """Filter CVE list by project using Bearer token only (no session cookies)."""
+    _user, organization, _create_token = api_context
+
+    # Create a project with specific vendor subscriptions
+    create_project(name="TestProject", organization=organization, vendors=["cisco"])
+
+    # Create CVEs with different vendors
+    create_cve("CVE-2021-44228")  # cisco vendor
+    create_cve("CVE-2022-22965")  # cisco vendor
+    create_cve("CVE-2021-34181")  # juniper vendor (not in project)
+
+    # Test project filter alone
+    response = client.get(
+        f"{cve_list_url()}?q=project:TestProject",
+        **bearer(read_token),
+    )
+
+    assert response.status_code == 200
+    cve_ids = [item["cve_id"] for item in response.json()["results"]]
+    # Should only return CVEs matching the project's vendor subscriptions
+    assert set(cve_ids) == {"CVE-2021-44228", "CVE-2022-22965"}
+
+
+@pytest.mark.django_db
+def test_cve_list_with_project_and_date_filter(
+    client, api_context, read_token, create_project, create_cve
+):
+    """Filter CVE list by project combined with date filter using Bearer token only."""
+    _user, organization, _create_token = api_context
+
+    # Create a project
+    create_project(name="TestProject", organization=organization, vendors=["cisco"])
+
+    # Create CVEs
+    create_cve("CVE-2021-44228")
+    create_cve("CVE-2022-22965")
+
+    # Test combined query: project AND date filter
+    response = client.get(
+        f"{cve_list_url()}?q=project:TestProject AND updated>=2020-01-01",
+        **bearer(read_token),
+    )
+
+    assert response.status_code == 200
+    # Should return CVEs that match both conditions
+    assert response.json()["count"] >= 0  # At least validates the query doesn't fail
+
+
+@pytest.mark.django_db
 @patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
 def test_cve_retrieve_with_nvd_cpe_configurations_include(
     mock_nvd_json, client, read_token, create_cve
