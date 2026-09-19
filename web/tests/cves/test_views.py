@@ -1532,6 +1532,47 @@ def test_cve_detail_enrichment_panel(
 @patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
 @patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
 @patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cve_detail_hides_opencve_enrichment_when_rejected(
+    mock_vulnrichment, mock_mitre, mock_nvd, mock_enrichment, db, create_cve, client
+):
+    """Rejected CVEs hide OpenCVE enrichment tab content and sidebar metadata."""
+    mock_nvd.return_value = {}
+    mock_mitre.return_value = {"cveMetadata": {"state": "REJECTED"}}
+    mock_vulnrichment.return_value = {}
+    mock_enrichment.return_value = {
+        "updated": "2025-07-23T20:19:23.982630+00:00",
+        "affected": [
+            {"vendor": "ibm", "product": "mq", "enrichment": {"confidence": 100.0}},
+        ],
+    }
+    create_cve("CVE-2024-31331")
+
+    response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    enrichment_tab = soup.find("div", {"id": "enrichment"})
+    assert enrichment_tab is not None
+    assert enrichment_tab.find("table", {"id": "enrichment-affected-table"}) is None
+    assert "No data available yet." in enrichment_tab.text
+
+    enrichment_link = soup.find("a", {"href": "#enrichment"})
+    assert enrichment_link.find("span", {"class": "nav-tab-has-data"}) is None
+
+    enrichment_box = None
+    for box in soup.find_all("div", {"class": "box box-primary"}):
+        box_title = box.find("div", {"class": "box-title"})
+        if box_title and "OpenCVE Enrichment" in box_title.text:
+            enrichment_box = box
+            break
+    assert enrichment_box is not None
+    assert enrichment_box.find("div", {"class": "box-body"}).text.strip() == "No data."
+
+
+@patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.nvd_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+@patch("cves.models.Cve.vulnrichment_json", new_callable=PropertyMock)
 @patch("cves.models.Cve.redhat_json", new_callable=PropertyMock)
 def test_cve_detail_advisories_panel(
     mock_vulnrichment,

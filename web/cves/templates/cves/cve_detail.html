@@ -196,13 +196,14 @@
                 {% endif %}
             </div>
 
+            {% is_cve_rejected cve as cve_rejected %}
             <div class="box box-primary">
                 <div class="box-header">
                     <div class="box-title">
                         <img src="{% static 'img/opencve_32.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
                         OpenCVE Enrichment
                     </div>
-                    {% if cve.enrichment_json %}
+                    {% if cve.enrichment_json and not cve_rejected %}
                     <div class="box-tools pull-right">
                         <div class="btn-group" data-toggle="btn-toggle">
                             <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-enrichment-json"><i class="fa fa-code"></i></button>
@@ -210,7 +211,7 @@
                     </div>
                     {% endif %}
                 </div>
-                {% if cve.enrichment_json %}
+                {% if cve.enrichment_json and not cve_rejected %}
                 <div class="box-body">
                     <p><strong>Updated:</strong> {{ cve.enrichment_json.updated|convert_str_date|date:"Y-m-d\TH:i:s" }}Z</p>
                 </div>

@@ -1,6 +1,8 @@
 {% load static %}
 {% load opencve_extras %}
 
+{% is_cve_rejected cve as cve_rejected %}
+
 <div class="nav-tabs-custom nav-tabs-primary" id="cve-affected">
     <ul class="nav nav-tabs">
         <li class="active">
@@ -13,7 +15,7 @@
             <a href="#redhat" data-toggle="tab"> <img src="{% static 'img/redhat-icon.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> Affected Packages{% if cve.redhat_json and cve.redhat_json.affected_release %} <span class="nav-tab-has-data"></span>{% endif %}</a>
         </li>
         <li>
-            <a href="#enrichment" data-toggle="tab"> <img src="{% static 'img/opencve_32.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> OpenCVE Enrichment{% if cve.enrichment_json and cve.enrichment_json.affected or cve.enrichment_json and cve.enrichment_json.vendors %} <span class="nav-tab-has-data"></span>{% endif %}</a>
+            <a href="#enrichment" data-toggle="tab"> <img src="{% static 'img/opencve_32.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> OpenCVE Enrichment{% if not cve_rejected and cve.enrichment_json and cve.enrichment_json.affected or not cve_rejected and cve.enrichment_json and cve.enrichment_json.vendors %} <span class="nav-tab-has-data"></span>{% endif %}</a>
         </li>
     </ul>
     <div class="tab-content">
@@ -164,7 +166,9 @@
             {% endif %}
         </div>
         <div class="tab-pane" id="enrichment">
-          {% if cve.enrichment_json and cve.enrichment_json.affected or cve.enrichment_json and cve.enrichment_json.vendors %}
+          {% if cve_rejected %}
+            <p class="text-muted"><em>No data available yet.</em></p>
+          {% elif cve.enrichment_json and cve.enrichment_json.affected or cve.enrichment_json and cve.enrichment_json.vendors %}
             {% include "cves/includes/enrichment.html" %}
             <p class="text-muted small"><em>
               Found an issue or want to improve our Enrichment? You can suggest it directly by opening an issue on our <a href="https://github.com/opencve/opencve-enrichment/" target="_blank" rel="noopener">dedicated GitHub repository <i class="fa fa-external-link"></i></a>.

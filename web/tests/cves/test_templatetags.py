@@ -1,3 +1,4 @@
+import pytest
 from django.http import HttpRequest, QueryDict
 
 from cves.templatetags.opencve_extras import (
@@ -9,6 +10,8 @@ from cves.templatetags.opencve_extras import (
     tracker_status_badge_class,
     enrichment_scores_tooltip,
     query_params_url,
+    cve_is_rejected,
+    is_cve_rejected,
 )
 
 
@@ -293,3 +296,23 @@ def test_tracker_status_badge_class(status, expected):
     Test tracker_status_badge_class function.
     """
     assert tracker_status_badge_class(status) == expected
+
+
+class _CveStub:
+    def __init__(self, mitre_json):
+        self.mitre_json = mitre_json
+
+
+@pytest.mark.parametrize(
+    "mitre_json, expected",
+    [
+        ({"cveMetadata": {"state": "REJECTED"}}, True),
+        ({"cveMetadata": {"state": "PUBLISHED"}}, False),
+        ({}, False),
+        (None, False),
+    ],
+)
+def test_cve_is_rejected(mitre_json, expected):
+    """Return True only when MITRE cveMetadata.state is REJECTED."""
+    assert cve_is_rejected(_CveStub(mitre_json)) is expected
+    assert is_cve_rejected(_CveStub(mitre_json)) is expected

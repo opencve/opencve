@@ -401,6 +401,19 @@ def flat_vendors(vendors):
     return ", ".join(output)
 
 
+def cve_is_rejected(cve):
+    mitre_json = getattr(cve, "mitre_json", None) or {}
+    if not isinstance(mitre_json, dict):
+        return False
+    metadata = mitre_json.get("cveMetadata") or {}
+    return metadata.get("state") == "REJECTED"
+
+
+@register.simple_tag
+def is_cve_rejected(cve):
+    return cve_is_rejected(cve)
+
+
 @register.filter
 def convert_str_date(value):
     return datetime.fromisoformat(value)
