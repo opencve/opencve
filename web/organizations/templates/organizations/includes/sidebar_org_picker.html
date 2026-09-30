@@ -1,0 +1,16 @@
+<div class="sidebar-org-picker">
+    <button type="button" class="sidebar-org-picker__trigger" aria-expanded="false" aria-haspopup="listbox">
+        <span class="sidebar-org-picker__label">{{ request.current_organization.name }}</span>
+        <i class="fa fa-chevron-down sidebar-org-picker__chevron" aria-hidden="true"></i>
+    </button>
+    <ul class="sidebar-org-picker__menu" role="listbox" hidden>
+        {% for orga in request.user_organizations %}
+        <li class="sidebar-org-picker__item" role="none">
+            <button type="button" role="option" class="sidebar-org-picker__option{% if request.current_organization == orga %} sidebar-org-picker__option--selected{% endif %}" data-organization="{{ orga.name }}" aria-selected="{% if request.current_organization == orga %}true{% else %}false{% endif %}">
+                <span class="sidebar-org-picker__check" aria-hidden="true">{% if request.current_organization == orga %}<i class="fa fa-check"></i>{% endif %}</span>
+                <span class="sidebar-org-picker__name">{{ orga.name }}</span>
+            </button>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
