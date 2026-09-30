@@ -59,13 +59,9 @@
             <aside class="main-sidebar">
                 <section class="sidebar">
                     {% if user.is_authenticated and request.current_organization %}
-                    <form action="#" method="get" class="sidebar-form">
-                        <select class="form-control select2-organizations" name="organization">
-                            {% for orga in request.user_organizations %}
-                            <option {% if request.current_organization == orga %} selected="selected" {% endif %} value="{{ orga.name }}">{{ orga.name }}</option>
-                            {% endfor  %}
-                        </select>
-                    </form>
+                    <div class="sidebar-form">
+                        {% include "organizations/includes/sidebar_org_picker.html" %}
+                    </div>
                     {% endif %}
                     <ul class="sidebar-menu" data-widget="tree">
                         <li class="header">MAIN NAVIGATION</li>

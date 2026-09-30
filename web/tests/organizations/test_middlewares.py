@@ -31,12 +31,10 @@ def test_organization_middleware_with_organizations(
 
     response = client.get(reverse("cves"), follow=True)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("select", {"class": "select2-organizations"}).find(
-        "option", selected=True
-    )
+    content = soup.find("span", class_="sidebar-org-picker__label")
     request = response.wsgi_request
 
-    assert content.text == orga2.name
+    assert content.text.strip() == orga2.name
     assert request.current_organization == orga2
     assert request.user_organizations == [orga1, orga2]
 
@@ -47,12 +45,10 @@ def test_organization_middleware_with_organizations(
 
     response = client.get(reverse("cves"), follow=True)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("select", {"class": "select2-organizations"}).find(
-        "option", selected=True
-    )
+    content = soup.find("span", class_="sidebar-org-picker__label")
     request = response.wsgi_request
 
-    assert content.text == orga1.name
+    assert content.text.strip() == orga1.name
     assert request.current_organization == orga1
     assert request.user_organizations == [orga1, orga2]
 
@@ -70,24 +66,20 @@ def test_organization_middleware_load_from_url(
     # Urls contains the org_foo organization
     response = client.get(reverse("edit_organization", kwargs={"org_name": "org_foo"}))
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("select", {"class": "select2-organizations"}).find(
-        "option", selected=True
-    )
+    content = soup.find("span", class_="sidebar-org-picker__label")
     request = response.wsgi_request
 
-    assert content.text == "org_foo"
+    assert content.text.strip() == "org_foo"
     assert request.current_organization == org_foo
     assert request.user_organizations == [org_bar, org_foo]
 
     # Now we switch to the org_bar organization
     response = client.get(reverse("edit_organization", kwargs={"org_name": "org_bar"}))
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("select", {"class": "select2-organizations"}).find(
-        "option", selected=True
-    )
+    content = soup.find("span", class_="sidebar-org-picker__label")
     request = response.wsgi_request
 
-    assert content.text == "org_bar"
+    assert content.text.strip() == "org_bar"
     assert request.current_organization == org_bar
     assert request.user_organizations == [org_bar, org_foo]
 

@@ -157,21 +157,59 @@ function getContrastedColor(str){
         });
     });
 
-    // Input used to list the user organizations
-    $('.select2-organizations').select2({allowClear: false, minimumResultsForSearch: Infinity});
-    $('.select2-organizations').on('select2:selecting', function(e) {
-        var organization = e.params.args.data.text;
+    // Sidebar organization switcher (custom dropdown)
+    function closeSidebarOrgPickers() {
+        $('.sidebar-org-picker.is-open').each(function() {
+            $(this).removeClass('is-open')
+                .find('.sidebar-org-picker__trigger').attr('aria-expanded', 'false');
+            $(this).find('.sidebar-org-picker__menu').attr('hidden', true);
+        });
+    }
+
+    $(document).on('click', function() {
+        closeSidebarOrgPickers();
+    });
+
+    $(document).on('click', '.sidebar-org-picker', function(e) {
+        e.stopPropagation();
+    });
+
+    $(document).on('click', '.sidebar-org-picker__trigger', function(e) {
+        e.stopPropagation();
+        var $picker = $(this).closest('.sidebar-org-picker');
+        var willOpen = !$picker.hasClass('is-open');
+        closeSidebarOrgPickers();
+        if (willOpen) {
+            $picker.addClass('is-open');
+            $(this).attr('aria-expanded', 'true');
+            $picker.find('.sidebar-org-picker__menu').removeAttr('hidden');
+        }
+    });
+
+    $(document).on('click', '.sidebar-org-picker__option', function(e) {
+        e.stopPropagation();
+        var organization = $(this).data('organization');
+        if ($(this).hasClass('sidebar-org-picker__option--selected')) {
+            closeSidebarOrgPickers();
+            return;
+        }
         $.ajax({
             url: CHANGE_ORGANIZATION_URL,
             data: { "organization": organization },
             dataType: 'json',
             type: 'POST',
             success: function(data) {
-                if ( data.status == 'ok' ) {
-                    document.location.href="/";
+                if (data.status == 'ok') {
+                    document.location.href = '/';
                 }
             }
         });
+    });
+
+    $(document).on('keydown', '.sidebar-org-picker__trigger', function(e) {
+        if (e.key === 'Escape') {
+            closeSidebarOrgPickers();
+        }
     });
 
     // Organization member role update (edit organization page)
