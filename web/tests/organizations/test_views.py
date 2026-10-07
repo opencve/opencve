@@ -1,16 +1,21 @@
 from datetime import date
 from unittest.mock import patch
 
+import pytest
+from allauth.account.models import EmailAddress
+from allauth.account.signals import user_signed_up
+from allauth.socialaccount.models import SocialAccount, SocialLogin
 from bs4 import BeautifulSoup
 from auditlog.models import LogEntry
 from django.contrib.contenttypes.models import ContentType
-from django.test import override_settings
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 from freezegun import freeze_time
 
 from organizations.models import Membership, Organization, OrganizationAPIToken
 from organizations.services.memberships import invite_member
+from users.models import User
 
 
 # List Organizations
@@ -902,17 +907,10 @@ def test_create_membership_non_existing_user_duplicate_invitation(
     )
 
 
-def test_email_confirmed_signal_links_pending_memberships(
-    create_user, create_organization
-):
-    """Test that email_confirmed signal links pending memberships to the user."""
-    from allauth.account.models import EmailAddress
-
+def create_pending_membership(create_user, create_organization):
     owner = create_user(username="owner", email="owner@example.com")
     organization = create_organization(name="orga1", user=owner, owner=True)
-
-    # Create a pending membership for a non-existing user
-    membership = Membership.objects.create(
+    return Membership.objects.create(
         user=None,
         email="newuser@example.com",
         organization=organization,
@@ -920,10 +918,18 @@ def test_email_confirmed_signal_links_pending_memberships(
         key="testkey123",
     )
 
+
+@pytest.mark.parametrize("email", ["newuser@example.com", "NewUser@example.com"])
+def test_email_confirmed_signal_links_pending_memberships(
+    create_user, create_organization, email
+):
+    """Test that email_confirmed signal links pending memberships to the user."""
+    membership = create_pending_membership(create_user, create_organization)
+
     # Create user and email address (simulating signup)
-    new_user = create_user(username="newuser", email="newuser@example.com")
+    new_user = create_user(username="newuser", email=email)
     email_address = EmailAddress.objects.create(
-        user=new_user, email="newuser@example.com", verified=False
+        user=new_user, email=email, verified=False
     )
 
     # Simulate email confirmation by sending the signal
@@ -990,6 +996,40 @@ def test_email_confirmed_signal_links_multiple_pending_memberships(
     assert membership2.user == new_user
     assert membership1.email is None
     assert membership2.email is None
+
+
+def social_signup(verified):
+    user = User(username="newuser", email="newuser@example.com")
+    sociallogin = SocialLogin(
+        user=user,
+        account=SocialAccount(provider="openid_connect", uid="newuser"),
+        email_addresses=[
+            EmailAddress(email=user.email, verified=verified, primary=True)
+        ],
+    )
+    request = RequestFactory().get("/")
+    request.session = {}
+    sociallogin.save(request)
+    user_signed_up.send(
+        sender=User, request=request, user=user, sociallogin=sociallogin
+    )
+    return user
+
+
+def test_user_signed_up_signal_links_pending_memberships_with_verified_email(
+    create_user, create_organization
+):
+    membership = create_pending_membership(create_user, create_organization)
+    new_user = social_signup(verified=True)
+    assert list(new_user.membership_set.all()) == [membership]
+
+
+def test_user_signed_up_signal_ignores_unverified_email(
+    create_user, create_organization
+):
+    create_pending_membership(create_user, create_organization)
+    new_user = social_signup(verified=False)
+    assert not new_user.membership_set.exists()
 
 
 @override_settings(ENABLE_ONBOARDING=True)
