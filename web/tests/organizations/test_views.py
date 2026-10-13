@@ -343,14 +343,22 @@ def test_list_memberships(auth_client, create_user, create_organization):
     rows = soup.find("table", {"id": "table-members"}).find("tbody").find_all("tr")
     assert len(rows) == 3  # header + owner + member
 
-    owner_cells = rows[1].find_all("td")
-    assert owner_cells[0].text.strip() == "user1"
+    data_rows = [row for row in rows if row.find("td")]
+    assert len(data_rows) == 2
+
+    def cells_for_username(username):
+        for row in data_rows:
+            cells = row.find_all("td")
+            if cells[0].text.strip() == username:
+                return cells
+        raise AssertionError(f"No membership row for username {username!r}")
+
+    owner_cells = cells_for_username("user1")
     assert owner_cells[1].text.strip() == "user1@example.com"
     assert owner_cells[2].find("select", class_="member-role-select") is None
     assert owner_cells[2].text.strip() == "Owner"
 
-    member_cells = rows[2].find_all("td")
-    assert member_cells[0].text.strip() == "user2"
+    member_cells = cells_for_username("user2")
     select = member_cells[2].find("select", class_="member-role-select")
     assert select is not None
     selected_option = select.find("option", {"selected": True})
