@@ -138,7 +138,10 @@ class SaveDashboardView(LoginRequiredMixin, View):
         return True, cleaned_config
 
     def post(self, request):
-        body = json.loads(request.body)
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON payload"}, status=400)
         widgets = body.get("widgets", [])
         dashboard_id = body.get("dashboard_id")
 
