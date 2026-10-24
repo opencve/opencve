@@ -115,7 +115,7 @@ services:
     restart: on-failure
 
   redis:
-    image: redis/redis-stack:latest
+    image: redis:8.10.2-trixie@sha256:97ec88159e6d7cfb5ddef9015386087d58a912de80112f06ebdfa78fa5989901
     healthcheck:
        test: ["CMD", "redis-cli", "ping"]
        interval: 10s
