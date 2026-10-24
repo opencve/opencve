@@ -5,10 +5,12 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.helpers import forced_singular_serializer
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import mixins, status, viewsets
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 
 from authorization.helpers import assignable_tracker_users
+from authorization.permissions import PROJECT_MEMBERS_VIEW
+from authorization.view_helpers import check_project_permission
 from changes.models import Change, Report
 from cves.models import Cve
 from cves.search import (
@@ -26,6 +28,11 @@ from opencve.api.v2.openapi import (
     AUTOMATION_UPDATE_REQUEST_EXAMPLE,
     AUTOMATION_UPDATE_RESPONSE_EXAMPLE,
     AUTOMATIONS_TAG,
+    MEMBERS_TAG,
+    PROJECT_MEMBERSHIP_CREATE_REQUEST_EXAMPLE,
+    PROJECT_MEMBERSHIP_CREATE_RESPONSE_EXAMPLE,
+    PROJECT_MEMBERSHIP_UPDATE_REQUEST_EXAMPLE,
+    PROJECT_MEMBERSHIP_UPDATE_RESPONSE_EXAMPLE,
     NOTIFICATION_CREATE_REQUEST_EXAMPLE,
     NOTIFICATION_RESPONSE_EXAMPLE,
     NOTIFICATION_UPDATE_REQUEST_EXAMPLE,
@@ -65,6 +72,9 @@ from opencve.api.v2.serializers import (
     NotificationWriteSerializer,
     ProjectCveSerializer,
     ProjectDetailSerializer,
+    ProjectMembershipCreateSerializer,
+    ProjectMembershipSerializer,
+    ProjectMembershipUpdateSerializer,
     ProjectSerializer,
     ProjectWriteSerializer,
     ReportDetailSerializer,
@@ -72,6 +82,7 @@ from opencve.api.v2.serializers import (
     SubscriptionListSerializer,
     SubscriptionMutationSerializer,
 )
+from organizations.models import Membership
 from projects.models import (
     Automation,
     AutomationExecution,
@@ -79,6 +90,12 @@ from projects.models import (
     CveTracker,
     Notification,
     Project,
+    ProjectMembership,
+)
+from projects.services.project_memberships import (
+    add_project_member,
+    remove_project_member,
+    update_project_member_role,
 )
 from projects.services.notifications import (
     build_notification_extras,
@@ -838,3 +855,122 @@ class ReportViewSet(ViewSetMixin, ProjectScopedMixin, viewsets.ReadOnlyModelView
             return ReportDetailSerializer
 
         return ReportSerializer
+
+
+def _require_api_actor(request):
+    user = request.user
+    if not user or not user.is_authenticated:
+        raise PermissionDenied("This token has no associated user for authorization.")
+    return user
+
+
+@extend_schema(parameters=ORG_PROJECT_PATH_PARAMS, tags=[MEMBERS_TAG])
+@extend_schema_view(
+    list=extend_schema(
+        summary="List members of a project.",
+    ),
+    create=extend_schema(
+        summary=("Add an organization member to a project."),
+        request=ProjectMembershipCreateSerializer,
+        responses={201: ProjectMembershipSerializer},
+        examples=[
+            PROJECT_MEMBERSHIP_CREATE_REQUEST_EXAMPLE,
+            PROJECT_MEMBERSHIP_CREATE_RESPONSE_EXAMPLE,
+        ],
+    ),
+    partial_update=extend_schema(
+        summary="Update a project member role.",
+        request=ProjectMembershipUpdateSerializer,
+        responses={200: ProjectMembershipSerializer},
+        examples=[
+            PROJECT_MEMBERSHIP_UPDATE_REQUEST_EXAMPLE,
+            PROJECT_MEMBERSHIP_UPDATE_RESPONSE_EXAMPLE,
+        ],
+    ),
+    destroy=extend_schema(
+        summary="Remove a member from a project.",
+    ),
+)
+class ProjectMemberViewSet(
+    ViewSetMixin,
+    ProjectScopedMixin,
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = ProjectMembershipSerializer
+    lookup_field = "id"
+    queryset = ProjectMembership.objects.none()
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    scope_map = {
+        "list": APIScope.PROJECTS_READ,
+        "create": APIScope.PROJECTS_WRITE,
+        "partial_update": APIScope.PROJECTS_WRITE,
+        "destroy": APIScope.PROJECTS_WRITE,
+    }
+
+    def get_queryset(self):
+        if self.is_schema_generation:
+            return ProjectMembership.objects.none()
+        return (
+            ProjectMembership.objects.filter(project=self.get_project())
+            .select_related("membership__user")
+            .order_by("membership__user__username")
+        )
+
+    def list(self, request, *args, **kwargs):
+        check_project_permission(request, self.get_project(), PROJECT_MEMBERS_VIEW)
+        return super().list(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        actor_user = _require_api_actor(request)
+        project = self.get_project()
+        organization = self.get_organization()
+        serializer = ProjectMembershipCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        membership = get_object_or_404(
+            Membership,
+            pk=serializer.validated_data["membership_id"],
+            organization=organization,
+        )
+        if membership.date_joined is None:
+            raise ValidationError(
+                {
+                    "membership_id": "Member has not joined the organization yet.",
+                }
+            )
+
+        project_membership = add_project_member(
+            project=project,
+            membership=membership,
+            role=serializer.validated_data["role"],
+            actor_user=actor_user,
+            actor_organization=organization,
+        )
+        return Response(
+            ProjectMembershipSerializer(project_membership).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        actor_user = _require_api_actor(request)
+        project_membership = self.get_object()
+        serializer = ProjectMembershipUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        project_membership = update_project_member_role(
+            project_membership=project_membership,
+            role=serializer.validated_data["role"],
+            actor_user=actor_user,
+            actor_organization=self.get_organization(),
+        )
+        return Response(ProjectMembershipSerializer(project_membership).data)
+
+    def perform_destroy(self, instance):
+        remove_project_member(
+            project_membership=instance,
+            actor_user=_require_api_actor(self.request),
+            actor_organization=self.get_organization(),
+        )

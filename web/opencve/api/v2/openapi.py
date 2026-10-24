@@ -776,6 +776,45 @@ MEMBERSHIP_UPDATE_RESPONSE_EXAMPLE = OpenApiExample(
     response_only=True,
 )
 
+PROJECT_MEMBERSHIP_CREATE_REQUEST_EXAMPLE = OpenApiExample(
+    "Add member to project",
+    value={
+        "membership_id": 37756,
+        "role": "contributor",
+    },
+    request_only=True,
+)
+
+PROJECT_MEMBERSHIP_CREATE_RESPONSE_EXAMPLE = OpenApiExample(
+    "Project member added",
+    value={
+        "id": 42,
+        "role": "contributor",
+        "membership_id": 37756,
+        "email": "user@example.com",
+        "username": "user",
+    },
+    response_only=True,
+)
+
+PROJECT_MEMBERSHIP_UPDATE_REQUEST_EXAMPLE = OpenApiExample(
+    "Update project member role",
+    value={"role": "project_admin"},
+    request_only=True,
+)
+
+PROJECT_MEMBERSHIP_UPDATE_RESPONSE_EXAMPLE = OpenApiExample(
+    "Updated project member",
+    value={
+        "id": 42,
+        "role": "project_admin",
+        "membership_id": 37756,
+        "email": "user@example.com",
+        "username": "user",
+    },
+    response_only=True,
+)
+
 
 REPORT_LIST_ITEM_EXAMPLE = OpenApiExample(
     "Report list item",
@@ -865,7 +904,10 @@ class SpectacularAPIView(DrfSpectacularAPIView):
             {"name": VENDORS_TAG},
             {"name": WEAKNESSES_TAG},
             {"name": ORGANIZATIONS_TAG, "description": "Organization settings."},
-            {"name": MEMBERS_TAG, "description": "Organization members."},
+            {
+                "name": MEMBERS_TAG,
+                "description": ("Organization and project members."),
+            },
             {
                 "name": AUDIT_LOGS_TAG,
                 "description": "Organization audit log entries.",
