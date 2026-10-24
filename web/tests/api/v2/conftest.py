@@ -56,6 +56,24 @@ def project_detail_url(project_name="prod", org_name="acme"):
     )
 
 
+def project_members_url(org_name="acme", project_name="prod"):
+    return reverse(
+        "v2-project-member-list",
+        kwargs={"organization_name": org_name, "project_name": project_name},
+    )
+
+
+def project_member_detail_url(member_id, org_name="acme", project_name="prod"):
+    return reverse(
+        "v2-project-member-detail",
+        kwargs={
+            "organization_name": org_name,
+            "project_name": project_name,
+            "id": member_id,
+        },
+    )
+
+
 def subscriptions_url(org_name="acme", project_name="prod"):
     return reverse(
         "v2-project-subscriptions",

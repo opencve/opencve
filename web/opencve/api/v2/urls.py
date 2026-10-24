@@ -21,6 +21,7 @@ from opencve.api.v2.viewsets.projects import (
     NotificationViewSet,
     ProjectCveDetailViewSet,
     ProjectCveViewSet,
+    ProjectMemberViewSet,
     ProjectSubscriptionViewSet,
     ProjectViewSet,
     ReportViewSet,
@@ -51,6 +52,7 @@ organizations_router.register(
 projects_router = routers.NestedSimpleRouter(
     organizations_router, r"projects", lookup="project"
 )
+projects_router.register(r"members", ProjectMemberViewSet, basename="v2-project-member")
 projects_router.register(
     r"notifications", NotificationViewSet, basename="v2-project-notification"
 )

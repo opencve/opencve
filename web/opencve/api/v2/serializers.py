@@ -16,6 +16,7 @@ from projects.models import (
     CveTracker,
     Notification,
     Project,
+    ProjectMembership,
 )
 from projects.services.automations import (
     AUTOMATION_WRITE_FIELDS,
@@ -581,6 +582,40 @@ class MembershipCreateSerializer(serializers.Serializer):
 
 class MembershipUpdateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=RoleRegistry.get_org_role_choices())
+
+
+class ProjectMembershipSerializer(serializers.ModelSerializer):
+    membership_id = serializers.IntegerField(source="membership.id", read_only=True)
+    email = serializers.SerializerMethodField()
+    username = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProjectMembership
+        fields = ["id", "role", "membership_id", "email", "username"]
+
+    @staticmethod
+    @extend_schema_field(serializers.EmailField())
+    def get_email(obj):
+        membership = obj.membership
+        if membership.user_id:
+            return membership.user.email
+        return membership.email
+
+    @staticmethod
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_username(obj):
+        if obj.membership.user_id:
+            return obj.membership.user.username
+        return None
+
+
+class ProjectMembershipCreateSerializer(serializers.Serializer):
+    membership_id = serializers.IntegerField()
+    role = serializers.ChoiceField(choices=RoleRegistry.get_project_role_choices())
+
+
+class ProjectMembershipUpdateSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=RoleRegistry.get_project_role_choices())
 
 
 @extend_schema_serializer(
