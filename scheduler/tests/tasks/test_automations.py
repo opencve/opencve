@@ -1,3 +1,5 @@
+import asyncio
+
 import pendulum
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -521,6 +523,37 @@ def test_execute_automation_actions_single_chunk_index():
                 _execute_automation_actions("alert", chunk_index=1, **context)
 
     assert captured_items == [chunk_b]
+
+
+def test_execute_automation_actions_without_current_event_loop():
+    """Chunks are executed even when no event loop is set in the current thread."""
+    context = _alert_automation_context()
+    captured_items = []
+
+    async def _capture_execute(**kwargs):
+        captured_items.append(kwargs["action_items"])
+
+    chunk_a = [{"automation": {"automation_id": "a"}, "changes": [], "actions": []}]
+    chunk_b = [{"automation": {"automation_id": "b"}, "changes": [], "actions": []}]
+
+    def _redis_get(conn, prefix, start, end):
+        if prefix.startswith("automation_action_queue"):
+            return {"chunks": [chunk_a, chunk_b]}
+        return {}
+
+    # This is the state left by a previous asyncio.run() call
+    asyncio.set_event_loop(None)
+
+    with patch("includes.tasks.automations.RedisHook") as mock_redis_hook:
+        mock_redis_hook.return_value.get_conn.return_value = MagicMock()
+        with patch("includes.tasks.automations.redis_get", side_effect=_redis_get):
+            with patch(
+                "includes.tasks.automations.execute_actions_async",
+                side_effect=_capture_execute,
+            ):
+                _execute_automation_actions("alert", **context)
+
+    assert captured_items == [chunk_a, chunk_b]
 
 
 def test_chunk_actions_fallback_to_legacy_max_notifications_map_length():
