@@ -112,6 +112,7 @@ def _setup_report_automation(
     schedule_time="09:00:00",
     frequency="daily",
     schedule_weekday=None,
+    schedule_timezone="UTC",
 ):
     """Insert a report automation with daily schedule at the given time."""
     config = {
@@ -131,7 +132,7 @@ def _setup_report_automation(
         )
         VALUES (
             '{AUTOMATION_REPORT_ID}', now(), now(), 'my-report', 'report',
-            '{frequency}', 'UTC', '{schedule_time}', {weekday_sql},
+            '{frequency}', '{schedule_timezone}', '{schedule_time}', {weekday_sql},
             '{json.dumps(config)}'::jsonb, '{PROJECT_ID}', true
         );
         """
@@ -589,3 +590,165 @@ def test_weekly_report_automation_due_at_scheduled_time(
     )
     assert pendulum.instance(window_start) == period_window["start"]
     assert pendulum.instance(window_end) == period_window["end"]
+
+
+def _due_interval_ends(web_redis_hook, start, end):
+    """
+    Run evaluate_report_due_in_automation_timezone for every hourly interval
+    between start and end, and return the interval ends where the report
+    automation was due.
+    """
+    due_ends = []
+    hour_start = start
+    while hour_start < end:
+        hour_end = hour_start.add(hours=1)
+        evaluate_report_due_in_automation_timezone.function(
+            **_ctx(hour_start, hour_end)
+        )
+        due_items = redis_get(
+            web_redis_hook,
+            REDIS_PREFIX_REPORT_DUE_WORK_ITEMS,
+            hour_start,
+            hour_end.subtract(seconds=1),
+        )
+        if due_items:
+            assert len(due_items) == 1
+            due_ends.append((hour_end, due_items[0]["period_bucket"]))
+        hour_start = hour_end
+    return due_ends
+
+
+@pytest.mark.web_db
+@pytest.mark.web_redis
+@pytest.mark.parametrize(
+    "timezone,expected_due_end",
+    [
+        # Whole-hour offsets: due exactly at the scheduled time
+        ("UTC", pendulum.datetime(2024, 1, 2, 9, 0, tz="UTC")),
+        ("Europe/Paris", pendulum.datetime(2024, 1, 2, 8, 0, tz="UTC")),
+        ("America/Winnipeg", pendulum.datetime(2024, 1, 2, 15, 0, tz="UTC")),
+        # Non-whole-hour offsets: due in the run containing the scheduled time
+        # 09:00 IST (+05:30) = 03:30 UTC
+        ("Asia/Kolkata", pendulum.datetime(2024, 1, 2, 4, 0, tz="UTC")),
+        # 09:00 NPT (+05:45) = 03:15 UTC
+        ("Asia/Kathmandu", pendulum.datetime(2024, 1, 2, 4, 0, tz="UTC")),
+        # 09:00 NST (-03:30) = 12:30 UTC
+        ("America/St_Johns", pendulum.datetime(2024, 1, 2, 13, 0, tz="UTC")),
+        # 09:00 ACDT (+10:30) = 22:30 UTC the previous day
+        ("Australia/Adelaide", pendulum.datetime(2024, 1, 1, 23, 0, tz="UTC")),
+    ],
+)
+def test_daily_report_automation_due_once_per_day(
+    web_pg_hook, web_redis_hook, override_conf, timezone, expected_due_end
+):
+    """A daily report is due exactly once a day, whatever its timezone offset."""
+    override_conf("opencve", "max_automations_map_length", "10")
+    _setup_org_and_project(web_pg_hook)
+    _setup_report_automation(
+        web_pg_hook, schedule_time="09:00:00", schedule_timezone=timezone
+    )
+
+    due = _due_interval_ends(
+        web_redis_hook,
+        pendulum.datetime(2024, 1, 1, 18, 0, tz="UTC"),
+        pendulum.datetime(2024, 1, 2, 18, 0, tz="UTC"),
+    )
+
+    assert [due_end for due_end, _ in due] == [expected_due_end]
+    # The due report is the one of the previous local day
+    period_bucket = due[0][1]
+    expected_day = expected_due_end.in_timezone(timezone).subtract(days=1).date()
+    assert period_bucket["period_day"] == str(expected_day)
+    assert period_bucket["period_type"] == "daily"
+    assert period_bucket["period_timezone"] == timezone
+
+
+@pytest.mark.web_db
+@pytest.mark.web_redis
+@pytest.mark.parametrize(
+    "timezone,local_day,schedule_time,expected_due_end",
+    [
+        # Spring forward: 02:00 does not exist (01:59 CET -> 03:00 CEST)
+        (
+            "Europe/Paris",
+            "2024-03-31",
+            "02:00:00",
+            pendulum.datetime(2024, 3, 31, 1, 0, tz="UTC"),
+        ),
+        # Fall back: 02:00 happens twice (02:00 CEST, then 02:00 CET)
+        (
+            "Europe/Paris",
+            "2024-10-27",
+            "02:00:00",
+            pendulum.datetime(2024, 10, 27, 1, 0, tz="UTC"),
+        ),
+        # Spring forward: 02:00 does not exist (01:59 EST -> 03:00 EDT)
+        (
+            "America/New_York",
+            "2024-03-10",
+            "02:00:00",
+            pendulum.datetime(2024, 3, 10, 7, 0, tz="UTC"),
+        ),
+        # Fall back: 01:00 happens twice (01:00 EDT, then 01:00 EST)
+        (
+            "America/New_York",
+            "2024-11-03",
+            "01:00:00",
+            pendulum.datetime(2024, 11, 3, 6, 0, tz="UTC"),
+        ),
+    ],
+)
+def test_daily_report_automation_due_once_on_dst_transition_days(
+    web_pg_hook,
+    web_redis_hook,
+    override_conf,
+    timezone,
+    local_day,
+    schedule_time,
+    expected_due_end,
+):
+    """A report scheduled in a DST transition hour is neither skipped nor duplicated."""
+    override_conf("opencve", "max_automations_map_length", "10")
+    _setup_org_and_project(web_pg_hook)
+    _setup_report_automation(
+        web_pg_hook, schedule_time=schedule_time, schedule_timezone=timezone
+    )
+
+    day_start = pendulum.parse(local_day, tz=timezone).start_of("day")
+    due = _due_interval_ends(
+        web_redis_hook,
+        day_start.in_timezone("UTC"),
+        day_start.add(days=1).in_timezone("UTC"),
+    )
+
+    assert [due_end for due_end, _ in due] == [expected_due_end]
+
+
+@pytest.mark.web_db
+@pytest.mark.web_redis
+def test_weekly_report_automation_due_once_per_week_with_half_hour_offset(
+    web_pg_hook, web_redis_hook, override_conf
+):
+    """A weekly report in Asia/Kolkata is due once, on the scheduled weekday."""
+    override_conf("opencve", "max_automations_map_length", "10")
+    _setup_org_and_project(web_pg_hook)
+    _setup_report_automation(
+        web_pg_hook,
+        schedule_time="09:00:00",
+        frequency="weekly",
+        schedule_weekday="friday",
+        schedule_timezone="Asia/Kolkata",
+    )
+
+    due = _due_interval_ends(
+        web_redis_hook,
+        pendulum.datetime(2024, 1, 1, 0, 0, tz="UTC"),
+        pendulum.datetime(2024, 1, 8, 0, 0, tz="UTC"),
+    )
+
+    # Friday Jan 5, 2024 09:00 IST = 03:30 UTC
+    assert [due_end for due_end, _ in due] == [
+        pendulum.datetime(2024, 1, 5, 4, 0, tz="UTC")
+    ]
+    assert due[0][1]["period_day"] == "2023-12-29"
+    assert due[0][1]["period_type"] == "weekly"
