@@ -222,17 +222,20 @@ def _process_reports_with_llm(reports, hook, llm_api_key, llm_api_url, llm_model
 @task
 def summarize_reports(**context):
     """
-    Generate AI summaries for daily reports of the previous day.
+    Generate AI summaries for daily reports whose day ended during this run.
     """
     llm_api_key, llm_api_url, llm_model = _get_llm_config()
 
-    last_day = str(context["data_interval_start"].date())
-    logger.info("Retrieving daily reports for day %s", last_day)
+    start = context["data_interval_start"]
+    end = context["data_interval_end"]
+    logger.info(
+        "Retrieving daily reports whose day ended between %s and %s", start, end
+    )
 
     hook = PostgresHook(postgres_conn_id="opencve_postgres")
     reports = hook.get_records(
         sql=SQL_DAILY_REPORTS_CVES_TO_SUMMARIZE,
-        parameters={"day": last_day},
+        parameters={"data_interval_start": start, "data_interval_end": end},
     )
 
     _process_reports_with_llm(reports, hook, llm_api_key, llm_api_url, llm_model)
