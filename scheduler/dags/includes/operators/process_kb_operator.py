@@ -67,6 +67,6 @@ class ProcessKbOperator(BaseOperator):
             # The very first commit does not have parent, we
             # can't check the diff so we simply discard it.
             if not commit.parents:
-                return
+                continue
 
             self.process_commit(commit)

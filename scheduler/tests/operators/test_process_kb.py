@@ -103,6 +103,27 @@ def test_process_kb_operator_first_commit(
 
 
 @patch.object(ProcessKbOperator, "process_commit")
+def test_process_kb_operator_first_commit_with_next_commits(
+    mock_process_commit, tests_path, tmp_path_factory
+):
+    repo = TestRepo("example", tests_path, tmp_path_factory)
+    commit_a = repo.commit(["a/"], hour=0, minute=15)
+    commit_b = repo.commit(["b/"], hour=0, minute=30)
+
+    # The initial commit (00:00) is skipped, but not the next ones of the interval
+    with patch("includes.utils.KB_LOCAL_REPO", repo.repo_path):
+        operator = ProcessKbOperator(task_id="parse_test")
+        operator.execute(
+            {
+                "data_interval_start": pendulum.datetime(2024, 1, 1, 0, tz="UTC"),
+                "data_interval_end": pendulum.datetime(2024, 1, 1, 1, tz="UTC"),
+            }
+        )
+    processed = [call.args[0].hexsha for call in mock_process_commit.call_args_list]
+    assert processed == [commit_a.hexsha, commit_b.hexsha]
+
+
+@patch.object(ProcessKbOperator, "process_commit")
 @pytest.mark.parametrize("hour,count", [(1, 3), (2, 1)])
 def test_process_kb_operator_process_commit_call_count(
     mock_process_commit, tests_path, tmp_path_factory, hour, count
