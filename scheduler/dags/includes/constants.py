@@ -509,24 +509,36 @@ JOIN opencve_organizations AS organizations ON organizations.id = projects.organ
 WHERE automations.is_enabled = TRUE
   AND projects.active = TRUE
   AND automations.trigger_type = 'report'
-  AND EXTRACT(HOUR FROM (%(data_interval_end)s AT TIME ZONE automations.schedule_timezone))
-      = EXTRACT(HOUR FROM automations.schedule_time)
-  AND EXTRACT(MINUTE FROM (%(data_interval_end)s AT TIME ZONE automations.schedule_timezone))
-      = EXTRACT(MINUTE FROM automations.schedule_time)
-  AND (
-    automations.frequency = 'daily'
-    OR (
-      automations.frequency = 'weekly'
-      AND CASE LOWER(automations.schedule_weekday)
-        WHEN 'monday'    THEN 1
-        WHEN 'tuesday'   THEN 2
-        WHEN 'wednesday' THEN 3
-        WHEN 'thursday'  THEN 4
-        WHEN 'friday'    THEN 5
-        WHEN 'saturday'  THEN 6
-        WHEN 'sunday'    THEN 7
-      END = EXTRACT(ISODOW FROM (%(data_interval_end)s AT TIME ZONE automations.schedule_timezone))
-    )
+  -- The automation is due in the run whose data interval contains its scheduled
+  -- local time. Comparing instants (instead of the local hour and minute of
+  -- data_interval_end) also handles timezones whose UTC offset is not a whole
+  -- hour (e.g. Asia/Kolkata) and DST transition days.
+  AND EXISTS (
+    SELECT 1
+    FROM (
+      VALUES
+        ((%(data_interval_start)s AT TIME ZONE automations.schedule_timezone)::date),
+        ((%(data_interval_end)s AT TIME ZONE automations.schedule_timezone)::date)
+    ) AS local_days(day)
+    WHERE ((local_days.day + automations.schedule_time) AT TIME ZONE automations.schedule_timezone)
+          > %(data_interval_start)s
+      AND ((local_days.day + automations.schedule_time) AT TIME ZONE automations.schedule_timezone)
+          <= %(data_interval_end)s
+      AND (
+        automations.frequency = 'daily'
+        OR (
+          automations.frequency = 'weekly'
+          AND CASE LOWER(automations.schedule_weekday)
+            WHEN 'monday'    THEN 1
+            WHEN 'tuesday'   THEN 2
+            WHEN 'wednesday' THEN 3
+            WHEN 'thursday'  THEN 4
+            WHEN 'friday'    THEN 5
+            WHEN 'saturday'  THEN 6
+            WHEN 'sunday'    THEN 7
+          END = EXTRACT(ISODOW FROM local_days.day)
+        )
+      )
   )
 ORDER BY automations.name ASC;
 """

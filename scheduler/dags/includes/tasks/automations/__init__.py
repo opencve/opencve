@@ -705,14 +705,16 @@ def upsert_report_content_and_entries(**context):
 @task(task_id="evaluate_report_due_in_automation_timezone", trigger_rule="none_failed")
 def evaluate_report_due_in_automation_timezone(**context):
     start, end = get_dates_from_context(context)
-    data_interval_end = context["data_interval_end"]
 
     redis_hook = RedisHook(redis_conn_id="opencve_redis").get_conn()
     postgres_hook = PostgresHook(postgres_conn_id="opencve_postgres")
 
     records = postgres_hook.get_records(
         sql=SQL_REPORT_DUE_AUTOMATIONS,
-        parameters={"data_interval_end": data_interval_end},
+        parameters={
+            "data_interval_start": context["data_interval_start"],
+            "data_interval_end": context["data_interval_end"],
+        },
     )
 
     if not records:
