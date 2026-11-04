@@ -1,4 +1,6 @@
 import copy
+import json
+import pathlib
 
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -9,6 +11,16 @@ from cves.constants import (
     PRODUCT_SEPARATOR,
     TOP_VENDORS_PRODUCTS,
 )
+
+
+def load_repo_json_file(path: pathlib.Path) -> dict:
+    """Load a JSON object from a repository file; return {} if missing or invalid."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
 
 
 def float_to_int_if_whole(value):

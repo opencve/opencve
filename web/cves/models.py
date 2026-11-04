@@ -1,4 +1,3 @@
-import json
 import pathlib
 
 from django.conf import settings
@@ -7,7 +6,7 @@ from django.db import models
 from django.db.models.functions import Upper
 
 from cves.constants import PRODUCT_SEPARATOR
-from cves.utils import get_highest_cvss, humanize
+from cves.utils import get_highest_cvss, humanize, load_repo_json_file
 from opencve.models import BaseModel
 
 # Map Cve metrics keys to the keys used by get_highest_cvss
@@ -62,8 +61,7 @@ class Cve(BaseModel):
     @property
     def kb_json(self):
         if not self._kb_json:
-            with open(self.kb_path) as f:
-                self._kb_json = json.load(f)
+            self._kb_json = load_repo_json_file(self.kb_path)
         return self._kb_json
 
     @property
@@ -77,8 +75,7 @@ class Cve(BaseModel):
                     pathlib.Path(settings.MITRE_REPO_PATH)
                     / mitre_data["mitre_repo_path"]
                 )
-                with open(mitre_path) as f:
-                    self._mitre_json = json.load(f)
+                self._mitre_json = load_repo_json_file(mitre_path)
         return self._mitre_json
 
     @property
@@ -92,8 +89,7 @@ class Cve(BaseModel):
                     pathlib.Path(settings.VULNRICHMENT_REPO_PATH)
                     / vulnrichment_data["vulnrichment_repo_path"]
                 )
-                with open(vulnrichment_path) as f:
-                    self._vulnrichment_json = json.load(f)
+                self._vulnrichment_json = load_repo_json_file(vulnrichment_path)
         return self._vulnrichment_json
 
     @property
@@ -106,8 +102,7 @@ class Cve(BaseModel):
                 nvd_path = (
                     pathlib.Path(settings.NVD_REPO_PATH) / nvd_data["nvd_repo_path"]
                 )
-                with open(nvd_path) as f:
-                    self._nvd_json = json.load(f)
+                self._nvd_json = load_repo_json_file(nvd_path)
         return self._nvd_json
 
     @property
@@ -121,8 +116,7 @@ class Cve(BaseModel):
                     pathlib.Path(settings.REDHAT_REPO_PATH)
                     / redhat_data["redhat_repo_path"]
                 )
-                with open(redhat_path) as f:
-                    self._redhat_json = json.load(f)
+                self._redhat_json = load_repo_json_file(redhat_path)
         return self._redhat_json
 
     @property
@@ -176,7 +170,7 @@ class Cve(BaseModel):
 
     @property
     def references(self):
-        return self.kb_json["opencve"]["references"]
+        return self.kb_json.get("opencve", {}).get("references", {})
 
     @property
     def advisories(self):
