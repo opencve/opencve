@@ -61,6 +61,27 @@ class BaseNotifier:
     def humanize_subscriptions(subscriptions):
         return [BaseNotifier.humanize_subscription(s) for s in subscriptions]
 
+    # Ordered from most to least preferred
+    CVSS_VERSIONS = [
+        ("cvssV4_0", "CVSS v4.0"),
+        ("cvssV3_1", "CVSS v3.1"),
+        ("cvssV3_0", "CVSS v3.0"),
+        ("cvssV2_0", "CVSS v2.0"),
+    ]
+
+    @staticmethod
+    def get_best_cvss(metrics):
+        """
+        Return the (score, label) of the most recent CVSS version available
+        for a CVE, or (None, None) if the CVE has no CVSS score at all.
+        """
+        for key, label in BaseNotifier.CVSS_VERSIONS:
+            data = (metrics.get(key) or {}).get("data") or {}
+            score = data.get("score")
+            if score is not None:
+                return float(score), label
+        return None, None
+
     @staticmethod
     def get_title(payload):
         if payload.get("report_content"):
@@ -114,10 +135,12 @@ class BaseNotifier:
             kb_changes = cve_data["opencve"]["changes"]
             kb_change = [c for c in kb_changes if c["id"] == change["change_id"]]
 
-            # CVE score
+            # CVE score (`cvss31` is kept as-is for backward compatibility)
+            metrics = cve_data["opencve"]["metrics"]
             score = None
-            if cve_data["opencve"]["metrics"]["cvssV3_1"]["data"]:
-                score = cve_data["opencve"]["metrics"]["cvssV3_1"]["data"]["score"]
+            if (metrics.get("cvssV3_1") or {}).get("data"):
+                score = metrics["cvssV3_1"]["data"]["score"]
+            best_score, best_label = self.get_best_cvss(metrics)
 
             payload["changes"].append(
                 {
@@ -125,6 +148,8 @@ class BaseNotifier:
                         "cve_id": change["cve_id"],
                         "description": cve_data["opencve"]["description"]["data"],
                         "cvss31": score,
+                        "best_score": best_score,
+                        "best_label": best_label,
                         "subscriptions": {
                             "raw": sorted(matched_subscriptions),
                             "human": sorted(
@@ -316,11 +341,14 @@ class SlackNotifier(BaseNotifier):
             cve = change["cve"]
             cve_id = cve["cve_id"]
             if cve_id not in cves:
-                score = float(cve["cvss31"]) if cve["cvss31"] else None
-                severity = self.get_severity_str(score)
+                score = cve["best_score"]
+                severity = (
+                    self.get_severity_str(score) if score is not None else "unscored"
+                )
                 cves[cve_id] = {
                     "cve_id": cve_id,
                     "score": score,
+                    "score_label": cve["best_label"],
                     "severity": severity,
                     "desc": (
                         (cve["description"][:400] + "…")
@@ -333,7 +361,7 @@ class SlackNotifier(BaseNotifier):
             cves[cve_id]["events"].update(e["type"] for e in change["events"])
 
         # Group CVEs by severity
-        severities = ["critical", "high", "medium", "low", "none"]
+        severities = ["critical", "high", "medium", "low", "none", "unscored"]
         grouped = {s: [] for s in severities}
         for cve in cves.values():
             grouped[cve["severity"]].append(cve)
@@ -359,22 +387,31 @@ class SlackNotifier(BaseNotifier):
                 "medium": "🟡",
                 "low": "🟢",
                 "none": "⚪️",
+                "unscored": "❔",
             }[severity]
+            heading = (
+                "UNSCORED" if severity == "unscored" else f"{severity.upper()} Severity"
+            )
             blocks.append(
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"{emoji} *{severity.upper()} Severity* — {len(grouped[severity])} CVE(s)",
+                        "text": f"{emoji} *{heading}* — {len(grouped[severity])} CVE(s)",
                     },
                 }
             )
             blocks.append({"type": "divider"})
 
             for cve in grouped[severity]:
+                score_text = (
+                    f"*{cve['score_label']}:* {cve['score']}"
+                    if cve["score"] is not None
+                    else "*CVSS:* N/A"
+                )
                 text = (
                     f"*<{web_url}/cve/{cve['cve_id']}|{cve['cve_id']}>*\n"
-                    f"*CVSS:* {cve['score'] or 'N/A'} | "
+                    f"{score_text} | "
                     f"*Events:* {', '.join(cve['events']) or 'None'} | "
                     f"*Subscriptions:* {cve['subscriptions']}\n"
                     f"{cve['desc']}"
