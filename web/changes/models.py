@@ -8,6 +8,7 @@ from django.db import models
 from django.utils import timezone
 
 from cves.models import Cve
+from cves.utils import load_repo_json_file
 from opencve.models import BaseModel
 from projects.models import Project
 
@@ -37,15 +38,13 @@ class Change(BaseModel):
 
     @property
     def kb_data(self):
-        with open(self.full_path) as f:
-            data = json.load(f)
-        return data
+        return load_repo_json_file(self.full_path)
 
     @property
     def change_data(self):
         kb_change = [
             c
-            for c in self.kb_data["opencve"].get("changes", [])
+            for c in self.kb_data.get("opencve", {}).get("changes", [])
             if c["id"] == str(self.id)
         ]
 

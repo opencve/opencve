@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from django.contrib import auth
 from django.http.request import QueryDict
@@ -10,6 +12,7 @@ from cves.utils import (
     list_filtered_cves,
     list_to_dict_vendors,
     list_weaknesses,
+    load_repo_json_file,
     normalize_enrichment_affected,
 )
 
@@ -83,6 +86,7 @@ def test_normalize_enrichment_affected():
     ],
 )
 def test_list_filtered_cves(db, create_cve, client, params, result):
+    """Verify list_filtered_cves applies search, weakness, CVSS, and vendor filters."""
     create_cve("CVE-2021-44228")
     create_cve("CVE-2022-22965")
     user = auth.get_user(client)
@@ -110,6 +114,7 @@ def test_list_weaknesses_unknown_cwe(db):
 
 
 def test_list_filtered_cves_with_tag(db, create_cve, create_user):
+    """Verify list_filtered_cves restricts results to CVEs tagged by the user."""
     cve = create_cve("CVE-2021-44228")
     create_cve("CVE-2022-22965")
 
@@ -120,3 +125,30 @@ def test_list_filtered_cves_with_tag(db, create_cve, create_user):
     assert sorted(
         [c.cve_id for c in list_filtered_cves(QueryDict("tag=test"), user)]
     ) == ["CVE-2021-44228"]
+
+
+def test_load_repo_json_file_valid_dict(tmp_path):
+    """Return parsed dict when the repository JSON file exists and is valid."""
+    path = tmp_path / "cve.json"
+    path.write_text(json.dumps({"cve": "CVE-2024-0001"}), encoding="utf-8")
+    assert load_repo_json_file(path) == {"cve": "CVE-2024-0001"}
+
+
+def test_load_repo_json_file_missing(tmp_path):
+    """Return empty dict when the repository JSON file does not exist."""
+    path = tmp_path / "missing.json"
+    assert load_repo_json_file(path) == {}
+
+
+def test_load_repo_json_file_invalid_json(tmp_path):
+    """Return empty dict when the file content is not valid JSON."""
+    path = tmp_path / "bad.json"
+    path.write_text("not json", encoding="utf-8")
+    assert load_repo_json_file(path) == {}
+
+
+def test_load_repo_json_file_non_dict_root(tmp_path):
+    """Return empty dict when the JSON root value is not an object."""
+    path = tmp_path / "list.json"
+    path.write_text(json.dumps([1, 2]), encoding="utf-8")
+    assert load_repo_json_file(path) == {}
