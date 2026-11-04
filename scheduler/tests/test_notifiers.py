@@ -197,6 +197,8 @@ def test_prepare_payload(tests_path, tmp_path_factory):
                         "cvss31": 8.8,
                         "cvss40": None,
                         "epss": None,
+                        "best_score": 8.8,
+                        "best_label": "CVSS v3.1",
                         "subscriptions": {
                             "human": ["Bar", "Foo"],
                             "raw": ["foo", "foo$PRODUCT$bar"],
@@ -541,6 +543,37 @@ def test_get_severity_str():
     assert BaseNotifier.get_severity_str(9.0) == "critical"
     assert BaseNotifier.get_severity_str(10.0) == "critical"
     assert BaseNotifier.get_severity_str(11.0) == "none"  # Invalid score
+
+
+@pytest.mark.parametrize(
+    "metrics,expected",
+    [
+        # v4.0 is preferred over every other version
+        (
+            {
+                "cvssV4_0": {"data": {"score": 7.1}},
+                "cvssV3_1": {"data": {"score": 5.0}},
+                "cvssV3_0": {"data": {"score": 4.0}},
+                "cvssV2_0": {"data": {"score": 3.0}},
+            },
+            (7.1, "CVSS v4.0"),
+        ),
+        # Empty v4.0 falls back to v3.1
+        (
+            {"cvssV4_0": {"data": {}}, "cvssV3_1": {"data": {"score": 8.8}}},
+            (8.8, "CVSS v3.1"),
+        ),
+        ({"cvssV3_0": {"data": {"score": 6.5}}}, (6.5, "CVSS v3.0")),
+        ({"cvssV2_0": {"data": {"score": 5}}}, (5.0, "CVSS v2.0")),
+        # A real 0.0 score is kept, not treated as missing
+        ({"cvssV4_0": {"data": {"score": 0.0}}}, (0.0, "CVSS v4.0")),
+        # No score at all
+        ({}, (None, None)),
+        ({"cvssV4_0": {"data": None}, "cvssV3_1": {"data": {}}}, (None, None)),
+    ],
+)
+def test_get_best_cvss(metrics, expected):
+    assert BaseNotifier.get_best_cvss(metrics) == expected
 
 
 # Tests for WebhookNotifier
@@ -1161,3 +1194,108 @@ def test_slack_notifier_format_slack_blocks_max_blocks(tests_path, tmp_path_fact
     # Each message should have at most MAX_BLOCKS blocks
     for message in messages:
         assert len(message["blocks"]) <= SlackNotifier.MAX_BLOCKS
+
+
+def _write_kb_cve(kb_path, cve_id, metrics):
+    path = kb_path / f"{cve_id}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "cve": cve_id,
+                "opencve": {
+                    "description": {"data": f"Description of {cve_id}"},
+                    "metrics": metrics,
+                    "changes": [
+                        {
+                            "id": cve_id,
+                            "data": [{"type": "metrics", "details": {}}],
+                        }
+                    ],
+                },
+            }
+        )
+    )
+    return {
+        "change_id": cve_id,
+        "change_path": path.name,
+        "cve_vendors": ["foo"],
+        "cve_id": cve_id,
+        "cve_metrics": {},
+    }
+
+
+def test_slack_notifier_uses_best_available_cvss(tmp_path):
+    """
+    CVEs scored only in CVSS v4.0 are grouped by their v4.0 severity,
+    CVEs without any CVSS score are shown as UNSCORED, and the webhook
+    payload keeps the original `cvss31` value.
+    """
+    change_details = {
+        "v4": _write_kb_cve(
+            tmp_path,
+            "CVE-2026-0001",
+            {"cvssV4_0": {"data": {"score": 7.1}}, "cvssV3_1": {"data": {}}},
+        ),
+        "unscored": _write_kb_cve(
+            tmp_path,
+            "CVE-2026-0002",
+            {"cvssV4_0": {"data": {}}, "cvssV3_1": {"data": {}}},
+        ),
+        "zero": _write_kb_cve(
+            tmp_path, "CVE-2026-0003", {"cvssV3_1": {"data": {"score": 0.0}}}
+        ),
+    }
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {
+            "extras": {"webhook_url": "https://hooks.slack.com/webhook"}
+        },
+    }
+    notifier = SlackNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=list(change_details.keys()),
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", tmp_path):
+        payload = notifier.prepare_payload()
+        messages = notifier.format_slack_blocks()
+
+    # Webhook payload: cvss31 unchanged, best score added
+    cves = {c["cve"]["cve_id"]: c["cve"] for c in payload["changes"]}
+    assert cves["CVE-2026-0001"]["cvss31"] is None
+    assert cves["CVE-2026-0001"]["best_score"] == 7.1
+    assert cves["CVE-2026-0001"]["best_label"] == "CVSS v4.0"
+    assert cves["CVE-2026-0002"]["best_score"] is None
+    assert cves["CVE-2026-0002"]["best_label"] is None
+    assert cves["CVE-2026-0003"]["cvss31"] == 0.0
+    assert cves["CVE-2026-0003"]["best_score"] == 0.0
+
+    texts = [
+        block["text"]["text"]
+        for message in messages
+        for block in message["blocks"]
+        if block.get("type") == "section"
+    ]
+    headings = [t for t in texts if "CVE(s)" in t]
+    assert headings == [
+        "🟠 *HIGH Severity* — 1 CVE(s)",
+        "⚪️ *NONE Severity* — 1 CVE(s)",
+        "❔ *UNSCORED* — 1 CVE(s)",
+    ]
+
+    def cve_text(cve_id):
+        return next(t for t in texts if f"|{cve_id}>" in t)
+
+    assert "*CVSS v4.0:* 7.1 |" in cve_text("CVE-2026-0001")
+    assert "*CVSS:* N/A |" in cve_text("CVE-2026-0002")
+    assert "*CVSS v3.1:* 0.0 |" in cve_text("CVE-2026-0003")
