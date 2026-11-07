@@ -2,6 +2,7 @@ import pytest
 import pyparsing as pp
 from django.db.models import Q
 from django.contrib.auth.models import AnonymousUser
+from django.test import override_settings
 from unittest.mock import Mock
 from datetime import datetime, timedelta, time
 
@@ -20,6 +21,7 @@ from cves.search import (
     KevFilter,
     EpssFilter,
     DateFilter,
+    MaxFieldsExceededException,
 )
 from users.models import UserTag
 
@@ -408,6 +410,12 @@ def test_search_init(create_user):
         ("description:python AND (cvss31>=8 OR cvss40>=8)", True),
         ("vendors:microsoft AND userTag:mytag", True),
         ("invalid query", False),
+        ("NOT description:python", True),
+        ("not vendor:foo AND NOT (cvss31>=8 OR cvss40>=8)", True),
+        ("NOT (NOT description:python)", True),
+        ("NOT NOT description:python", False),
+        ("description:python NOT vendor:foo", False),
+        ("NOT AND description:python", False),
     ],
 )
 def test_search_validation(query, expected_result):
@@ -452,6 +460,41 @@ def test_search_parse_jql():
     assert parsed_query == expected_parsed
 
 
+@pytest.mark.parametrize(
+    "query, expected_parsed",
+    [
+        ("NOT vendor:foo", ["NOT", ["vendor", ":", "foo"]]),
+        ("not vendor:foo", ["NOT", ["vendor", ":", "foo"]]),
+        (
+            "NOT (vendor:foo OR vendor:bar)",
+            ["NOT", [["vendor", ":", "foo"], "OR", ["vendor", ":", "bar"]]],
+        ),
+        # NOT binds tighter than AND and OR
+        (
+            "NOT vendor:foo AND vendor:bar",
+            [["NOT", ["vendor", ":", "foo"]], "AND", ["vendor", ":", "bar"]],
+        ),
+        (
+            "vendor:foo OR NOT vendor:bar AND cvss31>=8",
+            [
+                ["vendor", ":", "foo"],
+                "OR",
+                [["NOT", ["vendor", ":", "bar"]], "AND", ["cvss31", ">=", "8"]],
+            ],
+        ),
+    ],
+)
+def test_search_parse_jql_not(query, expected_parsed):
+    assert Search("").parse_jql(query) == expected_parsed
+
+
+@pytest.mark.parametrize("query", ["not", "NOT", "notepad"])
+def test_search_parse_jql_not_as_a_search_term(query):
+    search = Search("")
+    json_filter = search.jql_to_json(search.parse_jql(query))
+    assert json_filter == [{"description": {"operator": "icontains", "value": query}}]
+
+
 def test_search_parse_jql_with_special_chars_in_value():
     search = Search("")
     query = "product:some.product-1_beta"
@@ -484,6 +527,38 @@ def test_search_jql_to_json():
         ]
     }
     assert json_filter == expected_json
+
+
+def test_search_jql_to_json_not():
+    search = Search("")
+    json_filter = search.jql_to_json(
+        search.parse_jql("NOT (vendor:foo OR cvss31>=8) AND NOT python")
+    )
+    assert json_filter == {
+        "$and": [
+            {
+                "$not": {
+                    "$or": [
+                        {"vendor": {"operator": "icontains", "value": "foo"}},
+                        {"cvss31": {"operator": "gte", "value": "8"}},
+                    ]
+                }
+            },
+            {"$not": [{"description": {"operator": "icontains", "value": "python"}}]},
+        ]
+    }
+
+
+@override_settings(CVES_ADVANCED_SEARCH_MAX_FIELDS=1)
+def test_search_not_counts_negated_fields():
+    with pytest.raises(MaxFieldsExceededException):
+        Search("vendor:foo AND NOT vendor:bar").query
+
+
+def test_search_not_validates_negated_field():
+    with pytest.raises(BadQueryException) as excinfo:
+        Search("NOT foo:bar").query
+    assert "The field 'foo' is not valid." in str(excinfo.value)
 
 
 def test_date_filter_bad_query():
