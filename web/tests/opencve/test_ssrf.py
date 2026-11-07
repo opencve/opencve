@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 import pytest
 import requests
+from django.test import override_settings
 
 from opencve.utils.ssrf import (
     MAX_REDIRECTS,
@@ -97,6 +98,120 @@ def test_validate_public_http_url_rejects_if_any_resolved_ip_is_private():
     ):
         with pytest.raises(UnsafeURL):
             validate_public_http_url("https://mixed.example.com")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://10.1.2.3",
+        "https://10.1.2.3:8443/path",
+        "http://[::ffff:10.1.2.3]",
+        "http://192.168.1.10",
+        "http://[fd00::1]",
+    ],
+)
+@override_settings(
+    NOTIFICATION_ALLOWED_INTERNAL_NETWORKS=[
+        "10.0.0.0/8",
+        "192.168.1.10/32",
+        "fd00::/8",
+    ]
+)
+def test_validate_public_http_url_allows_configured_internal_networks(url):
+    """Accept private addresses belonging to the configured networks."""
+    validate_public_http_url(url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        # Private addresses outside of the configured network
+        "http://172.16.0.1",
+        "http://192.168.1.11",
+        "http://[fd00::1]",
+        "http://[::ffff:172.16.0.1]",
+        "http://127.0.0.1",
+        # Other protections still apply to the configured network
+        "http://localhost",
+        "http://0x0a000001",
+        "http://user:pass@10.1.2.3",
+        "file://10.1.2.3/etc/passwd",
+    ],
+)
+@override_settings(
+    NOTIFICATION_ALLOWED_INTERNAL_NETWORKS=["10.0.0.0/8", "192.168.1.10/32"]
+)
+def test_validate_public_http_url_rejects_outside_internal_networks(url):
+    """Keep rejecting URLs not covered by the configured networks."""
+    with pytest.raises(UnsafeURL):
+        validate_public_http_url(url)
+
+
+@override_settings(NOTIFICATION_ALLOWED_INTERNAL_NETWORKS=["10.1.2.3/8"])
+def test_validate_public_http_url_accepts_network_with_host_bits():
+    """Accept a configured network written with its host bits set."""
+    validate_public_http_url("http://10.200.0.1")
+
+
+@override_settings(NOTIFICATION_ALLOWED_INTERNAL_NETWORKS=["10.0.0.0/8"])
+def test_validate_public_http_url_allows_hostname_in_internal_network():
+    """Accept a hostname when all its IPs are public or in the configured networks."""
+    with mock.patch(
+        "opencve.utils.ssrf._real_getaddrinfo",
+        return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443)),
+        ],
+    ):
+        validate_public_http_url("https://n8n.int.example.org")
+
+
+@override_settings(NOTIFICATION_ALLOWED_INTERNAL_NETWORKS=["10.0.0.0/8"])
+def test_validate_public_http_url_rejects_hostname_outside_internal_networks():
+    """Reject a hostname when one of its IPs is outside the configured networks."""
+    with mock.patch(
+        "opencve.utils.ssrf._real_getaddrinfo",
+        return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.0.1", 443)),
+        ],
+    ):
+        with pytest.raises(UnsafeURL):
+            validate_public_http_url("https://n8n.int.example.org")
+
+
+@override_settings(NOTIFICATION_ALLOWED_INTERNAL_NETWORKS=["169.254.0.0/16"])
+def test_validate_public_http_url_never_allows_cloud_metadata():
+    """Keep the metadata endpoint blocked when a configured network contains it."""
+    validate_public_http_url("http://169.254.1.1")
+
+    with pytest.raises(UnsafeURL):
+        validate_public_http_url("http://169.254.169.254")
+
+    with mock.patch(
+        "opencve.utils.ssrf._real_getaddrinfo",
+        return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("169.254.169.254", 80)),
+        ],
+    ):
+        with pytest.raises(UnsafeURL):
+            validate_public_http_url("http://metadata.example.com")
+
+    with pytest.raises(UnsafeURL):
+        validate_public_http_url("http://[::ffff:169.254.169.254]")
+
+
+@override_settings(NOTIFICATION_ALLOWED_INTERNAL_NETWORKS=["10.0.0.0/8"])
+@mock.patch("opencve.utils.ssrf.requests.Session")
+def test_safe_request_revalidates_redirect_outside_internal_networks(mock_session):
+    """Reject a redirect leaving the configured networks."""
+    response = mock.Mock(status_code=302, headers={"Location": "http://192.168.0.1/"})
+    mock_session.return_value.request.return_value = response
+
+    with pytest.raises(UnsafeURL):
+        safe_request("POST", "http://10.0.0.1/hook")
+
+    assert mock_session.return_value.request.call_count == 1
 
 
 def test_validate_public_http_url_rejects_missing_hostname():
