@@ -3,6 +3,7 @@ import importlib
 
 import pytest
 import pendulum
+from airflow.configuration import conf
 from airflow.exceptions import AirflowConfigException, AirflowSkipException
 from airflow.utils.state import TaskInstanceState
 
@@ -300,7 +301,8 @@ def test_summarize_reports_missing_api_url():
 def test_summarize_reports_no_reports():
     """Test summarize_reports with no reports to process"""
     mock_context = {
-        "data_interval_start": pendulum.datetime(2025, 1, 1, 2, 0, tz="UTC")
+        "data_interval_start": pendulum.datetime(2025, 1, 1, 2, 0, tz="UTC"),
+        "data_interval_end": pendulum.datetime(2025, 1, 2, 2, 0, tz="UTC"),
     }
 
     def mock_get(section, key, **kwargs):
@@ -327,7 +329,10 @@ def test_summarize_reports_success(tests_path, tmp_path_factory):
     repo = TestRepo("llm", tests_path, tmp_path_factory)
     repo.commit(["2025/CVE-2025-1000.json"], hour=1, minute=0)
 
-    context = {"data_interval_start": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC")}
+    context = {
+        "data_interval_start": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC"),
+        "data_interval_end": pendulum.datetime(2024, 1, 2, 2, 0, tz="UTC"),
+    }
 
     def mock_get(section, key, **kwargs):
         values = {
@@ -386,7 +391,10 @@ def test_summarize_reports_none_response(tests_path, tmp_path_factory):
     repo = TestRepo("llm", tests_path, tmp_path_factory)
     repo.commit(["2025/CVE-2025-1000.json"], hour=1, minute=0)
 
-    context = {"data_interval_start": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC")}
+    context = {
+        "data_interval_start": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC"),
+        "data_interval_end": pendulum.datetime(2024, 1, 2, 2, 0, tz="UTC"),
+    }
 
     def mock_get(section, key, **kwargs):
         values = {
@@ -1038,7 +1046,7 @@ def test_summarize_weekly_reports_skips_already_summarized(web_pg_hook):
 
 @pytest.mark.web_db
 def test_summarize_daily_reports_filters_by_date(web_pg_hook):
-    """Only daily reports matching the exact day should be returned."""
+    """Only daily reports whose day ended during the run should be returned."""
     org_id = "aaa00000-0000-0000-0000-000000000003"
     project_id = "bbb00000-0000-0000-0000-000000000003"
     cve_id_1 = "ccc00000-0000-0000-0000-000000000004"
@@ -1128,13 +1136,128 @@ def test_summarize_daily_reports_filters_by_date(web_pg_hook):
         """
     )
 
-    # Query for day 2025-01-19: only the matching daily report should be returned
+    # Run of 2025-01-20 02:00 UTC: only the 2025-01-19 daily report should be returned
     results = web_pg_hook.get_records(
         sql=SQL_DAILY_REPORTS_CVES_TO_SUMMARIZE,
-        parameters={"day": "2025-01-19"},
+        parameters={
+            "data_interval_start": "2025-01-19T02:00:00+00:00",
+            "data_interval_end": "2025-01-20T02:00:00+00:00",
+        },
     )
 
     returned_report_ids = [r[0] for r in results]
     assert yesterday_report_id in returned_report_ids
     assert older_report_id not in returned_report_ids
     assert weekly_report_id not in returned_report_ids
+
+
+@pytest.mark.web_db
+def test_summarize_reports_waits_for_end_of_day_in_report_timezone(web_pg_hook):
+    """
+    A daily report is summarized by the run during which its local day ended,
+    so reports in timezones behind UTC are not summarized before their day is over.
+    """
+    org_id = "aaa00000-0000-0000-0000-000000000004"
+    project_id = "bbb00000-0000-0000-0000-000000000004"
+    cve_id = "ccc00000-0000-0000-0000-000000000007"
+    change_id = "ddd00000-0000-0000-0000-000000000007"
+    reports = {
+        # Local day ended 2025-01-20 00:00 UTC
+        "eee00000-0000-0000-0000-000000000011": ("2025-01-19", "UTC"),
+        # Local day ended 2025-01-19 18:30 UTC
+        "eee00000-0000-0000-0000-000000000012": ("2025-01-19", "Asia/Kolkata"),
+        # Local day ended 2025-01-19 08:00 UTC
+        "eee00000-0000-0000-0000-000000000013": ("2025-01-18", "America/Los_Angeles"),
+        # Local day ends 2025-01-20 08:00 UTC, after the 2025-01-20 02:00 run
+        "eee00000-0000-0000-0000-000000000014": ("2025-01-19", "America/Los_Angeles"),
+    }
+    reports_sql = ",\n".join(
+        f"('{report_id}', now(), now(), 'f', '{day}', '{project_id}', NULL, "
+        f"'daily', '{timezone}')"
+        for report_id, (day, timezone) in reports.items()
+    )
+    reports_changes_sql = ",\n".join(
+        f"('{report_id}', '{change_id}')" for report_id in reports
+    )
+    web_pg_hook.run(
+        f"""
+        INSERT INTO opencve_organizations (id, created_at, updated_at, name)
+        VALUES ('{org_id}', now(), now(), 'test-org-4');
+
+        INSERT INTO opencve_projects (
+            id, created_at, updated_at, name, description, subscriptions, organization_id, active
+        )
+        VALUES (
+            '{project_id}', now(), now(), 'test-project-4', '',
+            '{{"vendors": [], "products": []}}'::jsonb, '{org_id}', 't'
+        );
+
+        INSERT INTO opencve_cves (
+            id, created_at, updated_at, cve_id, title, description, vendors, weaknesses, metrics
+        )
+        VALUES (
+            '{cve_id}', now(), now(), 'CVE-2025-0007', 'Title 7', 'Desc 7',
+            '[]'::jsonb, '[]'::jsonb,
+            '{{"cvssV3_1": {{"data": {{"score": 7.5}}, "provider": "nvd"}}}}'::jsonb
+        );
+
+        INSERT INTO opencve_changes (id, created_at, updated_at, path, commit, types, cve_id)
+        VALUES (
+            '{change_id}', now(), now(), '2025/CVE-2025-0007.json',
+            'ffff000000000000000000000000000000000000', '[]'::jsonb, '{cve_id}'
+        );
+
+        INSERT INTO opencve_reports (
+            id, created_at, updated_at, seen, day, project_id, ai_summary,
+            period_type, period_timezone
+        )
+        VALUES {reports_sql};
+
+        INSERT INTO opencve_reports_changes (report_id, change_id)
+        VALUES {reports_changes_sql};
+        """
+    )
+
+    conf_get = conf.get
+
+    def mock_get(section, key, **kwargs):
+        values = {
+            "llm_api_key": "test-api-key",
+            "llm_api_url": "https://api.test.com",
+            "llm_model": "test-model",
+        }
+        if section == "opencve" and key in values:
+            return values[key]
+        return conf_get(section, key, **kwargs)
+
+    def _summarized_reports(start, end):
+        web_pg_hook.run("UPDATE opencve_reports SET ai_summary = NULL;")
+        with (
+            patch("includes.tasks.reports.conf.get", side_effect=mock_get),
+            patch(
+                "includes.tasks.reports.build_user_content_for_llm",
+                return_value="content",
+            ),
+            patch("includes.tasks.reports.call_llm", return_value="summary"),
+        ):
+            summarize_reports.function(data_interval_start=start, data_interval_end=end)
+        records = web_pg_hook.get_records(
+            "SELECT id FROM opencve_reports WHERE ai_summary IS NOT NULL;"
+        )
+        return sorted(str(r[0]) for r in records)
+
+    # Run of 2025-01-20 02:00 UTC
+    assert _summarized_reports(
+        pendulum.datetime(2025, 1, 19, 2, 0, tz="UTC"),
+        pendulum.datetime(2025, 1, 20, 2, 0, tz="UTC"),
+    ) == [
+        "eee00000-0000-0000-0000-000000000011",
+        "eee00000-0000-0000-0000-000000000012",
+        "eee00000-0000-0000-0000-000000000013",
+    ]
+
+    # Run of 2025-01-21 02:00 UTC
+    assert "eee00000-0000-0000-0000-000000000014" in _summarized_reports(
+        pendulum.datetime(2025, 1, 20, 2, 0, tz="UTC"),
+        pendulum.datetime(2025, 1, 21, 2, 0, tz="UTC"),
+    )
