@@ -23,7 +23,7 @@ class ProcessKbOperator(BaseOperator):
             return
 
         # Check if the file is a CVE file
-        file_regex = "^\d{4}/CVE-.*\.json$"
+        file_regex = r"^\d{4}/CVE-.*\.json$"
         if not re.match(file_regex, handler.path):
             self.log.info("Skipping %s (regex not matched)", handler.path)
             return
@@ -67,6 +67,6 @@ class ProcessKbOperator(BaseOperator):
             # The very first commit does not have parent, we
             # can't check the diff so we simply discard it.
             if not commit.parents:
-                return
+                continue
 
             self.process_commit(commit)
