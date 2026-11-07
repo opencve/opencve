@@ -183,6 +183,8 @@ class BaseNotificationTester(ABC):
                         "workflows belonging to any other task instance."
                     ),
                     "cvss31": 8.1,
+                    "cvss40": None,
+                    "epss": 0.00057,
                     "title": "Apache Airflow: Execution API HITL Endpoints Missing Per-Task Authorization",
                     "subscriptions": {
                         "raw": ["airflow"],
@@ -248,6 +250,8 @@ class BaseNotificationTester(ABC):
                         "Django would like to thank cyberstan for reporting this issue."
                     ),
                     "cvss31": 9.1,
+                    "cvss40": None,
+                    "epss": 0.00214,
                     "title": "Potential SQL injection via _connector keyword argument in QuerySet and Q objects",
                     "subscriptions": {
                         "raw": ["django"],
