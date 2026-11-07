@@ -1210,6 +1210,26 @@ def test_statistics(create_variable, client):
         ("product:jboss_fuse AND cvss31=10", ["CVE-2021-44228"]),
         ("vendor:cisco AND description!:log4j", ["CVE-2022-22965"]),
         ("vendor:cisco AND title!:spring", ["CVE-2021-44228"]),
+        (
+            "NOT vendor:cisco",
+            ["CVE-2022-20698", "CVE-2023-22490", "CVE-2024-31331"],
+        ),
+        ("vendor:cisco AND NOT title:spring", ["CVE-2021-44228"]),
+        (
+            "not (vendor:cisco OR title:git)",
+            ["CVE-2022-20698", "CVE-2024-31331"],
+        ),
+        (
+            "NOT (NOT vendor:cisco)",
+            ["CVE-2021-44228", "CVE-2022-22965"],
+        ),
+        ("CVE-2021-44228 OR NOT cve:CVE-20", ["CVE-2021-44228"]),
+        ("NOT git AND NOT vendor:cisco", ["CVE-2022-20698", "CVE-2024-31331"]),
+        # CVEs without any score must not be dropped from a negated CVSS filter
+        (
+            "NOT cvss20>=7",
+            ["CVE-2022-20698", "CVE-2023-22490", "CVE-2024-31331"],
+        ),
     ],
 )
 @override_settings(ENABLE_ONBOARDING=False)
@@ -1252,6 +1272,44 @@ def test_advanced_search_with_usertag(create_cve, create_user, auth_client):
 
     assert response.status_code == 200
     assert cves == ["CVE-2022-22965"]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_advanced_search_not_usertag(create_cve, create_user, auth_client):
+    user = create_user()
+    other_user = create_user()
+    client = auth_client(user)
+
+    untagged = create_cve("CVE-2021-44228")
+    tagged = create_cve("CVE-2022-22965")
+    tagged_by_other_user = create_cve("CVE-2023-22490")
+
+    UserTag.objects.create(name="test", user=user)
+    UserTag.objects.create(name="other", user=user)
+    UserTag.objects.create(name="test", user=other_user)
+
+    CveTag.objects.create(user=user, cve=tagged, tags=["test"])
+    # The same tag name used by another user must not exclude the user's own CVEs
+    CveTag.objects.create(user=user, cve=tagged_by_other_user, tags=["other"])
+    CveTag.objects.create(user=other_user, cve=tagged_by_other_user, tags=["test"])
+
+    response = client.get(f"{reverse('cves')}?q=NOT userTag:test")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    cves = [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
+
+    assert response.status_code == 200
+    assert sorted(cves) == [untagged.cve_id, tagged_by_other_user.cve_id]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_advanced_search_not_usertag_invalid_tag(create_user, auth_client):
+    client = auth_client(create_user())
+
+    response = client.get(f"{reverse('cves')}?q=NOT userTag:test")
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    assert response.status_code == 200
+    assert "The tag 'test' does not exist." in soup.text
 
 
 @override_settings(ENABLE_ONBOARDING=False)

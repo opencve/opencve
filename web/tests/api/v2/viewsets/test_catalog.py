@@ -127,6 +127,21 @@ def test_cve_list_with_valid_q_filter(client, read_token, create_cve):
 
 
 @pytest.mark.django_db
+def test_cve_list_with_negated_q_filter(client, read_token, create_cve):
+    """Exclude CVEs from the list with the NOT operator."""
+    create_cve("CVE-2021-44228")
+    create_cve("CVE-2022-22965")
+
+    response = client.get(
+        f"{cve_list_url()}?q=NOT cve:CVE-2021-44228",
+        **bearer(read_token),
+    )
+
+    assert response.status_code == 200
+    assert [item["cve_id"] for item in response.json()["results"]] == ["CVE-2022-22965"]
+
+
+@pytest.mark.django_db
 def test_cve_list_with_invalid_q_filter(client, read_token, create_cve):
     """Reject CVE list requests with an invalid search query."""
     create_cve("CVE-2021-44228")
