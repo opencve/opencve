@@ -363,5 +363,12 @@ CVES_ADVANCED_SEARCH_MAX_FIELDS = 5
 # Seconds for webhook/Slack "Try notification" HTTP requests
 NOTIFICATION_TRY_TIMEOUT = 30
 
+# Internal networks (CIDR notation) that webhook and Slack notifications can target.
+# Private and reserved addresses are rejected by default to prevent SSRF, so only
+# list the networks that the users allowed to manage notifications can safely reach.
+NOTIFICATION_ALLOWED_INTERNAL_NETWORKS = env.list(
+    "NOTIFICATION_ALLOWED_INTERNAL_NETWORKS", default=[]
+)
+
 # Base URL
 WEB_BASE_URL = env.str("WEB_BASE_URL", default="https://app.opencve.io")
