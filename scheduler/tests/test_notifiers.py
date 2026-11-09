@@ -1299,3 +1299,84 @@ def test_slack_notifier_uses_best_available_cvss(tmp_path):
     assert "*CVSS v4.0:* 7.1 |" in cve_text("CVE-2026-0001")
     assert "*CVSS:* N/A |" in cve_text("CVE-2026-0002")
     assert "*CVSS v3.1:* 0.0 |" in cve_text("CVE-2026-0003")
+
+
+def test_email_notifier_uses_best_available_cvss(tmp_path):
+    """
+    CVEs scored only in CVSS v4.0 are grouped by their v4.0 severity and
+    shown with their CVSS version, CVEs without any CVSS score are grouped
+    as "Unscored", and a real 0.0 score stays in the "None" group.
+    """
+    change_details = {
+        "v4": _write_kb_cve(
+            tmp_path,
+            "CVE-2026-0001",
+            {"cvssV4_0": {"data": {"score": 7.1}}, "cvssV3_1": {"data": {}}},
+        ),
+        "unscored": _write_kb_cve(
+            tmp_path,
+            "CVE-2026-0002",
+            {"cvssV4_0": {"data": {}}, "cvssV3_1": {"data": {}}},
+        ),
+        "zero": _write_kb_cve(
+            tmp_path, "CVE-2026-0003", {"cvssV3_1": {"data": {"score": 0.0}}}
+        ),
+    }
+    notification = {
+        "project_name": "test-project",
+        "organization_name": "test-org",
+        "notification_name": "test-notif",
+        "notification_type": "email",
+        "project_subscriptions": ["foo"],
+        "notification_conf": {"extras": {"email": "target@example.com"}},
+    }
+    notifier = EmailNotifier(
+        semaphore=None,
+        session=None,
+        notification=notification,
+        changes=list(change_details.keys()),
+        changes_details=change_details,
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", tmp_path), patch(
+        "includes.notifiers.conf"
+    ) as mock_conf:
+        mock_conf.get.return_value = "https://opencve.example.com"
+        context = notifier.get_template_context()
+
+    vulns = context["vulnerabilities"]
+    assert [v["cve_id"] for v in vulns["high"]] == ["CVE-2026-0001"]
+    assert vulns["high"][0]["best_score"] == 7.1
+    assert vulns["high"][0]["best_label"] == "CVSS v4.0"
+    assert [v["cve_id"] for v in vulns["unscored"]] == ["CVE-2026-0002"]
+    assert [v["cve_id"] for v in vulns["none"]] == ["CVE-2026-0003"]
+    assert not vulns["critical"] and not vulns["medium"] and not vulns["low"]
+
+    env = Environment(
+        loader=FileSystemLoader(
+            pathlib.Path(__file__).parent.parent / "dags/templates"
+        ),
+        autoescape=select_autoescape(),
+    )
+    html = env.get_template("email_notification.html").render(context)
+    txt = env.get_template("email_notification.txt").render(context)
+
+    assert "7.1 (CVSS v4.0)" in html
+    assert "0.0 (CVSS v3.1)" in html
+    assert "No CVSS score" in html
+    assert "Unscored Vulnerability (1)" in html
+    assert "None Severity Vulnerability (1)" in html
+    assert "Unknown Severity" not in html
+    assert "No CVSS v3.1" not in html
+    assert "None" not in html
+
+    assert "- CVE-2026-0001 (7.1 CVSS v4.0)" in txt
+    assert "- CVE-2026-0002 (No CVSS score)" in txt
+    assert "- CVE-2026-0003 (0.0 CVSS v3.1)" in txt
+    assert "Unscored Vulnerability (1)" in txt
+    assert "None Severity Vulnerability (1)" in txt
+    assert "No CVSS v3.1" not in txt

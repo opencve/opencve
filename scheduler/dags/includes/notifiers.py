@@ -25,6 +25,7 @@ class BaseNotifier:
         "medium": "#f39c12",
         "low": "#00c0ef",
         "none": "#c4c4c4",
+        "unscored": "#c4c4c4",
     }
 
     def __init__(
@@ -581,22 +582,28 @@ class EmailNotifier(BaseNotifier):
                 "medium": [],
                 "low": [],
                 "none": [],
+                "unscored": [],
             },
             "year": datetime.datetime.now().year,
         }
 
         for change in payload["changes"]:
-            score = float(change["cve"]["cvss31"]) if change["cve"]["cvss31"] else None
+            score = change["cve"]["best_score"]
+            best_label = change["cve"]["best_label"]
             cve = {
                 "cve_id": change["cve"]["cve_id"],
                 "description": change["cve"]["description"],
                 "subscriptions": change["cve"]["subscriptions"]["human"],
-                "score": score,
+                "best_score": score,
+                "best_label": best_label,
                 "changes": [e["type"] for e in change["events"]],
             }
 
-            # Sort the vulnerability by its score
-            severity = self.get_severity_str(score)
+            # Sort the vulnerability by its score, keeping a real 0.0
+            # ("none") apart from a CVE without any CVSS score ("unscored")
+            severity = (
+                self.get_severity_str(score) if score is not None else "unscored"
+            )
             context["vulnerabilities"][severity].append(cve)
 
         return context
