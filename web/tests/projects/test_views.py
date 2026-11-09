@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils.timezone import now
 
 from changes.models import Change, Report
-from cves.models import Cve
+from cves.models import Cve, Vendor
 from cves.search import BadQueryException, MaxFieldsExceededException
 from organizations.models import Membership
 from projects.forms import CveTrackerFilterForm
@@ -24,6 +24,7 @@ from projects.models import (
     Project,
     ProjectMembership,
 )
+from projects.services.subscriptions import subscribe_project, unsubscribe_project
 from projects.views import ProjectVulnerabilitiesView, ReportView
 
 
@@ -241,6 +242,8 @@ def test_project_detail_view_tracking_stats(
     )
     cve1 = create_cve("CVE-2023-22490")
     cve2 = create_cve("CVE-2021-44228")
+    cve2.vendors = ["git-scm"]
+    cve2.save(update_fields=["vendors"])
 
     # Create trackers
     CveTracker.update_tracker(
@@ -270,6 +273,53 @@ def test_project_detail_view_tracking_stats(
     }
     assert counter_map["to_evaluate"] == 1
     assert counter_map["resolved"] == 1
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_overview_tracking_stats_ignore_out_of_scope_trackers(
+    create_organization, create_user, create_project, create_cve, auth_client
+):
+    """Overview counts exclude trackers whose CVE left subscription scope; data is kept."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(
+        name="project1",
+        organization=org,
+        vendors=["git-scm"],
+    )
+    cve = create_cve("CVE-2023-22490")
+    CveTracker.update_tracker(
+        project=project, cve=cve, assignee=user, status="to_evaluate"
+    )
+
+    client = auth_client(user)
+    url = reverse("project", kwargs={"org_name": "org1", "project_name": "project1"})
+
+    response = client.get(url)
+    assert response.status_code == 200
+    counter_map = {
+        c["key"]: c["count"] for c in response.context["overview_status_counters"]
+    }
+    assert counter_map["to_evaluate"] == 1
+
+    unsubscribe_project(project, vendor_name="git-scm")
+    assert CveTracker.objects.filter(project=project, cve=cve).exists()
+
+    response = client.get(url)
+    counter_map = {
+        c["key"]: c["count"] for c in response.context["overview_status_counters"]
+    }
+    assert counter_map["to_evaluate"] == 0
+
+    Vendor.objects.get_or_create(name="git-scm")
+    subscribe_project(project, vendor_name="git-scm")
+
+    response = client.get(url)
+    counter_map = {
+        c["key"]: c["count"] for c in response.context["overview_status_counters"]
+    }
+    assert counter_map["to_evaluate"] == 1
+    assert CveTracker.objects.filter(project=project, cve=cve).count() == 1
 
 
 @override_settings(ENABLE_ONBOARDING=False)

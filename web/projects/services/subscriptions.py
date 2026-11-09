@@ -2,7 +2,44 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from cves.constants import PRODUCT_SEPARATOR
-from cves.models import Product, Vendor
+from cves.models import Cve, Product, Vendor
+from projects.models import CveTracker
+
+
+def project_subscription_vendor_keys(project):
+    """Vendor and product keys stored on the project subscription."""
+    return list(project.subscriptions.get("vendors", [])) + list(
+        project.subscriptions.get("products", [])
+    )
+
+
+def project_subscribed_cves(project):
+    """CVEs whose vendors/products overlap the project's subscriptions."""
+    keys = project_subscription_vendor_keys(project)
+    if not keys:
+        return Cve.objects.none()
+    return Cve.objects.filter(vendors__has_any_keys=keys)
+
+
+def project_in_scope_trackers(project, queryset=None):
+    """CVE trackers for this project whose CVE is still within subscription scope."""
+    base = queryset if queryset is not None else CveTracker.objects.all()
+    return base.filter(
+        project=project,
+        cve_id__in=project_subscribed_cves(project).values("id"),
+    )
+
+
+def trackers_in_subscription_scope_for_projects(projects_qs, **tracker_filters):
+    """Union of in-scope trackers across projects, with optional per-project filters."""
+    combined = CveTracker.objects.none()
+    for project in projects_qs.iterator():
+        keys = project_subscription_vendor_keys(project)
+        if not keys:
+            continue
+        per_project = CveTracker.objects.filter(project=project, **tracker_filters)
+        combined = combined | project_in_scope_trackers(project, per_project)
+    return combined.distinct()
 
 
 def subscriptions_to_api_format(subscriptions_data):
