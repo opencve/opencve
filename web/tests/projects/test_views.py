@@ -885,6 +885,17 @@ def test_project_vulnerabilities_view_filter_by_query(
     assert cve2 not in cves
     assert cve3 not in cves
 
+    # Test with a negated query
+    response = client.get(
+        reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": "org1", "project_name": "project1"},
+        ),
+        data={"query": "NOT cve:CVE-2023-22490"},
+    )
+    assert response.status_code == 200
+    assert [cve.cve_id for cve in response.context["cves"]] == ["CVE-2021-44228"]
+
     # Test with query that matches no CVE
     response = client.get(
         reverse(

@@ -2,7 +2,7 @@ import re
 from datetime import datetime, timedelta, time
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 import pyparsing as pp
 
 from cves.constants import PRODUCT_SEPARATOR
@@ -367,6 +367,14 @@ class Search:
                 raise ValueError("$or must contain a list of conditions")
             return Q(*[self.json_to_django_q(c) for c in conditions], _connector=Q.OR)
 
+        if "$not" in filter_json:
+            # Negate through a subquery rather than with ~Q(), which would drop the
+            # CVEs a JSON condition evaluates to NULL for (e.g. `NOT cvss31>=7` on
+            # an unscored CVE) and wouldn't apply both userTag conditions to the
+            # same row, so tags from other users could exclude a CVE.
+            condition = self.json_to_django_q(filter_json["$not"])
+            return Q(~Exists(Cve.objects.filter(condition, pk=OuterRef("pk"))))
+
         q_objects = Q()
 
         filters_mapping = {
@@ -427,11 +435,14 @@ class Search:
         # Operators for combining terms
         and_ = pp.CaselessKeyword("AND")
         or_ = pp.CaselessKeyword("OR")
+        # Repeating NOT is rejected: each one doubles the parsing time
+        not_ = pp.CaselessKeyword("NOT") + ~pp.CaselessKeyword("NOT")
 
         # Expressions for grouping
         expr = pp.infixNotation(
             term,
             [
+                (not_, 1, pp.opAssoc.RIGHT),
                 (and_, 2, pp.opAssoc.LEFT),
                 (or_, 2, pp.opAssoc.LEFT),
             ],
@@ -457,6 +468,9 @@ class Search:
 
     def jql_to_json(self, parsed):
         if isinstance(parsed, list):
+            if len(parsed) == 2 and parsed[0] == "NOT":
+                return {"$not": self.jql_to_json(parsed[1])}
+
             if len(parsed) > 1 and parsed[1] in {"AND", "OR"}:
                 logical_op = "$and" if parsed[1] == "AND" else "$or"
                 return {logical_op: [self.jql_to_json(part) for part in parsed[::2]]}

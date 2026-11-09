@@ -68,6 +68,7 @@
                     <a href="{% url 'cves' %}?q=cwe:CWE-79" class="query-example-tag">XSS (CWE-79)</a>
                     <a href="{% url 'cves' %}?q=cvss40%3E%3D9" class="query-example-tag">Critical (CVSS 4.0)</a>
                     <a href="{% url 'cves' %}?q=userTag%3Atocheck" class="query-example-tag">CVEs to check</a>
+                    <a href="{% url 'cves' %}?q=vendor:linux+AND+NOT+product:linux_kernel" class="query-example-tag">Linux except Kernel</a>
                 </div>
             </div>
         </div>
