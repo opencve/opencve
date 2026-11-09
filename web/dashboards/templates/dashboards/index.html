@@ -2,10 +2,7 @@
 {% load static %}
 
 {% block title%}Dashboard - {{ block.super }}{% endblock %}
-{% block navbar_title%}
-    Dashboard
-    <button type="button" class="btn btn-default btn-sm btn-add-widget" data-toggle="modal" data-target="#modal-add-widget"><i class="fa fa-plus" style="margin-right: 6px;"></i>Add Widget</button>
-{% endblock %}
+{% block navbar_title%}Dashboard{% endblock %}
 
 {% block content %}
 
@@ -23,7 +20,7 @@
             </div>
         </div>
 
-        <div class="col-md-12" id="dashboard-tabs-container"></div>
+        <div class="col-md-12 nav-tabs-custom nav-tabs-profile opencve-dashboard-tabs" id="dashboard-tabs-container"></div>
         {{ dashboards_data|json_script:"dashboards-data" }}
 
         <div class="col-md-12">
@@ -51,7 +48,7 @@
                       </div>
                       <div class="product-info">
                         <strong class="product-title">{{ widget.name }}
-                            <span class="pull-right"><button class="btn btn-default btn-sm add-widget" data-type="{{ widget.type }}">Add widget</button></span>
+                            <span class="pull-right"><button class="btn btn-primary btn-primary-outline btn-sm add-widget" data-type="{{ widget.type }}">Add widget</button></span>
                         </strong>
                         <span class="product-description">{{ widget.description }}</span>
                       </div>

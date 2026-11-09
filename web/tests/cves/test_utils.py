@@ -7,13 +7,17 @@ from django.test import override_settings
 
 from cves.models import Weakness
 from users.models import UserTag, CveTag
+from cves.constants import PRODUCT_SEPARATOR
 from cves.utils import (
+    affected_product_tab_context,
+    metrics_tab_context,
     affected_to_dict_vendors,
     list_filtered_cves,
     list_to_dict_vendors,
     list_weaknesses,
     load_repo_json_file,
     normalize_enrichment_affected,
+    project_subscription_match_keys,
 )
 
 
@@ -152,3 +156,91 @@ def test_load_repo_json_file_non_dict_root(tmp_path):
     path = tmp_path / "list.json"
     path.write_text(json.dumps([1, 2]), encoding="utf-8")
     assert load_repo_json_file(path) == {}
+
+
+def test_metrics_tab_context():
+    """Expose per-metric tab flags and pick the highest CVSS tab with data."""
+
+    class CveStub:
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
+    cve = CveStub(
+        cvssV4_0={},
+        cvssV3_1={"score": 9.8},
+        cvssV3_0={},
+        cvssV2_0={},
+        kev={"data": {"dateAdded": "2024-01-01"}},
+        epss={},
+        ssvc=None,
+    )
+    ctx = metrics_tab_context(cve)
+    assert ctx["metrics_tab_has_data"]["cvss40"] is False
+    assert ctx["metrics_tab_has_data"]["cvss31"] is True
+    assert ctx["metrics_tab_has_data"]["kev"] is True
+    assert ctx["metrics_tab_has_data"]["epss"] is False
+    assert ctx["metrics_active_cvss_tab"] == "cvss31"
+
+
+def test_affected_product_tab_context():
+    """Pick the first affected-products source tab that has data."""
+
+    class CveStub:
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
+    cve = CveStub(
+        mitre_json={"containers": {"cna": {"affected": [{"vendor": "x"}]}}},
+        nvd_json={},
+        redhat_json={},
+        enrichment_json={"vendors": ["a"]},
+    )
+    ctx = affected_product_tab_context(cve)
+    assert ctx["affected_tab_has_data"]["mitre"] is True
+    assert ctx["affected_tab_has_data"]["nvd"] is False
+    assert ctx["affected_active_tab"] == "mitre"
+
+    cve2 = CveStub(
+        mitre_json={"containers": {"cna": {}}},
+        nvd_json={"configurations": [{}]},
+        redhat_json={},
+        enrichment_json={},
+    )
+    assert affected_product_tab_context(cve2)["affected_active_tab"] == "nvd"
+
+
+def test_project_subscription_match_keys():
+    """Return sorted vendor and product keys matched by project subscriptions."""
+    cve_vendors = [
+        "fortinet",
+        f"fortinet{PRODUCT_SEPARATOR}fortios",
+        "linux",
+    ]
+    subscriptions = {
+        "vendors": ["fortinet"],
+        "products": [f"fortinet{PRODUCT_SEPARATOR}fortios"],
+    }
+    assert project_subscription_match_keys(cve_vendors, subscriptions) == [
+        "fortinet",
+        f"fortinet{PRODUCT_SEPARATOR}fortios",
+    ]
+
+
+def test_build_cve_quick_search_sidebar_entries():
+    """Mark quick-search links beyond the preview as hidden in the sidebar."""
+    from cves.constants import (
+        CVE_QUICK_SEARCH_GROUPS,
+        CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW,
+        build_cve_quick_search_sidebar_entries,
+    )
+
+    entries, total = build_cve_quick_search_sidebar_entries(
+        CVE_QUICK_SEARCH_GROUPS,
+        preview=2,
+    )
+    link_entries = [e for e in entries if e.get("kind") == "link"]
+    assert total >= len(link_entries)
+    assert any(e["hidden"] for e in link_entries)
+    assert any(not e["hidden"] for e in link_entries)

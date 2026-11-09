@@ -25,6 +25,10 @@ def _vendor_names(soup):
     return [row.find_all("td")[0].text for row in tbody.find_all("tr")]
 
 
+def _cve_list_ids(soup):
+    return [link.get_text(strip=True) for link in soup.select(".opencve-cve-card-id")]
+
+
 def _product_names(soup):
     tbody = soup.find("tbody", {"id": "products-tbody"})
     return [row.find_all("td")[0].text for row in tbody.find_all("tr")]
@@ -367,7 +371,7 @@ def test_list_cves_with_sensitive_tags(create_cve, create_user, auth_client):
     def find_cves(url):
         response = client.get(url, follow=True)
         soup = BeautifulSoup(response.content, features="html.parser")
-        return [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
+        return _cve_list_ids(soup)
 
     assert find_cves(reverse("cves")) == ["CVE-2024-31331", "CVE-2023-22490"]
     assert find_cves(f"{reverse('cves')}?tag=foo") == ["CVE-2023-22490"]
@@ -468,10 +472,15 @@ def test_cve_detail_page_basic_rendering(
         "In setMimeGroup of PackageManagerService.java"
     )
 
-    # Check CVE ID is present in navbar
+    # Check CVE ID is in page hero, navbar links to vulnerability list
     navbar_title = soup.find("h1", {"class": "navbar-title"})
     assert navbar_title is not None
-    assert "CVE-2024-31331" in navbar_title.text
+    assert "Vulnerabilities" in navbar_title.text
+
+    hero = soup.find("header", {"class": "opencve-detail-hero"})
+    assert hero is not None
+    assert "CVE-2024-31331" in hero.find("h1", {"class": "opencve-detail-title"}).text
+    assert "Published" in hero.text
 
     # Check CVE description is present in content
     description_box = soup.find("div", {"class": "box box-primary"})
@@ -908,6 +917,7 @@ def test_cve_detail_list_cve_projects(
     assert len(result_project1["comments"]) == 1
     assert result_project1["comments"][0]["comment"] == root1
     assert result_project1["comments"][0]["replies"] == [reply1, reply2]
+    assert result_project1["subscription_match_keys"] == ["vendor1"]
 
     # Check project2 has a tracker
     result_project2 = next((r for r in result if r["project"] == project2), None)
@@ -918,6 +928,9 @@ def test_cve_detail_list_cve_projects(
     assert len(result_project2["comments"]) == 1
     assert result_project2["comments"][0]["comment"] == root2
     assert result_project2["comments"][0]["replies"] == []
+    assert result_project2["subscription_match_keys"] == [
+        f"vendor1{PRODUCT_SEPARATOR}product1"
+    ]
 
     # Check project3 has no tracker
     result_project3 = next((r for r in result if r["project"] == project3), None)
@@ -926,6 +939,7 @@ def test_cve_detail_list_cve_projects(
     assert result_project3["tracker"] is None
     assert result_project3["comment_count"] == 0
     assert result_project3["comments"] == []
+    assert result_project3["subscription_match_keys"] == ["vendor2"]
 
     # Check project4 and project5 are not in results
     result_project_ids = {r["project"].id for r in result}
@@ -1223,7 +1237,7 @@ def test_advanced_search(create_cve, auth_client, query, results):
 
     response = client.get(f"{reverse('cves')}?q={query}")
     soup = BeautifulSoup(response.content, features="html.parser")
-    cves = [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
+    cves = _cve_list_ids(soup)
 
     assert response.status_code == 200
     assert sorted(cves) == sorted(results)
@@ -1248,7 +1262,7 @@ def test_advanced_search_with_usertag(create_cve, create_user, auth_client):
 
     response = client.get(f"{reverse('cves')}?q=userTag:test")
     soup = BeautifulSoup(response.content, features="html.parser")
-    cves = [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
+    cves = _cve_list_ids(soup)
 
     assert response.status_code == 200
     assert cves == ["CVE-2022-22965"]
@@ -1272,6 +1286,9 @@ def test_cve_with_views(create_organization, create_user, create_view, auth_clie
 
     response = client.get(reverse("cves"))
     soup = BeautifulSoup(response.content, features="html.parser")
+    assert soup.find(string="Search Examples") is None
+    sidebar_views = soup.select(".opencve-cve-sidebar-view-link")
+    assert sorted([a.text.strip() for a in sidebar_views]) == ["view1", "view2"]
     codes = soup.find("div", {"id": "modal-load-views"}).find_all(
         "span", {"class": "view-title"}
     )
@@ -1305,9 +1322,7 @@ def test_cvelist_get_queryset_scenarios(create_cve, create_user, auth_client):
 
     def get_cve_ids_from_response(response):
         soup = BeautifulSoup(response.content, features="html.parser")
-        return sorted(
-            [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
-        )
+        return sorted(_cve_list_ids(soup))
 
     # Invalid Form (initial 'q' parsing error)
     response = client.get(reverse("cves"), data={"q": "invalid(syntax"})
@@ -1499,33 +1514,26 @@ def test_cve_detail_enrichment_panel(
     mock_vulnrichment.return_value = {}
     create_cve("CVE-2024-31331")
 
-    # Find the Enrichment box specifically
-    def get_enrichment_box(soup):
-        enrichment_box = None
-        for box in soup.find_all("div", {"class": "box box-primary"}):
-            box_title = box.find("div", {"class": "box-title"})
-            if box_title and "Enrichment" in box_title.text:
-                enrichment_box = box
-                break
-        return enrichment_box
-
-    # No enrichment data
+    # No enrichment data — Affected products enrichment tab and sources sidebar
     mock_enrichment.return_value = {}
     response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
     soup = BeautifulSoup(response.content, features="html.parser")
-    enrichment_box = get_enrichment_box(soup)
-    box_body = enrichment_box.find("div", {"class": "box-body"})
-    assert box_body.text.strip() == "No data."
+    enrichment_pane = soup.find("div", id="enrichment")
+    assert enrichment_pane is not None
+    assert "No data available yet." in enrichment_pane.text
+    assert soup.find("table", id="enrichment-affected-table") is None
 
-    # Enrichment data
+    # Metadata only (updated) appears in sources sidebar, not as affected tab content
     mock_enrichment.return_value = {
         "updated": "2025-07-23T20:19:23.982630+00:00",
     }
     response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
     soup = BeautifulSoup(response.content, features="html.parser")
-    enrichment_box = get_enrichment_box(soup)
-    box_body = enrichment_box.find("div", {"class": "box-body"})
-    assert box_body.text.strip() == "Updated: 2025-07-23T20:19:23Z"
+    enrichment_pane = soup.find("div", id="enrichment")
+    assert "No data available yet." in enrichment_pane.text
+    source_enrichment = soup.find("a", href="#cve-source-enrichment")
+    assert source_enrichment is not None
+    assert "Updated: Jul 23, 2025" in source_enrichment.text
 
 
 @patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
@@ -1556,17 +1564,19 @@ def test_cve_detail_hides_opencve_enrichment_when_rejected(
     assert enrichment_tab.find("table", {"id": "enrichment-affected-table"}) is None
     assert "No data available yet." in enrichment_tab.text
 
-    enrichment_link = soup.find("a", {"href": "#enrichment"})
-    assert enrichment_link.find("span", {"class": "nav-tab-has-data"}) is None
+    empty_tabs = soup.find_all("li", class_="opencve-affected-source-tab--empty")
+    enrichment_empty = next(
+        (tab for tab in empty_tabs if "OpenCVE enrichment" in tab.text), None
+    )
+    assert enrichment_empty is not None
+    assert enrichment_empty.find(
+        "span", class_="opencve-affected-source-tab-empty-hint", string="No data"
+    )
+    assert enrichment_empty.find("a", href="#enrichment") is None
 
-    enrichment_box = None
-    for box in soup.find_all("div", {"class": "box box-primary"}):
-        box_title = box.find("div", {"class": "box-title"})
-        if box_title and "OpenCVE Enrichment" in box_title.text:
-            enrichment_box = box
-            break
-    assert enrichment_box is not None
-    assert enrichment_box.find("div", {"class": "box-body"}).text.strip() == "No data."
+    source_enrichment = soup.find("a", href="#cve-source-enrichment")
+    assert source_enrichment is not None
+    assert "No data" in source_enrichment.text
 
 
 @patch("cves.models.Cve.enrichment_json", new_callable=PropertyMock)
@@ -1595,12 +1605,9 @@ def test_cve_detail_advisories_panel(
     response = client.get(reverse("cve", kwargs={"cve_id": "CVE-2024-31331"}))
     soup = BeautifulSoup(response.content, features="html.parser")
     assert soup.find("title").text == "CVE-2024-31331 - Vulnerability Details - OpenCVE"
-    assert (
-        soup.find("div", {"id": "cve-advisories"})
-        .find("div", {"class": "box-body"})
-        .text.strip()
-        == "No advisories yet."
-    )
+    advisories_box = soup.find("div", {"id": "cve-advisories"})
+    assert advisories_box.find("div", {"class": "box-body"}) is None
+    assert "No advisories available" in advisories_box.get_text()
 
     # Advisories
     create_cve("CVE-2022-48703")

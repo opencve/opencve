@@ -419,7 +419,7 @@ def test_cve_detail_org_member_without_project_sees_nothing(
         can_subscribe=False,
         can_edit_tracker=False,
     )
-    assert "No projects match this CVE" in response.content.decode()
+    assert "No matching projects" in response.content.decode()
 
 
 @_patch_cve_kb

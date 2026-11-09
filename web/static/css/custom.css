@@ -88,11 +88,20 @@
   .skin-opencve .main-header li.user-header {
     background-color: #090031;
   }
-  .skin-opencve .box-title {
-    color: #253841;
+  .skin-opencve .box.box-primary,
+  .skin-opencve .box.box-info {
+    border: 1px solid #e5e5e9;
+    border-radius: 3px;
+    box-shadow: none;
   }
-  .skin-opencve .box.box-primary {
-    border-color: #090031;
+  .skin-opencve .box.box-primary > .box-header,
+  .skin-opencve .box.box-info > .box-header {
+    border-bottom: 1px solid #eef1f5;
+  }
+  .skin-opencve .box > .box-header .box-title {
+    color: #444;
+    font-size: 16px;
+    font-weight: 400;
   }
   .skin-opencve .sidebar-menu>li>.treeview-menu {
     background: #2e235d;
@@ -117,6 +126,52 @@
   .btn-primary:focus,
   .btn-primary:active {
     background-color: #090031 !important;
+  }
+
+  .btn.btn-primary.btn-primary-outline,
+  a.btn.btn-primary.btn-primary-outline,
+  button.btn.btn-primary.btn-primary-outline,
+  input.btn.btn-primary.btn-primary-outline {
+    background-color: #fff;
+    border-color: #c4b5fd;
+    color: #5648d8;
+    font-weight: 500;
+  }
+
+  .btn.btn-primary.btn-primary-outline:hover,
+  .btn.btn-primary.btn-primary-outline:focus,
+  .btn.btn-primary.btn-primary-outline:active,
+  a.btn.btn-primary.btn-primary-outline:hover,
+  a.btn.btn-primary.btn-primary-outline:focus,
+  a.btn.btn-primary.btn-primary-outline:active,
+  button.btn.btn-primary.btn-primary-outline:hover,
+  button.btn.btn-primary.btn-primary-outline:focus,
+  button.btn.btn-primary.btn-primary-outline:active,
+  input.btn.btn-primary.btn-primary-outline:hover,
+  input.btn.btn-primary.btn-primary-outline:focus,
+  input.btn.btn-primary.btn-primary-outline:active {
+    background-color: #f5f3ff !important;
+    border-color: #5648d8 !important;
+    color: #5648d8 !important;
+  }
+
+  .btn.btn-default.btn-default-outline,
+  button.btn.btn-default.btn-default-outline {
+    background-color: #fff;
+    border-color: #e2e6ea;
+    color: #5c6570;
+    font-weight: 500;
+  }
+
+  .btn.btn-default.btn-default-outline:hover,
+  .btn.btn-default.btn-default-outline:focus,
+  .btn.btn-default.btn-default-outline:active,
+  button.btn.btn-default.btn-default-outline:hover,
+  button.btn.btn-default.btn-default-outline:focus,
+  button.btn.btn-default.btn-default-outline:active {
+    background-color: #f8f9fb !important;
+    border-color: #cfd4da !important;
+    color: #1f2d3d !important;
   }
 
   .btn-social>:first-child {
@@ -175,11 +230,11 @@
 
   .report-changes-cvss .label {
     display: inline-block;
-    font-size: 75%;
-    font-weight: 600;
-    line-height: 1.2;
-    padding: 1px 5px;
-    margin-right: 2px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-right: 4px;
+    padding: 3px 8px;
   }
 
   .report-changes-excerpt {
@@ -265,9 +320,22 @@
   }
   .nav-tabs-profile > .nav-tabs > li.active {
     border-top: 0px;
-    border-bottom: 3px solid #090031;
+    border-bottom: 2px solid #5648d8;
   }
-
+  .nav-tabs-profile > .nav-tabs > li > a {
+    color: #5c6570;
+  }
+  .nav-tabs-profile > .nav-tabs > li > a:hover,
+  .nav-tabs-profile > .nav-tabs > li > a:focus {
+    color: #4538c4;
+  }
+  .nav-tabs-profile > .nav-tabs > li.active > a,
+  .nav-tabs-profile > .nav-tabs > li.active > a:hover,
+  .nav-tabs-profile > .nav-tabs > li.active > a:focus {
+    border-left: none;
+    border-right: none;
+    color: #5648d8;
+  }
   .opencve-nav-tabs > li.active > a,
   .opencve-nav-tabs > li.active > a:focus,
   .opencve-nav-tabs > li.active > a:hover {
@@ -522,18 +590,68 @@ pre.plainJSON{
 .formattedJSON a{ color: #999; text-decoration: none; }
 .formattedJSON a:hover{ color: #444; }
 
-.label-critical {
-  background-color: #972b1e;
+/* CVSS severity labels — soft bordered pills (listings, reports, widgets, summary).
+   !important beats AdminLTE .label-info/.label-warning/.label-danger background rules. */
+.label.label-info {
+  background-color: #eef6fc !important;
+  border: 1px solid #c5e0f5 !important;
+  color: #2a6a9a !important;
+  font-weight: 500;
+}
+
+.label.label-warning {
+  background-color: #fff8e6 !important;
+  border: 1px solid #f0d490 !important;
+  color: #9a7209 !important;
+  font-weight: 500;
+}
+
+.label.label-danger {
+  background-color: #fdecea !important;
+  border: 1px solid #f0b8b0 !important;
+  color: #b03a2e !important;
+  font-weight: 500;
+}
+
+.label.label-critical {
+  background-color: #f8e8e6 !important;
+  border: 1px solid #e09890 !important;
+  color: #87281a !important;
+  font-weight: 500;
+}
+
+.label.label-info,
+.label.label-warning,
+.label.label-danger,
+.label.label-critical {
+  border-radius: 4px;
+  display: inline-block;
+  font-size: 12px;
+  line-height: 1.3;
+  padding: 3px 8px;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .bg-critical {
-  background-color: #972b1e;
+  background-color: #87281a;
   color: #fff;
 }
 
-.cwe-name:not(:last-child) {
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 10px;
+.opencve-cve-detail-weakness-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.opencve-cve-detail-weakness-list > li + li {
+  border-top: 1px solid #f0f0f0;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.opencve-cve-detail-weakness-list .cwe-name {
+  margin: 4px 0 0;
 }
 
 #table-weaknesses .cwe-column {
@@ -636,8 +754,9 @@ pre.plainJSON{
   color: #97a0b3;
 }
 
-.box-changes .box-title {
+.box.box-changes > .box-header .box-title {
   font-size: 14px;
+  font-weight: 400;
 }
 
 .box-changes .box-title .box-meta {
@@ -714,60 +833,176 @@ pre.plainJSON{
     text-align: center;
 }
 
-.alert.alert-info,
-.callout.callout-info {
+.alert.alert-info {
     background-color: #E3F2FF !important;
     border-color: #478BCA;
     color: #00315F !important;
 }
 
 .alert.alert-info p,
-.alert.alert-info a,
-.callout.callout-info p,
-.callout.callout-info a{
+.alert.alert-info a {
     color: #00315F;
 }
 
-.alert.alert-error,
-.callout.callout-error {
+.alert.alert-error {
     background-color: #FFEBED !important;
     border-color: #E13238;
     color: #4B1113 !important;
 }
 
 .alert.alert-error p,
-.alert.alert-error a,
-.callout.callout-error p,
-.callout.callout-error a{
+.alert.alert-error a {
     color: #4B1113;
 }
 
-.alert.alert-success,
-.callout.callout-success {
+.alert.alert-success {
     background-color: #E6F7E5 !important;
     border-color: #009400;
     color: #003100 !important;
 }
 
 .alert.alert-success p,
-.alert.alert-success a,
-.callout.callout-success p,
-.callout.callout-success a{
+.alert.alert-success a {
     color: #003100;
 }
 
-.alert.alert-warning,
-.callout.callout-warning {
+.alert.alert-warning {
     background-color: #FFF3E0 !important;
     border-color: #FF9800;
     color: #E65100 !important;
 }
 
 .alert.alert-warning p,
-.alert.alert-warning a,
-.callout.callout-warning p,
-.callout.callout-warning a{
+.alert.alert-warning a {
     color: #E65100;
+}
+
+/* Information callouts — soft bordered banners with icon */
+.callout {
+  align-items: center;
+  border: 1px solid;
+  border-left-width: 1px !important;
+  border-radius: 6px;
+  display: flex;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+}
+
+.callout::before {
+  display: block;
+  flex-shrink: 0;
+  font-family: FontAwesome;
+  font-size: 18px;
+  font-weight: normal;
+  line-height: 1;
+  width: 18px;
+  text-align: center;
+}
+
+.callout p {
+  flex: 1 1 auto;
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.callout.callout-info {
+  background-color: #f8f7ff !important;
+  border-color: #c4b5fd !important;
+  color: #5648d8 !important;
+}
+
+.callout.callout-info::before {
+  color: #5648d8;
+  content: "\f05a";
+}
+
+.callout.callout-info p,
+.callout.callout-info a {
+  color: #5648d8;
+}
+
+.callout.callout-info a {
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.callout.callout-info a:hover,
+.callout.callout-info a:focus {
+  color: #4538c4;
+}
+
+.callout.callout-warning {
+  background-color: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #b45309 !important;
+}
+
+.callout.callout-warning::before {
+  color: #b45309;
+  content: "\f071";
+}
+
+.callout.callout-warning p,
+.callout.callout-warning a {
+  color: #b45309;
+}
+
+.callout.callout-warning a {
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.callout.callout-warning a:hover,
+.callout.callout-warning a:focus {
+  color: #92400e;
+}
+
+.callout.callout-error {
+  background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  color: #b91c1c !important;
+}
+
+.callout.callout-error::before {
+  color: #b91c1c;
+  content: "\f057";
+}
+
+.callout.callout-error p,
+.callout.callout-error a {
+  color: #b91c1c;
+}
+
+.callout.callout-success {
+  background-color: #f0fdf4 !important;
+  border-color: #86efac !important;
+  color: #15803d !important;
+}
+
+.callout.callout-success::before {
+  color: #15803d;
+  content: "\f058";
+}
+
+.callout.callout-success p,
+.callout.callout-success a {
+  color: #15803d;
+}
+
+.callout.callout-note {
+  background-color: #f9fafb !important;
+  border-color: #e5e5e9 !important;
+  color: #444 !important;
+  display: block;
+}
+
+.callout.callout-note::before {
+  content: none;
+  display: none;
 }
 
 .subscribed-projects .checkbox {
@@ -1150,6 +1385,858 @@ pre.plainJSON{
   margin-left: 10px;
 }
 
+/* Projects list — card grid + expandable list */
+.opencve-project-list-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.opencve-project-view-toggle .opencve-project-view-btn {
+  box-shadow: none;
+  color: #5c6570;
+  padding: 8px 12px;
+}
+
+.opencve-project-view-toggle .opencve-project-view-btn.active,
+.opencve-project-view-toggle .opencve-project-view-btn.active:hover,
+.opencve-project-view-toggle .opencve-project-view-btn.active:focus {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+  color: #5648d8;
+  outline: none;
+  z-index: 2;
+}
+
+.opencve-project-list-toolbar .opencve-project-list-new-btn {
+  margin-left: auto;
+}
+
+.opencve-project-list--list .opencve-project-grid-only {
+  display: none !important;
+}
+
+.opencve-project-list--grid .opencve-project-list-only {
+  display: none !important;
+}
+
+.opencve-project-list-new-btn {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 18px;
+}
+
+.opencve-project-list-toolbar .opencve-project-list-new-btn .fa-plus {
+  margin-right: 8px;
+}
+
+.opencve-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.opencve-project-list--grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.opencve-project-list--grid > .opencve-project-card.box {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin-bottom: 0;
+}
+
+.opencve-project-list--grid .opencve-project-card-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  max-height: none;
+  overflow: visible;
+}
+
+.opencve-project-list--grid .opencve-project-card-header {
+  border-bottom: none;
+  cursor: default;
+  display: grid;
+  gap: 6px 8px;
+  grid-template-areas:
+    "name menu"
+    "stats stats";
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 16px 16px 10px;
+  pointer-events: none;
+}
+
+.opencve-project-list--grid .opencve-project-card-header-main,
+.opencve-project-list--grid .opencve-project-card-summary {
+  display: contents;
+}
+
+.opencve-project-list--grid .opencve-project-card-name {
+  font-size: 16px;
+  grid-area: name;
+  line-height: 1.25;
+}
+
+.opencve-project-list--grid .opencve-project-card-stats {
+  grid-area: stats;
+  margin: 0;
+}
+
+.opencve-project-list--grid .opencve-project-card-actions {
+  grid-area: menu;
+  pointer-events: auto;
+}
+
+.opencve-project-list--grid .opencve-project-card-body-inner {
+  padding: 0 16px 8px;
+}
+
+.opencve-project-list--grid .opencve-project-card-row {
+  border-top: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.opencve-project-list--grid .opencve-project-card-row-label {
+  flex-basis: auto;
+  font-size: 12px;
+}
+
+.opencve-project-list--grid .opencve-project-card-footer {
+  align-items: center;
+  border-top: 1px solid #eef1f5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  justify-content: space-between;
+  margin-top: auto;
+  padding: 12px 16px 14px;
+  pointer-events: auto;
+}
+
+.opencve-project-list--grid .opencve-project-card-footer-members {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opencve-project-list--grid .opencve-project-card-footer-avatars {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.opencve-project-list--grid .opencve-project-card-footer-avatars .opencve-project-member-avatar {
+  border: 2px solid #fff;
+  margin-left: -6px;
+}
+
+.opencve-project-list--grid .opencve-project-card-footer-avatars .opencve-project-member-avatar:first-child {
+  margin-left: 0;
+}
+
+.opencve-project-list--grid .opencve-project-card-footer-member-count {
+  color: #5c6570;
+  font-size: 13px;
+}
+
+.opencve-project-list--grid a.opencve-project-card-open {
+  margin-left: auto;
+  padding: 4px 0;
+}
+
+.opencve-project-list--grid a.opencve-project-card-open:hover,
+.opencve-project-list--grid a.opencve-project-card-open:focus {
+  background: transparent;
+}
+
+a.opencve-project-card-new {
+  align-items: center;
+  background: #fafbff;
+  border: 2px dashed #d8dce6;
+  border-radius: 6px;
+  box-shadow: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  min-height: 280px;
+  padding: 24px 20px;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+a.opencve-project-card-new:hover,
+a.opencve-project-card-new:focus {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+  color: inherit;
+  text-decoration: none;
+}
+
+.opencve-project-card-new-icon {
+  align-items: center;
+  background: #ede9fe;
+  border-radius: 50%;
+  color: #5648d8;
+  display: inline-flex;
+  font-size: 18px;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.opencve-project-card-new-title {
+  color: #5648d8;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.opencve-project-card-new-desc {
+  color: #5c6570;
+  font-size: 13px;
+  line-height: 1.4;
+  max-width: 220px;
+}
+
+.opencve-project-card {
+  margin-bottom: 0;
+  overflow: visible;
+  padding: 0;
+  position: relative;
+  z-index: 0;
+}
+
+.opencve-project-card.is-menu-open,
+.opencve-project-card:has(.opencve-project-card-menu.open) {
+  z-index: 20;
+}
+
+.opencve-project-card-header {
+  align-items: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  max-width: 100%;
+  min-height: 58px;
+  padding: 12px 14px;
+}
+
+.opencve-project-card-header-main {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opencve-project-card.is-expanded > .opencve-project-card-header {
+  border-bottom: 1px solid #eef1f5;
+}
+
+.opencve-project-card-chevron {
+  color: #5c6570;
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  transition: transform 0.15s ease, color 0.15s ease;
+  width: 12px;
+}
+
+.opencve-project-card-header:not(.collapsed) .opencve-project-card-chevron {
+  color: #5648d8;
+  transform: rotate(90deg);
+}
+
+.opencve-project-card-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.opencve-project-card-name {
+  color: #1f2d3d;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opencve-project-card-stats {
+  color: #5c6570;
+  font-size: 12px;
+  line-height: 1.15;
+  margin: 5px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opencve-project-card-actions {
+  --opencve-project-action-size: 34px;
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 8px;
+  justify-self: end;
+}
+
+a.opencve-project-card-open {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #5648d8;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  line-height: 1.2;
+  padding: 6px 10px;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+a.opencve-project-card-open .fa {
+  font-size: 14px;
+}
+
+a.opencve-project-card-open:hover,
+a.opencve-project-card-open:focus {
+  background: #f4f6f8;
+  color: #4538c4;
+  text-decoration: none;
+}
+
+.opencve-project-card-menu .opencve-project-card-menu-btn.btn-default {
+  background-color: transparent;
+  background-image: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.opencve-project-card-menu-btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  box-sizing: border-box;
+  box-shadow: none;
+  color: #5c6570;
+  display: inline-flex;
+  font-size: 16px;
+  height: var(--opencve-project-action-size);
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: var(--opencve-project-action-size);
+}
+
+.opencve-project-card-menu-btn:hover,
+.opencve-project-card-menu-btn:focus,
+.opencve-project-card-menu .opencve-project-card-menu-btn.btn-default:hover,
+.opencve-project-card-menu .opencve-project-card-menu-btn.btn-default:focus {
+  background-color: #f4f6f8;
+  background-image: none;
+  border-color: transparent;
+  box-shadow: none;
+  color: #5c6570;
+}
+
+.opencve-project-card-menu.open > .opencve-project-card-menu-btn,
+.opencve-project-card-menu.open > .opencve-project-card-menu-btn:hover,
+.opencve-project-card-menu.open > .opencve-project-card-menu-btn:focus,
+.opencve-project-card-menu > .opencve-project-card-menu-btn:active,
+.opencve-project-card-menu > .opencve-project-card-menu-btn:focus {
+  background-color: #f4f6f8 !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: #5c6570 !important;
+  outline: none;
+}
+
+.opencve-project-card-menu .opencve-project-card-dropdown {
+  border-radius: 8px;
+  margin-top: 6px;
+  min-width: 188px;
+  padding: 6px 0;
+  z-index: 1050;
+}
+
+.opencve-project-card-dropdown > li > a {
+  align-items: center;
+  color: #1f2d3d;
+  display: flex;
+  font-size: 13px;
+  gap: 10px;
+  padding: 9px 16px;
+}
+
+.opencve-project-card-dropdown > li > a:hover,
+.opencve-project-card-dropdown > li > a:focus {
+  background: #f5f3ff;
+  color: #1f2d3d;
+}
+
+.opencve-project-card-dropdown > li > a .fa {
+  color: #5c6570;
+  font-size: 14px;
+  text-align: center;
+  width: 16px;
+}
+
+.opencve-project-card-dropdown > li.divider {
+  margin: 4px 0;
+}
+
+.opencve-project-card-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.28s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opencve-project-card-body {
+    transition: none;
+  }
+}
+
+.opencve-project-card-body-inner {
+  padding: 2px 18px 14px 44px;
+}
+
+.opencve-project-card-row {
+  align-items: flex-start;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  gap: 16px;
+  padding: 14px 0;
+}
+
+.opencve-project-card-row:first-child {
+  border-top: none;
+}
+
+.opencve-project-card-row-label {
+  color: #5c6570;
+  flex: 0 0 120px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.opencve-project-card-row-label strong {
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+.opencve-project-card-row-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+a.opencve-project-tag {
+  background: #ede9fe;
+  border-radius: 999px;
+  color: #5648d8;
+  display: inline-block;
+  font-size: 12px;
+  line-height: 1.3;
+  padding: 5px 10px;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+a.opencve-project-tag:hover,
+a.opencve-project-tag:focus {
+  background: #ddd6fe;
+  color: #4538c4;
+  text-decoration: none;
+}
+
+a.opencve-project-more {
+  align-self: center;
+  color: #5648d8;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+a.opencve-project-more:hover,
+a.opencve-project-more:focus {
+  color: #4538c4;
+  text-decoration: underline;
+}
+
+.opencve-project-member {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.opencve-project-member-avatar {
+  align-items: center;
+  background: #eef1f5;
+  border-radius: 50%;
+  color: #5c6570;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  height: 28px;
+  justify-content: center;
+  line-height: 1;
+  width: 28px;
+}
+
+.opencve-project-member-name {
+  color: #1f2d3d;
+  font-size: 13px;
+}
+
+@media (max-width: 767px) {
+  .opencve-project-list--grid {
+    grid-template-columns: 1fr;
+  }
+
+  .opencve-project-card-body-inner {
+    padding-left: 18px;
+  }
+
+  .opencve-project-list--list .opencve-project-card-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .opencve-project-list--list .opencve-project-card-row-label {
+    flex-basis: auto;
+  }
+}
+
+/* Organizations list — flat expandable cards (aligned with projects list view) */
+.opencve-org-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.opencve-org-card {
+  margin-bottom: 0;
+  overflow: visible;
+  padding: 0;
+  position: relative;
+  z-index: 0;
+}
+
+.opencve-org-card.is-menu-open,
+.opencve-org-card:has(.opencve-org-card-menu.open) {
+  z-index: 20;
+}
+
+.opencve-org-card-header {
+  align-items: center;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  max-width: 100%;
+  min-height: 58px;
+  padding: 12px 14px;
+}
+
+.opencve-org-card-header:not(.pointer) {
+  cursor: default;
+}
+
+.opencve-org-card-header-main {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opencve-org-card.is-expanded > .opencve-org-card-header {
+  border-bottom: 1px solid #eef1f5;
+}
+
+.opencve-org-card-chevron {
+  color: #5c6570;
+  flex-shrink: 0;
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  transition: transform 0.15s ease, color 0.15s ease;
+  width: 12px;
+}
+
+.opencve-org-card-chevron-spacer {
+  flex-shrink: 0;
+  width: 12px;
+}
+
+.opencve-org-card-header:not(.collapsed) .opencve-org-card-chevron {
+  color: #5648d8;
+  transform: rotate(90deg);
+}
+
+.opencve-org-card-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.opencve-org-card-title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opencve-org-card-name {
+  color: #1f2d3d;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opencve-org-current-badge {
+  background: #f4f6f8;
+  border: 1px solid #e2e6ea;
+  color: #5c6570;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+}
+
+.opencve-org-card-stats {
+  color: #5c6570;
+  font-size: 12px;
+  line-height: 1.15;
+  margin: 5px 0 0;
+}
+
+.opencve-org-card-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 8px;
+  justify-self: end;
+}
+
+a.opencve-org-card-manage {
+  align-items: center;
+  background: transparent;
+  border-radius: 4px;
+  color: #5648d8;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  line-height: 1.2;
+  padding: 6px 10px;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+a.opencve-org-card-manage:hover,
+a.opencve-org-card-manage:focus {
+  background: #f4f6f8;
+  color: #4538c4;
+  text-decoration: none;
+}
+
+.opencve-org-card-menu-btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  box-shadow: none;
+  color: #5c6570;
+  display: inline-flex;
+  font-size: 16px;
+  height: 34px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 34px;
+}
+
+.opencve-org-card-menu-btn:hover,
+.opencve-org-card-menu-btn:focus {
+  background: #f4f6f8;
+  border-color: transparent;
+  box-shadow: none;
+  color: #5c6570;
+}
+
+.opencve-org-card-dropdown {
+  border-radius: 8px;
+  margin-top: 6px;
+  min-width: 188px;
+  padding: 6px 0;
+  z-index: 1050;
+}
+
+.opencve-org-card-dropdown > li > a {
+  align-items: center;
+  color: #1f2d3d;
+  display: flex;
+  font-size: 13px;
+  gap: 10px;
+  padding: 9px 16px;
+}
+
+.opencve-org-card-dropdown > li > a:hover,
+.opencve-org-card-dropdown > li > a:focus {
+  background: #f5f3ff;
+  color: #1f2d3d;
+}
+
+.opencve-org-card-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.28s ease-in-out;
+}
+
+.opencve-org-card-body-inner {
+  padding: 12px 18px 16px 44px;
+}
+
+.opencve-org-members-head {
+  color: #8a939e;
+  display: grid;
+  font-size: 11px;
+  font-weight: 600;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  padding: 0 0 6px;
+  text-transform: uppercase;
+}
+
+.opencve-org-member-row {
+  align-items: center;
+  border-top: 1px solid #f3f4f6;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  padding: 10px 0;
+}
+
+.opencve-org-member-main {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opencve-org-member-avatar {
+  align-items: center;
+  background: #eef1f5;
+  border-radius: 50%;
+  color: #5c6570;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  height: 28px;
+  justify-content: center;
+  line-height: 1;
+  width: 28px;
+}
+
+.opencve-org-member-name {
+  color: #1f2d3d;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opencve-org-member-you {
+  background: #f4f6f8;
+  border: 1px solid #e2e6ea;
+  color: #5c6570;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+}
+
+.opencve-org-role-pill {
+  background: #f4f6f8;
+  border: 1px solid #e2e6ea;
+  border-radius: 999px;
+  color: #5c6570;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 4px 10px;
+}
+
+.opencve-org-create-footer {
+  margin: 16px 2px 0;
+}
+
+.opencve-org-create-footer a {
+  color: #5648d8;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.opencve-org-create-footer a:hover,
+.opencve-org-create-footer a:focus {
+  color: #4538c4;
+  text-decoration: underline;
+}
+
+@media (max-width: 767px) {
+  .opencve-org-card-body-inner {
+    padding-left: 18px;
+  }
+
+  .opencve-org-members-head {
+    display: none;
+  }
+
+  .opencve-org-member-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
 .products-list .product-vendors {
     margin: 10px 0;
     background-color: #f9f9f9;
@@ -1209,6 +2296,514 @@ pre.plainJSON{
 
 .widgets-list .item .product-info .product-description {
   margin-top: 8px;
+}
+
+/* CVE list — card layout */
+.opencve-cve-search-form-row {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+
+.opencve-cve-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.opencve-cve-search-input .form-group {
+  margin-bottom: 0;
+}
+
+.opencve-cve-search-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.opencve-cve-search-actions .btn {
+  white-space: nowrap;
+}
+
+.opencve-cve-search-submit {
+  font-weight: 600;
+}
+
+.opencve-cve-search-submit .fa {
+  margin-right: 6px;
+}
+
+.opencve-cve-search-query-builder.btn-default-outline,
+.opencve-cve-search-query-builder {
+  font-weight: 500;
+}
+
+.opencve-cve-search-query-builder .fa {
+  color: #8a939e;
+  margin-right: 6px;
+}
+
+.opencve-cve-search-help {
+  display: block;
+  margin-top: 10px;
+}
+
+@media (max-width: 767px) {
+  .opencve-cve-search-form-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .opencve-cve-search-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
+.opencve-cve-list-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.opencve-cve-list-results {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.opencve-cve-list-results-label {
+  color: #1f2d3d;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.opencve-cve-list-results-count {
+  background: #f7f9fb;
+  border: 1px solid #e2e6ea;
+  border-radius: 999px;
+  color: #5c6570;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
+  padding: 3px 12px;
+}
+
+.opencve-cve-list-export .fa {
+  margin-right: 6px;
+}
+
+.opencve-cve-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.opencve-cve-card {
+  margin-bottom: 0;
+  padding: 18px 20px 14px;
+}
+
+.opencve-cve-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.opencve-cve-card-main {
+  min-width: 0;
+}
+
+a.opencve-cve-card-id {
+  color: #5648d8;
+  display: inline-block;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+}
+
+a.opencve-cve-card-id:hover,
+a.opencve-cve-card-id:focus {
+  color: #4538c4;
+  text-decoration: none;
+}
+
+.opencve-cve-card-title {
+  color: #1f2d3d;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 8px 0 0;
+}
+
+.opencve-cve-card-description {
+  -webkit-box-orient: vertical;
+  color: #5c6570;
+  display: -webkit-box;
+  font-size: 13px;
+  -webkit-line-clamp: 4;
+  line-height: 1.5;
+  margin: 10px 0 0;
+  overflow: hidden;
+}
+
+.opencve-cve-card-aside {
+  border-top: 1px solid #e8ebf0;
+  min-width: 0;
+  padding-top: 16px;
+}
+
+.opencve-cve-card-badges {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.opencve-cve-card-badges .opencve-detail-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.opencve-cve-card-aside-row {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-top: 14px;
+}
+
+.opencve-cve-card-aside-label {
+  color: #5c6570;
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  min-width: 64px;
+}
+
+.opencve-cve-card-aside-tags {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.opencve-cve-card-aside-more {
+  color: #5c6570;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.opencve-cve-card-footer {
+  align-items: center;
+  border-top: 1px solid #eef1f5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.opencve-cve-card-updated {
+  color: #8a939e;
+  font-size: 12px;
+}
+
+a.opencve-cve-card-view {
+  align-items: center;
+  color: #5648d8;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  text-decoration: none;
+}
+
+a.opencve-cve-card-view:hover,
+a.opencve-cve-card-view:focus {
+  color: #4538c4;
+  text-decoration: none;
+}
+
+.opencve-cve-list-pagination {
+  margin-top: 18px;
+}
+
+.opencve-cve-list-layout {
+  align-items: flex-start;
+}
+
+.opencve-cve-list-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 992px) {
+  .opencve-cve-list-sidebar {
+    margin-bottom: 0;
+    position: sticky;
+    top: 12px;
+  }
+}
+
+.opencve-cve-sidebar-card {
+  margin-bottom: 0;
+}
+
+.opencve-cve-sidebar-card > .box-body {
+  padding-top: 14px;
+}
+
+.opencve-cve-sidebar-saved-header {
+  overflow: visible;
+  padding-right: 46px;
+  position: relative;
+}
+
+.opencve-cve-sidebar-views-menu {
+  margin-left: 0;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.opencve-cve-sidebar-views-menu .opencve-project-card-menu-btn {
+  height: 26px;
+  width: 26px;
+}
+
+.opencve-cve-sidebar-view-tabs {
+  border-bottom: 1px solid #e8ebf0;
+  margin-bottom: 10px;
+}
+
+.opencve-cve-sidebar-view-tabs > li > a {
+  border: none;
+  border-radius: 0;
+  color: #8a939e;
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: 0;
+  padding: 8px 14px 10px;
+}
+
+.opencve-cve-sidebar-view-tabs > li > a:hover,
+.opencve-cve-sidebar-view-tabs > li > a:focus {
+  background: transparent;
+  border: none;
+  color: #5648d8;
+}
+
+.opencve-cve-sidebar-view-tabs > li.active > a,
+.opencve-cve-sidebar-view-tabs > li.active > a:hover,
+.opencve-cve-sidebar-view-tabs > li.active > a:focus {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid #5648d8;
+  color: #5648d8;
+}
+
+.opencve-cve-sidebar-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.opencve-cve-sidebar-nav li + li {
+  margin-top: 2px;
+}
+
+.opencve-cve-sidebar-quick-nav > .opencve-cve-sidebar-quick-section:first-child {
+  margin-top: 0;
+}
+
+.opencve-cve-sidebar-quick-nav li + li.opencve-cve-sidebar-quick-section {
+  margin-top: 16px;
+}
+
+.opencve-cve-sidebar-quick-section {
+  color: #8a939e;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 4px 10px 2px 8px;
+  text-transform: uppercase;
+}
+
+.opencve-cve-sidebar-empty {
+  color: #8a939e;
+  font-size: 13px;
+  font-style: italic;
+  padding: 6px 8px;
+}
+
+.opencve-cve-sidebar-extra.is-hidden {
+  display: none;
+}
+
+a.opencve-cve-sidebar-nav-link {
+  align-items: center;
+  border-left: 3px solid transparent;
+  border-radius: 0 6px 6px 0;
+  color: #1f2d3d;
+  display: flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 8px;
+  line-height: 1.35;
+  padding: 7px 10px 7px 8px;
+  text-decoration: none;
+}
+
+.opencve-cve-sidebar-nav-icon {
+  color: #8a939e;
+  flex-shrink: 0;
+  font-size: 13px;
+  text-align: center;
+  width: 16px;
+}
+
+a.opencve-cve-sidebar-nav-link.is-active .opencve-cve-sidebar-nav-icon {
+  color: #5648d8;
+}
+
+.opencve-cve-sidebar-nav-label {
+  min-width: 0;
+}
+
+a.opencve-cve-sidebar-nav-link:hover,
+a.opencve-cve-sidebar-nav-link:focus {
+  background: #f4f6f9;
+  color: #1f2d3d;
+  text-decoration: none;
+}
+
+a.opencve-cve-sidebar-nav-link.is-active {
+  background: #f4f3ff;
+  border-left-color: #5648d8;
+  color: #4538c4;
+  font-weight: 600;
+}
+
+.opencve-cve-sidebar-show-more.btn-link {
+  color: #5648d8;
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 0 0;
+  text-align: center;
+  text-decoration: none;
+  width: 100%;
+}
+
+.opencve-cve-sidebar-show-more.btn-link:hover,
+.opencve-cve-sidebar-show-more.btn-link:focus {
+  color: #4538c4;
+  text-decoration: underline;
+}
+
+.opencve-cve-list-main {
+  min-width: 0;
+}
+
+.opencve-project-vuln-filter-form .form-group {
+  margin-bottom: 14px;
+}
+
+.opencve-project-vuln-filter-form .form-group:last-of-type {
+  margin-bottom: 16px;
+}
+
+.opencve-project-vuln-filter-form label {
+  color: #5c6570;
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.opencve-project-vuln-filter-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opencve-project-vuln-filter-actions .btn {
+  width: 100%;
+}
+
+.opencve-project-vuln-filter-error {
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.opencve-cve-card-tracker-fields {
+  border-top: 1px solid #eef1f5;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+  padding-top: 14px;
+  width: 100%;
+}
+
+.opencve-cve-card-tracker-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .opencve-cve-card-tracker-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.opencve-cve-search-card {
+  margin-bottom: 16px;
+}
+
+@media (min-width: 992px) {
+  .opencve-cve-card-body {
+    flex-direction: row;
+    gap: 0;
+  }
+
+  .opencve-cve-card-main {
+    flex: 1 1 58%;
+    min-width: 0;
+    padding-right: 22px;
+  }
+
+  .opencve-cve-card-aside {
+    border-left: 1px solid #e2e6ea;
+    border-top: none;
+    flex: 0 1 42%;
+    max-width: 420px;
+    min-width: 280px;
+    padding-left: 22px;
+    padding-top: 0;
+  }
 }
 
 .query-example-tag {
@@ -1286,118 +2881,195 @@ pre.plainJSON{
 
 /* CVE Tracking */
 
-#cves-tracking-list .editable-assignee, #cves-tracking-list .editable-status {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 12px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background-color: #f3f1ff;
-  color: #5648D8;
-  font-weight: 500;
-  display: inline-flex;
+/* CVE tracker assignee / status selects (project list + CVE detail Tracking) */
+.opencve-tracker-select {
   align-items: center;
-  gap: 4px;
-  border: 1px solid rgba(86,72,216,0.1);
-}
-
-#cves-tracking-list .editable-assignee:hover, #cves-tracking-list .editable-status:hover {
-  background-color: #ebe7ff;
-  transform: scale(1.05);
-  box-shadow: 0 2px 6px rgba(86,72,216,0.15);
-}
-
-#cves-tracking-list .edit-icon {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-left: 4px;
+  background: #fff;
+  border: 1px solid #d5d9e2;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #374151;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 8px;
+  line-height: 1.35;
+  max-width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
   vertical-align: middle;
+}
+
+.opencve-tracker-select:hover {
+  background: #faf9ff;
+  border-color: #c4b5fd;
+}
+
+.opencve-tracker-select--readonly {
+  cursor: default;
+}
+
+.opencve-tracker-select--readonly:hover {
+  background: #fff;
+  border-color: #d5d9e2;
+}
+
+.opencve-tracker-select-leading {
+  align-items: center;
+  display: inline-flex;
   flex-shrink: 0;
+  justify-content: center;
 }
 
-#cves-tracking-list .edit-icon svg {
-  width: 100%;
-  height: 100%;
+.opencve-tracker-select-icon {
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1;
+  width: 20px;
+  text-align: center;
+}
+
+.opencve-tracker-select-avatar {
+  border-radius: 50%;
   display: block;
+  flex-shrink: 0;
+  height: 20px;
+  object-fit: cover;
+  width: 20px;
 }
 
-#cves-tracking-list .tippy-box {
-  background: #fff !important;
-  border: 1px solid #e3e2ef !important;
-  border-radius: 10px !important;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
-  padding: 0 !important;
+.opencve-tracker-select-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-#cves-tracking-list .tippy-box[data-theme~='light'] {
-  background: #fff !important;
-  border: 1px solid #e3e2ef !important;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+.opencve-tracker-select-chevron {
+  color: #9ca3af;
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  margin-left: 2px;
 }
 
-#cves-tracking-list .tippy-box[data-theme~='light'] .tippy-content {
-  padding: 0 !important;
-  color: #333 !important;
+.opencve-tracker-select:hover .opencve-tracker-select-chevron {
+  color: #5648d8;
 }
 
-#cves-tracking-list .tippy-arrow {
-  color: #fff !important;
+.opencve-tracker-status-dot {
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 8px;
+  width: 8px;
 }
 
-#cves-tracking-list .tippy-box[data-theme~='light'] .tippy-arrow:before {
-  border-top-color: #e3e2ef !important;
-  border-bottom-color: #e3e2ef !important;
-  border-left-color: #e3e2ef !important;
-  border-right-color: #e3e2ef !important;
+.opencve-tracker-status-dot--empty,
+.opencve-tracker-status-dot--to_evaluate,
+.opencve-tracker-status-dot--pending_review {
+  background-color: #9ca3af;
 }
 
-#cves-tracking-list .floating-menu {
+.opencve-tracker-status-dot--analysis_in_progress {
+  background-color: #2563eb;
+}
+
+.opencve-tracker-status-dot--remediation_in_progress {
+  background-color: #ea580c;
+}
+
+.opencve-tracker-status-dot--evaluated,
+.opencve-tracker-status-dot--resolved {
+  background-color: #16a34a;
+}
+
+.opencve-tracker-status-dot--not_applicable,
+.opencve-tracker-status-dot--risk_accepted {
+  background-color: #d97706;
+}
+
+#cves-tracking-list td .opencve-tracker-select,
+.opencve-cve-list .opencve-tracker-select {
+  max-width: 100%;
+  width: 100%;
+}
+
+#cve-tracking .opencve-tracker-select {
+  width: 100%;
+}
+
+.tippy-box[data-theme~='light-border'] .tippy-content:has(.opencve-tracker-menu) {
+  padding: 0;
+}
+
+.opencve-tracker-menu.floating-menu {
   background: #fff;
   border: none;
   border-radius: 10px;
-  padding: 2px;
-  min-width: 180px;
-  max-height: 220px;
+  max-height: 280px;
+  min-width: 240px;
   overflow-y: auto;
+  padding: 4px;
 }
 
-#cves-tracking-list .floating-menu-item {
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  background: none;
-  width: 100%;
-  text-align: left;
-  color: #333;
-  display: flex;
+.opencve-tracker-menu .opencve-tracker-menu-item {
   align-items: center;
-  gap: 6px;
-}
-
-#cves-tracking-list .floating-menu-item i {
-  opacity: 0.6;
+  border: none;
+  border-radius: 8px;
+  color: #374151;
+  display: flex;
   font-size: 13px;
-}
-
-#cves-tracking-list .floating-menu-item:hover {
-  background-color: #f6f5ff;
-  color: #5648D8;
-}
-
-#cves-tracking-list .floating-menu-item.selected {
-  background-color: #e0dbff;
-}
-
-#cves-tracking-list .badge {
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
   font-weight: 500;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.opencve-tracker-menu .opencve-tracker-menu-item-main {
+  align-items: center;
+  display: inline-flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opencve-tracker-menu .opencve-tracker-menu-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opencve-tracker-menu .opencve-tracker-menu-item-check {
+  color: #5648d8;
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0;
+  visibility: hidden;
+  width: 14px;
+}
+
+.opencve-tracker-menu .opencve-tracker-menu-item.selected {
+  background-color: #f5f3ff;
+}
+
+.opencve-tracker-menu .opencve-tracker-menu-item.selected .opencve-tracker-menu-item-check {
+  opacity: 1;
+  visibility: visible;
+}
+
+.opencve-tracker-menu .opencve-tracker-menu-item:hover {
+  background-color: #faf9ff;
+  color: #374151;
+}
+
+.opencve-tracker-menu .opencve-tracker-menu-item.selected:hover {
+  background-color: #f5f3ff;
 }
 
 #cves-tracking-stats .badge {
@@ -1431,6 +3103,30 @@ pre.plainJSON{
 .project-assignment-item-header {
   font-weight: 600;
   margin-bottom: 6px;
+}
+
+.project-assignment-subscription-matches {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.project-assignment-subscription-match-tags {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.project-assignment-matches-more {
+  color: #5c6570;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
 }
 
 .project-assignment-item-badges {
@@ -1816,6 +3512,17 @@ pre.plainJSON{
   white-space: nowrap;
 }
 
+#project-subscriptions-box a.subscription-cve-filter-link {
+  color: #5648d8;
+  text-decoration: none;
+}
+
+#project-subscriptions-box a.subscription-cve-filter-link:hover,
+#project-subscriptions-box a.subscription-cve-filter-link:focus {
+  color: #4538c4;
+  text-decoration: underline;
+}
+
 #project-subscriptions-box .subscription-product-name {
   padding-left: 18px;
   font-size: 13px;
@@ -2072,61 +3779,921 @@ pre.plainJSON{
   display: inline;
 }
 
-/* CVE detail: Description + summary box */
-.cve-description-text {
-  text-align: justify;
+/* Shared detail page layout (CVE, exploits, …) */
+.opencve-detail-page {
+  --cve-section-nav-sticky-offset: 52px;
+  padding: 0;
 }
 
-.cve-description-summary-wrapper {
-  display: flex;
-  flex-direction: column;
+.opencve-detail-container {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 1400px;
+  padding-left: 44px;
+  padding-right: 44px;
   width: 100%;
 }
 
-.cve-description-summary-row {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: stretch;
+.opencve-detail-top {
+  background: #fff;
+  margin: 0 -15px;
+  padding: 20px 0 16px;
 }
 
-.cve-description-summary-row > [class*="col-"] {
+.cve-detail-section-nav-sticky {
+  background: #fff;
+  border-bottom: 1px solid #e5e5e9;
+  margin: 0 -15px;
+  z-index: 1030;
+}
+
+/* Fixed bar: full content-wrapper width, no bleed over sidebar (z-index matches content) */
+.cve-detail-section-nav-sticky.is-fixed {
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+  margin: 0;
+  z-index: 820;
+}
+
+.cve-detail-section-nav-sticky .cve-detail-section-nav {
+  margin: 0;
+}
+
+.cve-detail-section-nav-sticky-placeholder {
+  margin: 0;
+}
+
+.opencve-detail-main {
+  background: #ecf0f5;
+  margin: 0 -15px;
+  padding: 20px 0 40px;
+}
+
+@media (max-width: 767px) {
+  .opencve-detail-container {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+.opencve-detail-hero {
+  margin-bottom: 0;
+}
+
+.opencve-detail-breadcrumb {
+  color: #7f8c8d;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.opencve-detail-breadcrumb a {
+  color: #605ca8;
+}
+
+.opencve-detail-breadcrumb a:hover,
+.opencve-detail-breadcrumb a:focus {
+  color: #4538c4;
+}
+
+.opencve-detail-breadcrumb-sep {
+  margin: 0 6px;
+}
+
+.opencve-detail-breadcrumb-current {
+  color: #2c3e50;
+}
+
+.opencve-detail-hero-row {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.opencve-detail-hero-main {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.opencve-detail-title {
+  color: #1f2d3d;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0 0 8px;
+}
+
+.opencve-detail-subtitle {
+  color: #5c6570;
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.opencve-detail-badges {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+  width: 100%;
+}
+
+.opencve-detail-badge {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  line-height: 1.3;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
+a.opencve-detail-badge {
+  text-decoration: none;
+}
+
+a.opencve-detail-badge:hover,
+a.opencve-detail-badge:focus {
+  filter: brightness(0.97);
+  text-decoration: none;
+}
+
+.opencve-detail-badge-icon {
+  color: #7f8c8d;
+  font-size: 12px;
+}
+
+.opencve-detail-badge-neutral {
+  background: #f4f6f8;
+  border-color: #e8ebf0;
+  color: #5c6570;
+}
+
+.opencve-detail-badge-cvss-info,
+.opencve-detail-badge-epss-info {
+  background: #eef6fc;
+  border-color: #c5e0f5;
+  color: #2a6a9a;
+}
+
+.opencve-detail-badge-cvss-warning,
+.opencve-detail-badge-epss-warning {
+  background: #fff8e6;
+  border-color: #f0d490;
+  color: #9a7209;
+}
+
+.opencve-detail-badge-cvss-danger,
+.opencve-detail-badge-epss-danger {
+  background: #fdecea;
+  border-color: #f0b8b0;
+  color: #b03a2e;
+}
+
+.opencve-detail-badge-cvss-critical,
+.opencve-detail-badge-epss-critical,
+.opencve-detail-badge-kev-listed {
+  background: #f8e8e6;
+  border-color: #e09890;
+  color: #87281a;
+}
+
+.opencve-detail-badge-epss-default {
+  background: #f4f6f8;
+  border-color: #e8ebf0;
+  color: #5c6570;
+}
+
+.opencve-detail-view-external {
+  border-color: #605ca8;
+  color: #605ca8;
+  font-weight: 600;
+}
+
+.opencve-detail-view-external:hover,
+.opencve-detail-view-external:focus {
+  background: #f5f3fc;
+  border-color: #4538c4;
+  color: #4538c4;
+}
+
+/* CVE detail: compact semantic chips (metrics, affected status) */
+.opencve-chip {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 3px 8px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.opencve-chip-neutral {
+  background: #f4f6f8;
+  border-color: #e8ebf0;
+  color: #5c6570;
+}
+
+.opencve-chip-muted {
+  background: #f8f9fa;
+  border-color: #e4e7eb;
+  color: #8a939e;
+}
+
+.opencve-chip-success {
+  background: #eef8f0;
+  border-color: #b8dfc4;
+  color: #1e6b34;
+}
+
+.opencve-chip-warning {
+  background: #fff8e6;
+  border-color: #f0d490;
+  color: #9a7209;
+}
+
+.opencve-chip-danger {
+  background: #fdecea;
+  border-color: #f0b8b0;
+  color: #b03a2e;
+}
+
+.opencve-chip-critical {
+  background: #f8e8e6;
+  border-color: #e09890;
+  color: #87281a;
+}
+
+.panel-group-cvss .opencve-chip {
+  margin-top: -2px;
+}
+
+/* CVE detail: segmented pill tabs (Affected products, Metrics) */
+#cve-metrics.nav-tabs-custom.opencve-segment-tabs,
+#cve-affected.nav-tabs-custom.opencve-segment-tabs,
+#cve-tracking.nav-tabs-custom.opencve-segment-tabs {
+  box-shadow: none;
+}
+
+#cve-metrics.opencve-segment-tabs > .box-header,
+#cve-affected.opencve-segment-tabs > .box-header,
+#cve-tracking.opencve-segment-tabs > .box-header {
+  border-bottom: 1px solid #eef1f5;
+}
+
+/* Affected Products: full-width equal-column source selector (no Bootstrap .nav-tabs) */
+#cve-affected .opencve-affected-source-toolbar {
+  border-bottom: none;
+  padding: 8px 10px 10px;
+}
+
+#cve-affected .opencve-affected-source-nav {
+  background: #eef1f5;
+  border: none;
+  border-radius: 10px;
+  box-sizing: border-box;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  width: 100%;
+}
+
+#cve-affected .opencve-affected-source-nav > li {
+  display: flex;
   float: none;
-  display: flex;
-  flex-direction: column;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
 }
 
-.cve-description-summary-row > [class*="col-"] > .box {
+#cve-affected .opencve-affected-source-nav > li > a {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #5c6570;
+  display: flex;
   flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 500;
+  justify-content: center;
+  line-height: 1.25;
+  margin: 0;
+  min-height: 36px;
+  padding: 4px 6px;
+  text-align: center;
+  text-decoration: none;
+  width: 100%;
 }
 
-.cve-description-summary-row .cve-summary-col {
-  padding-left: 0;
+#cve-affected .opencve-affected-source-nav > li > a:hover,
+#cve-affected .opencve-affected-source-nav > li > a:focus {
+  background: rgba(255, 255, 255, 0.55);
+  color: #3d4650;
+  outline: none;
+  text-decoration: none;
 }
 
-/* CVE detail: Description box: column layout for description + Show more */
-.cve-description-col .box {
+#cve-affected .opencve-affected-source-nav > li.active > a,
+#cve-affected .opencve-affected-source-nav > li.active > a:hover,
+#cve-affected .opencve-affected-source-nav > li.active > a:focus {
+  background: #fff;
+  border-color: #dfe3e8;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+#cve-affected .opencve-affected-source-nav .opencve-segment-tab-inner {
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  justify-content: center;
+  max-width: 100%;
+}
+
+#cve-affected .opencve-affected-source-nav .opencve-segment-tab-label {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cve-affected .opencve-affected-source-nav .opencve-segment-tab-icon {
+  flex-shrink: 0;
+  max-height: 18px;
+}
+
+#cve-affected .opencve-affected-source-nav > li.opencve-affected-source-tab--empty {
+  min-width: 0;
+}
+
+#cve-affected .opencve-affected-source-tab--empty,
+#cve-affected .opencve-affected-source-tab-disabled {
+  cursor: not-allowed;
+}
+
+#cve-affected .opencve-affected-source-tab-disabled {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #9ca3af;
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  margin: 0;
+  min-height: 36px;
+  padding: 4px 6px;
+  width: 100%;
+}
+
+#cve-affected .opencve-affected-source-tab-inner--stacked {
+  align-items: center;
+}
+
+#cve-affected .opencve-affected-source-tab-copy {
   display: flex;
   flex-direction: column;
+  gap: 0;
+  justify-content: center;
+  line-height: 1.1;
+  min-width: 0;
+  text-align: left;
+}
+
+#cve-affected .opencve-affected-source-tab--empty .opencve-segment-tab-label {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cve-affected .opencve-affected-source-tab-empty-hint {
+  color: #b0b7c3;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+#cve-affected .opencve-affected-source-tab-icon--muted {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+@media (max-width: 767px) {
+  #cve-affected .opencve-affected-source-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #cve-affected .opencve-affected-source-nav .opencve-segment-tab-label {
+    white-space: normal;
+  }
+}
+
+/* CVE detail: Tracking — one tab per project */
+#cve-tracking .opencve-cve-tracking-project-count {
+  background: #f7f9fb;
+  border: 1px solid #e2e6ea;
+  border-radius: 999px;
+  color: #5c6570;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.3;
+  margin-left: 8px;
+  padding: 2px 10px;
+  vertical-align: middle;
+}
+
+#cve-tracking .opencve-cve-tracking-toolbar {
+  border-bottom: none;
+  padding: 8px 10px 10px;
+}
+
+#cve-tracking .opencve-cve-tracking-nav {
+  background: #eef1f5;
+  border: none;
+  border-radius: 10px;
+  box-sizing: border-box;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  width: 100%;
+}
+
+#cve-tracking .opencve-cve-tracking-nav > li {
+  display: flex;
+  float: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+#cve-tracking .opencve-cve-tracking-nav > li > a {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #5c6570;
+  display: flex;
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 500;
+  justify-content: center;
+  line-height: 1.25;
+  margin: 0;
+  min-height: 36px;
+  padding: 4px 8px;
+  text-align: center;
+  text-decoration: none;
+  width: 100%;
+}
+
+#cve-tracking .opencve-cve-tracking-nav > li > a:hover,
+#cve-tracking .opencve-cve-tracking-nav > li > a:focus {
+  background: rgba(255, 255, 255, 0.55);
+  color: #3d4650;
+  outline: none;
+  text-decoration: none;
+}
+
+#cve-tracking .opencve-cve-tracking-nav > li.active > a,
+#cve-tracking .opencve-cve-tracking-nav > li.active > a:hover,
+#cve-tracking .opencve-cve-tracking-nav > li.active > a:focus {
+  background: #fff;
+  border-color: #dfe3e8;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+#cve-tracking .opencve-cve-tracking-nav .opencve-segment-tab-inner {
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  justify-content: center;
+  max-width: 100%;
+}
+
+#cve-tracking .opencve-cve-tracking-nav .opencve-segment-tab-label {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cve-tracking .opencve-cve-tracking-tab-comment-count {
+  align-items: center;
+  color: #6c757d;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  gap: 3px;
+}
+
+#cve-tracking .opencve-cve-tracking-tab-comment-count .fa {
+  font-size: 11px;
+}
+
+#cve-tracking .opencve-cve-tracking-tab-content {
+  padding: 12px 14px 14px;
+}
+
+#cve-tracking .opencve-cve-tracking-matches-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+#cve-tracking .opencve-cve-tracking-matches-main {
+  align-items: center;
+  flex: 1 1 200px;
+  margin-bottom: 0;
+}
+
+#cve-tracking .opencve-cve-tracking-matches-main .project-assignment-label {
+  flex-shrink: 0;
+  line-height: 1.5;
+  margin: 0;
+}
+
+#cve-tracking .opencve-cve-tracking-open-project {
+  color: #605ca8;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+#cve-tracking .opencve-cve-tracking-open-project:hover,
+#cve-tracking .opencve-cve-tracking-open-project:focus {
+  color: #4a4585;
+  text-decoration: none;
+}
+
+#cve-tracking .opencve-cve-tracking-open-project .fa {
+  margin-left: 2px;
+}
+
+#cve-tracking .opencve-cve-tracking-tracker-fields {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+#cve-tracking .opencve-cve-tracking-comments {
+  margin-top: 0;
+}
+
+#cve-tracking .opencve-cve-tracking-comments-header {
+  cursor: pointer;
+}
+
+#cve-tracking .opencve-cve-tracking-comments-header .project-comments-summary {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+#cve-tracking .opencve-cve-tracking-comments-title {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+#cve-tracking .opencve-cve-tracking-comments-badge {
+  background: #eef1f5;
+  border: 1px solid #dfe3e8;
+  border-radius: 999px;
+  color: #5c6570;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  min-width: 1.5em;
+  padding: 1px 8px;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  #cve-tracking .opencve-cve-tracking-tracker-fields {
+    grid-template-columns: 1fr;
+  }
+
+  #cve-tracking .opencve-cve-tracking-nav .opencve-segment-tab-label {
+    white-space: normal;
+  }
+}
+
+.opencve-segment-tabs-toolbar {
+  border-bottom: 1px solid #eef1f5;
+  padding: 12px 15px 14px;
+}
+
+.opencve-segment-tabs-toolbar > .nav.nav-tabs {
+  align-items: center;
+  background: #eef1f5;
+  border: none;
+  border-radius: 10px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  max-width: 100%;
+  padding: 6px 8px;
+  width: fit-content;
+}
+
+/* Metrics: two-row selector (CVSS + KEV/EPSS/SSVC) */
+#cve-metrics .opencve-metrics-toolbar {
+  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px 10px;
+}
+
+#cve-metrics .opencve-metrics-nav {
+  background: #eef1f5;
+  border: none;
+  border-radius: 10px;
+  box-sizing: border-box;
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  width: 100%;
+}
+
+#cve-metrics .opencve-metrics-nav--cvss {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+#cve-metrics .opencve-metrics-nav--signals {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#cve-metrics .opencve-metrics-nav > li {
+  display: flex;
+  float: none;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+#cve-metrics .opencve-metrics-nav > li > a {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #5c6570;
+  display: flex;
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 500;
+  justify-content: center;
+  line-height: 1.25;
+  margin: 0;
+  min-height: 36px;
+  min-width: 0;
+  padding: 4px 6px;
+  text-align: center;
+  text-decoration: none;
+  width: 100%;
+}
+
+#cve-metrics .opencve-metrics-nav > li > a:hover,
+#cve-metrics .opencve-metrics-nav > li > a:focus {
+  background: rgba(255, 255, 255, 0.55);
+  color: #3d4650;
+  outline: none;
+  text-decoration: none;
+}
+
+#cve-metrics .opencve-metrics-nav > li.active > a,
+#cve-metrics .opencve-metrics-nav > li.active > a:hover,
+#cve-metrics .opencve-metrics-nav > li.active > a:focus {
+  background: #fff;
+  border-color: #dfe3e8;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+#cve-metrics .opencve-metrics-nav .opencve-segment-tab-inner {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  max-width: 100%;
+  min-width: 0;
+}
+
+#cve-metrics .opencve-metrics-nav .opencve-segment-tab-label {
+  flex-shrink: 0;
+}
+
+#cve-metrics .opencve-metrics-nav .label-cvss {
+  margin-left: 0;
+  max-width: 100%;
+}
+
+#cve-metrics .opencve-metrics-nav .opencve-metrics-ssvc-chip {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cve-metrics .opencve-metrics-tab--empty,
+#cve-metrics .opencve-metrics-tab-disabled {
+  cursor: not-allowed;
+}
+
+#cve-metrics .opencve-metrics-tab-disabled {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #9ca3af;
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  margin: 0;
+  min-height: 36px;
+  min-width: 0;
+  padding: 4px 6px;
+  width: 100%;
+}
+
+#cve-metrics .opencve-metrics-tab-inner--stacked {
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+#cve-metrics .opencve-metrics-tab-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: center;
+  line-height: 1.1;
+  min-width: 0;
+  text-align: center;
+}
+
+#cve-metrics .opencve-metrics-tab--empty .opencve-segment-tab-label {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cve-metrics .opencve-metrics-tab-empty-hint {
+  color: #b0b7c3;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+@media (max-width: 991px) {
+  #cve-metrics .opencve-metrics-nav--cvss {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  #cve-metrics .opencve-metrics-nav--signals {
+    grid-template-columns: 1fr;
+  }
+
+  #cve-metrics .opencve-metrics-nav .opencve-segment-tab-inner {
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+
+  #cve-metrics .opencve-metrics-nav .opencve-metrics-ssvc-chip {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 480px) {
+  #cve-metrics .opencve-metrics-nav--cvss {
+    grid-template-columns: 1fr;
+  }
+}
+
+.opencve-segment-tab-inner {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opencve-segment-tab-label {
+  white-space: nowrap;
+}
+
+.opencve-segment-tab-icon {
+  display: block;
+  flex-shrink: 0;
+  height: auto;
+  max-height: 22px;
+  object-fit: contain;
+  width: auto;
+}
+
+.opencve-segment-tab-icon--cve,
+.opencve-segment-tab-icon--nvd {
+  max-width: 28px;
+}
+
+.opencve-segment-tab-icon--redhat {
+  max-width: 18px;
+}
+
+.opencve-segment-tab-icon--opencve {
+  max-width: 20px;
+}
+
+#cve-affected.opencve-segment-tabs .tab-content,
+#cve-metrics.opencve-segment-tabs .tab-content {
+  min-height: 0;
+}
+
+/* CVE detail: sidebar tags */
+.cve-tags-list {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cve-tags-add-btn--primary {
+  font-weight: 500;
+}
+
+.cve-tags-empty-hint {
+  margin: 10px 0 0;
+}
+
+.cve-tags-modal-help {
+  margin-bottom: 0;
+  margin-top: 10px;
+}
+
+/* CVE detail: Description box */
+.cve-description-text {
+  text-align: justify;
 }
 
 .cve-description-box-body {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
+  padding: 10px;
   padding-bottom: 0;
 }
 
 #cve-description-wrapper {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
 }
 
 .cve-description-text-shell {
-  flex: 1 1 auto;
-  min-height: 0;
+  padding-bottom: 10px;
 }
 
 .cve-description-wrapper.cve-description--collapsed .cve-description-text-shell {
@@ -2293,7 +4860,6 @@ a.cve-summary-cvss-link:focus .label {
 
 /* CVE detail: in-page section anchors (offset for fixed/sticky header) */
 #cve-overview,
-#cve-analysis,
 #cve-affected,
 #cve-remediation,
 #cve-tracking,
@@ -2301,100 +4867,371 @@ a.cve-summary-cvss-link:focus .label {
 #cve-metrics,
 #cve-references,
 #cve-history {
-  scroll-margin-top: 0px;
+  scroll-margin-top: var(--cve-section-nav-sticky-offset);
 }
 
-.cve-section-nav-body {
-  padding: 8px 10px;
+.opencve-cve-section-empty .opencve-cve-section-empty-header .box-title {
+  display: inline-block !important;
+  font-weight: 600;
+  margin: 0;
+  vertical-align: middle;
 }
 
-.cve-section-nav-row {
+.opencve-cve-section-empty-message {
+  color: #8a939e;
+  display: inline-block;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.35;
+  max-width: 62%;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.opencve-cve-section-empty-header::after {
+  clear: both;
+  content: "";
+  display: table;
+}
+
+.opencve-cve-section-empty-message a {
+  color: #5648d8;
+  font-style: normal;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.opencve-cve-section-empty-message a:hover,
+.opencve-cve-section-empty-message a:focus {
+  color: #4538c4;
+  text-decoration: underline;
+}
+
+.cve-detail-section-nav {
   display: flex;
   flex-wrap: wrap;
+  gap: 6px 28px;
+  margin: 20px 0 0;
+  padding: 0;
+}
+
+a.cve-detail-section-nav-item {
+  border-bottom: 2px solid transparent;
+  color: #5c6570;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-bottom: -1px;
+  padding: 12px 4px 10px;
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+a.cve-detail-section-nav-item:hover,
+a.cve-detail-section-nav-item:focus {
+  color: #4538c4;
+  text-decoration: none;
+}
+
+a.cve-detail-section-nav-item.is-active {
+  border-bottom-color: #5648d8;
+  color: #5648d8;
+  font-weight: 600;
+}
+
+/* CVE detail: Sources accordion (sidebar) */
+.cve-sources-box .cve-sources-list {
+  padding: 0;
+}
+
+.cve-source-item {
+  border-bottom: 1px solid #eef1f5;
+}
+
+.cve-source-item:last-child {
+  border-bottom: none;
+}
+
+a.cve-source-toggle {
   align-items: center;
-  justify-content: center;
-  gap: 6px 8px;
+  color: inherit;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 12px 15px;
+  text-decoration: none;
 }
 
-.cve-section-nav {
+a.cve-source-toggle:hover,
+a.cve-source-toggle:focus {
+  background: #fafbfc;
+  color: inherit;
+  text-decoration: none;
+}
+
+.cve-source-toggle-inner {
+  align-items: center;
   display: flex;
-  flex-wrap: wrap;
-  flex: 1;
-  justify-content: center;
-  gap: 6px;
+  flex: 1 1 auto;
+  gap: 10px;
   min-width: 0;
 }
 
-a.cve-section-nav-item {
-  display: inline-flex;
+.cve-source-icon-wrap {
   align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  height: 28px;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  color: #555;
-  background: none;
-  border: none;
-  text-decoration: none;
-  transition: color 0.15s ease;
+  width: 32px;
 }
 
-a.cve-section-nav-item:hover,
-a.cve-section-nav-item:focus {
-  color: #3c8dbc;
-  background: none;
+.cve-source-icon-wrap .cve-source-icon {
+  display: block;
+  height: auto;
+  max-height: 28px;
+  max-width: 32px;
+  object-fit: contain;
+  width: auto;
 }
 
-a.cve-section-nav-item i {
+.cve-source-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cve-source-name {
+  color: #1f2d3d;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cve-source-preview {
+  color: #7f8c8d;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.cve-source-chevron {
+  color: #95a5a6;
+  flex-shrink: 0;
+  font-size: 12px;
+  transition: transform 0.15s ease;
+}
+
+a.cve-source-toggle:not(.collapsed) .cve-source-chevron {
+  transform: rotate(180deg);
+}
+
+.cve-source-details {
+  border-top: 1px solid #eef1f5;
+  padding: 12px 15px 14px;
+}
+
+.cve-source-meta {
+  margin: 0 0 12px;
+}
+
+.cve-source-meta-row {
+  display: flex;
   font-size: 13px;
-  line-height: 1;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 4px 0;
 }
 
-/* CVE detail: Analysis box */
-.cve-tab-ai-icon {
-  margin-top: -8px;
-  width: 20px;
+.cve-source-meta-row + .cve-source-meta-row {
+  border-top: 1px solid #f4f6f8;
 }
 
-.cve-analysis-cloud-notice {
+.cve-source-meta dt {
+  color: #7f8c8d;
+  flex: 0 0 auto;
+  font-weight: 600;
   margin: 0;
-  font-size: 13px;
+  min-width: 72px;
 }
 
-.cve-analysis-cloud-notice .fa {
+.cve-source-meta dd {
+  color: #2c3e50;
+  flex: 1 1 auto;
+  margin: 0;
+  text-align: right;
+  word-break: break-word;
+}
+
+.cve-source-links {
+  font-size: 13px;
+  margin: 0;
+}
+
+.cve-source-links a {
+  color: #605ca8;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.cve-source-links a:hover,
+.cve-source-links a:focus {
+  color: #4538c4;
+  text-decoration: none;
+}
+
+.cve-source-links-sep {
+  color: #c0c4cc;
+  margin: 0 6px;
+}
+
+.cve-source-empty {
+  margin: 0;
+}
+
+/* CVE detail: History (compact summary rows) */
+.cve-history-list {
+  padding: 0;
+}
+
+.cve-history-item {
+  border-bottom: 1px solid #eef1f5;
+}
+
+.cve-history-item:last-child {
+  border-bottom: none;
+}
+
+.cve-history-item--older {
+  display: none;
+}
+
+.cve-history-list.is-showing-all .cve-history-item--older {
+  display: block;
+}
+
+a.cve-history-toggle {
+  align-items: flex-start;
+  color: inherit;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 15px;
+  text-decoration: none;
+}
+
+a.cve-history-toggle:hover,
+a.cve-history-toggle:focus {
+  background: #fafbfc;
+  color: inherit;
+  text-decoration: none;
+}
+
+.cve-history-toggle-main {
+  align-items: flex-start;
+  display: flex;
+  flex: 1 1 auto;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cve-history-date {
+  color: #5c6570;
+  flex: 0 0 148px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.cve-history-date-icon {
+  color: #95a5a6;
   margin-right: 4px;
 }
 
-.cve-analysis-content {
-  overflow: auto;
+.cve-history-summary {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.cve-analysis-section-title {
+.cve-history-title {
+  color: #1f2d3d;
+  display: block;
   font-size: 14px;
-  font-weight: bold;
-  margin-top: 0px;
+  line-height: 1.35;
 }
 
-.cve-analysis-section-text {
-  text-align: justify;
+.cve-history-view {
+  align-items: center;
+  color: #605ca8;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  line-height: 1.4;
+  padding-top: 1px;
+  white-space: nowrap;
 }
 
-.cve-analysis-footer p {
-  margin-top: 10px;
+a.cve-history-toggle:not(.collapsed) .cve-history-chevron {
+  transform: rotate(180deg);
 }
 
-.cve-analysis-empty {
+.cve-history-chevron {
+  font-size: 11px;
+  transition: transform 0.15s ease;
+}
+
+.cve-history-details {
+  padding: 0 15px 14px;
+}
+
+.cve-history-details .table {
   margin-bottom: 0;
 }
 
-/* CVE detail: Vendors/products tab */
-.nav-tab-has-data {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
+.cve-history-show-older-wrap {
+  border-top: 1px solid #eef1f5;
+  padding: 12px 15px 14px;
+  text-align: center;
+}
+
+a.cve-history-show-older {
+  color: #605ca8;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+a.cve-history-show-older:hover,
+a.cve-history-show-older:focus {
+  color: #4538c4;
+  text-decoration: none;
+}
+
+.cve-history-show-older .fa {
+  font-size: 11px;
   margin-left: 4px;
-  vertical-align: middle;
-  border-radius: 50%;
-  background-color: #337ab7;
+}
+
+@media (max-width: 767px) {
+  a.cve-history-toggle {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .cve-history-toggle-main {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .cve-history-date {
+    flex-basis: auto;
+  }
+
+  .cve-history-view {
+    align-self: flex-start;
+  }
 }
 
 /* CVE detail: Enrichment tab: constrain long version strings to avoid layout overflow */
@@ -2421,24 +5258,187 @@ a.cve-section-nav-item i {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Dashboard styles */
-#dashboard-tabs-container {
-  margin-left: 10px;
+/* Dashboard styles — tabs aligned with project / CVE section nav */
+#dashboard-tabs-container.opencve-dashboard-tabs {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
   margin-bottom: 18px;
+  margin-left: 0;
 }
-.dashboard-tab-inner .dashboard-tab-dropdown {
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar {
+  align-items: flex-end;
+  border-bottom: 1px solid #d6d6d6;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  /* Inset bar to match GridStack default margin (10px) */
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs {
+  align-items: flex-end;
+  border-bottom: none;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  margin-bottom: -1px;
+  min-width: 0;
+  width: auto;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-actions {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs > li.dashboard-tab {
+  border: none;
+  flex: 0 0 auto;
+  float: none;
+  margin-bottom: -1px;
+  margin-right: 18px;
+  width: auto;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs > li.dashboard-tab.active,
+#dashboard-tabs-container.nav-tabs-profile.opencve-dashboard-tabs .nav-tabs > li.dashboard-tab.active {
+  border-bottom: none !important;
+  border-top: 0;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .dashboard-tab-inner {
+  align-items: flex-end;
+  background: transparent;
+  border: none;
   display: inline-flex;
-  align-items: stretch;
+  gap: 4px;
 }
-#dashboard-tabs-container .dropdown-menu.dropdown-menu-right {
-  margin-top: 1px;
+
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-switch {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #5c6570;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  margin: 0;
+  padding: 12px 2px 10px 4px;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-chevron {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  box-shadow: none;
+  color: #727c88;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 28px;
+  justify-content: center;
+  line-height: 1;
+  margin: 0 0 6px;
+  padding: 0;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  width: 28px;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-chevron .opencve-dashboard-tab-chevron-icon {
+  display: block;
+  flex-shrink: 0;
+  height: 8px;
+  margin-top: 2px;
+  width: 12px;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-chevron.dropdown-toggle::after {
+  content: none;
+  display: none;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-switch:hover,
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-switch:focus {
+  background: transparent;
+  color: #4538c4;
+  text-decoration: none;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-chevron:hover,
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-chevron:focus,
+#dashboard-tabs-container.opencve-dashboard-tabs .tab-chevron.open,
+#dashboard-tabs-container.nav-tabs-profile.opencve-dashboard-tabs .nav-tabs > li.dashboard-tab > .dashboard-tab-inner .tab-chevron:hover,
+#dashboard-tabs-container.nav-tabs-profile.opencve-dashboard-tabs .nav-tabs > li.dashboard-tab > .dashboard-tab-inner .tab-chevron:focus,
+#dashboard-tabs-container.nav-tabs-profile.opencve-dashboard-tabs .nav-tabs > li.dashboard-tab > .dashboard-tab-inner .tab-chevron.open {
+  background-color: #e8ecf1 !important;
+  color: #5c6570;
+  outline: none;
+  text-decoration: none;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs > li.dashboard-tab.active .dashboard-tab-inner {
+  border-bottom: 2px solid #5648d8;
+  margin-bottom: 0;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs > li.dashboard-tab.active .tab-switch {
+  border-bottom: none;
+  color: #5648d8;
+  font-weight: 600;
+  margin-bottom: 0;
+  padding-bottom: 10px;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs > li.dashboard-tab.active .tab-chevron {
+  color: #727c88;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs > li.dashboard-tab.active .tab-chevron:hover,
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs > li.dashboard-tab.active .tab-chevron:focus,
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-tabs-bar > .nav-tabs > li.dashboard-tab.active .tab-chevron.open,
+#dashboard-tabs-container.nav-tabs-profile.opencve-dashboard-tabs .nav-tabs > li.dashboard-tab.active > .dashboard-tab-inner .tab-chevron:hover,
+#dashboard-tabs-container.nav-tabs-profile.opencve-dashboard-tabs .nav-tabs > li.dashboard-tab.active > .dashboard-tab-inner .tab-chevron:focus,
+#dashboard-tabs-container.nav-tabs-profile.opencve-dashboard-tabs .nav-tabs > li.dashboard-tab.active > .dashboard-tab-inner .tab-chevron.open {
+  background-color: #e8ecf1 !important;
+  color: #5c6570 !important;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-add-tab {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+#dashboard-tabs-container.opencve-dashboard-tabs .opencve-dashboard-add-tab .fa-plus {
+  margin-right: 6px;
+}
+
+.dashboard-tab-inner .dashboard-tab-dropdown {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+#dashboard-tabs-container .opencve-dashboard-tab-dropdown {
   margin-right: -2px;
-  border-top-left-radius: 4px;
+  margin-top: 6px;
 }
 .dashboard-tab-default-icon {
-  font-size: 11px;
-  opacity: 0.85;
-  margin-left: 4px;
+  color: inherit;
+  font-size: 9px;
+  margin-left: 5px;
+  opacity: 0.88;
+  position: relative;
+  top: -1px;
+  vertical-align: baseline;
 }
 .btn-add-widget {
   font-weight: 500;
@@ -2448,6 +5448,80 @@ a.cve-section-nav-item i {
   margin-left: 12px;
   display: inline-flex;
   align-items: center;
+}
+
+.grid-stack-empty-add-widget {
+  border-radius: 8px;
+  gap: 8px;
+  margin-left: 0;
+  padding: 14px 24px;
+}
+
+/* Dashboard widgets — flex header (avoid AdminLTE .box-header > .box-tools absolute positioning) */
+.grid-stack-item-content > .box-header.opencve-widget-header {
+  align-items: center;
+  display: flex !important;
+  flex-wrap: nowrap;
+  padding: 10px;
+  position: relative;
+}
+
+.grid-stack-item-content > .opencve-widget-header .opencve-widget-header-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 0;
+}
+
+.grid-stack-item-content > .opencve-widget-header .opencve-widget-header-actions-right {
+  margin-left: auto;
+}
+
+.grid-stack-item-content > .opencve-widget-header .opencve-widget-header-title {
+  align-self: center;
+  color: #444;
+  flex: 1 1 auto;
+  font-size: 16px;
+  font-weight: 400;
+  margin: 0 0 0 7px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grid-stack-item-content > .opencve-widget-header .btn.btn-box-tool {
+  align-items: center;
+  display: inline-flex;
+  float: none;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  padding: 5px;
+}
+
+.grid-stack-item-content > .opencve-widget-header .opencve-widget-drag-handle.btn-box-tool {
+  color: #8a939e;
+  cursor: grab;
+}
+
+.grid-stack-item-content > .opencve-widget-header .opencve-widget-drag-handle.btn-box-tool:hover,
+.grid-stack-item-content > .opencve-widget-header .opencve-widget-drag-handle.btn-box-tool:focus {
+  color: #5c6570;
+}
+
+.grid-stack-item-content > .opencve-widget-header .opencve-widget-drag-handle.btn-box-tool:active,
+.grid-stack-item.ui-draggable-dragging .opencve-widget-header .opencve-widget-drag-handle.btn-box-tool {
+  cursor: grabbing;
+}
+
+.grid-stack-item-content > .opencve-widget-header .opencve-widget-drag-grip {
+  display: block;
+  flex-shrink: 0;
+  height: 12px;
+  pointer-events: none;
+  width: 8px;
 }
 
 #organization-ajax-messages:empty {
@@ -3517,4 +6591,369 @@ td .automation-result-icon:first-of-type {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Project overview (formerly project dashboard) */
+.opencve-project-overview-status-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1199px) {
+  .opencve-project-overview-status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .opencve-project-overview-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+a.opencve-project-overview-status-card {
+  background: #fff;
+  border: 1px solid #e2e6ea;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 88px;
+  padding: 14px 16px;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+a.opencve-project-overview-status-card:hover,
+a.opencve-project-overview-status-card:focus {
+  border-color: #c4b5fd;
+  box-shadow: 0 2px 8px rgba(86, 72, 216, 0.08);
+  color: inherit;
+  text-decoration: none;
+}
+
+.opencve-project-overview-status-card-top {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.opencve-project-overview-status-label {
+  color: #5c6570;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.opencve-project-overview-status-count {
+  color: #1f2d3d;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.opencve-project-overview-box {
+  margin-bottom: 16px;
+}
+
+.opencve-project-overview-box .box-header .box-tools .opencve-project-overview-box-link {
+  display: inline-block;
+  line-height: 1.42857143;
+  padding: 0;
+}
+
+.opencve-project-overview-box-link {
+  color: #605ca8;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.opencve-project-overview-box-link:hover,
+.opencve-project-overview-box-link:focus {
+  color: #4a4585;
+  text-decoration: none;
+}
+
+.opencve-project-overview-box-body {
+  padding-top: 12px;
+}
+
+.opencve-project-overview-cve-table {
+  margin-bottom: 0;
+}
+
+.opencve-project-overview-cve-table > thead > tr > th {
+  border-bottom: 1px solid #eef1f5;
+  color: #6c757d;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.opencve-project-overview-cve-id a {
+  color: #5648d8;
+  font-weight: 600;
+}
+
+.opencve-project-overview-cve-summary {
+  color: #5c6570;
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 420px;
+}
+
+.opencve-project-overview-signal-badges {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.opencve-project-overview-automation-list,
+.opencve-project-overview-assignee-list,
+.opencve-project-overview-member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.opencve-project-overview-automation-item {
+  align-items: center;
+  border-top: 1px solid #eef1f5;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+
+.opencve-project-overview-automation-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.opencve-project-overview-automation-main {
+  min-width: 0;
+}
+
+.opencve-project-overview-automation-name {
+  color: #1f2d3d;
+  display: block;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.opencve-project-overview-automation-meta {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.opencve-project-overview-run-status {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 4px;
+  padding: 4px 10px;
+}
+
+.opencve-project-overview-run-status--success {
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.opencve-project-overview-run-status--failed {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.opencve-project-overview-run-status--skipped,
+.opencve-project-overview-run-status--muted {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.opencve-project-overview-assignee-item {
+  border-top: 1px solid #eef1f5;
+  padding: 10px 0;
+}
+
+.opencve-project-overview-assignee-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+a.opencve-project-overview-assignee-link {
+  align-items: center;
+  color: inherit;
+  display: flex;
+  gap: 10px;
+  text-decoration: none;
+}
+
+a.opencve-project-overview-assignee-link:hover,
+a.opencve-project-overview-assignee-link:focus {
+  color: inherit;
+  text-decoration: none;
+}
+
+.opencve-project-overview-assignee-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.opencve-project-overview-assignee-name {
+  color: #1f2d3d;
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.opencve-project-overview-assignee-bar-track {
+  background: #eef1f5;
+  border-radius: 999px;
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.opencve-project-overview-assignee-bar-fill {
+  background: #5648d8;
+  border-radius: 999px;
+  display: block;
+  height: 100%;
+  min-width: 4px;
+}
+
+.opencve-project-overview-assignee-count {
+  color: #1f2d3d;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 1.5em;
+  text-align: right;
+}
+
+.opencve-project-overview-reports-body {
+  padding-top: 0;
+}
+
+.opencve-project-overview-reports-body .last-reports-widget {
+  margin-bottom: 0;
+}
+
+.opencve-project-overview-subscription-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.opencve-project-overview-member-item {
+  align-items: center;
+  border-top: 1px solid #eef1f5;
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.opencve-project-overview-member-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.opencve-project-overview-member-name {
+  color: #1f2d3d;
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.opencve-project-overview-member-email {
+  color: #9ca3af;
+  display: block;
+  font-size: 12px;
+}
+
+.opencve-project-overview-empty {
+  padding: 8px 4px 4px;
+  text-align: center;
+}
+
+.opencve-project-overview-empty--featured {
+  padding: 28px 16px 20px;
+}
+
+.opencve-project-overview-empty-icon {
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 50%;
+  color: #9ca3af;
+  display: inline-flex;
+  font-size: 22px;
+  height: 52px;
+  justify-content: center;
+  margin-bottom: 14px;
+  width: 52px;
+}
+
+.opencve-project-overview-empty--featured .opencve-project-overview-empty-icon {
+  font-size: 26px;
+  height: 64px;
+  margin-bottom: 16px;
+  width: 64px;
+}
+
+.opencve-project-overview-empty-title {
+  color: #1f2d3d;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0 0 6px;
+}
+
+.opencve-project-overview-empty--featured .opencve-project-overview-empty-title {
+  font-size: 16px;
+}
+
+.opencve-project-overview-empty-text {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0 auto 14px;
+  max-width: 360px;
+}
+
+.opencve-project-overview-empty--featured .opencve-project-overview-empty-text {
+  max-width: 420px;
+}
+
+.opencve-project-overview-empty-cta {
+  margin-top: 4px;
+}
+
+.opencve-project-overview-empty-link {
+  color: #605ca8;
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 2px;
+  text-decoration: none;
+}
+
+.opencve-project-overview-empty-link:hover,
+.opencve-project-overview-empty-link:focus {
+  color: #4a4585;
+  text-decoration: none;
 }

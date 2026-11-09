@@ -14,7 +14,7 @@
         <div class="nav-tabs-custom nav-tabs-profile nav-tabs-primary">
             <ul class="nav nav-tabs opencve-nav-tabs">
                 <li class="{% is_active_link 'project' %}">
-                    <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}">Dashboard</a>
+                    <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}">Overview</a>
                 </li>
                 <li class="{% is_active_link 'project_vulnerabilities' %}">
                     <a href="{% url 'project_vulnerabilities' org_name=request.current_organization.name project_name=project.name %}">Vulnerabilities</a>

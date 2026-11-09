@@ -14,8 +14,7 @@
             {% include "messages.html" %}
 
             <div class="callout callout-info">
-                <p>The views allow you to save a query so you can easily reuse it later without having to rewrite it each time.</p>
-                <p>You can create a view <a href="{% url 'create_view' org_name=request.current_organization.name %}">here</a> or directly from the <a href="{% url 'cves' %}">vulnerabilities</a> page.</p>
+                <p>The views allow you to save a query so you can easily reuse it later without having to rewrite it each time.<br />You can create a view <a href="{% url 'create_view' org_name=request.current_organization.name %}">here</a> or directly from the <a href="{% url 'cves' %}">vulnerabilities</a> page.</p>
             </div>
         </div>
     </div>

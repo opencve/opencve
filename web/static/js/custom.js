@@ -22,6 +22,245 @@ function getContrastedColor(str){
         });
     }
     $('.sidebar-menu').tree();
+    function projectCardBodyHeight($body) {
+      var $inner = $body.find('.opencve-project-card-body-inner');
+      if ($inner.length) {
+        return $inner[0].scrollHeight;
+      }
+      return $body[0] ? $body[0].scrollHeight : 0;
+    }
+
+    function toggleProjectCard($header) {
+      var $card = $header.closest('.opencve-project-card');
+      var $body = $card.find('.opencve-project-card-body');
+      var expanded = !$card.hasClass('is-expanded');
+      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (expanded) {
+        $card.addClass('is-expanded');
+        if (reduceMotion) {
+          $body.css('max-height', 'none');
+        } else {
+          $body.css('max-height', projectCardBodyHeight($body) + 'px');
+        }
+      } else if (reduceMotion) {
+        $card.removeClass('is-expanded');
+        $body.css('max-height', '0');
+      } else {
+        $body.css('max-height', projectCardBodyHeight($body) + 'px');
+        void $body[0].offsetHeight;
+        $card.removeClass('is-expanded');
+        $body.css('max-height', '0');
+      }
+
+      $header.toggleClass('collapsed', !expanded).attr('aria-expanded', expanded);
+    }
+
+    var PROJECTS_VIEW_STORAGE_KEY = 'opencve-projects-list-view';
+
+    function setProjectsListView(view) {
+      var $list = $('#projects-list');
+      if (!$list.length) {
+        return;
+      }
+
+      view = view === 'list' ? 'list' : 'grid';
+      $list.removeClass('opencve-project-list--grid opencve-project-list--list')
+        .addClass('opencve-project-list--' + view);
+
+      $('.opencve-project-view-toggle .opencve-project-view-btn').each(function () {
+        var $btn = $(this);
+        var active = $btn.data('view') === view;
+        $btn.toggleClass('active', active).attr('aria-pressed', active);
+      });
+
+      $list.find('.opencve-project-card:not(.opencve-project-card-new)').each(function () {
+        var $card = $(this);
+        var $header = $card.find('.opencve-project-card-header');
+        var $body = $card.find('.opencve-project-card-body');
+        if (view === 'grid') {
+          $card.addClass('is-expanded');
+          $body.css('max-height', 'none');
+          $header.removeClass('collapsed pointer')
+            .removeAttr('role tabindex aria-expanded aria-controls');
+        } else {
+          $card.removeClass('is-expanded');
+          $body.css('max-height', '0');
+          $header.addClass('collapsed pointer').attr({
+            role: 'button',
+            tabindex: '0',
+            'aria-expanded': 'false',
+            'aria-controls': $body.attr('id')
+          });
+        }
+      });
+
+      try {
+        localStorage.setItem(PROJECTS_VIEW_STORAGE_KEY, view);
+      } catch (storageError) {
+        /* ignore */
+      }
+    }
+
+    $(document).on('click', '.opencve-project-view-toggle .opencve-project-view-btn', function () {
+      setProjectsListView($(this).data('view'));
+    });
+
+    $('#projects-list').on('transitionend', '.opencve-project-card-body', function (e) {
+      if (e.originalEvent && e.originalEvent.propertyName !== 'max-height') {
+        return;
+      }
+      var $body = $(this);
+      var $card = $body.closest('.opencve-project-card');
+      if ($card.hasClass('is-expanded')) {
+        $body.css('max-height', 'none');
+      } else {
+        $body.css('max-height', '0');
+      }
+    });
+
+    $('#projects-list').on('click', '.opencve-project-card-header', function (e) {
+      if ($('#projects-list').hasClass('opencve-project-list--grid')) {
+        return;
+      }
+      if ($(e.target).closest('.opencve-project-card-actions').length) {
+        return;
+      }
+      e.preventDefault();
+      toggleProjectCard($(this));
+    });
+
+    $('#projects-list').on('keydown', '.opencve-project-card-header', function (e) {
+      if ($('#projects-list').hasClass('opencve-project-list--grid')) {
+        return;
+      }
+      if (e.key !== 'Enter' && e.key !== ' ') {
+        return;
+      }
+      if ($(e.target).closest('.opencve-project-card-actions').length) {
+        return;
+      }
+      e.preventDefault();
+      toggleProjectCard($(this));
+    });
+
+    $('#projects-list').on('click', '.opencve-project-card-open', function (e) {
+      e.stopPropagation();
+    });
+
+    $('#projects-list').on('click', '.opencve-project-card-menu .dropdown-menu a', function (e) {
+      e.stopPropagation();
+    });
+
+    $('#projects-list').on('show.bs.dropdown', '.opencve-project-card-menu', function () {
+      $(this).closest('.opencve-project-card').addClass('is-menu-open');
+    });
+
+    $('#projects-list').on('hide.bs.dropdown', '.opencve-project-card-menu', function () {
+      $(this).closest('.opencve-project-card').removeClass('is-menu-open');
+    });
+
+    if ($('#projects-list').length) {
+      var projectsListView = 'grid';
+      try {
+        var storedProjectsView = localStorage.getItem(PROJECTS_VIEW_STORAGE_KEY);
+        if (storedProjectsView === 'list' || storedProjectsView === 'grid') {
+          projectsListView = storedProjectsView;
+        }
+      } catch (storageReadError) {
+        /* ignore */
+      }
+      setProjectsListView(projectsListView);
+    }
+
+    function orgCardBodyHeight($body) {
+      var $inner = $body.find('.opencve-org-card-body-inner');
+      if ($inner.length) {
+        return $inner[0].scrollHeight;
+      }
+      return $body[0] ? $body[0].scrollHeight : 0;
+    }
+
+    function toggleOrgCard($header) {
+      var $card = $header.closest('.opencve-org-card');
+      var $body = $card.find('.opencve-org-card-body');
+      if (!$body.length) {
+        return;
+      }
+      var expanded = !$card.hasClass('is-expanded');
+      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (expanded) {
+        $card.addClass('is-expanded');
+        if (reduceMotion) {
+          $body.css('max-height', 'none');
+        } else {
+          $body.css('max-height', '0');
+          var orgExpandHeight = orgCardBodyHeight($body);
+          void $body[0].offsetHeight;
+          $body.css('max-height', orgExpandHeight + 'px');
+        }
+      } else if (reduceMotion) {
+        $card.removeClass('is-expanded');
+        $body.css('max-height', '0');
+      } else {
+        $body.css('max-height', orgCardBodyHeight($body) + 'px');
+        void $body[0].offsetHeight;
+        $card.removeClass('is-expanded');
+        $body.css('max-height', '0');
+      }
+
+      $header.toggleClass('collapsed', !expanded).attr('aria-expanded', expanded);
+    }
+
+    $('#organizations-list').on('transitionend', '.opencve-org-card-body', function (e) {
+      if (e.originalEvent && e.originalEvent.propertyName !== 'max-height') {
+        return;
+      }
+      var $body = $(this);
+      var $card = $body.closest('.opencve-org-card');
+      if ($card.hasClass('is-expanded')) {
+        $body.css('max-height', 'none');
+      } else {
+        $body.css('max-height', '0');
+      }
+    });
+
+    $('#organizations-list').on('click', '.opencve-org-card-header.pointer', function (e) {
+      if ($(e.target).closest('.opencve-org-card-actions').length) {
+        return;
+      }
+      e.preventDefault();
+      toggleOrgCard($(this));
+    });
+
+    $('#organizations-list').on('keydown', '.opencve-org-card-header.pointer', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') {
+        return;
+      }
+      if ($(e.target).closest('.opencve-org-card-actions').length) {
+        return;
+      }
+      e.preventDefault();
+      toggleOrgCard($(this));
+    });
+
+    $('#organizations-list').on('click', '.opencve-org-card-manage, .opencve-org-accept-invite', function (e) {
+      e.stopPropagation();
+    });
+
+    $('#organizations-list').on('click', '.opencve-org-card-menu .dropdown-menu a', function (e) {
+      e.stopPropagation();
+    });
+
+    $('#organizations-list').on('show.bs.dropdown', '.opencve-org-card-menu', function () {
+      $(this).closest('.opencve-org-card').addClass('is-menu-open');
+    });
+
+    $('#organizations-list').on('hide.bs.dropdown', '.opencve-org-card-menu', function () {
+      $(this).closest('.opencve-org-card').removeClass('is-menu-open');
+    });
+
     $('[data-toggle="popover"]').popover();
     $('[data-toggle="tooltip"]').tooltip();
     $('.codejson').rainbowJSON({
@@ -299,9 +538,21 @@ function getContrastedColor(str){
 
     // Fill the query input before opening the Save view modal in CVEs page
     $("#save-view-button").click(function(e) {
+      e.preventDefault();
       const filter = $("#id_q").val();
       $("#id_query").val(filter);
       $('#modal-save-view').modal('show');
+    });
+
+    $('.opencve-cve-list-sidebar').on('click', '.opencve-cve-sidebar-show-more', function (e) {
+      e.preventDefault();
+      var $panel = $(this).closest('.opencve-cve-sidebar-list-panel, .tab-pane');
+      $panel.find('.opencve-cve-sidebar-extra').removeClass('is-hidden');
+      $(this).remove();
+    });
+
+    $('.opencve-cve-list-sidebar').on('click', '.opencve-cve-sidebar-views-menu .dropdown-menu a', function (e) {
+      e.stopPropagation();
     });
 
     // Subscriptions handler
@@ -745,12 +996,29 @@ function getContrastedColor(str){
       cellHeight: 100,
     });
 
+    const WIDGET_DRAG_GRIP_HTML =
+      '<svg class="opencve-widget-drag-grip" width="8" height="12" viewBox="0 0 8 12" aria-hidden="true" focusable="false">' +
+      '<circle fill="currentColor" cx="2" cy="2" r="1.25"></circle>' +
+      '<circle fill="currentColor" cx="2" cy="6" r="1.25"></circle>' +
+      '<circle fill="currentColor" cx="2" cy="10" r="1.25"></circle>' +
+      '<circle fill="currentColor" cx="6" cy="2" r="1.25"></circle>' +
+      '<circle fill="currentColor" cx="6" cy="6" r="1.25"></circle>' +
+      '<circle fill="currentColor" cx="6" cy="10" r="1.25"></circle>' +
+      '</svg>';
+
+    const DASHBOARD_TAB_CHEVRON_HTML =
+      '<svg class="opencve-dashboard-tab-chevron-icon" width="12" height="8" viewBox="0 0 12 8" aria-hidden="true" focusable="false">' +
+      '<path d="M1 1.5 6 6.5 11 1.5" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      '</svg>';
+
     function renderDashboardTabs() {
       const $container = $('#dashboard-tabs-container');
       if (!$container.length || dashboardsList.length === 0) return;
 
       // Build tabs using DOM/jQuery APIs to avoid interpreting tainted text as HTML
       $container.empty();
+
+      const $bar = $('<div>', { class: 'opencve-dashboard-tabs-bar' });
 
       const $ul = $('<ul>', {
         class: 'nav nav-tabs',
@@ -760,8 +1028,6 @@ function getContrastedColor(str){
       dashboardsList.forEach(function (d) {
         const isActive = d.id === currentDashboardId;
         const isDefault = d.is_default;
-        var tabInnerStyle = 'display:inline-flex;align-items:stretch;border:1px solid transparent;border-radius:4px 4px 0 0;margin-right:10px;';
-        tabInnerStyle += isActive ? 'background:#fff;border-bottom-color:transparent;' : 'background:#f5f5f5;border-color:transparent;';
 
         const $li = $('<li>', {
           class: 'dashboard-tab' + (isActive ? ' active' : '')
@@ -772,12 +1038,12 @@ function getContrastedColor(str){
 
         const $innerSpan = $('<span>', {
           class: 'dashboard-tab-inner'
-        }).attr('style', tabInnerStyle);
+        });
 
         const $tabLink = $('<a>', {
           href: '#',
           class: 'tab-switch'
-        }).attr('style', 'padding:9px 12px 10px 15px;background:transparent;border:none;margin:0;border-radius:0;color:inherit;text-decoration:none;display:inline-flex;align-items:center;');
+        });
 
         $tabLink.text(d.name);
         if (isDefault) {
@@ -795,32 +1061,34 @@ function getContrastedColor(str){
           href: '#',
           class: 'tab-chevron dropdown-toggle'
         }).attr({
-          'data-toggle': 'dropdown',
-          style: 'padding:10px 8px;background:transparent;border:none;margin:0;border-radius:0;color:inherit;text-decoration:none;line-height:1;'
+          'data-toggle': 'dropdown'
         });
-        $chevronLink.append($('<i>', { class: 'fa fa-chevron-down' }));
+        $chevronLink.html(DASHBOARD_TAB_CHEVRON_HTML);
+        $chevronLink.attr('aria-label', 'Dashboard menu');
 
-        const $dropdownMenu = $('<ul>', {
-          class: 'dropdown-menu dropdown-menu-right'
-        });
-        $dropdownMenu.append(
-          $('<li>').append(
-            $('<a>', { href: '#', class: 'dashboard-rename' }).text('Rename')
-          )
-        );
-        if (!isDefault) {
-          $dropdownMenu.append(
+        function appendDashboardTabMenuItem($menu, linkClass, iconClass, label) {
+          $menu.append(
             $('<li>').append(
-              $('<a>', { href: '#', class: 'dashboard-set-default' }).text('Set as default')
+              $('<a>', { href: '#', class: linkClass }).append(
+                $('<i>', { class: 'fa ' + iconClass, 'aria-hidden': 'true' }),
+                document.createTextNode(' ' + label)
+              )
             )
           );
         }
+
+        const $dropdownMenu = $('<ul>', {
+          class: 'dropdown-menu dropdown-menu-right opencve-project-card-dropdown opencve-dashboard-tab-dropdown'
+        });
+        appendDashboardTabMenuItem($dropdownMenu, 'dashboard-add-widget', 'fa-plus', 'Add widget');
+        $dropdownMenu.append($('<li>', { role: 'separator', class: 'divider' }));
+        appendDashboardTabMenuItem($dropdownMenu, 'dashboard-rename', 'fa-pencil', 'Rename');
+        if (!isDefault) {
+          appendDashboardTabMenuItem($dropdownMenu, 'dashboard-set-default', 'fa-star', 'Set as default');
+        }
         if (dashboardsList.length > 1) {
-          $dropdownMenu.append(
-            $('<li>').append(
-              $('<a>', { href: '#', class: 'js-dashboard-remove-tab' }).attr('data-action', 'remove').text('Delete')
-            )
-          );
+          $dropdownMenu.append($('<li>', { role: 'separator', class: 'divider' }));
+          appendDashboardTabMenuItem($dropdownMenu, 'js-dashboard-remove-tab', 'fa-trash', 'Delete dashboard');
         }
 
         $dropdownSpan.append($chevronLink).append($dropdownMenu);
@@ -829,13 +1097,17 @@ function getContrastedColor(str){
         $ul.append($li);
       });
 
-      const $addLi = $('<li>').attr('style', 'margin-left:4px;');
-      const $addLink = $('<a>', { href: '#', id: 'dashboard-add-tab' });
-      $addLink.append($('<i>', { class: 'fa fa-plus' })).append(' Add');
-      $addLi.append($addLink);
-      $ul.append($addLi);
+      const $actions = $('<div>', { class: 'opencve-dashboard-tabs-actions' });
+      const $addLink = $('<a>', {
+        href: '#',
+        id: 'dashboard-add-tab',
+        class: 'btn btn-primary btn-primary-outline btn-sm opencve-dashboard-add-tab',
+      });
+      $addLink.append($('<i>', { class: 'fa fa-plus' })).append(' New dashboard');
+      $actions.append($addLink);
 
-      $container.append($ul);
+      $bar.append($ul).append($actions);
+      $container.append($bar);
     }
 
     function showDashboardError(message) {
@@ -873,9 +1145,12 @@ function getContrastedColor(str){
         element.dataset.type = widgetType;
         element.innerHTML = `
           <div class="grid-stack-item-content box box-primary">
-            <div class="box-header">
-                <div class="box-title"><i class="fa fa-arrows drag-widget"></i> <span class="box-title-text">New Widget</span></div>
-                <div class="box-tools pull-right">
+            <div class="box-header opencve-widget-header">
+                <div class="opencve-widget-header-actions opencve-widget-header-actions-left">
+                    <span class="btn btn-box-tool drag-widget opencve-widget-drag-handle" role="button" tabindex="-1" title="Drag to move" aria-label="Drag to move">${WIDGET_DRAG_GRIP_HTML}</span>
+                </div>
+                <span class="opencve-widget-header-title">New Widget</span>
+                <div class="opencve-widget-header-actions opencve-widget-header-actions-right">
                     <a class="btn btn-box-tool configure-widget"><i class="fa fa-edit"></i></a>
                     <a class="btn btn-box-tool delete-btn"><i class="fa fa-remove"></i></a>
                 </div>
@@ -966,7 +1241,7 @@ function getContrastedColor(str){
       });
     }
 
-    function loadDashboard(dashboardId) {
+    function loadDashboard(dashboardId, onLoaded) {
       currentDashboardId = dashboardId || null;
       var loadUrl = LOAD_DASHBOARD_URL;
       if (currentDashboardId) {
@@ -983,12 +1258,15 @@ function getContrastedColor(str){
         if (widgets.length === 0) {
           var emptyHtml = '<div class="grid-stack-empty-state" style="text-align:center;padding:80px 20px;">';
           emptyHtml += '<p style="font-size:18px;margin-bottom:20px;color:#666;">Add your first widget</p>';
-          emptyHtml += '<button type="button" class="btn btn-primary btn-lg btn-add-widget" id="dashboard-add-first-widget" style="font-weight:500;letter-spacing:0.02em;border-radius:8px;padding:14px 24px;"><i class="fa fa-plus" style="margin-right:8px;"></i>Add Widget</button>';
+          emptyHtml += '<button type="button" class="btn btn-primary btn-primary-outline btn-add-widget grid-stack-empty-add-widget" id="dashboard-add-first-widget"><i class="fa fa-plus"></i> Add Widget</button>';
           emptyHtml += '</div>';
           $(gridStackElement).append(emptyHtml);
           $(gridStackElement).on('click', '#dashboard-add-first-widget', function () {
             $('#modal-add-widget').modal('show');
           });
+          if (typeof onLoaded === 'function') {
+            onLoaded();
+          }
           return;
         }
 
@@ -1000,9 +1278,12 @@ function getContrastedColor(str){
 
           element.innerHTML = `
             <div class="grid-stack-item-content box box-primary">
-              <div class="box-header">
-                  <div class="box-title"><i class="fa fa-arrows drag-widget" style="font-size: 0.80em;"></i> <span class="box-title-text">${sanitizeText(widget.title)}</span></div>
-                  <div class="box-tools pull-right">
+              <div class="box-header opencve-widget-header">
+                  <div class="opencve-widget-header-actions opencve-widget-header-actions-left">
+                      <span class="btn btn-box-tool drag-widget opencve-widget-drag-handle" role="button" tabindex="-1" title="Drag to move" aria-label="Drag to move">${WIDGET_DRAG_GRIP_HTML}</span>
+                  </div>
+                  <span class="opencve-widget-header-title">${sanitizeText(widget.title)}</span>
+                  <div class="opencve-widget-header-actions opencve-widget-header-actions-right">
                       <a class="btn btn-box-tool configure-widget"><i class="fa fa-edit"></i></a>
                       <a class="btn btn-box-tool delete-btn"><i class="fa fa-remove"></i></a>
                   </div>
@@ -1026,6 +1307,9 @@ function getContrastedColor(str){
           grid.save(true);
           loadWidgetData(element);
         });
+        if (typeof onLoaded === 'function') {
+          onLoaded();
+        }
       });
 
       if (dashboardsList.length) {
@@ -1043,6 +1327,20 @@ function getContrastedColor(str){
       var id = $(this).closest('.dashboard-tab').data('dashboard-id');
       if (id && id !== currentDashboardId) {
         loadDashboard(id);
+      }
+    });
+
+    $('#dashboard-tabs-container').on('click', '.dashboard-add-widget', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var tabId = $(this).closest('.dashboard-tab').data('dashboard-id');
+      function openAddWidgetModal() {
+        $('#modal-add-widget').modal('show');
+      }
+      if (tabId && tabId !== currentDashboardId) {
+        loadDashboard(tabId, openAddWidgetModal);
+      } else {
+        openAddWidgetModal();
       }
     });
 
@@ -1202,7 +1500,7 @@ function getContrastedColor(str){
           });
 
           widgetElement.attr("data-title", config.title);
-          widgetElement.find(".box-title-text").text(config.title);
+          widgetElement.find(".opencve-widget-header-title").text(config.title);
           delete config.title;
 
           // Render the type with the config
@@ -1447,7 +1745,8 @@ function getContrastedColor(str){
   */
   (function() {
     // Constants
-    const EDIT_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+    const TRACKER_CHEVRON_HTML = '<span class="opencve-tracker-select-chevron" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>';
+    const TRACKER_CHECK_HTML = '<span class="opencve-tracker-menu-item-check" aria-hidden="true"><i class="fa fa-check"></i></span>';
 
     const STATUS_ORDER = [
         'to_evaluate',
@@ -1460,26 +1759,46 @@ function getContrastedColor(str){
         'risk_accepted'
     ];
 
-    const STATUS_BADGE_CLASSES = {
-        'to_evaluate': 'badge-secondary',
-        'pending_review': 'badge-secondary',
-        'analysis_in_progress': 'badge-info',
-        'remediation_in_progress': 'badge-info',
-        'evaluated': 'badge-success',
-        'resolved': 'badge-success',
-        'not_applicable': 'badge-warning',
-        'risk_accepted': 'badge-warning'
-    };
-
     let currentTippy = null;
 
     // Helper functions
-    function getStatusBadgeClass(statusKey) {
-        return STATUS_BADGE_CLASSES[statusKey] || 'badge-secondary';
+    function findAssignableMember(projectName, assigneeId) {
+        if (!assigneeId) return null;
+        return getAssignableMembers(projectName).find(function(member) {
+            return String(member.id) === String(assigneeId);
+        }) || null;
     }
 
-    function getEditIconSVG() {
-        return EDIT_ICON_SVG;
+    function trackerStatusDotHtml(statusKey) {
+        const key = statusKey ? statusKey : 'empty';
+        return '<span class="opencve-tracker-status-dot opencve-tracker-status-dot--' + key + '" aria-hidden="true"></span>';
+    }
+
+    function trackerAssigneeLeadingHtml(assigneeId, member) {
+        if (!assigneeId || !member) {
+            return '<span class="opencve-tracker-select-leading"><i class="fa fa-user-o opencve-tracker-select-icon" aria-hidden="true"></i></span>';
+        }
+        const avatarUrl = member.gravatarUrl || '';
+        return '<span class="opencve-tracker-select-leading"><img class="opencve-tracker-select-avatar" src="' + avatarUrl + '" alt="" width="20" height="20"></span>';
+    }
+
+    function buildAssigneeTriggerHtml(assigneeId, username, projectName) {
+        const member = findAssignableMember(projectName, assigneeId);
+        const label = assigneeId && username ? username : 'Unassigned';
+        return trackerAssigneeLeadingHtml(assigneeId, member) +
+            '<span class="opencve-tracker-select-label">' + sanitizeText(label) + '</span>' +
+            TRACKER_CHEVRON_HTML;
+    }
+
+    function buildStatusTriggerHtml(statusKey, statusLabel) {
+        const label = statusKey && statusLabel ? statusLabel : 'No status';
+        return trackerStatusDotHtml(statusKey) +
+            '<span class="opencve-tracker-select-label">' + sanitizeText(label) + '</span>' +
+            TRACKER_CHEVRON_HTML;
+    }
+
+    function trackerMenuItemCheck(isSelected) {
+        return isSelected ? TRACKER_CHECK_HTML : '<span class="opencve-tracker-menu-item-check" aria-hidden="true"></span>';
     }
 
     function sortStatuses(statuses) {
@@ -1523,24 +1842,33 @@ function getContrastedColor(str){
 
     function createAssigneeMenu(cveId, currentAssigneeId, projectName, orgName) {
         const members = getAssignableMembers(projectName);
-        let menuHtml = '<div class="floating-menu">';
-        menuHtml += '<div class="floating-menu-title" style="text-align: left;">Select an assignee</div>';
+        let menuHtml = '<div class="floating-menu opencve-tracker-menu">';
 
         const isUnassigned = !currentAssigneeId || currentAssigneeId === '';
         const baseAttrs = `data-cve-id="${cveId}" data-assignee-id=""`;
         const attrs = projectName ? `${baseAttrs} data-project-name="${projectName}" data-org-name="${orgName || ''}"` : baseAttrs;
 
-        menuHtml += `<button class="floating-menu-item unassign ${isUnassigned ? 'selected' : ''}" ${attrs}>
-                        <i class="fa fa-times"></i> Unassigned
+        menuHtml += `<button type="button" class="floating-menu-item opencve-tracker-menu-item unassign ${isUnassigned ? 'selected' : ''}" ${attrs}>
+                        <span class="opencve-tracker-menu-item-main">
+                            <i class="fa fa-user-o opencve-tracker-select-icon" aria-hidden="true"></i>
+                            <span class="opencve-tracker-menu-item-label">Unassigned</span>
+                        </span>
+                        ${trackerMenuItemCheck(isUnassigned)}
                      </button>`;
 
         members.forEach(function(member) {
-            const isSelected = member.id === currentAssigneeId;
+            const isSelected = String(member.id) === String(currentAssigneeId);
             const baseAttrs = `data-cve-id="${cveId}" data-assignee-id="${member.id}"`;
             const attrs = projectName ? `${baseAttrs} data-project-name="${projectName}" data-org-name="${orgName || ''}"` : baseAttrs;
+            const displayLabel = member.email || member.username;
+            const avatarUrl = member.gravatarUrl || '';
 
-            menuHtml += `<button class="floating-menu-item ${isSelected ? 'selected' : ''}" ${attrs}>
-                            <i class="fa fa-user"></i> ${member.username}
+            menuHtml += `<button type="button" class="floating-menu-item opencve-tracker-menu-item ${isSelected ? 'selected' : ''}" ${attrs}>
+                            <span class="opencve-tracker-menu-item-main">
+                                <img class="opencve-tracker-select-avatar" src="${avatarUrl}" alt="" width="20" height="20">
+                                <span class="opencve-tracker-menu-item-label">${sanitizeText(displayLabel)}</span>
+                            </span>
+                            ${trackerMenuItemCheck(isSelected)}
                          </button>`;
         });
 
@@ -1552,25 +1880,31 @@ function getContrastedColor(str){
         const statuses = window.cveTrackingData.statusChoices;
         const sortedStatuses = sortStatuses(statuses);
 
-        let menuHtml = '<div class="floating-menu">';
-        menuHtml += '<div class="floating-menu-title" style="text-align: left;">Select a status</div>';
+        let menuHtml = '<div class="floating-menu opencve-tracker-menu">';
 
         const isNoStatus = !currentStatus || currentStatus === '';
         const baseAttrs = `data-cve-id="${cveId}" data-status=""`;
         const attrs = projectName ? `${baseAttrs} data-project-name="${projectName}" data-org-name="${orgName || ''}"` : baseAttrs;
 
-        menuHtml += `<button class="floating-menu-item ${isNoStatus ? 'selected' : ''}" ${attrs}>
-                        <i class="fa fa-times"></i> No status
+        menuHtml += `<button type="button" class="floating-menu-item opencve-tracker-menu-item ${isNoStatus ? 'selected' : ''}" ${attrs}>
+                        <span class="opencve-tracker-menu-item-main">
+                            ${trackerStatusDotHtml('')}
+                            <span class="opencve-tracker-menu-item-label">No status</span>
+                        </span>
+                        ${trackerMenuItemCheck(isNoStatus)}
                      </button>`;
 
         sortedStatuses.forEach(function(status) {
             const isSelected = status.key === currentStatus;
-            const badgeClass = getStatusBadgeClass(status.key);
             const baseAttrs = `data-cve-id="${cveId}" data-status="${status.key}"`;
             const attrs = projectName ? `${baseAttrs} data-project-name="${projectName}" data-org-name="${orgName || ''}"` : baseAttrs;
 
-            menuHtml += `<button class="floating-menu-item ${isSelected ? 'selected' : ''}" ${attrs}>
-                            <span class="badge ${badgeClass}" style="margin-right: 8px; font-size: 10px;">${status.label}</span>
+            menuHtml += `<button type="button" class="floating-menu-item opencve-tracker-menu-item ${isSelected ? 'selected' : ''}" ${attrs}>
+                            <span class="opencve-tracker-menu-item-main">
+                                ${trackerStatusDotHtml(status.key)}
+                                <span class="opencve-tracker-menu-item-label">${sanitizeText(status.label)}</span>
+                            </span>
+                            ${trackerMenuItemCheck(isSelected)}
                          </button>`;
         });
 
@@ -1584,15 +1918,8 @@ function getContrastedColor(str){
         if (!badge) return;
 
         badge.setAttribute('data-current-assignee', assigneeId || '');
-        const editIcon = getEditIconSVG();
-
-        if (assigneeId && assigneeUsername) {
-            badge.innerHTML = assigneeUsername + '<span class="edit-icon">' + editIcon + '</span>';
-            badge.className = 'editable-assignee badge badge-info';
-        } else {
-            badge.innerHTML = 'Unassigned<span class="edit-icon">' + editIcon + '</span>';
-            badge.className = 'editable-assignee badge badge-secondary';
-        }
+        badge.innerHTML = buildAssigneeTriggerHtml(assigneeId, assigneeUsername, projectName);
+        badge.className = 'opencve-tracker-select opencve-tracker-select--assignee editable-assignee';
 
         if (badge._tippy) {
             badge._tippy.setContent(createAssigneeMenu(cveId, assigneeId, projectName, orgName));
@@ -1604,16 +1931,9 @@ function getContrastedColor(str){
         if (!badge) return;
 
         badge.setAttribute('data-current-status', statusKey || '');
-        const editIcon = getEditIconSVG();
-
-        if (statusKey && statusLabel) {
-            badge.innerHTML = statusLabel + '<span class="edit-icon">' + editIcon + '</span>';
-            const badgeClass = getStatusBadgeClass(statusKey);
-            badge.className = `editable-status badge ${badgeClass}`;
-        } else {
-            badge.innerHTML = 'No status<span class="edit-icon">' + editIcon + '</span>';
-            badge.className = 'editable-status badge badge-secondary';
-        }
+        badge.setAttribute('data-status', statusKey || 'empty');
+        badge.innerHTML = buildStatusTriggerHtml(statusKey, statusLabel);
+        badge.className = 'opencve-tracker-select opencve-tracker-select--status editable-status';
 
         if (badge._tippy) {
             badge._tippy.setContent(createStatusMenu(cveId, statusKey, projectName, orgName));
@@ -1704,7 +2024,8 @@ function getContrastedColor(str){
                 placement: 'bottom-start',
                 animation: 'shift-away',
                 theme: 'light-border',
-                maxWidth: 250,
+                maxWidth: 280,
+                appendTo: function() { return document.body; },
                 onShow(instance) {
                     if (currentTippy && currentTippy !== instance) {
                         currentTippy.hide();
@@ -1732,7 +2053,8 @@ function getContrastedColor(str){
                 placement: 'bottom-start',
                 animation: 'shift-away',
                 theme: 'light-border',
-                maxWidth: 200,
+                maxWidth: 280,
+                appendTo: function() { return document.body; },
                 onShow(instance) {
                     if (currentTippy && currentTippy !== instance) {
                         currentTippy.hide();
@@ -1801,13 +2123,20 @@ function getContrastedColor(str){
 
     function updateCommentCount(projectName, delta) {
       var $count = $('.project-comments-header[data-project-name="' + projectName + '"] .project-comments-count').first();
-      if (!$count.length) return;
+      var $tabCount = $('.opencve-cve-tracking-tab-comment-count[data-project-name="' + projectName + '"] .opencve-cve-tracking-tab-comment-count-num').first();
       var current = parseInt(($count.text().match(/^\s*(\d+)/) || [0, 0])[1], 10) || 0;
       var next = Math.max(0, current + delta);
-      if (next === 0) {
-        $count.text('No comments yet');
-      } else {
-        $count.text(next + ' comment' + (next === 1 ? '' : 's'));
+      if ($count.length) {
+        if ($count.hasClass('opencve-cve-tracking-comments-badge')) {
+          $count.text(next);
+        } else if (next === 0) {
+          $count.text('No comments yet');
+        } else {
+          $count.text(next + ' comment' + (next === 1 ? '' : 's'));
+        }
+      }
+      if ($tabCount.length) {
+        $tabCount.text(next);
       }
     }
 
@@ -2697,6 +3026,177 @@ function getContrastedColor(str){
       } else {
         $mitreWrapper.addClass('mitre-collapsed');
         $btn.attr({ 'aria-expanded': 'false', 'aria-label': 'Show more affected products' });
+      }
+    });
+  }
+
+  // CVE detail: Metrics — single active tab across CVSS + KEV/EPSS/SSVC rows
+  var $cveMetrics = $('#cve-metrics');
+  if ($cveMetrics.length) {
+    $cveMetrics.on('shown.bs.tab', '[data-toggle="tab"]', function(e) {
+      $cveMetrics.find('.opencve-metrics-nav > li').removeClass('active');
+      $(e.target).closest('li').addClass('active');
+    });
+  }
+
+  // CVE detail: History — show entries older than the latest five
+  var $cveHistoryList = $('#cve-history .cve-history-list');
+  if ($cveHistoryList.length) {
+    $cveHistoryList.on('click', '#cve-history-show-older', function(e) {
+      e.preventDefault();
+      $cveHistoryList.addClass('is-showing-all');
+      $(this).closest('.cve-history-show-older-wrap').remove();
+    });
+  }
+
+  // CVE detail: section tab nav (smooth in-page scroll + sticky bar shadow)
+  var $cveSectionNav = $('.cve-detail-section-nav');
+  var $cveSectionNavSticky = $('.cve-detail-section-nav-sticky');
+  if ($cveSectionNav.length) {
+    var getCveSectionScrollMargin = function() {
+      if ($cveSectionNavSticky.length) {
+        return $cveSectionNavSticky.outerHeight() + 8;
+      }
+      return 12;
+    };
+
+    if ($cveSectionNavSticky.length) {
+      var $cveNavStickyPlaceholder = null;
+      var $cveScrollRoots = $(window);
+      var $layoutWrapper = $('.wrapper');
+      if ($layoutWrapper.length) {
+        $cveScrollRoots = $cveScrollRoots.add($layoutWrapper);
+      }
+
+      var syncCveStickyNavGeometry = function() {
+        if (
+          !$cveSectionNavSticky.hasClass('is-fixed') ||
+          !$cveNavStickyPlaceholder ||
+          !$cveNavStickyPlaceholder.length
+        ) {
+          return;
+        }
+        var $contentWrapper = $cveSectionNavSticky.closest('.content-wrapper');
+        var anchorRect =
+          $contentWrapper.length ?
+            $contentWrapper[0].getBoundingClientRect() :
+            $cveNavStickyPlaceholder[0].getBoundingClientRect();
+        $cveSectionNavSticky.css({
+          left: anchorRect.left,
+          margin: 0,
+          position: 'fixed',
+          top: 0,
+          width: anchorRect.width,
+          zIndex: 820,
+        });
+      };
+
+      var unfixCveStickyNav = function() {
+        $cveSectionNavSticky.removeClass('is-fixed').css({
+          left: '',
+          margin: '',
+          position: '',
+          top: '',
+          width: '',
+          zIndex: '',
+        });
+        if ($cveNavStickyPlaceholder) {
+          $cveNavStickyPlaceholder.remove();
+          $cveNavStickyPlaceholder = null;
+        }
+      };
+
+      var fixCveStickyNav = function() {
+        if ($cveSectionNavSticky.hasClass('is-fixed')) {
+          syncCveStickyNavGeometry();
+          return;
+        }
+        var barHeight = $cveSectionNavSticky.outerHeight();
+        $cveNavStickyPlaceholder = $(
+          '<div class="cve-detail-section-nav-sticky-placeholder" aria-hidden="true"></div>'
+        ).height(barHeight);
+        $cveSectionNavSticky.before($cveNavStickyPlaceholder);
+        $cveSectionNavSticky.addClass('is-fixed');
+        syncCveStickyNavGeometry();
+      };
+
+      var updateCveStickyNav = function() {
+        if ($cveSectionNavSticky.hasClass('is-fixed')) {
+          if (
+            $cveNavStickyPlaceholder &&
+            $cveNavStickyPlaceholder[0].getBoundingClientRect().top > 0
+          ) {
+            unfixCveStickyNav();
+          } else {
+            syncCveStickyNavGeometry();
+          }
+          return;
+        }
+        if ($cveSectionNavSticky[0].getBoundingClientRect().top <= 0) {
+          fixCveStickyNav();
+        }
+      };
+
+      $cveScrollRoots.on('scroll.cveStickyNav', updateCveStickyNav);
+      $(window).on('resize.cveStickyNav', syncCveStickyNavGeometry);
+      $(document).on(
+        'expanded.pushMenu collapsed.pushMenu transitionend.cveStickyNav',
+        '.main-sidebar, .content-wrapper',
+        syncCveStickyNavGeometry
+      );
+      $('.sidebar-toggle').on('click.cveStickyNav', function() {
+        window.setTimeout(syncCveStickyNavGeometry, 350);
+      });
+      updateCveStickyNav();
+    }
+
+    var scrollToCveSection = function(targetEl) {
+      var $target = $(targetEl);
+      if (!$target.length) {
+        return;
+      }
+      $('html, body').stop(true);
+      var reduceMotion =
+        window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (targetEl.scrollIntoView) {
+        targetEl.scrollIntoView({
+          behavior: reduceMotion ? 'auto' : 'smooth',
+          block: 'start',
+        });
+        if (!reduceMotion) {
+          return;
+        }
+      }
+      if (reduceMotion) {
+        return;
+      }
+      $('html, body').animate(
+        { scrollTop: $target.offset().top - getCveSectionScrollMargin() },
+        450
+      );
+    };
+
+    $cveSectionNav.on('click', '.cve-detail-section-nav-item', function(e) {
+      var href = this.getAttribute('href');
+      if (!href || href.charAt(0) !== '#') {
+        return;
+      }
+      var $target = $(href);
+      if (!$target.length) {
+        return;
+      }
+      e.preventDefault();
+
+      $cveSectionNav.find('.cve-detail-section-nav-item').removeClass('is-active');
+      $(this).addClass('is-active');
+
+      scrollToCveSection($target[0]);
+
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', href);
+      } else {
+        window.location.hash = href.slice(1);
       }
     });
   }
