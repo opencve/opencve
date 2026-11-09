@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load authorization_tags %}
+{% load opencve_extras %}
 
 {% block title %}Projects - {{ block.super }}{% endblock %}
 {% block navbar_title%}Projects ({{ projects.count }}){% endblock %}
@@ -13,76 +14,227 @@
             {% has_org_permission 'org.projects.create' as can_create_projects %}
             {% if can_create_projects %}
             <div class="callout callout-info">
-                <p>Projects allow users to organize subscriptions and notifications. <a href="{% url 'create_project' org_name=request.current_organization.name %}">Create a new project?</a></p>
+                <p>Organize your vulnerability monitoring by client, team, business unit, or technology stack.<br />Each project brings together vendor and product subscriptions, automations, notifications, and reports.</p>
             </div>
             {% endif %}
 
-            <div class="box box-primary">
-                <div class="box-body">
-                    <ul class="projects-list products-list product-list-in-box">
-                        {% if projects %}
-                        {% for project in projects %}
-                        <li class="item">
-                            <div class="product-info">
-                                <div class="product-title">
-                                    {% if project.active %}
-                                    <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}" class="product-title">{{ project.name }}</a>
-                                    {% else %}
-                                    {{ project.name }} <span class="label label-default">disabled</span>
+            {% if projects or can_create_projects %}
+            <div class="opencve-project-list-toolbar">
+                <div class="opencve-project-view-toggle btn-group" role="group" aria-label="Projects layout">
+                    <button type="button"
+                            class="btn btn-default opencve-project-view-btn active"
+                            data-view="grid"
+                            title="Card view"
+                            aria-pressed="true">
+                        <i class="fa fa-th-large" aria-hidden="true"></i>
+                        <span class="sr-only">Card view</span>
+                    </button>
+                    <button type="button"
+                            class="btn btn-default opencve-project-view-btn"
+                            data-view="list"
+                            title="List view"
+                            aria-pressed="false">
+                        <i class="fa fa-list" aria-hidden="true"></i>
+                        <span class="sr-only">List view</span>
+                    </button>
+                </div>
+                {% if can_create_projects %}
+                <a href="{% url 'create_project' org_name=request.current_organization.name %}"
+                   class="btn btn-primary btn-primary-outline opencve-project-list-new-btn">
+                    <i class="fa fa-plus" aria-hidden="true"></i> New project
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if projects or can_create_projects %}
+            <div class="opencve-project-list opencve-project-list--grid" id="projects-list">
+                {% for project in projects %}
+                {% with vendors=project.subscriptions.vendors products=project.subscriptions.products members=project.memberships.all %}
+                {% with vendor_count=vendors|length product_count=products|length member_count=members|length %}
+                <div class="box box-primary opencve-project-card">
+                    <div class="opencve-project-card-header collapsed pointer"
+                         role="button"
+                         tabindex="0"
+                         aria-expanded="false"
+                         aria-controls="project-card-{{ project.id }}">
+                        <div class="opencve-project-card-header-main">
+                            <i class="fa fa-chevron-right opencve-project-card-chevron opencve-project-list-only" aria-hidden="true"></i>
+                            <div class="opencve-project-card-summary">
+                                <div class="opencve-project-card-name">
+                                    {{ project.name }}
+                                    {% if not project.active %}
+                                    <span class="label label-default">disabled</span>
                                     {% endif %}
-                                    <div class="pull-right">
-                                        <div class="btn-group" role="group">
-                                            {% has_project_permission project 'project.edit' as can_edit %}
-                                            {% if can_edit %}
-                                            <a href="{% url 'edit_project' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-default btn-xs">Edit</a>
-                                            {% endif %}
-                                            {% has_org_permission 'org.projects.delete' as can_delete %}
-                                            {% if can_delete %}
-                                            <a href="{% url 'delete_project' org_name=request.current_organization.name project_name=project.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
-                                            {% endif %}
-                                        </div>
-                                    </div>
                                 </div>
-                                <span class="product-description">
-                                    {{ project.description|default:'' }}
-                                </span>
-                                {% if project.subscriptions.vendors or project.subscriptions.products %}
-                                <div class="product-vendors">
-                                    <div class="pointer change-collapsed collapsed" data-toggle="collapse" href="#{{ project.id }}" aria-expanded="false">
-                                        <span class="product-vendors-title">Subscriptions (<strong>{{ project.subscriptions_count }}</strong>)
-                                            <span class="box-meta">
-                                                <i class="fa fa-plus"></i>
-                                                <i class="fa fa-minus"></i>
-                                            </span>
-                                        </span>
-                                    </div>
-                                    <div id="{{ project.id }}" class="panel-collapse collapse" aria-expanded="false" style="height: 0px;">
-                                        <div class="box-body">
-                                            {% include 'projects/includes/subscriptions.html' %}
-                                        </div>
-                                    </div>
+                                <div class="opencve-project-card-stats">
+                                    {{ vendor_count }} vendor{{ vendor_count|pluralize }}
+                                    &bull;
+                                    {{ product_count }} product{{ product_count|pluralize }}
+                                    &bull;
+                                    {{ member_count }} member{{ member_count|pluralize }}
                                 </div>
+                            </div>
+                        </div>
+                        <div class="opencve-project-card-actions">
+                            {% if project.active %}
+                            <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}"
+                               class="opencve-project-card-open opencve-project-list-only">
+                                Open project <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                            {% has_project_permission project 'project.edit' as can_edit %}
+                            {% has_org_permission 'org.projects.delete' as can_delete %}
+                            {% if can_edit or can_delete %}
+                            <div class="dropdown opencve-project-card-menu">
+                                <button type="button"
+                                        class="btn btn-default btn-sm opencve-project-card-menu-btn dropdown-toggle"
+                                        data-toggle="dropdown"
+                                        aria-haspopup="true"
+                                        aria-expanded="false">
+                                    <span aria-hidden="true">⋯</span>
+                                    <span class="sr-only">Project actions</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right opencve-project-card-dropdown">
+                                    {% if can_edit %}
+                                    <li>
+                                        <a href="{% url 'edit_project' org_name=request.current_organization.name project_name=project.name %}">
+                                            <i class="fa fa-pencil" aria-hidden="true"></i>
+                                            Edit project
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    {% if can_edit and can_delete %}
+                                    <li role="separator" class="divider"></li>
+                                    {% endif %}
+                                    {% if can_delete %}
+                                    <li>
+                                        <a href="{% url 'delete_project' org_name=request.current_organization.name project_name=project.name %}">
+                                            <i class="fa fa-trash" aria-hidden="true"></i>
+                                            Delete project
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div id="project-card-{{ project.id }}" class="opencve-project-card-body">
+                        <div class="opencve-project-card-body-inner">
+                        <div class="opencve-project-card-row">
+                            <div class="opencve-project-card-row-label">
+                                <strong>Vendors</strong><span class="opencve-project-card-row-count opencve-project-list-only"> {{ vendor_count }}</span>
+                            </div>
+                            <div class="opencve-project-card-row-content">
+                                {% if vendor_count %}
+                                {% for vendor in vendors|slice:":3" %}
+                                <a class="opencve-project-tag opencve-project-grid-only" href="{% url 'cves' %}?vendor={{ vendor|urlencode }}">{{ vendor|humanize }}</a>
+                                {% endfor %}
+                                {% for vendor in vendors|slice:":8" %}
+                                <a class="opencve-project-tag opencve-project-list-only" href="{% url 'cves' %}?vendor={{ vendor|urlencode }}">{{ vendor|humanize }}</a>
+                                {% endfor %}
+                                {% if vendor_count > 3 %}
+                                <a class="opencve-project-more opencve-project-grid-only" href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}">+ {{ vendor_count|add:"-3" }} more</a>
+                                {% endif %}
+                                {% if vendor_count > 8 %}
+                                <a class="opencve-project-more opencve-project-list-only" href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}">+ {{ vendor_count|add:"-8" }} more</a>
+                                {% endif %}
                                 {% else %}
-                                <div class="product-vendors">
-                                    <span class="product-vendors-title"><i>No subscription yet</i></span>
-                                </div>
+                                <span class="text-muted">No vendors subscribed</span>
                                 {% endif %}
                             </div>
-                        </li>
-                        {% endfor %}
-                        {% else %}
-                        <li class="item">
-                            <div class="product-info">
-                                <i>No projects yet.</i>
+                        </div>
+                        <div class="opencve-project-card-row">
+                            <div class="opencve-project-card-row-label">
+                                <strong>Products</strong><span class="opencve-project-card-row-count opencve-project-list-only"> {{ product_count }}</span>
                             </div>
-                        </li>
-                        {% endif %}
-                    </ul>
+                            <div class="opencve-project-card-row-content">
+                                {% if product_count %}
+                                {% for product in products|slice:":3" %}
+                                {% with product|split:"$PRODUCT$" as p %}
+                                <a class="opencve-project-tag opencve-project-grid-only" href="{% url 'cves' %}?vendor={{ p.0|urlencode }}&product={{ p.1|urlencode }}">{{ product|remove_product_separator|humanize }}</a>
+                                {% endwith %}
+                                {% endfor %}
+                                {% for product in products|slice:":8" %}
+                                {% with product|split:"$PRODUCT$" as p %}
+                                <a class="opencve-project-tag opencve-project-list-only" href="{% url 'cves' %}?vendor={{ p.0|urlencode }}&product={{ p.1|urlencode }}">{{ product|remove_product_separator|humanize }}</a>
+                                {% endwith %}
+                                {% endfor %}
+                                {% if product_count > 3 %}
+                                <a class="opencve-project-more opencve-project-grid-only" href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}">+ {{ product_count|add:"-3" }} more</a>
+                                {% endif %}
+                                {% if product_count > 8 %}
+                                <a class="opencve-project-more opencve-project-list-only" href="{% url 'subscriptions' org_name=request.current_organization.name project_name=project.name %}">+ {{ product_count|add:"-8" }} more</a>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">No products subscribed</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="opencve-project-card-row opencve-project-list-only">
+                            <div class="opencve-project-card-row-label">
+                                <strong>Members</strong><span class="opencve-project-card-row-count"> {{ member_count }}</span>
+                            </div>
+                            <div class="opencve-project-card-row-content">
+                                {% if member_count %}
+                                {% for pm in members|slice:":4" %}
+                                <span class="opencve-project-member">
+                                    <span class="opencve-project-member-avatar" aria-hidden="true">{{ pm|membership_initials }}</span>
+                                    <span class="opencve-project-member-name">{{ pm|membership_display_name }}</span>
+                                </span>
+                                {% endfor %}
+                                {% if member_count > 4 %}
+                                <a class="opencve-project-more" href="{% url 'project_members' org_name=request.current_organization.name project_name=project.name %}">+ {{ member_count|add:"-4" }} more</a>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">No explicit project members</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        </div>
+                        <div class="opencve-project-card-footer opencve-project-grid-only">
+                            <div class="opencve-project-card-footer-members">
+                                {% if member_count %}
+                                <div class="opencve-project-card-footer-avatars" aria-hidden="true">
+                                    {% for pm in members|slice:":3" %}
+                                    <span class="opencve-project-member-avatar">{{ pm|membership_initials }}</span>
+                                    {% endfor %}
+                                </div>
+                                <span class="opencve-project-card-footer-member-count">{{ member_count }} member{{ member_count|pluralize }}</span>
+                                {% else %}
+                                <span class="opencve-project-card-footer-member-count text-muted">No members</span>
+                                {% endif %}
+                            </div>
+                            {% if project.active %}
+                            <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}"
+                               class="opencve-project-card-open">
+                                Open project <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endwith %}
+                {% endwith %}
+                {% endfor %}
+
+                {% if can_create_projects %}
+                <a href="{% url 'create_project' org_name=request.current_organization.name %}"
+                   class="opencve-project-card opencve-project-card-new opencve-project-grid-only">
+                    <span class="opencve-project-card-new-icon" aria-hidden="true"><i class="fa fa-plus"></i></span>
+                    <span class="opencve-project-card-new-title">New project</span>
+                </a>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="box box-primary">
+                <div class="box-body">
+                    <p class="text-muted"><i>No projects yet.</i></p>
                 </div>
             </div>
-
+            {% endif %}
         </div>
     </div>
 </section>
-
 {% endblock %}
