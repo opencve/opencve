@@ -7,25 +7,30 @@
 
 {% block meta_description %}{{ cve.description }}{% endblock %}
 
-{% block navbar_title%}<a href="{% url 'cve' cve_id=cve.cve_id %}" class="navbar-title-cve-link">{{ cve.cve_id }}</a>{% if cve.title %}<small><i> - {{ cve.title }}</i></small>{% endif %}{% endblock %}
+{% block navbar_title %}Vulnerabilities{% endblock %}
 
 {% block content %}
 
-<section class="content">
-    <div class="row">
-        <div class="col-md-9">
-            <div class="cve-description-summary-wrapper" id="cve-overview">
-                <div class="row cve-description-summary-row">
-                    <div class="col-md-8 cve-description-col">
-                        {% include "cves/includes/description.html" %}
-                    </div>
-                    <div class="col-md-4 cve-summary-col">
-                        {% include "cves/includes/summary.html" %}
-                    </div>
-                </div>
-            </div>
+<section class="content cve-detail opencve-detail-page">
+    <div class="opencve-detail-top">
+        <div class="opencve-detail-container">
+            {% include "cves/includes/detail_hero.html" %}
+        </div>
+    </div>
 
-            {% include "cves/includes/analysis.html" %}
+    <div class="cve-detail-section-nav-sticky">
+        <div class="opencve-detail-container">
+            {% include "cves/includes/section_nav.html" %}
+        </div>
+    </div>
+
+    <div class="opencve-detail-main">
+        <div class="opencve-detail-container">
+            <div class="row">
+                <div class="col-md-9">
+            <div class="cve-description-overview" id="cve-overview">
+                {% include "cves/includes/description.html" %}
+            </div>
 
             {% include "cves/includes/vendors_products.html" %}
 
@@ -43,25 +48,27 @@
         </div>
 
         <div class="col-md-3">
-            {% include "cves/includes/section_nav.html" %}
-
             {% if user.is_authenticated %}
-            <div class="box box-primary">
+            <div class="box box-primary cve-tags-box">
                 <div class="box-header">
                     <h3 class="box-title">Tags</h3>
-                    <div class="box-tools pull-right">
-                        <button type="button" class="btn btn-box-tool" data-toggle="modal" data-target="#modal-tags"><i class="fa fa-edit"></i></button>
-                    </div>
                 </div>
                 <div class="box-body">
-                    {% if tags %}
-                    {% for tag in tags %}
-                    <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
-                        <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
-                    </a>
-                    {% endfor %}
-                    {% else %}
-                    <p class="text-muted"><em>No tag found for this CVE.</em></p>
+                    <div class="cve-tags-list">
+                        {% for tag in tags %}
+                        <a href="{% url 'cves' %}?tag={{ tag.name }}" data-toggle="tooltip" data-container="body" title="{{ tag.description }}">
+                            <span class="label label-tag" style="background-color: {{ tag.color }};">{{ tag.name }}</span>
+                        </a>
+                        {% endfor %}
+                        <button type="button"
+                                class="btn btn-primary btn-primary-outline btn-sm cve-tags-add-btn{% if not tags %} cve-tags-add-btn--primary{% endif %}"
+                                data-toggle="modal"
+                                data-target="#modal-tags">
+                            {% if tags %}<i class="fa fa-plus" aria-hidden="true"></i><span class="sr-only">Add tags</span>{% else %}<i class="fa fa-plus" aria-hidden="true"></i> Add tags{% endif %}
+                        </button>
+                    </div>
+                    {% if not tags %}
+                    <p class="text-muted cve-tags-empty-hint"><em>No tags on this CVE yet.</em></p>
                     {% endif %}
                 </div>
             </div>
@@ -75,152 +82,6 @@
                     {% include "cves/includes/subscriptions.html" with vendors_dict=vendors vendors_data_dict=vendors_data %}
                 </div>
             </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="box box-primary">
-                <div class="box-header">
-                    <div class="box-title">
-                        <img src="{% static 'img/cve-icon.png' %}" class="provider-icon" alt="cve-icon" />
-                        MITRE
-                    </div>
-                    {% if cve.mitre_json %}
-                    <div class="box-tools pull-right">
-                        <div class="btn-group" data-toggle="btn-toggle">
-                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-mitre-json"><i class="fa fa-code"></i></button>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                {% if cve.mitre_json %}
-                <div class="box-body">
-                    <p><strong>Status:</strong> {{ cve.mitre_json.cveMetadata.state }}</p>
-                    <p><strong>Assigner:</strong> {{ cve.mitre_json.cveMetadata.assignerShortName }}</p>
-                    <p><strong>Published:</strong>
-                        {% if cve.mitre_json.cveMetadata.datePublished %}
-                        <time datetime="{{ cve.mitre_json.cveMetadata.datePublished|convert_str_date|date:'Y-m-d\TH:i:s' }}">
-                            {{ cve.mitre_json.cveMetadata.datePublished }}
-                        </time>
-                        {% else %}
-                        No published date
-                        {% endif %}
-                    </p>
-                    <p><strong>Updated:</strong> {{ cve.mitre_json.cveMetadata.dateUpdated }}</p>
-                    <p><strong>Reserved:</strong> {{ cve.mitre_json.cveMetadata.dateReserved }}</p>
-                    <p><strong>Link:</strong> <a href="https://www.cve.org/CVERecord?id={{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a></p>
-                </div>
-                {% else %}
-                <div class="box-body">
-                    <p class="text-muted"><em>No data.</em></p>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="box box-primary">
-                <div class="box-header">
-                    <div class="box-title">
-                        <img src="{% static 'img/cisa-icon.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
-                        Vulnrichment
-                    </div>
-                    {% if cve.vulnrichment_json %}
-                    <div class="box-tools pull-right">
-                        <div class="btn-group" data-toggle="btn-toggle">
-                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-vulnrichment-json"><i class="fa fa-code"></i></button>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                {% if cve.vulnrichment_json %}
-                <div class="box-body">
-                    <p><strong>Updated:</strong> {{ cve.vulnrichment_json.containers.adp.0.providerMetadata.dateUpdated }}</p>
-                </div>
-                {% else %}
-                <div class="box-body">
-                    <p class="text-muted"><em>No data.</em></p>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="box box-primary">
-                <div class="box-header">
-                    <div class="box-title">
-                        <img src="{% static 'img/nvd-icon.png' %}" class="provider-icon" alt="cve-icon" />
-                        NVD
-                    </div>
-                    {% if cve.nvd_json %}
-                    <div class="box-tools pull-right">
-                        <div class="btn-group" data-toggle="btn-toggle">
-                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-nvd-json"><i class="fa fa-code"></i></button>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                {% if cve.nvd_json %}
-                <div class="box-body">
-                    <p><strong>Status :</strong> {{ cve.nvd_json.vulnStatus }}</p>
-                    <p><strong>Published:</strong> {{ cve.nvd_json.published }}</p>
-                    <p><strong>Modified:</strong> {{ cve.nvd_json.lastModified }}</p>
-                    <p><strong>Link:</strong> <a href="https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a></p>
-                </div>
-                {% else %}
-                <div class="box-body">
-                    <p class="text-muted"><em>No data.</em></p>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="box box-primary">
-                <div class="box-header">
-                    <div class="box-title">
-                        <img src="{% static 'img/redhat-icon.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
-                        Redhat
-                    </div>
-                    {% if cve.redhat_json %}
-                    <div class="box-tools pull-right">
-                        <div class="btn-group" data-toggle="btn-toggle">
-                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-redhat-json"><i class="fa fa-code"></i></button>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                {% if cve.redhat_json %}
-                <div class="box-body">
-                    <p><strong>Severity :</strong> {{ cve.redhat_json.threat_severity }}</p>
-                    <p><strong>Publid Date:</strong> {{ cve.redhat_json.public_date }}</p>
-                    <p><strong>Links:</strong> <a href="https://access.redhat.com/security/cve/{{ cve.cve_id }}" target="_blank">{{ cve.cve_id }} <i class="fa fa-external-link"></i></a> - <a href="{{ cve.redhat_json.bugzilla.url }}" target="_blank">Bugzilla <i class="fa fa-bug"></i></a></p>
-                </div>
-                {% else %}
-                <div class="box-body">
-                    <p class="text-muted"><em>No data.</em></p>
-                </div>
-                {% endif %}
-            </div>
-
-            {% is_cve_rejected cve as cve_rejected %}
-            <div class="box box-primary">
-                <div class="box-header">
-                    <div class="box-title">
-                        <img src="{% static 'img/opencve_32.png' %}" class="provider-icon" style="width: 28px;" alt="cve-icon" />
-                        OpenCVE Enrichment
-                    </div>
-                    {% if cve.enrichment_json and not cve_rejected %}
-                    <div class="box-tools pull-right">
-                        <div class="btn-group" data-toggle="btn-toggle">
-                            <button type="button" class="btn btn-default btn-sm" data-toggle="modal" data-target="#modal-enrichment-json"><i class="fa fa-code"></i></button>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                {% if cve.enrichment_json and not cve_rejected %}
-                <div class="box-body">
-                    <p><strong>Updated:</strong> {{ cve.enrichment_json.updated|convert_str_date|date:"Y-m-d\TH:i:s" }}Z</p>
-                </div>
-                {% else %}
-                <div class="box-body">
-                    <p class="text-muted"><em>No data.</em></p>
-                </div>
-                {% endif %}
-            </div>
 
             <div class="box box-primary">
                 <div class="box-header">
@@ -228,7 +89,7 @@
                 </div>
                 <div class="box-body">
                     {% if weaknesses %}
-                        <ul>
+                        <ul class="opencve-cve-detail-weakness-list">
                         {% for cwe_id, name in weaknesses.items %}
                         <li>
                             <a href="{% url 'cves' %}?weakness={{ cwe_id }}">{{ cwe_id }}</a>
@@ -242,6 +103,10 @@
                 </div>
             </div>
 
+            {% include "cves/includes/sources_box.html" %}
+
+        </div>
+            </div>
         </div>
     </div>
 
@@ -352,18 +217,21 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label>Select your tags</label>
-                    <select class="form-control select2" id="select2-tags" multiple="multiple" data-placeholder="Select a tag"
+                    <select class="form-control select2" id="select2-tags" multiple="multiple" data-placeholder="Search existing tags"
                             style="width: 100%;" data-values='{{ cve_tags_encoded }}' name="tags">
                         {% for tag in user_tags %}
                         <option>{{ tag }}</option>
                         {% endfor %}
                     </select>
+                    <p class="help-block cve-tags-modal-help">
+                        Pick from your organization tags, or
+                        <a href="{% url 'tags' %}">create a new tag</a>.
+                    </p>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default pull-left" data-dismiss="modal">Close</button>
-                <a class="btn btn-default pull-left" href="{% url 'tags' %}">Manage your tags</a>
-                <button type="submit" class="btn btn-primary">Update associated tags</button>
+                <button type="submit" class="btn btn-primary">Save tags</button>
             </div>
         </form>
       </div>
@@ -409,7 +277,8 @@ window.cveTrackingData = {
             {
                 id: "{{ member.id }}",
                 username: "{{ member.username|escapejs }}",
-                email: "{{ member.email|escapejs }}"
+                email: "{{ member.email|escapejs }}",
+                gravatarUrl: "{{ member.email|gravatar_url:40|escapejs }}"
             }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ]{% if not forloop.last %},{% endif %}

@@ -3,23 +3,20 @@
 
 {% is_cve_rejected cve as cve_rejected %}
 
-<div class="nav-tabs-custom nav-tabs-primary" id="cve-affected">
-    <ul class="nav nav-tabs">
-        <li class="active">
-            <a href="#mitre" data-toggle="tab"> <img src="{% static 'img/cve-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> Mitre Data{% if cve.mitre_json and cve.mitre_json.containers.cna.affected %} <span class="nav-tab-has-data"></span>{% endif %}</a>
-        </li>
-        <li>
-            <a href="#nvd" data-toggle="tab"> <img src="{% static 'img/nvd-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> CPE Configurations{% if cve.nvd_json and cve.nvd_json.configurations %} <span class="nav-tab-has-data"></span>{% endif %}</a>
-        </li>
-        <li>
-            <a href="#redhat" data-toggle="tab"> <img src="{% static 'img/redhat-icon.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> Affected Packages{% if cve.redhat_json and cve.redhat_json.affected_release %} <span class="nav-tab-has-data"></span>{% endif %}</a>
-        </li>
-        <li>
-            <a href="#enrichment" data-toggle="tab"> <img src="{% static 'img/opencve_32.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> OpenCVE Enrichment{% if not cve_rejected and cve.enrichment_json and cve.enrichment_json.affected or not cve_rejected and cve.enrichment_json and cve.enrichment_json.vendors %} <span class="nav-tab-has-data"></span>{% endif %}</a>
-        </li>
+<div class="box box-primary nav-tabs-custom nav-tabs-primary opencve-segment-tabs" id="cve-affected">
+    <div class="box-header">
+        <h3 class="box-title">Affected Products</h3>
+    </div>
+    <div class="opencve-affected-source-toolbar">
+    <ul class="opencve-affected-source-nav" role="tablist">
+        {% include "cves/includes/affected_source_tab.html" with tab_id="mitre" icon="img/cve-icon.png" icon_modifier_class="opencve-segment-tab-icon--cve" label="CVE record" has_data=affected_tab_has_data.mitre active_tab=affected_active_tab %}
+        {% include "cves/includes/affected_source_tab.html" with tab_id="nvd" icon="img/nvd-icon.png" icon_modifier_class="opencve-segment-tab-icon--nvd" label="NVD configurations" has_data=affected_tab_has_data.nvd active_tab=affected_active_tab %}
+        {% include "cves/includes/affected_source_tab.html" with tab_id="redhat" icon="img/redhat-icon.png" icon_modifier_class="opencve-segment-tab-icon--redhat" label="Red Hat packages" has_data=affected_tab_has_data.redhat active_tab=affected_active_tab %}
+        {% include "cves/includes/affected_source_tab.html" with tab_id="enrichment" icon="img/opencve_32.png" icon_modifier_class="opencve-segment-tab-icon--opencve" label="OpenCVE enrichment" has_data=affected_tab_has_data.enrichment active_tab=affected_active_tab %}
     </ul>
+    </div>
     <div class="tab-content">
-        <div class="tab-pane active" id="mitre">
+        <div class="tab-pane{% if affected_active_tab == 'mitre' %} active{% endif %}" id="mitre">
             {% if cve.mitre_json and cve.mitre_json.containers.cna.affected %}
             <p class="text-muted small mb-3">
               <strong>Default status</strong> is the baseline for the product, each <strong>version</strong> can override it (e.g. patched versions marked unaffected).
@@ -40,10 +37,7 @@
                     <td>{{ affected.vendor }}</td>
                     <td>{{ affected.product }}</td>
                     <td>
-                      <span class="label
-                        {% if affected.defaultStatus|default:"affected"|slugify == 'affected' %}label-danger
-                        {% elif affected.defaultStatus|default:"affected"|slugify == 'unaffected' %}label-success
-                        {% else %}label-default{% endif %}">
+                      <span class="opencve-chip opencve-chip-{{ affected.defaultStatus|default:'affected'|affected_status_chip_class }}">
                         {{ affected.defaultStatus|default:"affected" }}
                       </span>
                     </td>
@@ -62,7 +56,7 @@
                             <tr>
                               <td class="text-break"><code>{{ version.version }}</code></td>
                               <td>
-                                <span class="label {% if version.status|default:''|slugify == 'affected' %}label-danger{% elif version.status|default:''|slugify == 'unaffected' %}label-success{% else %}label-default{% endif %}">{{ version.status }}</span>
+                                <span class="opencve-chip opencve-chip-{{ version.status|default:'affected'|affected_status_chip_class }}">{{ version.status }}</span>
                               </td>
                               <td class="mitre-constraints-cell">
                                 <div class="mitre-constraints-content text-muted">
@@ -98,10 +92,12 @@
                 </button>
               </div>
             </div>
+            {% else %}
+            <p class="text-muted"><em>No data.</em></p>
             {% endif %}
         </div>
 
-        <div class="tab-pane" id="nvd">
+        <div class="tab-pane{% if affected_active_tab == 'nvd' %} active{% endif %}" id="nvd">
             {% if cve.nvd_json and cve.nvd_json.configurations %}
 
             {% for conf in cve.nvd_json.configurations %}
@@ -135,7 +131,7 @@
             <p class="text-muted"><em>No data.</em></p>
             {% endif %}
         </div>
-        <div class="tab-pane" id="redhat">
+        <div class="tab-pane{% if affected_active_tab == 'redhat' %} active{% endif %}" id="redhat">
             {% if cve.redhat_json and cve.redhat_json.affected_release %}
             {% regroup cve.redhat_json.affected_release by product_name as packages %}
             <table class="table table-striped table-bordered">
@@ -165,7 +161,7 @@
             <p class="text-muted"><em>No data.</em></p>
             {% endif %}
         </div>
-        <div class="tab-pane" id="enrichment">
+        <div class="tab-pane{% if affected_active_tab == 'enrichment' %} active{% endif %}" id="enrichment">
           {% if cve_rejected %}
             <p class="text-muted"><em>No data available yet.</em></p>
           {% elif cve.enrichment_json and cve.enrichment_json.affected or cve.enrichment_json and cve.enrichment_json.vendors %}

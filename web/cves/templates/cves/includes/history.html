@@ -8,37 +8,74 @@
         </div>
     </div>
 
-    {% if cve.kb_json.opencve.changes %}
-    <div class="box-body">
-        <div class="row">
-            <div class="col-md-12">
-                {% for change in cve.kb_json.opencve.changes reversed %}
-                <p class="report-change-title"><i class="fa fa-clock-o"></i> {{ change.created|convert_str_date|date:"r" }}</p>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <th>Type</th>
-                            <th>Values Removed</th>
-                            <th>Values Added</th>
-                        </thead>
-                        <tbody>
-
-                        {% for event in change.data %}
-                            {% with template_name="changes/change_"|add:event.type|add:".html" %}
-                            {% include template_name %}
-                            {% endwith %}
-                        {% endfor %}
-                        </tbody>
-                    </table>
+    {% with changes=cve.kb_json.opencve.changes %}
+    {% if changes %}
+    {% with total=changes|length %}
+    <div class="box-body cve-history-list">
+        {% for change in changes reversed %}
+        <div class="cve-history-item{% if forloop.counter > 5 %} cve-history-item--older{% endif %}">
+            <a class="cve-history-toggle collapsed"
+               data-toggle="collapse"
+               href="#cve-history-detail-{{ change.id }}"
+               aria-expanded="false"
+               aria-controls="cve-history-detail-{{ change.id }}">
+                <span class="cve-history-toggle-main">
+                    <span class="cve-history-date">
+                        <i class="fa fa-clock-o cve-history-date-icon" aria-hidden="true"></i>
+                        {{ change.created|convert_str_date|date:"M j, Y g:i A" }}
+                    </span>
+                    <span class="cve-history-summary">
+                        {% with subtitle=change|cve_change_summary_subtitle %}
+                        <span class="cve-history-title">
+                            {% if subtitle %}{{ subtitle }}{% else %}{{ change|cve_change_summary_title }}{% endif %}
+                        </span>
+                        {% endwith %}
+                    </span>
+                </span>
+                <span class="cve-history-view">
+                    View changes
+                    <i class="fa fa-chevron-down cve-history-chevron" aria-hidden="true"></i>
+                </span>
+            </a>
+            <div id="cve-history-detail-{{ change.id }}" class="collapse">
+                <div class="cve-history-details">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Values Removed</th>
+                                    <th>Values Added</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for event in change.data %}
+                                {% with template_name="changes/change_"|add:event.type|add:".html" %}
+                                {% include template_name %}
+                                {% endwith %}
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <hr />
-                {% endfor %}
             </div>
         </div>
+        {% endfor %}
+
+        {% if total > 5 %}
+        <div class="cve-history-show-older-wrap">
+            <a href="#" class="cve-history-show-older" id="cve-history-show-older">
+                Earlier changes ({{ total|add:"-5" }})
+                <i class="fa fa-chevron-down" aria-hidden="true"></i>
+            </a>
+        </div>
+        {% endif %}
     </div>
+    {% endwith %}
     {% else %}
     <div class="box-body">
         <p class="text-muted"><em>No history.</em></p>
     </div>
     {% endif %}
+    {% endwith %}
 </div>

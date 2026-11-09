@@ -1,30 +1,28 @@
 {% load opencve_extras %}
 
+{% if cve.solution or cve.workaround %}
 <div class="box box-primary" id="cve-remediation">
     <div class="box-header">
-        <div class="box-title">Remediation</div>
+        <h3 class="box-title">Remediation</h3>
     </div>
     <div class="box-body">
-        {% if cve.solution or cve.workaround %}
+        {% if cve.solution %}
+        <p><strong>Vendor Solution</strong></p>
+        <p>{{ cve.solution }}</p>
+        {% endif %}
 
-            {% if cve.solution %}
-            <p><strong>Vendor Solution</strong></p>
-            <p>{{ cve.solution }}</p>
-            {% endif %}
-
-            {% if cve.workaround %}
-            {% if cve.solution %}<hr>{% endif %}
-            <p><strong>Vendor Workaround</strong></p>
-            <p>{{ cve.workaround }}</p>
-            {% endif %}
-
-        {% else %}
-            <p class="text-muted">
-                <em>No solution or workaround provided in the CVE record.</em>
-            </p>
-            <p class="text-muted small">
-                <em>Additional remediation guidance may be available on <a href="https://www.opencve.io" target="_blank" rel="noopener">OpenCVE Cloud</a>.</em>
-            </p>
+        {% if cve.workaround %}
+        {% if cve.solution %}<hr>{% endif %}
+        <p><strong>Vendor Workaround</strong></p>
+        <p>{{ cve.workaround }}</p>
         {% endif %}
     </div>
 </div>
+{% else %}
+<div class="box box-primary opencve-cve-section-empty" id="cve-remediation">
+    <div class="box-header opencve-cve-section-empty-header">
+        <h3 class="box-title">Remediation</h3>
+        <span class="opencve-cve-section-empty-message pull-right">No solution or workaround provided in the CVE record</span>
+    </div>
+</div>
+{% endif %}
