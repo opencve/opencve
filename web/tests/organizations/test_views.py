@@ -25,14 +25,14 @@ def test_list_organizations(auth_client, create_user, create_organization):
     # No organization
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("ul", {"class": "organizations-list"}).text
-    assert "No organization yet" in content
+    assert soup.find(class_="organizations-list") is None
+    assert "No organization yet" in soup.text
 
     # User can see his own organization
     create_organization(name="organization1", user=user1, owner=True)
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("ul", {"class": "organizations-list"}).text
+    content = soup.find(class_="organizations-list").text
     assert "organization1" in content
 
     # But not those of others
@@ -40,7 +40,7 @@ def test_list_organizations(auth_client, create_user, create_organization):
     create_organization(name="organization2", user=user2, owner=True)
     response = client.get(url)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("ul", {"class": "organizations-list"}).text
+    content = soup.find(class_="organizations-list").text
     assert "organization2" not in content
 
 
@@ -194,14 +194,20 @@ def test_list_organizations_admin_can_access_settings(
     client = auth_client(admin)
     response = client.get(reverse("list_organizations"))
     soup = BeautifulSoup(response.content, features="html.parser")
-    org_link = soup.find(
-        "a", href=reverse("edit_organization", kwargs={"org_name": "orga1"})
+    manage_link = soup.find(
+        "a",
+        class_="opencve-org-card-manage",
+        href=reverse("edit_organization", kwargs={"org_name": "orga1"}),
     )
 
-    assert org_link is not None
-    assert org_link.text.strip() == "orga1"
-    assert soup.find("a", string="Edit") is not None
-    assert soup.find("a", string="Delete") is None
+    assert manage_link is not None
+    assert "Manage organization" in manage_link.text
+    assert "orga1" in soup.find(class_="organizations-list").text
+    edit_links = [
+        a.get_text(strip=True) for a in soup.select(".opencve-org-card-dropdown a")
+    ]
+    assert "Edit organization" in edit_links
+    assert "Delete organization" not in edit_links
 
 
 def test_edit_organization_member_cannot_access_settings(
@@ -760,7 +766,7 @@ def test_organization_invitation(auth_client, create_user, create_organization):
     url = reverse("list_organizations")
     response = client.get(url, data={}, follow=True)
     soup = BeautifulSoup(response.content, features="html.parser")
-    content = soup.find("ul", {"class": "organizations-list"}).text
+    content = soup.find(class_="organizations-list").text
     assert "Accept Invitation" in content
 
     url = reverse(
