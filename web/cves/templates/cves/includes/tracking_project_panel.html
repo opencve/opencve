@@ -1,0 +1,184 @@
+{% load authorization_tags %}
+{% load opencve_extras %}
+{% has_project_permission project 'project.tracker.comment' as can_comment %}
+
+<div class="opencve-cve-tracking-panel" data-project-name="{{ project.name }}">
+    {% if project_data.subscription_match_keys %}
+    <div class="opencve-cve-tracking-matches-row">
+        <div class="project-assignment-subscription-matches opencve-cve-tracking-matches-main">
+            <span class="project-assignment-label">Matches</span>
+            <div class="project-assignment-subscription-match-tags">
+                {% for match_key in project_data.subscription_match_keys_preview %}
+                {% if match_key|split:"$PRODUCT$"|length > 1 %}
+                {% with match_key|split:"$PRODUCT$" as parts %}
+                <a class="opencve-project-tag"
+                   href="{% url 'cves' %}?vendor={{ parts.0|urlencode }}&amp;product={{ parts.1|urlencode }}">{{ parts.1|humanize }}</a>
+                {% endwith %}
+                {% else %}
+                <a class="opencve-project-tag"
+                   href="{% url 'cves' %}?vendor={{ match_key|urlencode }}">{{ match_key|humanize }}</a>
+                {% endif %}
+                {% endfor %}
+                {% if project_data.subscription_match_keys_overflow %}
+                <span class="project-assignment-matches-more">and {{ project_data.subscription_match_keys_overflow }} more</span>
+                {% endif %}
+            </div>
+        </div>
+        <a href="{% url 'project' org_name=request.current_organization.name project_name=project.name %}"
+           class="opencve-cve-tracking-open-project">
+            Open project <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="opencve-cve-tracking-tracker-fields project-assignment-item-badges">
+        <div class="project-assignment-badge">
+            <span class="project-assignment-label">Assignee</span>
+            {% include "cves/includes/assignee_badge.html" with cve_id=cve.cve_id project=project tracker=tracker project_name=project.name org_name=request.current_organization.name %}
+        </div>
+        <div class="project-assignment-badge">
+            <span class="project-assignment-label">Status</span>
+            {% include "cves/includes/status_badge.html" with cve_id=cve.cve_id project=project tracker=tracker project_name=project.name org_name=request.current_organization.name %}
+        </div>
+    </div>
+
+    <div class="project-comments opencve-cve-tracking-comments">
+        <div class="project-comments-header opencve-cve-tracking-comments-header"
+             data-project-name="{{ project.name }}">
+            <div class="project-comments-summary">
+                <span class="opencve-cve-tracking-comments-title">Comments</span>
+                <span class="opencve-cve-tracking-comments-badge project-comments-count">{{ comment_count|default:0 }}</span>
+            </div>
+            <button type="button"
+                    class="project-comments-toggle"
+                    data-project-name="{{ project.name }}"
+                    aria-expanded="false"
+                    aria-label="Show comments">
+                <i class="fa fa-plus" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <div class="project-comments-body opencve-cve-tracking-comments-body is-collapsed"
+             data-project-name="{{ project.name }}">
+            <ul class="project-comments-list" data-project-name="{{ project.name }}">
+                {% if threads %}
+                    {% for thread in threads %}
+                        {% with comment=thread.comment replies=thread.replies %}
+                        <li class="project-comment-item" data-comment-id="{{ comment.id }}" data-project-name="{{ project.name }}">
+                            <div class="project-comment-card">
+                                <div class="project-comment-meta">
+                                    <div class="project-comment-meta-left">
+                                        <strong>{{ comment.author.username }}</strong>
+                                        <span class="text-muted project-comment-date">
+                                            {{ comment.created_at|date:"Y-m-d H:i" }}
+                                            {% if comment.edited %}
+                                                <span class="project-comment-edited">(edited)</span>
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if can_comment %}
+                                    <div class="project-comment-actions">
+                                        <button type="button" class="project-comment-action-btn project-comment-edit-btn" title="Edit">
+                                            <i class="fa fa-pencil"></i>
+                                        </button>
+                                        <button type="button" class="project-comment-action-btn project-comment-delete-btn" title="Delete">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="project-comment-body">
+                                    {{ comment.body|linebreaksbr }}
+                                </div>
+                            </div>
+                            {% if replies %}
+                                <ul class="project-comment-replies">
+                                    {% for reply in replies %}
+                                        <li class="project-comment-item project-comment-reply" data-comment-id="{{ reply.id }}" data-project-name="{{ project.name }}">
+                                            <div class="project-comment-card">
+                                                <div class="project-comment-meta">
+                                                    <div class="project-comment-meta-left">
+                                                        <strong>{{ reply.author.username }}</strong>
+                                                        <span class="text-muted project-comment-date">
+                                                            {{ reply.created_at|date:"Y-m-d H:i" }}
+                                                            {% if reply.edited %}
+                                                                <span class="project-comment-edited">(edited)</span>
+                                                            {% endif %}
+                                                        </span>
+                                                    </div>
+                                                    {% if can_comment %}
+                                                    <div class="project-comment-actions">
+                                                        <button type="button" class="project-comment-action-btn project-comment-edit-btn" title="Edit">
+                                                            <i class="fa fa-pencil"></i>
+                                                        </button>
+                                                        <button type="button" class="project-comment-action-btn project-comment-delete-btn" title="Delete">
+                                                            <i class="fa fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="project-comment-body">
+                                                    {{ reply.body|linebreaksbr }}
+                                                </div>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+
+                            {% if can_comment %}
+                            <button type="button"
+                                    class="btn btn-link btn-xs project-comment-reply-toggle"
+                                    data-project-name="{{ project.name }}"
+                                    data-comment-id="{{ comment.id }}">
+                                Reply
+                            </button>
+                            <form class="project-comment-reply-form"
+                                  data-project-name="{{ project.name }}"
+                                  data-org-name="{{ request.current_organization.name }}"
+                                  data-cve-id="{{ cve.cve_id }}"
+                                  data-parent-id="{{ comment.id }}"
+                                  style="display: none;">
+                                {% csrf_token %}
+                                <div class="project-comment-input">
+                                    <label class="sr-only" for="reply-{{ comment.id }}">Reply</label>
+                                    <textarea id="reply-{{ comment.id }}"
+                                              class="form-control project-comment-reply-textarea"
+                                              rows="1"
+                                              placeholder="Reply to this comment..."></textarea>
+                                    <button type="submit"
+                                            class="btn btn-default btn-xs project-comment-send-btn"
+                                            title="Reply">
+                                        <i class="fa fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
+                            {% endif %}
+                        </li>
+                        {% endwith %}
+                    {% endfor %}
+                {% endif %}
+            </ul>
+
+            {% if can_comment %}
+            <form class="project-comment-form"
+                  data-project-name="{{ project.name }}"
+                  data-org-name="{{ request.current_organization.name }}"
+                  data-cve-id="{{ cve.cve_id }}">
+                {% csrf_token %}
+                <div class="project-comment-input">
+                    <textarea id="comment-{{ project.id }}"
+                              class="form-control project-comment-textarea"
+                              rows="2"
+                              placeholder="Add a comment about this CVE for {{ project.name }}..."></textarea>
+                    <button type="submit"
+                            class="btn btn-default btn-xs project-comment-send-btn"
+                            title="Add comment">
+                        <i class="fa fa-paper-plane"></i>
+                    </button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>

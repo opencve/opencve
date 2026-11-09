@@ -1,0 +1,113 @@
+{% load opencve_extras %}
+
+<div class="opencve-cve-list" id="cves">
+    {% for cve in cves %}
+    {% get_cvss_score cve as cvss_score %}
+    {% get_cvss_version_label cve as cvss_version %}
+    {% with vendors=cve.vendors|cve_list_vendors products=cve.vendors|cve_list_products %}
+    <article class="box box-primary opencve-cve-card">
+        <div class="opencve-cve-card-body">
+            <div class="opencve-cve-card-main">
+                <a href="{% url 'cve' cve_id=cve.cve_id %}" class="opencve-cve-card-id">{{ cve.cve_id }}</a>
+                {% if cve.title %}
+                <h2 class="opencve-cve-card-title">{{ cve.title }}</h2>
+                {% endif %}
+                {% if cve.description %}
+                <p class="opencve-cve-card-description">{{ cve.description }}</p>
+                {% endif %}
+            </div>
+
+            <div class="opencve-cve-card-aside">
+                <div class="opencve-cve-card-badges">
+                    {% if cvss_score != None %}
+                    <span class="opencve-detail-badge opencve-detail-badge-cvss opencve-detail-badge-cvss-{{ cvss_score|cvss_level }}">
+                        {{ cvss_version|cvss_version_short }} · {{ cvss_score }} {{ cvss_score|cvss_human_score|title }}
+                    </span>
+                    {% else %}
+                    <span class="opencve-detail-badge opencve-detail-badge-neutral">CVSS n/a</span>
+                    {% endif %}
+
+                    {% if cve.epss.data %}
+                    <span class="opencve-detail-badge opencve-detail-badge-epss opencve-detail-badge-epss-{{ cve.epss.data.score|epss_level }}"
+                          data-toggle="tooltip"
+                          data-container="body"
+                          title="EPSS probability (30-day): {{ cve.epss.data.score|epss_exact_display }}">
+                        EPSS {{ cve.epss.data.score|epss_badge_display }}
+                    </span>
+                    {% else %}
+                    <span class="opencve-detail-badge opencve-detail-badge-neutral">EPSS n/a</span>
+                    {% endif %}
+
+                    {% if cve.kev.data %}
+                    <span class="opencve-detail-badge opencve-detail-badge-kev opencve-detail-badge-kev-listed"
+                          data-toggle="tooltip"
+                          data-container="body"
+                          title="Listed in the CISA Known Exploited Vulnerabilities catalog">
+                        KEV · Listed
+                    </span>
+                    {% else %}
+                    <span class="opencve-detail-badge opencve-detail-badge-neutral">KEV · Not listed</span>
+                    {% endif %}
+                </div>
+
+                <div class="opencve-cve-card-aside-row">
+                    <span class="opencve-cve-card-aside-label">Vendors</span>
+                    <div class="opencve-cve-card-aside-tags">
+                        {% if vendors %}
+                        {% for vendor in vendors|slice:":3" %}
+                        <a class="opencve-project-tag" href="{% url 'cves' %}?vendor={{ vendor|urlencode }}">{{ vendor|humanize }}</a>
+                        {% endfor %}
+                        {% if vendors|length > 3 %}
+                        <span class="opencve-cve-card-aside-more">and {{ vendors|length|add:"-3" }} more</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="opencve-cve-card-aside-row">
+                    <span class="opencve-cve-card-aside-label">Products</span>
+                    <div class="opencve-cve-card-aside-tags">
+                        {% if products %}
+                        {% for product in products|slice:":3" %}
+                        {% with product|split:"$PRODUCT$" as p %}
+                        <a class="opencve-project-tag" href="{% url 'cves' %}?vendor={{ p.0|urlencode }}&product={{ p.1|urlencode }}">{{ p.1|humanize }}</a>
+                        {% endwith %}
+                        {% endfor %}
+                        {% if products|length > 3 %}
+                        <span class="opencve-cve-card-aside-more">and {{ products|length|add:"-3" }} more</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if project %}
+                {% with tracker=cve.project_trackers.0 %}
+                <div class="opencve-cve-card-tracker-fields">
+                    <div class="opencve-cve-card-tracker-field">
+                        <span class="opencve-cve-card-aside-label">Assignee</span>
+                        {% include "cves/includes/assignee_badge.html" with cve_id=cve.cve_id project=project tracker=tracker project_name=project.name org_name=request.current_organization.name %}
+                    </div>
+                    <div class="opencve-cve-card-tracker-field">
+                        <span class="opencve-cve-card-aside-label">Status</span>
+                        {% include "cves/includes/status_badge.html" with cve_id=cve.cve_id project=project tracker=tracker project_name=project.name org_name=request.current_organization.name %}
+                    </div>
+                </div>
+                {% endwith %}
+                {% endif %}
+            </div>
+        </div>
+
+        <footer class="opencve-cve-card-footer">
+            <span class="opencve-cve-card-updated">Updated {{ cve.updated_at|date:"M j, Y" }}</span>
+            <a href="{% url 'cve' cve_id=cve.cve_id %}" class="opencve-cve-card-view">
+                View CVE <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+            </a>
+        </footer>
+    </article>
+    {% endwith %}
+    {% endfor %}
+</div>
