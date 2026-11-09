@@ -526,28 +526,27 @@ class ProjectMembershipForm(forms.Form):
             ]
 
         self.helper = FormHelper()
-        self.helper.form_show_labels = False
+        self.helper.form_tag = False
+        self.helper.form_show_labels = True
         self.helper.layout = Layout(
+            Field("membership_id"),
+            Field("role"),
             Div(
-                Div(Field("membership_id"), css_class="col-md-5"),
-                Div(Field("role"), css_class="col-md-5"),
-                Div(
-                    FormActions(
-                        Submit("save", "Add"),
+                FormActions(
+                    Submit(
+                        "save",
+                        "Add",
+                        css_class="btn btn-primary btn-primary-outline",
                     ),
-                    css_class="col-md-2",
                 ),
-                css_class="row",
+                css_class="opencve-project-vuln-filter-actions",
             ),
             Div(
-                Div(
-                    HTML(
-                        '<p class="help-block">Learn about organization and project roles in the '
-                        '<a href="https://docs.opencve.io/guides/access_control/" '
-                        'target="_blank" rel="noopener">Access Control guide</a>.</p>'
-                    ),
-                    css_class="col-md-12",
+                HTML(
+                    '<p class="help-block">Learn about organization and project roles in the '
+                    '<a href="https://docs.opencve.io/guides/access_control/" '
+                    'target="_blank" rel="noopener">Access Control guide</a>.</p>'
                 ),
-                css_class="row new-member-role-help",
+                css_class="new-member-role-help",
             ),
         )
