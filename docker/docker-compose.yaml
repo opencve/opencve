@@ -115,7 +115,14 @@ services:
     restart: on-failure
 
   redis:
-    image: redis/redis-stack:latest
+    image: redis:8.10.2-trixie@sha256:97ec88159e6d7cfb5ddef9015386087d58a912de80112f06ebdfa78fa5989901
+    # Persistence is stated explicitly so the recovery guarantee is
+    # visible: with AOF and fsync every second, an abrupt shutdown
+    # loses at most about one second of writes. The image default
+    # (RDB snapshots only) can lose up to an hour.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis-data:/data
     healthcheck:
        test: ["CMD", "redis-cli", "ping"]
        interval: 10s
@@ -144,3 +151,4 @@ volumes:
     postgres-db:
     staticfiles:
     repositories:
+    redis-data:
