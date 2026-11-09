@@ -1,0 +1,22 @@
+<div class="opencve-project-overview-empty{% if featured %} opencve-project-overview-empty--featured{% endif %}">
+    {% if icon %}
+    <div class="opencve-project-overview-empty-icon" aria-hidden="true">
+        <i class="fa {{ icon }}"></i>
+    </div>
+    {% endif %}
+    {% if title %}
+    <p class="opencve-project-overview-empty-title">{{ title }}</p>
+    {% endif %}
+    {% if text %}
+    <p class="opencve-project-overview-empty-text">{{ text }}</p>
+    {% endif %}
+    {% if cta_url and cta_label %}
+    {% if cta_button %}
+    <a href="{{ cta_url }}" class="btn btn-primary btn-primary-outline opencve-project-overview-empty-cta">
+        {% if cta_icon %}<i class="fa {{ cta_icon }}" aria-hidden="true"></i> {% endif %}{{ cta_label }}
+    </a>
+    {% else %}
+    <a href="{{ cta_url }}" class="opencve-project-overview-empty-link">{{ cta_label }} <i class="fa fa-long-arrow-right" aria-hidden="true"></i></a>
+    {% endif %}
+    {% endif %}
+</div>
