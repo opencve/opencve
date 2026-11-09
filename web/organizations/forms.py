@@ -83,7 +83,7 @@ class MembershipForm(forms.Form):
                 Div(Field("role"), css_class="col-md-5"),
                 Div(
                     FormActions(
-                        Submit("save", "Add"),
+                        Submit("save", "Add", css_class="btn-primary-outline"),
                     ),
                     css_class="col-md-2",
                 ),
@@ -137,7 +137,7 @@ class OrganizationAPITokenForm(forms.Form):
             "description",
             "access_mode",
             FormActions(
-                Submit("save", "Create Token"),
+                Submit("save", "Create Token", css_class="btn-primary-outline"),
                 css_class="pull-right",
             ),
         )
