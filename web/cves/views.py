@@ -12,18 +12,28 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.generic import DetailView, ListView, TemplateView, View
 
-from cves.constants import PRODUCT_SEPARATOR
+from cves.constants import (
+    CVE_QUICK_SEARCH_GROUPS,
+    CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW,
+    CVE_SIDEBAR_VIEWS_PREVIEW,
+    CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW,
+    PRODUCT_SEPARATOR,
+    build_cve_quick_search_sidebar_entries,
+)
 from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
 from cves.forms import SearchForm
 from cves.models import Cve, Product, Variable, Vendor, Weakness
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from cves.templatetags.opencve_extras import needs_quotes
 from cves.utils import (
+    affected_product_tab_context,
+    metrics_tab_context,
     affected_to_dict_vendors,
     humanize,
     list_to_dict_vendors,
     list_weaknesses,
     normalize_enrichment_affected,
+    project_subscription_match_keys,
 )
 from opencve.utils import is_valid_uuid
 from opencve.pagination import (
@@ -266,12 +276,27 @@ class CveListView(ListView):
 
         # Provide the search form
         context["search_form"] = self.form
+        quick_search_entries, quick_search_count = (
+            build_cve_quick_search_sidebar_entries(
+                CVE_QUICK_SEARCH_GROUPS,
+                CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW,
+            )
+        )
+        context["cve_quick_search_sidebar"] = quick_search_entries
+        context["cve_quick_search_count"] = quick_search_count
+        context["cve_sidebar_views_preview"] = CVE_SIDEBAR_VIEWS_PREVIEW
+        context["cve_sidebar_quick_searches_preview"] = (
+            CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW
+        )
+
+        current_q = self.request.GET.get("q", "")
+        context["cve_sidebar_shared_tab_active"] = False
 
         # Add organization views
         if self.request.current_organization:
             context["view_form"] = ViewForm(request=self.request)
 
-            context["views"] = SavedView.objects.filter(
+            views_qs = SavedView.objects.filter(
                 models.Q(
                     privacy="public", organization=self.request.current_organization
                 )
@@ -280,7 +305,18 @@ class CveListView(ListView):
                     user=self.request.user,
                     organization=self.request.current_organization,
                 )
-            ).order_by("-created_at")
+            )
+            context["views"] = views_qs.order_by("-created_at")
+            context["public_views"] = views_qs.filter(privacy="public").order_by("name")
+            context["private_views"] = views_qs.filter(privacy="private").order_by(
+                "name"
+            )
+            public_views = context["public_views"]
+            private_views = context["private_views"]
+            if current_q and any(v.query == current_q for v in public_views):
+                context["cve_sidebar_shared_tab_active"] = True
+            elif current_q and any(v.query == current_q for v in private_views):
+                context["cve_sidebar_shared_tab_active"] = False
 
         return context
 
@@ -488,6 +524,10 @@ class CveDetailView(DetailView):
                     }
                 )
 
+            subscription_match_keys = project_subscription_match_keys(
+                cve.vendors, project.subscriptions
+            )
+            match_preview = CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW
             projects_with_trackers.append(
                 {
                     "project": project,
@@ -496,6 +536,13 @@ class CveDetailView(DetailView):
                     "comment_count": total_comments,
                     "assignable_members": assignable_tracker_users(
                         self.request.current_organization, project
+                    ),
+                    "subscription_match_keys": subscription_match_keys,
+                    "subscription_match_keys_preview": subscription_match_keys[
+                        :match_preview
+                    ],
+                    "subscription_match_keys_overflow": max(
+                        0, len(subscription_match_keys) - match_preview
                     ),
                 }
             )
@@ -506,6 +553,9 @@ class CveDetailView(DetailView):
         context = super().get_context_data(**kwargs)
 
         cve = context["cve"]
+
+        context.update(affected_product_tab_context(cve))
+        context.update(metrics_tab_context(cve))
 
         # JSON context (KB, Mitre...)
         context.update(self.build_json_context(cve))
@@ -547,6 +597,9 @@ class CveDetailView(DetailView):
 
             accessible = self.get_accessible_projects()
             context["filtered_projects"] = self.list_cve_projects(cve, accessible)
+            context["cve_tracking_matches_preview"] = (
+                CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW
+            )
             context["status_choices"] = CveTracker.STATUS_CHOICES
 
         return context

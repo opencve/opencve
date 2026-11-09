@@ -1,0 +1,121 @@
+{% with current_q=request.GET.q|default:"" %}
+<aside class="opencve-cve-list-sidebar">
+    {% if request.current_organization %}
+    <div class="box box-primary opencve-cve-sidebar-card">
+        <div class="box-header with-border opencve-cve-sidebar-saved-header">
+            <h3 class="box-title">Saved views</h3>
+            <div class="dropdown opencve-project-card-menu opencve-cve-sidebar-views-menu">
+                <button type="button"
+                        class="btn btn-default btn-sm opencve-project-card-menu-btn dropdown-toggle"
+                        data-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false">
+                    <span aria-hidden="true">⋯</span>
+                    <span class="sr-only">Saved views actions</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-right opencve-project-card-dropdown">
+                    <li>
+                        <a href="#" id="save-view-button">
+                            <i class="fa fa-save" aria-hidden="true"></i>
+                            Save current search
+                        </a>
+                    </li>
+                    <li role="separator" class="divider"></li>
+                    <li>
+                        <a href="{% url 'list_views' org_name=request.current_organization.name %}">
+                            <i class="fa fa-cog" aria-hidden="true"></i>
+                            Manage views
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="box-body">
+            <ul class="nav nav-tabs opencve-cve-sidebar-view-tabs" role="tablist">
+                <li role="presentation"{% if not cve_sidebar_shared_tab_active %} class="active"{% endif %}>
+                    <a href="#opencve-cve-sidebar-personal"
+                       aria-controls="opencve-cve-sidebar-personal"
+                       role="tab"
+                       data-toggle="tab">Personal</a>
+                </li>
+                <li role="presentation"{% if cve_sidebar_shared_tab_active %} class="active"{% endif %}>
+                    <a href="#opencve-cve-sidebar-shared"
+                       aria-controls="opencve-cve-sidebar-shared"
+                       role="tab"
+                       data-toggle="tab">Shared</a>
+                </li>
+            </ul>
+
+            <div class="tab-content opencve-cve-sidebar-view-panels">
+                <div role="tabpanel"
+                     class="tab-pane opencve-cve-sidebar-list-panel{% if not cve_sidebar_shared_tab_active %} active{% endif %}"
+                     id="opencve-cve-sidebar-personal">
+                    <ul class="opencve-cve-sidebar-nav">
+                        {% for view in private_views %}
+                        <li{% if forloop.counter > cve_sidebar_views_preview %} class="opencve-cve-sidebar-extra is-hidden"{% endif %}>
+                            <a href="{% url 'cves' %}?q={{ view.query|urlencode }}"
+                               class="opencve-cve-sidebar-nav-link opencve-cve-sidebar-view-link{% if current_q == view.query %} is-active{% endif %}">
+                                <i class="fa fa-bookmark opencve-cve-sidebar-nav-icon" aria-hidden="true"></i>
+                                <span class="opencve-cve-sidebar-nav-label">{{ view.name }}</span>
+                            </a>
+                        </li>
+                        {% empty %}
+                        <li class="opencve-cve-sidebar-empty">No personal views yet.</li>
+                        {% endfor %}
+                    </ul>
+                    {% if private_views.count > cve_sidebar_views_preview %}
+                    <button type="button" class="btn btn-link opencve-cve-sidebar-show-more">Show more</button>
+                    {% endif %}
+                </div>
+                <div role="tabpanel"
+                     class="tab-pane opencve-cve-sidebar-list-panel{% if cve_sidebar_shared_tab_active %} active{% endif %}"
+                     id="opencve-cve-sidebar-shared">
+                    <ul class="opencve-cve-sidebar-nav">
+                        {% for view in public_views %}
+                        <li{% if forloop.counter > cve_sidebar_views_preview %} class="opencve-cve-sidebar-extra is-hidden"{% endif %}>
+                            <a href="{% url 'cves' %}?q={{ view.query|urlencode }}"
+                               class="opencve-cve-sidebar-nav-link opencve-cve-sidebar-view-link{% if current_q == view.query %} is-active{% endif %}">
+                                <i class="fa fa-bookmark opencve-cve-sidebar-nav-icon" aria-hidden="true"></i>
+                                <span class="opencve-cve-sidebar-nav-label">{{ view.name }}</span>
+                            </a>
+                        </li>
+                        {% empty %}
+                        <li class="opencve-cve-sidebar-empty">No shared views yet.</li>
+                        {% endfor %}
+                    </ul>
+                    {% if public_views.count > cve_sidebar_views_preview %}
+                    <button type="button" class="btn btn-link opencve-cve-sidebar-show-more">Show more</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="box box-primary opencve-cve-sidebar-card">
+        <div class="box-header with-border">
+            <h3 class="box-title">Quick searches</h3>
+        </div>
+        <div class="box-body opencve-cve-sidebar-list-panel">
+            <ul class="opencve-cve-sidebar-nav opencve-cve-sidebar-quick-nav">
+                {% for entry in cve_quick_search_sidebar %}
+                {% if entry.kind == "heading" %}
+                <li class="opencve-cve-sidebar-quick-section{% if entry.hidden %} opencve-cve-sidebar-extra is-hidden{% endif %}">{{ entry.label }}</li>
+                {% else %}
+                <li{% if entry.hidden %} class="opencve-cve-sidebar-extra is-hidden"{% endif %}>
+                    <a href="{% url 'cves' %}?q={{ entry.query|urlencode }}"
+                       class="opencve-cve-sidebar-nav-link{% if current_q == entry.query %} is-active{% endif %}">
+                        <i class="fa {{ entry.icon }} opencve-cve-sidebar-nav-icon" aria-hidden="true"></i>
+                        <span class="opencve-cve-sidebar-nav-label">{{ entry.label }}</span>
+                    </a>
+                </li>
+                {% endif %}
+                {% endfor %}
+            </ul>
+            {% if cve_quick_search_count > cve_sidebar_quick_searches_preview %}
+            <button type="button" class="btn btn-link opencve-cve-sidebar-show-more">Show more</button>
+            {% endif %}
+        </div>
+    </div>
+</aside>
+{% endwith %}

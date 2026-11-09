@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% load opencve_extras %}
 {% load crispy_forms_tags %}
 
@@ -15,96 +16,71 @@
         <div class="col-md-12">
             {% include "messages.html" %}
         </div>
-        <div class="col-md-7">
-            <div class="box box-primary">
+    </div>
+
+    <div class="row opencve-cve-list-layout">
+        <div class="col-md-3 col-sm-12">
+            {% include "cves/includes/cve_list_sidebar.html" %}
+        </div>
+        <div class="col-md-9 col-sm-12 opencve-cve-list-main">
+            <div class="box box-primary opencve-cve-search-card">
                 <div class="box-header with-border">
-                    <h3 class="box-title">Search</h3>
+                    <h3 class="box-title">Search vulnerabilities</h3>
                 </div>
                 <div class="box-body" id="advanced-search">
                     <form method="GET">
-                        <div class="row">
-                            <div class="col-md-9">
+                        <div class="opencve-cve-search-form-row">
+                            <div class="opencve-cve-search-input">
                                 {{ search_form.q|as_crispy_field }}
                             </div>
-                            <div class="col-md-3">
-                                <div class="btn-group" style="width: 100%;">
-                                    <button type="submit" class="btn btn-primary" style="width: 60%;"><i class="fa fa-search"></i> Search</button>
-                                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="width: 40%;">
-                                        <i class="fa fa-wrench"></i> <span class="caret"></span>
-                                        <span class="sr-only">Toggle Dropdown</span>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-right">
-                                        <li><a href="#" data-toggle="modal" data-target="#queryBuilderModal"><i class="fa fa-cogs fa-fw"></i> Query Builder</a></li>
-                                        <li><a href="#" id="save-view-button"><i class="fa fa-save fa-fw"></i> Save Query</a></li>
-                                        <li><a href="#" data-toggle="modal" data-target="#modal-load-views"><i class="fa fa-download fa-fw"></i> Load Query</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="col-md-12">
-                                <small class="form-text text-muted">
-                                     Use the <a href='#' data-toggle='modal' data-target='#queryBuilderModal'>Query Builder</a> to create your own search query, or check out the <a href='https://docs.opencve.io/guides/advanced_search/'>documentation</a> to learn the search syntax.
-                                </small>
+                            <div class="opencve-cve-search-actions">
+                                <button type="submit" class="btn btn-primary btn-primary-outline opencve-cve-search-submit">
+                                    <i class="fa fa-search" aria-hidden="true"></i> Search
+                                </button>
+                                <button type="button" class="btn btn-default btn-default-outline opencve-cve-search-query-builder"
+                                        data-toggle="modal" data-target="#queryBuilderModal">
+                                    <i class="fa fa-sliders" aria-hidden="true"></i> Query builder
+                                </button>
                             </div>
                         </div>
+                        <small class="form-text text-muted opencve-cve-search-help">
+                            Use the <a href="#" data-toggle="modal" data-target="#queryBuilderModal">Query Builder</a> to create your own search query, or check out the <a href="https://docs.opencve.io/guides/advanced_search/">documentation</a> to learn the search syntax.
+                        </small>
                     </form>
                 </div>
             </div>
-        </div>
-        <div class="col-md-5">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Search Examples</h3>
-                </div>
-                <div class="box-body">
-                    <a href="{% url 'cves' %}?q=kev:true" class="query-example-tag">CVEs in KEV</a>
-                    <a href="{% url 'cves' %}?q=epss%3E%3D80" class="query-example-tag">CVEs with EPSS >= 80%</a>
-                    <a href="{% url 'cves' %}?q=vendor:microsoft+AND+cvss31%3E%3D9" class="query-example-tag">Crit. Microsoft</a>
-                    <a href="{% url 'cves' %}?q=vendor:apache+AND+cvss31%3E%3D7" class="query-example-tag">High Apache</a>
-                    <a href="{% url 'cves' %}?q=cwe:CWE-89" class="query-example-tag">SQL Injection (CWE-89)</a>
-                    <a href="{% url 'cves' %}?q=vendor:linux+AND+product:linux_kernel" class="query-example-tag">Linux Kernel</a>
-                    <a href="{% url 'cves' %}?q=cvss31%3E%3D7+AND+cvss31%3C9" class="query-example-tag">High (CVSS 3.1)</a>
-                    <a href="{% url 'cves' %}?q=vendor:apache+AND+product:struts" class="query-example-tag">Apache Struts</a>
-                    <a href="{% url 'cves' %}?q=description%3A%27remote+code+execution%27" class="query-example-tag">RCE (Remote Code Execution)</a>
-                    <a href="{% url 'cves' %}?q=cwe:CWE-79" class="query-example-tag">XSS (CWE-79)</a>
-                    <a href="{% url 'cves' %}?q=cvss40%3E%3D9" class="query-example-tag">Critical (CVSS 4.0)</a>
-                    <a href="{% url 'cves' %}?q=userTag%3Atocheck" class="query-example-tag">CVEs to check</a>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <div class="row">
-        <div class='col-md-12'>
             {% if cves %}
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Search Results <small>({{ page_obj.paginator.count }} CVEs found)</small></h3>
-                    <div class="box-tools pull-right">
-                        <a href="{% url 'cves_export_csv' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-default btn-xs"><i class="fa fa-download"></i> Export CSV</a>
-                    </div>
-                </div>
-                <div class="box-body table-responsive no-padding">
-                    {% include "cves/includes/cve_table.html" %}
+            <div class="opencve-cve-list-toolbar">
+                <p class="opencve-cve-list-results">
+                    <span class="opencve-cve-list-results-label">Results</span>
+                    <span class="opencve-cve-list-results-count">{{ page_obj.paginator.count|intcomma }}</span>
+                </p>
+                <a href="{% url 'cves_export_csv' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+                   class="btn btn-default btn-sm opencve-cve-list-export">
+                    <i class="fa fa-download" aria-hidden="true"></i> Export CSV
+                </a>
+            </div>
 
-                    <div class="center">
-                        <div class="pagination">
-                            <span class="step-links">
-                                {% if page_obj.has_previous %}
-                                    <a href="{% url 'cves'%}?{% query_params_url 'page' 1 %}">&laquo; first</a>
-                                    <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.previous_page_number %}">previous</a>
-                                {% endif %}
+            {% include "cves/includes/cve_card_list.html" %}
 
-                                <span class="current">
-                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
-                                </span>
+            <div class="center opencve-cve-list-pagination">
+                <div class="pagination">
+                    <span class="step-links">
+                        {% if page_obj.has_previous %}
+                            <a href="{% url 'cves'%}?{% query_params_url 'page' 1 %}">&laquo; first</a>
+                            <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.previous_page_number %}">previous</a>
+                        {% endif %}
 
-                                {% if page_obj.has_next %}
-                                    <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.next_page_number %}">next</a>
-                                    <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a>
-                                {% endif %}
-                            </span>
-                        </div>
-                    </div>
+                        <span class="current">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                        </span>
+
+                        {% if page_obj.has_next %}
+                            <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.next_page_number %}">next</a>
+                            <a href="{% url 'cves'%}?{% query_params_url 'page' page_obj.paginator.num_pages %}">last &raquo;</a>
+                        {% endif %}
+                    </span>
                 </div>
             </div>
             {% else %}
