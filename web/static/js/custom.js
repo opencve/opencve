@@ -1745,7 +1745,6 @@ function getContrastedColor(str){
   */
   (function() {
     // Constants
-    const TRACKER_CHEVRON_HTML = '<span class="opencve-tracker-select-chevron" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>';
     const TRACKER_CHECK_HTML = '<span class="opencve-tracker-menu-item-check" aria-hidden="true"><i class="fa fa-check"></i></span>';
 
     const STATUS_ORDER = [
@@ -1774,27 +1773,70 @@ function getContrastedColor(str){
         return '<span class="opencve-tracker-status-dot opencve-tracker-status-dot--' + key + '" aria-hidden="true"></span>';
     }
 
-    function trackerAssigneeLeadingHtml(assigneeId, member) {
-        if (!assigneeId || !member) {
-            return '<span class="opencve-tracker-select-leading"><i class="fa fa-user-o opencve-tracker-select-icon" aria-hidden="true"></i></span>';
+    function statusChoiceForKey(statusKey) {
+        const choices = (window.cveTrackingData && window.cveTrackingData.statusChoices) || [];
+        return choices.find(function(choice) {
+            return choice.key === statusKey;
+        });
+    }
+
+    function statusDotClassSuffix(statusKey) {
+        if (!statusKey || !statusChoiceForKey(statusKey)) {
+            return 'empty';
         }
-        const avatarUrl = member.gravatarUrl || '';
-        return '<span class="opencve-tracker-select-leading"><img class="opencve-tracker-select-avatar" src="' + avatarUrl + '" alt="" width="20" height="20"></span>';
+        return statusKey;
     }
 
-    function buildAssigneeTriggerHtml(assigneeId, username, projectName) {
+    function statusDisplayLabel(statusKey, fallbackLabel) {
+        if (!statusKey) {
+            return 'No status';
+        }
+        const choice = statusChoiceForKey(statusKey);
+        if (choice && choice.label) {
+            return choice.label;
+        }
+        return fallbackLabel || 'No status';
+    }
+
+    function setTrackerStatusDotElement(dot, statusKey) {
+        const suffix = statusDotClassSuffix(statusKey);
+        dot.className = 'opencve-tracker-status-dot opencve-tracker-status-dot--' + suffix;
+        dot.setAttribute('aria-hidden', 'true');
+    }
+
+    function setTrackerAssigneeLeading(leading, assigneeId, projectName) {
+        leading.replaceChildren();
         const member = findAssignableMember(projectName, assigneeId);
-        const label = assigneeId && username ? username : 'Unassigned';
-        return trackerAssigneeLeadingHtml(assigneeId, member) +
-            '<span class="opencve-tracker-select-label">' + sanitizeText(label) + '</span>' +
-            TRACKER_CHEVRON_HTML;
+        if (!assigneeId || !member) {
+            const icon = document.createElement('i');
+            icon.className = 'fa fa-user-o opencve-tracker-select-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            leading.appendChild(icon);
+            return;
+        }
+        const img = document.createElement('img');
+        img.className = 'opencve-tracker-select-avatar';
+        img.setAttribute('src', member.gravatarUrl || '');
+        img.setAttribute('alt', '');
+        img.setAttribute('width', '20');
+        img.setAttribute('height', '20');
+        leading.appendChild(img);
     }
 
-    function buildStatusTriggerHtml(statusKey, statusLabel) {
-        const label = statusKey && statusLabel ? statusLabel : 'No status';
-        return trackerStatusDotHtml(statusKey) +
-            '<span class="opencve-tracker-select-label">' + sanitizeText(label) + '</span>' +
-            TRACKER_CHEVRON_HTML;
+    function ensureTrackerSelectLabel(badge) {
+        let labelEl = badge.querySelector('.opencve-tracker-select-label');
+        if (labelEl) {
+            return labelEl;
+        }
+        labelEl = document.createElement('span');
+        labelEl.className = 'opencve-tracker-select-label';
+        const chevron = badge.querySelector('.opencve-tracker-select-chevron');
+        if (chevron) {
+            badge.insertBefore(labelEl, chevron);
+        } else {
+            badge.appendChild(labelEl);
+        }
+        return labelEl;
     }
 
     function trackerMenuItemCheck(isSelected) {
@@ -1918,7 +1960,15 @@ function getContrastedColor(str){
         if (!badge) return;
 
         badge.setAttribute('data-current-assignee', assigneeId || '');
-        badge.innerHTML = buildAssigneeTriggerHtml(assigneeId, assigneeUsername, projectName);
+        let leading = badge.querySelector('.opencve-tracker-select-leading');
+        if (!leading) {
+            leading = document.createElement('span');
+            leading.className = 'opencve-tracker-select-leading';
+            badge.insertBefore(leading, badge.firstChild);
+        }
+        setTrackerAssigneeLeading(leading, assigneeId, projectName);
+        const labelEl = ensureTrackerSelectLabel(badge);
+        labelEl.textContent = assigneeId && assigneeUsername ? assigneeUsername : 'Unassigned';
         badge.className = 'opencve-tracker-select opencve-tracker-select--assignee editable-assignee';
 
         if (badge._tippy) {
@@ -1930,13 +1980,23 @@ function getContrastedColor(str){
         const badge = document.querySelector(getBadgeSelector(cveId, projectName, 'status'));
         if (!badge) return;
 
-        badge.setAttribute('data-current-status', statusKey || '');
-        badge.setAttribute('data-status', statusKey || 'empty');
-        badge.innerHTML = buildStatusTriggerHtml(statusKey, statusLabel);
+        const normalizedKey = statusKey && statusChoiceForKey(statusKey) ? statusKey : '';
+        badge.setAttribute('data-current-status', normalizedKey);
+        badge.setAttribute('data-status', normalizedKey || 'empty');
+
+        let dot = badge.querySelector('.opencve-tracker-status-dot');
+        if (!dot) {
+            dot = document.createElement('span');
+            badge.insertBefore(dot, badge.firstChild);
+        }
+        setTrackerStatusDotElement(dot, normalizedKey);
+
+        const labelEl = ensureTrackerSelectLabel(badge);
+        labelEl.textContent = statusDisplayLabel(normalizedKey, statusLabel);
         badge.className = 'opencve-tracker-select opencve-tracker-select--status editable-status';
 
         if (badge._tippy) {
-            badge._tippy.setContent(createStatusMenu(cveId, statusKey, projectName, orgName));
+            badge._tippy.setContent(createStatusMenu(cveId, normalizedKey, projectName, orgName));
         }
     }
 
