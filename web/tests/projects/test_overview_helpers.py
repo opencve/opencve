@@ -4,10 +4,8 @@ import pytest
 from django.test import override_settings
 
 from projects.models import AutomationRunResult
-from projects.views import (
-    _execution_overview_status,
-    _project_subscribed_cve_queryset,
-)
+from projects.services.subscriptions import project_subscribed_cves
+from projects.views import _execution_overview_status
 
 
 class _ResultsList:
@@ -60,7 +58,7 @@ def test_project_subscribed_cve_queryset_empty_without_subscriptions(
     user = create_user()
     org = create_organization(name="org1", user=user)
     project = create_project(name="p1", organization=org, vendors=[], products=[])
-    assert _project_subscribed_cve_queryset(project).count() == 0
+    assert project_subscribed_cves(project).count() == 0
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -75,6 +73,6 @@ def test_project_subscribed_cve_queryset_filters_by_subscription(
     )
     create_cve("CVE-2023-22490")
     create_cve("CVE-2021-44228")
-    qs = _project_subscribed_cve_queryset(project)
+    qs = project_subscribed_cves(project)
     assert qs.filter(cve_id="CVE-2023-22490").exists()
     assert not qs.filter(cve_id="CVE-2021-44228").exists()

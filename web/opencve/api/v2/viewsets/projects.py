@@ -102,6 +102,8 @@ from projects.services.notifications import (
     normalize_configuration_input,
 )
 from projects.services.subscriptions import (
+    project_subscribed_cves,
+    project_subscription_vendor_keys,
     replace_project_subscriptions,
     subscribe_project,
     subscriptions_to_api_format_from_project,
@@ -111,17 +113,9 @@ from projects.utils import send_notification_confirmation_email
 from users.models import User
 
 
-def _project_subscription_vendor_keys(project):
-    """Return the vendor keys from the project subscriptions"""
-    return project.subscriptions["vendors"] + project.subscriptions["products"]
-
-
 def _cve_matches_project_subscriptions(project, cve):
     """Return True if the CVE matches the project subscriptions"""
-    vendors = _project_subscription_vendor_keys(project)
-    if not vendors:
-        return False
-    return Cve.objects.filter(id=cve.id, vendors__has_any_keys=vendors).exists()
+    return project_subscribed_cves(project).filter(id=cve.id).exists()
 
 
 @extend_schema(tags=[PROJECTS_TAG])
@@ -367,7 +361,7 @@ class ProjectCveViewSet(
         if self.is_schema_generation:
             return Cve.objects.none()
         project = self.get_project()
-        vendors = _project_subscription_vendor_keys(project)
+        vendors = project_subscription_vendor_keys(project)
         if not vendors:
             return Cve.objects.none()
 

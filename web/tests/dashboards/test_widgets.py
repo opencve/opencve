@@ -1527,6 +1527,15 @@ def test_last_reports_widget_index_no_filter_shows_all_automations(
     assert list(actual_reports) == [report_b, report_a]
 
 
+def _align_project_subscriptions_with_cves(project, *cves, vendor_key="vendor-a"):
+    """Align project subscriptions and CVE vendor keys for in-scope widget tests."""
+    project.subscriptions = {"vendors": [vendor_key], "products": []}
+    project.save(update_fields=["subscriptions"])
+    for cve in cves:
+        cve.vendors = [vendor_key]
+        cve.save(update_fields=["vendors"])
+
+
 # MyAssignedCvesWidget class
 
 
@@ -1554,6 +1563,10 @@ def test_my_assigned_cves_widget_index(
     cve2 = create_cve("CVE-2022-20698")
     cve3 = create_cve("CVE-2023-22490")
     cve4 = create_cve("CVE-2024-31331")
+
+    _align_project_subscriptions_with_cves(project1_org1, cve1, cve3)
+    _align_project_subscriptions_with_cves(project2_org1, cve2)
+    _align_project_subscriptions_with_cves(project1_org2, cve4)
 
     # Create trackers: user1 assigned to cve1 and cve2 in org1 projects
     CveTracker.update_tracker(
@@ -1905,6 +1918,9 @@ def test_assignment_cves_widget_index(
     cve3 = create_cve("CVE-2023-22490")
     cve4 = create_cve("CVE-2024-31331")
 
+    _align_project_subscriptions_with_cves(project1, cve1, cve2, cve3)
+    _align_project_subscriptions_with_cves(project2, cve4)
+
     # Create trackers with different combinations
     CveTracker.update_tracker(
         project=project1, cve=cve1, assignee=user1, status="to_evaluate"
@@ -2217,6 +2233,10 @@ def test_assignment_cves_widget_index_multiple_statuses_excludes_no_tracker_cves
     cve_resolved = create_cve("CVE-2024-31331")
     cve_no_tracker = create_cve("CVE-2025-2239")
 
+    _align_project_subscriptions_with_cves(
+        project, cve_to_evaluate, cve_resolved, cve_no_tracker
+    )
+
     CveTracker.update_tracker(
         project=project,
         cve=cve_to_evaluate,
@@ -2274,6 +2294,7 @@ def test_assignment_cves_widget_legacy_single_status_config_is_supported(
 
     cve_to_evaluate = create_cve("CVE-2021-34181")
     cve_resolved = create_cve("CVE-2022-20698")
+    _align_project_subscriptions_with_cves(project, cve_to_evaluate, cve_resolved)
     CveTracker.update_tracker(
         project=project, cve=cve_to_evaluate, assignee=user, status="to_evaluate"
     )

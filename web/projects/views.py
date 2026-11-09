@@ -88,6 +88,10 @@ from projects.services.project_memberships import (
     remove_project_member,
     update_project_member_role,
 )
+from projects.services.subscriptions import (
+    project_in_scope_trackers,
+    project_subscribed_cves,
+)
 from projects.notifications import run_notification_try
 from projects.utils import (
     RESULT_TYPE_ICONS,
@@ -107,14 +111,6 @@ PROJECT_OVERVIEW_STATUS_KEYS = (
     "evaluated",
     "resolved",
 )
-
-
-def _project_subscribed_cve_queryset(project):
-    """CVEs whose vendors/products overlap the project's subscriptions."""
-    vendors = project.subscriptions["vendors"] + project.subscriptions["products"]
-    if not vendors:
-        return Cve.objects.none()
-    return Cve.objects.filter(vendors__has_any_keys=vendors)
 
 
 def _execution_overview_status(execution):
@@ -161,9 +157,8 @@ class ProjectDetailView(
         status_labels = dict(CveTracker.STATUS_CHOICES)
         raw_counts = {
             row["status"]: row["count"]
-            for row in CveTracker.objects.filter(
-                project=self.project, status__in=PROJECT_OVERVIEW_STATUS_KEYS
-            )
+            for row in project_in_scope_trackers(self.project)
+            .filter(status__in=PROJECT_OVERVIEW_STATUS_KEYS)
             .values("status")
             .annotate(count=Count("id"))
         }
@@ -189,7 +184,7 @@ class ProjectDetailView(
     def _get_assignee_overview(self):
         """Assignee assignment counts and bar widths for the overview panel."""
         stats = list(
-            CveTracker.objects.filter(project=self.project)
+            project_in_scope_trackers(self.project)
             .exclude(assignee__isnull=True)
             .values("assignee__username", "assignee__id")
             .annotate(count=Count("id"))
@@ -212,9 +207,7 @@ class ProjectDetailView(
 
     def _get_latest_cves(self, limit=6):
         """Most recently updated CVEs matching this project's subscriptions."""
-        return _project_subscribed_cve_queryset(self.project).order_by("-updated_at")[
-            :limit
-        ]
+        return project_subscribed_cves(self.project).order_by("-updated_at")[:limit]
 
     def _get_overview_automations(self, limit=8):
         """Automations for this project with last run status for the overview panel."""
