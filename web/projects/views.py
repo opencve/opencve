@@ -46,6 +46,7 @@ from authorization.permissions import (
     PROJECT_NOTIFICATIONS_MANAGE,
     PROJECT_NOTIFICATIONS_VIEW,
     PROJECT_REPORTS_VIEW,
+    PROJECT_SUBSCRIPTIONS_MANAGE,
     PROJECT_SUBSCRIPTIONS_VIEW,
     PROJECT_TRACKER_ASSIGN,
     PROJECT_TRACKER_COMMENT,
@@ -98,13 +99,49 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from users.models import User
 from views.models import View as SavedView
 
+PROJECT_OVERVIEW_STATUS_KEYS = (
+    "to_evaluate",
+    "pending_review",
+    "analysis_in_progress",
+    "remediation_in_progress",
+    "evaluated",
+    "resolved",
+)
+
+
+def _project_subscribed_cve_queryset(project):
+    """CVEs whose vendors/products overlap the project's subscriptions."""
+    vendors = project.subscriptions["vendors"] + project.subscriptions["products"]
+    if not vendors:
+        return Cve.objects.none()
+    return Cve.objects.filter(vendors__has_any_keys=vendors)
+
+
+def _execution_overview_status(execution):
+    """Map the latest automation execution to overview status kind and label."""
+    if execution is None:
+        return None, "Never"
+    results = list(execution.results.all())
+    if not results:
+        return "muted", "No results"
+    if any(r.status == AutomationRunResult.STATUS_FAILED for r in results):
+        return "failed", "Failed"
+    if any(r.status == AutomationRunResult.STATUS_SUCCESS for r in results):
+        return "success", "Success"
+    return "skipped", "Skipped"
+
 
 class ProjectsListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
     context_object_name = "projects"
     template_name = "projects/list_projects.html"
 
     def get_queryset(self):
-        return accessible_projects(self.request.user, self.request.current_organization)
+        memberships_qs = ProjectMembership.objects.select_related(
+            "membership__user"
+        ).order_by("membership__user__username", "membership__email")
+        return accessible_projects(
+            self.request.user, self.request.current_organization
+        ).prefetch_related(Prefetch("memberships", queryset=memberships_qs))
 
 
 class ProjectDetailView(
@@ -116,75 +153,183 @@ class ProjectDetailView(
     DetailView,
 ):
     required_project_permission = PROJECT_VIEW
-    # TODO: change this view into a ListView based on Changes,
-    #  so we'll have a pagination instead of [:10]
     model = Project
-    template_name = "projects/dashboard.html"
+    template_name = "projects/overview.html"
 
-    def _get_cve_tracking_stats(self):
-        # Assignee statistics
-        assignee_stats = (
+    def _get_status_counters(self):
+        """Build overview status cards with counts and filtered vulnerability URLs."""
+        status_labels = dict(CveTracker.STATUS_CHOICES)
+        raw_counts = {
+            row["status"]: row["count"]
+            for row in CveTracker.objects.filter(
+                project=self.project, status__in=PROJECT_OVERVIEW_STATUS_KEYS
+            )
+            .values("status")
+            .annotate(count=Count("id"))
+        }
+        vuln_url = reverse(
+            "project_vulnerabilities",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
+        )
+        counters = []
+        for status_key in PROJECT_OVERVIEW_STATUS_KEYS:
+            counters.append(
+                {
+                    "key": status_key,
+                    "label": status_labels.get(status_key, status_key),
+                    "count": raw_counts.get(status_key, 0),
+                    "filter_url": f"{vuln_url}?status={status_key}",
+                }
+            )
+        return counters
+
+    def _get_assignee_overview(self):
+        """Assignee assignment counts and bar widths for the overview panel."""
+        stats = list(
             CveTracker.objects.filter(project=self.project)
             .exclude(assignee__isnull=True)
             .values("assignee__username", "assignee__id")
             .annotate(count=Count("id"))
-            .order_by("-count")[:10]
+            .order_by("-count")[:8]
         )
-
-        # Status statistics
-        status_stats = (
-            CveTracker.objects.filter(project=self.project)
-            .exclude(status__isnull=True)
-            .values("status")
-            .annotate(count=Count("id"))
-            .order_by("-count")
+        max_count = max((row["count"] for row in stats), default=0)
+        vuln_base = reverse(
+            "project_vulnerabilities",
+            kwargs={
+                "org_name": self.request.current_organization.name,
+                "project_name": self.project.name,
+            },
         )
+        for row in stats:
+            row["bar_percent"] = (
+                int(round(100 * row["count"] / max_count)) if max_count else 0
+            )
+            row["filter_url"] = f"{vuln_base}?assignee={row['assignee__username']}"
+        return stats, max_count
 
-        # Prepare status display names
-        status_choices_dict = dict(CveTracker.STATUS_CHOICES)
-        status_stats_dict = {}
-        for stat in status_stats:
-            status_stats_dict[stat["status"]] = {
-                "status": stat["status"],
-                "status_display": status_choices_dict.get(
-                    stat["status"], stat["status"]
-                ),
-                "count": stat["count"],
-            }
+    def _get_latest_cves(self, limit=6):
+        """Most recently updated CVEs matching this project's subscriptions."""
+        return _project_subscribed_cve_queryset(self.project).order_by("-updated_at")[
+            :limit
+        ]
 
-        # Order status stats
-        status_stats_with_labels = []
-        for status_key, status_label in CveTracker.STATUS_CHOICES:
-            if status_key in status_stats_dict:
-                status_stats_with_labels.append(status_stats_dict[status_key])
+    def _get_overview_automations(self, limit=8):
+        """Automations for this project with last run status for the overview panel."""
+        automations = list(
+            Automation.objects.filter(project=self.project).order_by("name")[:limit]
+        )
+        overview = []
+        for automation in automations:
+            last_execution = (
+                AutomationExecution.objects.filter(automation=automation)
+                .prefetch_related("results")
+                .order_by("-executed_at")
+                .first()
+            )
+            status_kind, status_label = _execution_overview_status(last_execution)
+            overview.append(
+                {
+                    "automation": automation,
+                    "last_executed_at": (
+                        last_execution.executed_at if last_execution else None
+                    ),
+                    "status_kind": status_kind,
+                    "status_label": status_label,
+                }
+            )
+        return overview
 
-        return {
-            "assignee_stats": assignee_stats,
-            "status_stats": status_stats_with_labels,
-        }
+    def _get_overview_reports(self, limit=10):
+        """Recent reports for this project with listing summaries for the overview table."""
+        changes_with_cve_prefetch = Prefetch(
+            "changes",
+            queryset=Change.objects.select_related("cve"),
+        )
+        reports = list(
+            Report.objects.filter(project=self.project)
+            .select_related("automation")
+            .prefetch_related(changes_with_cve_prefetch)
+            .order_by("-created_at")[:limit]
+        )
+        for report in reports:
+            report.changes_summary = build_report_listing_summary(report.changes.all())
+        return reports
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["project"] = self.project
+        org_name = self.request.current_organization.name
 
-        # Get the list of vendors and products
-        vendors = (
-            self.object.subscriptions["vendors"] + self.object.subscriptions["products"]
+        context["overview_status_counters"] = self._get_status_counters()
+        assignee_stats, assignee_max = self._get_assignee_overview()
+        context["overview_assignee_stats"] = assignee_stats
+        context["overview_assignee_max"] = assignee_max
+        context["overview_latest_cves"] = self._get_latest_cves()
+        context["overview_vulnerabilities_url"] = reverse(
+            "project_vulnerabilities",
+            kwargs={"org_name": org_name, "project_name": self.project.name},
         )
 
-        if vendors:
-            query = Change.objects.select_related("cve")
-            query = query.filter(cve__vendors__has_any_keys=vendors)
-            context["changes"] = query.all().order_by("-created_at")[:10]
-            context["cve_tracking_stats"] = self._get_cve_tracking_stats()
-
-        # Last reports
-        query = (
-            Report.objects.filter(project=self.project)
-            .prefetch_related("changes")
-            .all()
+        auth = get_authorization_context(self.request)
+        context["can_view_automations"] = auth.has_project_permission(
+            self.project, PROJECT_AUTOMATIONS_VIEW
         )
-        context["reports"] = query.order_by("-created_at")[:10]
+        if context["can_view_automations"]:
+            context["overview_automations"] = self._get_overview_automations()
+            context["overview_automations_url"] = reverse(
+                "automations",
+                kwargs={"org_name": org_name, "project_name": self.project.name},
+            )
+
+        context["can_view_reports"] = auth.has_project_permission(
+            self.project, PROJECT_REPORTS_VIEW
+        )
+        if context["can_view_reports"]:
+            context["overview_reports"] = self._get_overview_reports()
+            context["overview_reports_url"] = reverse(
+                "reports",
+                kwargs={"org_name": org_name, "project_name": self.project.name},
+            )
+
+        subs = self.project.subscriptions or {}
+        overview_vendors = subs.get("vendors") or []
+        overview_products = subs.get("products") or []
+        context["overview_has_subscriptions"] = bool(
+            overview_vendors or overview_products
+        )
+        context["overview_subscription_vendors"] = overview_vendors[:5]
+        context["overview_subscription_products"] = overview_products[:5]
+        context["overview_subscriptions_url"] = reverse(
+            "subscriptions",
+            kwargs={"org_name": org_name, "project_name": self.project.name},
+        )
+        context["overview_vendors_url"] = reverse("vendors")
+        context["can_manage_subscriptions"] = auth.has_project_permission(
+            self.project, PROJECT_SUBSCRIPTIONS_MANAGE
+        )
+        context["can_manage_automations"] = auth.has_project_permission(
+            self.project, PROJECT_AUTOMATIONS_MANAGE
+        )
+
+        context["can_view_members"] = auth.has_project_permission(
+            self.project, PROJECT_MEMBERS_VIEW
+        )
+        if context["can_view_members"]:
+            context["overview_members"] = (
+                ProjectMembership.objects.filter(project=self.project)
+                .select_related("membership__user")
+                .order_by("membership__user__username", "membership__email")[:6]
+            )
+            context["overview_members_url"] = reverse(
+                "project_members",
+                kwargs={"org_name": org_name, "project_name": self.project.name},
+            )
+            context["can_manage_members"] = auth.has_project_permission(
+                self.project, PROJECT_MEMBERS_MANAGE
+            )
 
         return context
 

@@ -88,10 +88,9 @@ def test_projects_list_view_hides_null_description(
     client = auth_client(user)
     response = client.get(reverse("list_projects", kwargs={"org_name": "org1"}))
     assert response.status_code == 200
-    assert not re.search(
-        rb'<span class="product-description">\s+None\s+</span>',
-        response.content,
-    )
+    assert b"opencve-project-card" in response.content
+    assert b"legacy-project" in response.content
+    assert b">None<" not in response.content
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -190,9 +189,33 @@ def test_project_detail_view_context_data(
     )
     assert response.status_code == 200
     assert response.context["project"] == project
-    assert "changes" in response.context
-    assert "reports" in response.context
-    assert "cve_tracking_stats" in response.context
+    assert "overview_status_counters" in response.context
+    assert "overview_latest_cves" in response.context
+    assert "overview_reports" in response.context
+    assert response.context["overview_has_subscriptions"] is True
+    assert response.context["can_manage_subscriptions"] is True
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_project_detail_view_overview_without_subscriptions(
+    create_organization, create_user, create_project, auth_client
+):
+    """Overview flags empty subscriptions and still exposes manage permissions for owners."""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    project = create_project(
+        name="project-empty",
+        organization=org,
+        vendors=[],
+        products=[],
+    )
+    response = auth_client(user).get(
+        reverse("project", kwargs={"org_name": "org1", "project_name": project.name})
+    )
+    assert response.status_code == 200
+    assert response.context["overview_has_subscriptions"] is False
+    assert len(response.context["overview_latest_cves"]) == 0
+    assert response.context["can_manage_subscriptions"] is True
 
 
 @override_settings(ENABLE_ONBOARDING=False)
@@ -233,22 +256,20 @@ def test_project_detail_view_tracking_stats(
     )
     assert response.status_code == 200
 
-    stats = response.context["cve_tracking_stats"]
-    assert "assignee_stats" in stats
-    assert "status_stats" in stats
-
-    # Check assignee stats
-    assignee_stats = stats["assignee_stats"]
+    assignee_stats = response.context["overview_assignee_stats"]
     assert len(assignee_stats) == 2
     usernames = [stat["assignee__username"] for stat in assignee_stats]
     assert "user1" in usernames
     assert "user2" in usernames
 
-    # Check status stats
-    status_stats = stats["status_stats"]
-    status_keys = [stat["status"] for stat in status_stats]
-    assert "to_evaluate" in status_keys
-    assert "resolved" in status_keys
+    counter_keys = [c["key"] for c in response.context["overview_status_counters"]]
+    assert "to_evaluate" in counter_keys
+    assert "resolved" in counter_keys
+    counter_map = {
+        c["key"]: c["count"] for c in response.context["overview_status_counters"]
+    }
+    assert counter_map["to_evaluate"] == 1
+    assert counter_map["resolved"] == 1
 
 
 @override_settings(ENABLE_ONBOARDING=False)
