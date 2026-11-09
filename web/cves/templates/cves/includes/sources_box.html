@@ -1,0 +1,256 @@
+{% load static %}
+{% load opencve_extras %}
+{% is_cve_rejected cve as cve_rejected %}
+
+<div class="box box-primary cve-sources-box">
+    <div class="box-header">
+        <h3 class="box-title">Sources</h3>
+    </div>
+    <div class="box-body cve-sources-list">
+        <div class="cve-source-item">
+            <a class="cve-source-toggle collapsed"
+               data-toggle="collapse"
+               href="#cve-source-mitre"
+               aria-expanded="false"
+               aria-controls="cve-source-mitre">
+                <span class="cve-source-toggle-inner">
+                    <span class="cve-source-icon-wrap">
+                        <img src="{% static 'img/cve-icon.png' %}" class="cve-source-icon" alt="" />
+                    </span>
+                    <span class="cve-source-heading">
+                        <span class="cve-source-name">CVE record</span>
+                        {% if cve.mitre_json %}
+                        <span class="cve-source-preview">Updated: {{ cve.mitre_json.cveMetadata.dateUpdated|convert_str_date|date:"M j, Y, g:i A" }}</span>
+                        {% else %}
+                        <span class="cve-source-preview text-muted">No data</span>
+                        {% endif %}
+                    </span>
+                </span>
+                <i class="fa fa-chevron-down cve-source-chevron" aria-hidden="true"></i>
+            </a>
+            <div id="cve-source-mitre" class="collapse">
+                <div class="cve-source-details">
+                {% if cve.mitre_json %}
+                <dl class="cve-source-meta">
+                    <div class="cve-source-meta-row">
+                        <dt>Status</dt>
+                        <dd>{{ cve.mitre_json.cveMetadata.state }}</dd>
+                    </div>
+                    <div class="cve-source-meta-row">
+                        <dt>Assigner</dt>
+                        <dd>{{ cve.mitre_json.cveMetadata.assignerShortName }}</dd>
+                    </div>
+                    <div class="cve-source-meta-row">
+                        <dt>Published</dt>
+                        <dd>
+                            {% if cve.mitre_json.cveMetadata.datePublished %}
+                            <time datetime="{{ cve.mitre_json.cveMetadata.datePublished|convert_str_date|date:'Y-m-d\TH:i' }}">
+                                {{ cve.mitre_json.cveMetadata.datePublished|convert_str_date|date:"M j, Y, g:i A" }}
+                            </time>
+                            {% else %}
+                            No published date
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div class="cve-source-meta-row">
+                        <dt>Updated</dt>
+                        <dd>{{ cve.mitre_json.cveMetadata.dateUpdated|convert_str_date|date:"M j, Y, g:i A" }}</dd>
+                    </div>
+                    <div class="cve-source-meta-row">
+                        <dt>Reserved</dt>
+                        <dd>{{ cve.mitre_json.cveMetadata.dateReserved|convert_str_date|date:"M j, Y, g:i A" }}</dd>
+                    </div>
+                </dl>
+                <p class="cve-source-links">
+                    <a href="https://www.cve.org/CVERecord?id={{ cve.cve_id }}" target="_blank" rel="noopener noreferrer">View source <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                    <span class="cve-source-links-sep" aria-hidden="true">·</span>
+                    <a href="#" data-toggle="modal" data-target="#modal-mitre-json">JSON <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                </p>
+                {% else %}
+                <p class="text-muted cve-source-empty"><em>No data.</em></p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="cve-source-item">
+            <a class="cve-source-toggle collapsed"
+               data-toggle="collapse"
+               href="#cve-source-vulnrichment"
+               aria-expanded="false"
+               aria-controls="cve-source-vulnrichment">
+                <span class="cve-source-toggle-inner">
+                    <span class="cve-source-icon-wrap">
+                        <img src="{% static 'img/cisa-icon.png' %}" class="cve-source-icon" alt="" />
+                    </span>
+                    <span class="cve-source-heading">
+                        <span class="cve-source-name">Vulnrichment</span>
+                        {% if cve.vulnrichment_json %}
+                        <span class="cve-source-preview">Updated: {{ cve.vulnrichment_json.containers.adp.0.providerMetadata.dateUpdated|convert_str_date|date:"M j, Y, g:i A" }}</span>
+                        {% else %}
+                        <span class="cve-source-preview text-muted">No data</span>
+                        {% endif %}
+                    </span>
+                </span>
+                <i class="fa fa-chevron-down cve-source-chevron" aria-hidden="true"></i>
+            </a>
+            <div id="cve-source-vulnrichment" class="collapse">
+                <div class="cve-source-details">
+                {% if cve.vulnrichment_json %}
+                <dl class="cve-source-meta">
+                    <div class="cve-source-meta-row">
+                        <dt>Updated</dt>
+                        <dd>{{ cve.vulnrichment_json.containers.adp.0.providerMetadata.dateUpdated|convert_str_date|date:"M j, Y, g:i A" }}</dd>
+                    </div>
+                </dl>
+                <p class="cve-source-links">
+                    <a href="#" data-toggle="modal" data-target="#modal-vulnrichment-json">JSON <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                </p>
+                {% else %}
+                <p class="text-muted cve-source-empty"><em>No data.</em></p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="cve-source-item">
+            <a class="cve-source-toggle collapsed"
+               data-toggle="collapse"
+               href="#cve-source-nvd"
+               aria-expanded="false"
+               aria-controls="cve-source-nvd">
+                <span class="cve-source-toggle-inner">
+                    <span class="cve-source-icon-wrap">
+                        <img src="{% static 'img/nvd-icon.png' %}" class="cve-source-icon" alt="" />
+                    </span>
+                    <span class="cve-source-heading">
+                        <span class="cve-source-name">NVD</span>
+                        {% if cve.nvd_json %}
+                        <span class="cve-source-preview">Updated: {{ cve.nvd_json.lastModified|convert_str_date|date:"M j, Y, g:i A" }}</span>
+                        {% else %}
+                        <span class="cve-source-preview text-muted">No data</span>
+                        {% endif %}
+                    </span>
+                </span>
+                <i class="fa fa-chevron-down cve-source-chevron" aria-hidden="true"></i>
+            </a>
+            <div id="cve-source-nvd" class="collapse">
+                <div class="cve-source-details">
+                {% if cve.nvd_json %}
+                <dl class="cve-source-meta">
+                    <div class="cve-source-meta-row">
+                        <dt>Status</dt>
+                        <dd>{{ cve.nvd_json.vulnStatus }}</dd>
+                    </div>
+                    <div class="cve-source-meta-row">
+                        <dt>Published</dt>
+                        <dd>{{ cve.nvd_json.published|convert_str_date|date:"M j, Y, g:i A" }}</dd>
+                    </div>
+                    <div class="cve-source-meta-row">
+                        <dt>Modified</dt>
+                        <dd>{{ cve.nvd_json.lastModified|convert_str_date|date:"M j, Y, g:i A" }}</dd>
+                    </div>
+                </dl>
+                <p class="cve-source-links">
+                    <a href="https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}" target="_blank" rel="noopener noreferrer">View source <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                    <span class="cve-source-links-sep" aria-hidden="true">·</span>
+                    <a href="#" data-toggle="modal" data-target="#modal-nvd-json">JSON <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                </p>
+                {% else %}
+                <p class="text-muted cve-source-empty"><em>No data.</em></p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="cve-source-item">
+            <a class="cve-source-toggle collapsed"
+               data-toggle="collapse"
+               href="#cve-source-redhat"
+               aria-expanded="false"
+               aria-controls="cve-source-redhat">
+                <span class="cve-source-toggle-inner">
+                    <span class="cve-source-icon-wrap">
+                        <img src="{% static 'img/redhat-icon.png' %}" class="cve-source-icon" alt="" />
+                    </span>
+                    <span class="cve-source-heading">
+                        <span class="cve-source-name">Red Hat</span>
+                        {% if cve.redhat_json %}
+                        <span class="cve-source-preview">Updated: {{ cve.redhat_json.public_date|convert_str_date|date:"M j, Y, g:i A" }}</span>
+                        {% else %}
+                        <span class="cve-source-preview text-muted">No data</span>
+                        {% endif %}
+                    </span>
+                </span>
+                <i class="fa fa-chevron-down cve-source-chevron" aria-hidden="true"></i>
+            </a>
+            <div id="cve-source-redhat" class="collapse">
+                <div class="cve-source-details">
+                {% if cve.redhat_json %}
+                <dl class="cve-source-meta">
+                    <div class="cve-source-meta-row">
+                        <dt>Severity</dt>
+                        <dd>{{ cve.redhat_json.threat_severity }}</dd>
+                    </div>
+                    <div class="cve-source-meta-row">
+                        <dt>Public date</dt>
+                        <dd>{{ cve.redhat_json.public_date|convert_str_date|date:"M j, Y, g:i A" }}</dd>
+                    </div>
+                </dl>
+                <p class="cve-source-links">
+                    <a href="https://access.redhat.com/security/cve/{{ cve.cve_id }}" target="_blank" rel="noopener noreferrer">View source <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                    {% if cve.redhat_json.bugzilla.url %}
+                    <span class="cve-source-links-sep" aria-hidden="true">·</span>
+                    <a href="{{ cve.redhat_json.bugzilla.url }}" target="_blank" rel="noopener noreferrer">Bugzilla <i class="fa fa-bug" aria-hidden="true"></i></a>
+                    {% endif %}
+                    <span class="cve-source-links-sep" aria-hidden="true">·</span>
+                    <a href="#" data-toggle="modal" data-target="#modal-redhat-json">JSON <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                </p>
+                {% else %}
+                <p class="text-muted cve-source-empty"><em>No data.</em></p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="cve-source-item">
+            <a class="cve-source-toggle collapsed"
+               data-toggle="collapse"
+               href="#cve-source-enrichment"
+               aria-expanded="false"
+               aria-controls="cve-source-enrichment">
+                <span class="cve-source-toggle-inner">
+                    <span class="cve-source-icon-wrap">
+                        <img src="{% static 'img/opencve_32.png' %}" class="cve-source-icon" alt="" />
+                    </span>
+                    <span class="cve-source-heading">
+                        <span class="cve-source-name">OpenCVE enrichment</span>
+                        {% if cve.enrichment_json and not cve_rejected %}
+                        <span class="cve-source-preview">Updated: {{ cve.enrichment_json.updated|convert_str_date|date:"M j, Y, g:i A" }}</span>
+                        {% else %}
+                        <span class="cve-source-preview text-muted">No data</span>
+                        {% endif %}
+                    </span>
+                </span>
+                <i class="fa fa-chevron-down cve-source-chevron" aria-hidden="true"></i>
+            </a>
+            <div id="cve-source-enrichment" class="collapse">
+                <div class="cve-source-details">
+                {% if cve.enrichment_json and not cve_rejected %}
+                <dl class="cve-source-meta">
+                    <div class="cve-source-meta-row">
+                        <dt>Updated</dt>
+                        <dd>{{ cve.enrichment_json.updated|convert_str_date|date:"M j, Y, g:i A" }}</dd>
+                    </div>
+                </dl>
+                <p class="cve-source-links">
+                    <a href="#" data-toggle="modal" data-target="#modal-enrichment-json">JSON <i class="fa fa-external-link" aria-hidden="true"></i></a>
+                </p>
+                {% else %}
+                <p class="text-muted cve-source-empty"><em>No data.</em></p>
+                {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

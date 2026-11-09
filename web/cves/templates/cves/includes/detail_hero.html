@@ -1,0 +1,69 @@
+{% load opencve_extras %}
+
+<header class="opencve-detail-hero">
+    <nav class="opencve-detail-breadcrumb" aria-label="Breadcrumb">
+        <a href="{% url 'cves' %}">Vulnerabilities</a>
+        <span class="opencve-detail-breadcrumb-sep" aria-hidden="true">/</span>
+        <span class="opencve-detail-breadcrumb-current">{{ cve.cve_id }}</span>
+    </nav>
+
+    <div class="opencve-detail-hero-row">
+        <div class="opencve-detail-hero-main">
+            <h1 class="opencve-detail-title">{{ cve.cve_id }}</h1>
+            {% if cve.title %}
+            <p class="opencve-detail-subtitle">{{ cve.title }}</p>
+            {% endif %}
+        </div>
+        <div class="opencve-detail-hero-actions">
+            <a href="https://www.cve.org/CVERecord?id={{ cve.cve_id }}"
+               class="btn btn-default opencve-detail-view-external"
+               target="_blank"
+               rel="noopener noreferrer">
+                View on CVE.org <i class="fa fa-external-link" aria-hidden="true"></i>
+            </a>
+        </div>
+    </div>
+
+    {% get_cvss_score cve as cvss_score %}
+    {% get_cvss_version_label cve as cvss_version %}
+    <div class="opencve-detail-badges">
+        <span class="opencve-detail-badge opencve-detail-badge-neutral">
+            <i class="fa fa-calendar-o opencve-detail-badge-icon" aria-hidden="true"></i>
+            {% if cve.mitre_json.cveMetadata.datePublished %}
+            Published {{ cve.mitre_json.cveMetadata.datePublished|convert_str_date|date:"M j, Y" }}
+            {% else %}
+            Published n/a
+            {% endif %}
+        </span>
+
+        {% if cvss_score != None %}
+        <span class="opencve-detail-badge opencve-detail-badge-cvss opencve-detail-badge-cvss-{{ cvss_score|cvss_level }}">
+            {{ cvss_version|cvss_version_short }} · {{ cvss_score }} {{ cvss_score|cvss_human_score|title }}
+        </span>
+        {% else %}
+        <span class="opencve-detail-badge opencve-detail-badge-neutral">CVSS n/a</span>
+        {% endif %}
+
+        {% if cve.epss.data %}
+        <span class="opencve-detail-badge opencve-detail-badge-epss opencve-detail-badge-epss-{{ cve.epss.data.score|epss_level }}"
+              data-toggle="tooltip"
+              data-container="body"
+              title="EPSS probability (30-day): {{ cve.epss.data.score|epss_exact_display }}">
+            EPSS {{ cve.epss.data.score|epss_badge_display }}
+        </span>
+        {% else %}
+        <span class="opencve-detail-badge opencve-detail-badge-neutral">EPSS n/a</span>
+        {% endif %}
+
+        {% if cve.kev.data %}
+        <span class="opencve-detail-badge opencve-detail-badge-kev opencve-detail-badge-kev-listed"
+              data-toggle="tooltip"
+              data-container="body"
+              title="Listed in the CISA Known Exploited Vulnerabilities catalog">
+            KEV · Listed
+        </span>
+        {% else %}
+        <span class="opencve-detail-badge opencve-detail-badge-neutral">KEV · Not listed</span>
+        {% endif %}
+    </div>
+</header>

@@ -44,7 +44,11 @@
           <tr>
             <td class="enrichment-version-cell"><div class="enrichment-version-content"><code>{{ config.versions.value|default:"—" }}</code></div></td>
             <td>
-              <span class="label {% if config.status|default:''|slugify == 'affected' %}label-danger{% elif config.status|default:''|slugify == 'unaffected' %}label-success{% else %}label-default{% endif %}">{{ config.status|default:"—" }}</span>
+              {% if config.status %}
+              <span class="opencve-chip opencve-chip-{{ config.status|affected_status_chip_class }}">{{ config.status }}</span>
+              {% else %}
+              <span class="opencve-chip opencve-chip-muted">—</span>
+              {% endif %}
             </td>
             <td class="text-muted">{{ config.versions.scheme|default:"—" }}</td>
             <td class="text-muted">{{ config.platform|default:"—" }}</td>

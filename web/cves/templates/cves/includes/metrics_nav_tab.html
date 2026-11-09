@@ -1,0 +1,19 @@
+<li role="presentation"{% if not has_data %} class="opencve-metrics-tab--empty"{% elif tab_id == active_tab %} class="active"{% endif %}>
+    {% if has_data %}
+    <a href="#{{ tab_id }}" data-toggle="tab" role="tab">
+        <span class="opencve-segment-tab-inner">
+            <span class="opencve-segment-tab-label">{{ label }}</span>
+            {% include "cves/includes/metrics_nav_tab_chip.html" with chip=chip %}
+        </span>
+    </a>
+    {% else %}
+    <span class="opencve-metrics-tab-disabled">
+        <span class="opencve-segment-tab-inner opencve-metrics-tab-inner--stacked">
+            <span class="opencve-metrics-tab-copy">
+                <span class="opencve-segment-tab-label">{{ label }}</span>
+                <span class="opencve-metrics-tab-empty-hint">No data</span>
+            </span>
+        </span>
+    </span>
+    {% endif %}
+</li>
