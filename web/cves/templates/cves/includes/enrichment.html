@@ -5,7 +5,6 @@
     <tr>
       <th>Vendor</th>
       <th>Product</th>
-      <th>Confidence</th>
       <th>Versions</th>
     </tr>
   </thead>
@@ -20,13 +19,6 @@
       <td>
         {{ item.product|humanize }}
         {% if item.original %}<i class="fa fa-info-circle pointer" data-toggle="tooltip" data-html="true" title="Original from {{ item.original.source|default:'—'|upper }}<br />{{ item.original.product }}"></i>{% endif %}
-      </td>
-      <td>
-        {% if item.enrichment %}
-        {% if item.enrichment.confidence is not None %}<span class="label {% if item.enrichment.confidence >= 80 %}label-success{% else %}label-warning{% endif %}">{{ item.enrichment.confidence }}%{% if item.enrichment.scores %} <i class="fa fa-info-circle pointer" data-toggle="tooltip" data-html="true" title="{{ item.enrichment.scores|enrichment_scores_tooltip }}"></i>{% endif %}</span>{% else %}—{% endif %}
-        {% else %}
-        <span>—</span>
-        {% endif %}
       </td>
       <td>
         {% if item.configurations %}
@@ -69,12 +61,10 @@
       <td>{{ vendor|humanize }}</td>
       <td>{{ product|humanize }}</td>
       <td><span class="text-muted">—</span></td>
-      <td><span class="text-muted">—</span></td>
     </tr>
 {% empty %}
     <tr class="enrichment-affected-row">
       <td>{{ vendor|humanize }}</td>
-      <td><span class="text-muted">—</span></td>
       <td><span class="text-muted">—</span></td>
       <td><span class="text-muted">—</span></td>
     </tr>

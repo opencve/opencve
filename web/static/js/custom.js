@@ -314,14 +314,17 @@ function getContrastedColor(str){
     $('.select2-assignee').select2({
       allowClear: true,
       placeholder: 'All assignees',
+      width: '100%',
     });
     $('.select2-status').select2({
       allowClear: true,
       placeholder: 'All statuses',
+      width: '100%',
     });
     $('.select2-view').select2({
       allowClear: true,
       placeholder: 'Select a view',
+      width: '100%',
     });
     $('.select2-member-role').select2({allowClear: false});
     $('.select2-new-member-role').select2({
@@ -355,6 +358,21 @@ function getContrastedColor(str){
   $('#id_assignee').on('select2:clear', function() {
       $(this).val('').trigger('change');
   });
+
+    var vulnFilterSelect2ResizeTimer;
+    function syncVulnFilterSelect2Width() {
+      $('.opencve-project-vuln-filter-form select').each(function() {
+        var $select = $(this);
+        var select2 = $select.data('select2');
+        if (select2 && select2.$container) {
+          select2.$container.css('width', '100%');
+        }
+      });
+    }
+    $(window).on('resize', function() {
+      clearTimeout(vulnFilterSelect2ResizeTimer);
+      vulnFilterSelect2ResizeTimer = setTimeout(syncVulnFilterSelect2Width, 100);
+    });
 
     $('.load-more').click(function() {
         var button = $(this);
