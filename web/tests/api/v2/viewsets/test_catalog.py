@@ -5,6 +5,8 @@ from django.test import override_settings
 from django.urls import reverse
 
 from changes.models import Change
+from cves.constants import PRODUCT_SEPARATOR
+from cves.models import Cve, Product, Vendor
 from organizations.models import OrganizationAPIToken
 from tests.api.v2.conftest import assert_v2_error, bearer, read_token
 
@@ -409,6 +411,63 @@ def test_product_retrieve_not_found(client, read_token, create_cve):
     )
 
     assert_v2_error(response, "not_found", status_code=404)
+
+
+VENDOR_PRODUCT_NAMES = [
+    ("nodejs", "node.js"),
+    ("ui.com", "unifi_os"),
+    ("arox", "school_management_software_php\\/mysql"),
+    ("cisco", "dna_spaces\\"),
+    ("foo\\", "bar"),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("vendor_name,product_name", VENDOR_PRODUCT_NAMES)
+def test_vendor_and_product_names_with_special_characters(
+    client, read_token, vendor_name, product_name
+):
+    """Vendor and product endpoints accept names with dots or backslashes."""
+    vendor = Vendor.objects.create(name=vendor_name)
+    Product.objects.create(vendor=vendor, name=product_name)
+    Cve.objects.create(
+        cve_id="CVE-2024-0001",
+        vendors=[vendor_name, f"{vendor_name}{PRODUCT_SEPARATOR}{product_name}"],
+    )
+
+    response = client.get(vendor_detail_url(vendor_name), **bearer(read_token))
+    assert response.status_code == 200
+    assert response.json()["name"] == vendor_name
+
+    response = client.get(vendor_cves_url(vendor_name), **bearer(read_token))
+    assert response.status_code == 200
+    assert [item["cve_id"] for item in response.json()["results"]] == ["CVE-2024-0001"]
+
+    response = client.get(product_list_url(vendor_name), **bearer(read_token))
+    assert response.status_code == 200
+    assert [item["name"] for item in response.json()["results"]] == [product_name]
+
+    response = client.get(
+        product_detail_url(vendor_name, product_name), **bearer(read_token)
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == product_name
+
+    response = client.get(
+        product_cves_url(vendor_name, product_name), **bearer(read_token)
+    )
+    assert response.status_code == 200
+    assert [item["cve_id"] for item in response.json()["results"]] == ["CVE-2024-0001"]
+
+
+@pytest.mark.django_db
+def test_vendor_retrieve_with_unescaped_slash_not_found(client, read_token):
+    """An unescaped slash is not part of a vendor name."""
+    Vendor.objects.create(name="foo")
+
+    response = client.get("/api/v2/vendors/foo/bar", **bearer(read_token))
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db

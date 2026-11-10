@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import mixins, viewsets
 from rest_framework.response import Response
 
-from cves.constants import PRODUCT_SEPARATOR
+from cves.constants import PRODUCT_SEPARATOR, VENDOR_PRODUCT_NAME_REGEX
 from cves.models import Cve, Product, Vendor, Weakness
 from cves.serializers import (
     CveDetailSerializer,
@@ -65,6 +65,7 @@ class VendorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Vendor.objects.order_by("name").all()
     lookup_field = "name"
     lookup_url_kwarg = "name"
+    lookup_value_regex = VENDOR_PRODUCT_NAME_REGEX
 
 
 class VendorCveViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
@@ -83,6 +84,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProductListSerializer
     lookup_field = "name"
     lookup_url_kwarg = "name"
+    lookup_value_regex = VENDOR_PRODUCT_NAME_REGEX
 
     def get_queryset(self):
         vendor = get_object_or_404(Vendor, name=self.kwargs["vendor_name"])

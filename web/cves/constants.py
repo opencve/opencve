@@ -1,5 +1,10 @@
 PRODUCT_SEPARATOR = "$PRODUCT$"
 
+# Vendor and product names come from CPE strings, so they can contain dots
+# (`node.js`) and backslash-escaped characters such as `\/` (`php\/mysql`).
+# This regex is used to match these names in the API URLs.
+VENDOR_PRODUCT_NAME_REGEX = r"(?:\\/|[^/])+"
+
 CVSS_SCORES = [
     (0, 0),
     (1, 1),

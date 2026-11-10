@@ -7,6 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from changes.models import Change
+from cves.constants import VENDOR_PRODUCT_NAME_REGEX
 from cves.models import Cve, Product, Vendor, Weakness
 from cves.search import BadQueryException, MaxFieldsExceededException, Search
 from opencve.api.v2.mixins import ViewSetMixin
@@ -197,6 +198,7 @@ class VendorViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Vendor.objects.order_by("name").all()
     lookup_field = "name"
     lookup_url_kwarg = "name"
+    lookup_value_regex = VENDOR_PRODUCT_NAME_REGEX
     scope_map = {
         "list": APIScope.CATALOG_READ,
         "retrieve": APIScope.CATALOG_READ,
@@ -237,6 +239,7 @@ class ProductViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = ProductListSerializer
     lookup_field = "name"
     lookup_url_kwarg = "name"
+    lookup_value_regex = VENDOR_PRODUCT_NAME_REGEX
     scope_map = {
         "list": APIScope.CATALOG_READ,
         "retrieve": APIScope.CATALOG_READ,
