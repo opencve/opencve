@@ -1,16 +1,25 @@
 {% load authorization_tags %}
 {% if user.is_authenticated and filtered_projects %}
-<div class="box box-primary nav-tabs-custom nav-tabs-primary opencve-segment-tabs opencve-cve-tracking-box" id="cve-tracking">
+{% with project_count=filtered_projects|length %}
+<div class="box box-primary nav-tabs-custom nav-tabs-primary opencve-segment-tabs opencve-cve-tracking-box{% if project_count == 1 %} opencve-cve-tracking-box--single{% endif %}" id="cve-tracking">
     <div class="box-header opencve-cve-tracking-header">
         <h3 class="box-title">
             Tracking
-            <span class="opencve-cve-tracking-project-count">{{ filtered_projects|length }} project{{ filtered_projects|length|pluralize }}</span>
+            {% if project_count == 1 %}
+            {% with sole=filtered_projects.0 %}
+            <span class="opencve-cve-tracking-title-sep" aria-hidden="true"></span>
+            <span class="opencve-cve-tracking-single-project">{{ sole.project.name }}</span>
+            {% endwith %}
+            {% else %}
+            <span class="opencve-cve-tracking-project-count">{{ project_count }} project{{ project_count|pluralize }}</span>
+            {% endif %}
         </h3>
         <div class="box-tools pull-right">
             <i class="fa fa-info-circle" data-toggle="tooltip" data-container="body" data-placement="left" title="Projects appear here if they subscribe to at least one vendor or product affected by this CVE."></i>
         </div>
     </div>
 
+    {% if project_count > 1 %}
     <div class="opencve-cve-tracking-toolbar">
         <ul class="opencve-cve-tracking-nav" role="tablist">
             {% for project_data in filtered_projects %}
@@ -35,12 +44,13 @@
             {% endfor %}
         </ul>
     </div>
+    {% endif %}
 
     <div class="tab-content opencve-cve-tracking-tab-content" id="cves-tracking-list">
         {% for project_data in filtered_projects %}
         {% with project=project_data.project tracker=project_data.tracker threads=project_data.comments comment_count=project_data.comment_count %}
         <div role="tabpanel"
-             class="tab-pane opencve-cve-tracking-tab-pane{% if forloop.first %} active{% endif %}"
+             class="tab-pane opencve-cve-tracking-tab-pane{% if forloop.first %} active{% endif %}{% if project_count == 1 %} opencve-cve-tracking-tab-pane--solo{% endif %}"
              id="cve-tracking-tab-{{ project.id }}">
             {% include "cves/includes/tracking_project_panel.html" with project_data=project_data %}
         </div>
@@ -48,6 +58,7 @@
         {% endfor %}
     </div>
 </div>
+{% endwith %}
 {% elif user.is_authenticated %}
 <div class="box box-primary opencve-cve-section-empty" id="cve-tracking">
     <div class="box-header opencve-cve-section-empty-header">

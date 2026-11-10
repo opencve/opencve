@@ -166,9 +166,6 @@
             <p class="text-muted"><em>No data available yet.</em></p>
           {% elif cve.enrichment_json and cve.enrichment_json.affected or cve.enrichment_json and cve.enrichment_json.vendors %}
             {% include "cves/includes/enrichment.html" %}
-            <p class="text-muted small"><em>
-              Found an issue or want to improve our Enrichment? You can suggest it directly by opening an issue on our <a href="https://github.com/opencve/opencve-enrichment/" target="_blank" rel="noopener">dedicated GitHub repository <i class="fa fa-external-link"></i></a>.
-            </em></p>
           {% else %}
             <p class="text-muted"><em>No data available yet.</em></p>
           {% endif %}

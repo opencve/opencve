@@ -19,6 +19,7 @@ from cves.constants import (
     CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW,
     PRODUCT_SEPARATOR,
     build_cve_quick_search_sidebar_entries,
+    cve_sidebar_should_expand_views,
 )
 from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
 from cves.forms import SearchForm
@@ -276,10 +277,13 @@ class CveListView(ListView):
 
         # Provide the search form
         context["search_form"] = self.form
+        current_q = self.request.GET.get("q", "")
+
         quick_search_entries, quick_search_count = (
             build_cve_quick_search_sidebar_entries(
                 CVE_QUICK_SEARCH_GROUPS,
                 CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW,
+                current_q=current_q,
             )
         )
         context["cve_quick_search_sidebar"] = quick_search_entries
@@ -288,9 +292,12 @@ class CveListView(ListView):
         context["cve_sidebar_quick_searches_preview"] = (
             CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW
         )
-
-        current_q = self.request.GET.get("q", "")
+        context["cve_sidebar_quick_search_collapsed"] = any(
+            entry.get("hidden") for entry in quick_search_entries
+        )
         context["cve_sidebar_shared_tab_active"] = False
+        context["cve_sidebar_expand_private"] = False
+        context["cve_sidebar_expand_public"] = False
 
         # Add organization views
         if self.request.current_organization:
@@ -317,6 +324,13 @@ class CveListView(ListView):
                 context["cve_sidebar_shared_tab_active"] = True
             elif current_q and any(v.query == current_q for v in private_views):
                 context["cve_sidebar_shared_tab_active"] = False
+
+            context["cve_sidebar_expand_private"] = cve_sidebar_should_expand_views(
+                private_views, current_q, CVE_SIDEBAR_VIEWS_PREVIEW
+            )
+            context["cve_sidebar_expand_public"] = cve_sidebar_should_expand_views(
+                public_views, current_q, CVE_SIDEBAR_VIEWS_PREVIEW
+            )
 
         return context
 

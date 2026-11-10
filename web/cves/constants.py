@@ -325,7 +325,17 @@ CVE_QUICK_SEARCH_GROUPS = [
 ]
 
 
-def build_cve_quick_search_sidebar_entries(groups, preview):
+def cve_sidebar_should_expand_views(views, current_q, preview):
+    """Return True when the active saved-view query is beyond the collapsed preview limit."""
+    if not current_q:
+        return False
+    for index, view in enumerate(views, start=1):
+        if view.query == current_q and index > preview:
+            return True
+    return False
+
+
+def build_cve_quick_search_sidebar_entries(groups, preview, current_q=None):
     """Flatten grouped quick searches for the CVE list sidebar (headings + links)."""
     entries = []
     item_index = 0
@@ -349,4 +359,17 @@ def build_cve_quick_search_sidebar_entries(groups, preview):
             }
         )
         entries.extend(section_links)
+
+    if current_q:
+        active_in_collapsed = any(
+            entry.get("kind") == "link"
+            and entry.get("query") == current_q
+            and entry.get("hidden")
+            for entry in entries
+        )
+        if active_in_collapsed:
+            for entry in entries:
+                if "hidden" in entry:
+                    entry["hidden"] = False
+
     return entries, item_index

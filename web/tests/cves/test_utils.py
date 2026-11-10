@@ -244,3 +244,24 @@ def test_build_cve_quick_search_sidebar_entries():
     assert total >= len(link_entries)
     assert any(e["hidden"] for e in link_entries)
     assert any(not e["hidden"] for e in link_entries)
+
+
+def test_build_cve_quick_search_sidebar_entries_expands_when_active_hidden():
+    """Reveal collapsed quick searches when the current query matches a hidden link."""
+    from cves.constants import (
+        CVE_QUICK_SEARCH_GROUPS,
+        build_cve_quick_search_sidebar_entries,
+    )
+
+    link_queries = [
+        item["query"] for group in CVE_QUICK_SEARCH_GROUPS for item in group["items"]
+    ]
+    assert len(link_queries) > 2
+    active_q = link_queries[2]
+
+    entries, _ = build_cve_quick_search_sidebar_entries(
+        CVE_QUICK_SEARCH_GROUPS,
+        preview=2,
+        current_q=active_q,
+    )
+    assert not any(entry.get("hidden") for entry in entries)
