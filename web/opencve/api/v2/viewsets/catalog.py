@@ -117,6 +117,13 @@ class CveViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
         if "references" in includes:
             data["references"] = instance.nvd_json.get("references", [])
 
+        if "cna_affected" in includes:
+            data["cna_affected"] = (
+                instance.mitre_json.get("containers", {})
+                .get("cna", {})
+                .get("affected", [])
+            )
+
         return Response(data)
 
     @extend_schema(
