@@ -7,6 +7,10 @@ def feature_flags(request):
     return {"ENABLE_REGISTER": getattr(settings, "ENABLE_REGISTER", True)}
 
 
+def opencve_version(request):
+    return {"OPENCVE_VERSION": getattr(settings, "OPENCVE_VERSION", "")}
+
+
 def canonical_url_context(request):
     query_params = request.GET.dict()
 

@@ -89,6 +89,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "opencve.context_processors.canonical_url_context",
                 "opencve.context_processors.feature_flags",
+                "opencve.context_processors.opencve_version",
                 "authorization.context_processors.accessible_projects_for_request",
             ],
         },
@@ -372,3 +373,11 @@ NOTIFICATION_ALLOWED_INTERNAL_NETWORKS = env.list(
 
 # Base URL
 WEB_BASE_URL = env.str("WEB_BASE_URL", default="https://app.opencve.io")
+
+# OpenCVE version displayed to logged in users in the footer of the web interface.
+# The Docker images provide it with the `OPENCVE_VERSION` variable, other
+# installations read it from the `VERSION` file at the root of the repository.
+_version_file = BASE_DIR.parent / "VERSION"
+OPENCVE_VERSION = env.str("VERSION", default="") or (
+    _version_file.read_text().strip() if _version_file.is_file() else ""
+)
