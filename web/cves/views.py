@@ -25,6 +25,7 @@ from cves.utils import (
     list_weaknesses,
     normalize_enrichment_affected,
 )
+from opencve.mixins import AnonymousAccessMixin
 from opencve.utils import is_valid_uuid
 from opencve.pagination import (
     keyset_cursor_payload,
@@ -46,7 +47,7 @@ from views.forms import ViewForm
 from views.models import View as SavedView
 
 
-class WeaknessListView(ListView):
+class WeaknessListView(AnonymousAccessMixin, ListView):
     context_object_name = "weaknesses"
     template_name = "cves/weakness_list.html"
     paginate_by = 20
@@ -108,7 +109,7 @@ def vendor_list_page_context(*, search, vendor_filter):
     return context
 
 
-class VendorListView(TemplateView):
+class VendorListView(AnonymousAccessMixin, TemplateView):
     template_name = "cves/vendor_list.html"
 
     def get_context_data(self, **kwargs):
@@ -121,7 +122,7 @@ class VendorListView(TemplateView):
         return context
 
 
-class VendorListLoadMoreView(View):
+class VendorListLoadMoreView(AnonymousAccessMixin, View):
     def get(self, request, list_type, *args, **kwargs):
         if list_type not in {"vendors", "products"}:
             raise Http404("Unknown list type.")
@@ -163,7 +164,7 @@ class VendorListLoadMoreView(View):
         return JsonResponse({"html": html, **keyset_cursor_payload(page)})
 
 
-class CveListView(ListView):
+class CveListView(AnonymousAccessMixin, ListView):
     context_object_name = "cves"
     template_name = "cves/cve_list.html"
     paginate_by = 20
@@ -308,7 +309,7 @@ class CveCsvExportView(CveListView):
         return build_cve_csv_response(queryset, filename)
 
 
-class CveDetailView(DetailView):
+class CveDetailView(AnonymousAccessMixin, DetailView):
     model = Cve
     slug_field = "cve_id"
     slug_url_kwarg = "cve_id"
@@ -675,7 +676,7 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
         return JsonResponse({"status": "ok"})
 
 
-class StatisticsView(TemplateView):
+class StatisticsView(AnonymousAccessMixin, TemplateView):
     template_name = "cves/statistics.html"
 
     def get_context_data(self, **kwargs):

@@ -357,6 +357,10 @@ ENABLE_ONBOARDING = True
 # Allow new account registration (regular signup and social signup)
 ENABLE_REGISTER = True
 
+# Allow anonymous users to browse the vulnerabilities, vendors, weaknesses
+# and statistics pages. When disabled, they are redirected to the login page.
+ENABLE_ANONYMOUS_ACCESS = True
+
 # Maximum number of fields to allow in a CVE Advanced Search query
 CVES_ADVANCED_SEARCH_MAX_FIELDS = 5
 
