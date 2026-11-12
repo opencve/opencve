@@ -297,6 +297,107 @@ def test_prepare_report_content_payload_uses_report_timezone():
     assert payload["period"]["end"] == "2026-05-13T23:59:59.999999+02:00"
 
 
+def test_format_report_period_range_on_base_notifier():
+    """Report period boundaries are formatted for all notifier types via BaseNotifier."""
+
+    report = {
+        "report_day": "2026-05-13",
+        "period_type": "daily",
+        "period_timezone": "Europe/Paris",
+    }
+    start, end, tz = BaseNotifier._format_report_period_range(report)
+    assert tz == "Europe/Paris"
+    assert start == "May 13, 2026 00:00:00"
+    assert end == "May 13, 2026 23:59:59"
+
+
+def test_slack_notifier_format_slack_blocks_report():
+    """Report Slack messages must format period range without AttributeError."""
+    report_content = {
+        "report_id": "a786bd70-f3e0-4700-acbc-59bbcf4cbc2e",
+        "report_day": "2026-05-13",
+        "period_type": "daily",
+        "period_timezone": "Europe/Paris",
+        "cve_count": 3,
+        "report_url": "https://app.opencve.io/cve/report/abc",
+    }
+    period_window = get_report_period_window(
+        {
+            "period_day": "2026-05-13",
+            "period_type": "daily",
+            "period_timezone": "Europe/Paris",
+        }
+    )
+    notifier = SlackNotifier(
+        semaphore=None,
+        session=None,
+        notification={
+            "organization_name": "lido",
+            "project_name": "security",
+            "notification_name": "slack-reports",
+            "notification_conf": {
+                "extras": {"webhook_url": "https://hooks.slack.com/services/test"}
+            },
+        },
+        changes=[],
+        changes_details={},
+        period=period_window,
+        report_content=report_content,
+    )
+
+    messages = notifier.format_slack_blocks()
+
+    assert len(messages) == 1
+    section_blocks = [b for b in messages[0]["blocks"] if b["type"] == "section"]
+    report_text = section_blocks[-1]["text"]["text"]
+    assert (
+        "*Covers:* May 13, 2026 00:00:00 → May 13, 2026 23:59:59 (Europe/Paris)"
+        in report_text
+    )
+    assert "*Total CVEs:* 3" in report_text
+    assert "<https://app.opencve.io/cve/report/abc|Open report>" in report_text
+
+
+def test_email_notifier_get_report_template_context_period_range():
+    """Email report templates receive formatted period start, end, and timezone."""
+
+    report_content = {
+        "report_day": "2026-05-13",
+        "period_type": "daily",
+        "period_timezone": "UTC",
+        "cve_count": 1,
+        "report_url": "https://app.opencve.io/cve/report/xyz",
+    }
+    period_window = get_report_period_window(
+        {
+            "period_day": "2026-05-13",
+            "period_type": "daily",
+            "period_timezone": "UTC",
+        }
+    )
+    notifier = EmailNotifier(
+        semaphore=None,
+        session=None,
+        notification={
+            "organization_name": "org",
+            "project_name": "proj",
+            "notification_name": "email-reports",
+            "notification_conf": {"extras": {"email": "user@example.com"}},
+        },
+        changes=[],
+        changes_details={},
+        period=period_window,
+        report_content=report_content,
+    )
+
+    context = notifier.get_report_template_context()
+
+    assert context["period_start"] == "May 13, 2026 00:00:00"
+    assert context["period_end"] == "May 13, 2026 23:59:59"
+    assert context["period_timezone"] == "UTC"
+    assert context["cve_count"] == 1
+
+
 def test_generate_email_previews(tests_path, tmp_path_factory):
     """
     This test generates email previews in HTML and TXT formats.
