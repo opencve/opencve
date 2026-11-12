@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
-from opencve.context_processors import feature_flags
+from opencve.context_processors import feature_flags, opencve_version
 
 
 @pytest.mark.parametrize(
@@ -67,3 +67,36 @@ def test_feature_flags_enable_register_false():
     request = RequestFactory().get("/")
     context = feature_flags(request)
     assert context["ENABLE_REGISTER"] is False
+
+
+@override_settings(OPENCVE_VERSION="3.1.0")
+def test_opencve_version():
+    request = RequestFactory().get("/")
+    context = opencve_version(request)
+    assert context["OPENCVE_VERSION"] == "3.1.0"
+
+
+def get_footer_version(response):
+    soup = BeautifulSoup(response.content, features="html.parser")
+    version = soup.find("footer", class_="main-footer").find("div", class_="pull-right")
+    return " ".join(version.text.split()) if version else None
+
+
+@override_settings(OPENCVE_VERSION="3.1.0", ENABLE_ONBOARDING=False)
+def test_opencve_version_displayed_to_authenticated_users(auth_client):
+    response = auth_client().get(reverse("cves"))
+    assert get_footer_version(response) == "Version 3.1.0"
+
+
+@override_settings(OPENCVE_VERSION="3.1.0")
+def test_opencve_version_hidden_from_anonymous_users(db, client):
+    response = client.get(reverse("cves"))
+    assert response.status_code == 200
+    assert get_footer_version(response) is None
+
+
+@override_settings(OPENCVE_VERSION="", ENABLE_ONBOARDING=False)
+def test_opencve_version_hidden_when_unknown(auth_client):
+    response = auth_client().get(reverse("cves"))
+    assert response.status_code == 200
+    assert get_footer_version(response) is None
