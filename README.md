@@ -29,26 +29,31 @@ You can subscribe to products, receive alerts, analyze changes, and collaborate 
 ## Key Features
 
 ### 📚 Explore, Filter and Organize
+
 - Filter CVEs by vendor, product, CVSS, KEV, EPSS, CWE, publication date, and more.
 - Subscribe to vendors and products, and organize your monitoring with projects and organizations.
 - Save complex filters as reusable Views.
 
 ### 🔖 Tag, Prioritize and Get Notified
+
 - Classify CVEs with custom tags (e.g. unread, critical, assigned-to-dev).
 - Assign users and statuses to CVEs to track progress (under analysis, risk accepted, etc.).
 - Receive alerts instantly via email or webhook (Slack and Teams coming soon).
 
 ### 🔁 Track Changes and Generate Reports
+
 - Access the complete change history of CVEs: scores, descriptions, references, etc.
 - Generate daily reports by project to stay ahead.
 - Get AI-powered report summaries to see priorities and immediate actions at a glance.
 
 ### 📊 Customize Your Dashboard
+
 - Create multiple dashboards to organize your work the way you want.
 - Build your own dashboard with widgets like "CVEs per project" or "Recent Reports".
 - Drag, resize, and save layouts per organization.
 
 ### ✨ OpenCVE Enrichment
+
 - Automatically associate CVEs with vendors, products, and affected versions.
 - Advanced AI-powered analysis, including impact assessment and remediation insights, is available in OpenCVE Cloud.
 
@@ -70,9 +75,11 @@ For teams that need more advanced capabilities, OpenCVE Cloud provides additiona
 ## How to Use OpenCVE
 
 ### ✅ SaaS (Recommended)
+
 Use the hosted version at [https://www.opencve.io](https://www.opencve.io) — no setup required, with access to advanced features and enterprise capabilities.
 
 ### 🐳 Self-Hosted
+
 Run OpenCVE on your own infrastructure using Docker. See the [installation guide](https://docs.opencve.io/deployment/) for more details.
 
 ## Screenshots
@@ -83,6 +90,20 @@ Run OpenCVE on your own infrastructure using Docker. See the [installation guide
   <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve3.png" width="350" height="215">
   <img src="https://raw.githubusercontent.com/opencve/opencve/master/opencve4.png" width="350" height="215">
 </p>
+
+## Contributing
+
+We warmly welcome contributions to OpenCVE!
+
+We have recently received a substantial number of contributions, potentially in part due to AI coding tools. Every PR still needs human review and ongoing maintenance, and our capacity is limited.
+
+**Before starting work, please personally read our [Contributing Guidelines](CONTRIBUTING.md), whether you use AI tools or not.**
+
+For features and significant behavior changes, discuss the need and proposed approach with the maintainers and wait for explicit agreement before implementation. An existing issue does not mean that a solution has been approved or prioritized.
+
+Small, focused bug fixes and documentation corrections are welcome without prior discussion in most cases. Please coordinate before opening multiple unrelated PRs.
+
+AI-assisted contributions are welcome, provided you understand, verify and take responsibility for your changes. Review and merge are subject to project priorities and maintainer availability.
 
 ## Stay Updated
 

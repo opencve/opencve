@@ -1,0 +1,64 @@
+name: Welcome contributors
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  welcome:
+    # Skip bots and project maintainers.
+    if: >-
+      github.event.pull_request.user.type != 'Bot' &&
+      github.event.pull_request.author_association != 'OWNER' &&
+      github.event.pull_request.author_association != 'MEMBER' &&
+      github.event.pull_request.author_association != 'COLLABORATOR'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Post welcome comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const marker = '<!-- opencve-contribution-welcome -->';
+            const params = {
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+            };
+
+            // Avoid duplicate comments if the workflow is rerun.
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              params
+            );
+
+            if (comments.some(comment =>
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body?.includes(marker)
+            )) {
+              return;
+            }
+
+            const guidelines =
+              'https://github.com/opencve/opencve/blob/master/CONTRIBUTING.md';
+
+            await github.rest.issues.createComment({
+              ...params,
+              body: [
+                marker,
+                'Thanks for contributing to OpenCVE! 👋',
+                '',
+                `Have you read our [Contributing Guidelines](${guidelines})? Please take a moment to review them if you haven't already.`,
+                '',
+                'For new features or significant behavior changes, please discuss the need and proposed approach with the maintainers before implementation. An existing issue does not necessarily mean that a solution has been approved or prioritized.',
+                '',
+                'Small, focused fixes are welcome. If you have several contributions in mind, please coordinate with us before opening multiple unrelated PRs.',
+                '',
+                'AI-assisted contributions are welcome too: please make sure you understand and have verified your changes.',
+                '',
+                'We’re a small team, so reviews may take some time depending on our priorities and availability. Thanks for your patience and your help! 💚',
+              ].join('\n'),
+            });
