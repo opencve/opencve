@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from changes.models import Change
 from cves.models import Cve, Product, Vendor, Weakness
 from cves.search import BadQueryException, MaxFieldsExceededException, Search
-from opencve.api.v2.mixins import ViewSetMixin
+from opencve.api.v2.mixins import CveOrderingMixin, ViewSetMixin
 from opencve.api.v2.scopes import APIScope
 from opencve.api.v2.pagination import pagination_openapi_parameters
 from opencve.api.v2.openapi import (
@@ -20,6 +20,7 @@ from opencve.api.v2.openapi import (
     CVE_RETRIEVE_RESPONSE_EXAMPLE,
     CVE_CHANGE_DETAIL_RESPONSE_EXAMPLE,
     CVE_CHANGE_LIST_RESPONSE_EXAMPLE,
+    CVE_ORDERING_PARAM,
     VENDORS_TAG,
     VENDOR_NAME,
     PRODUCT_NAME,
@@ -50,7 +51,7 @@ from opencve.api.v2.serializers import (
         examples=[CVE_RETRIEVE_RESPONSE_EXAMPLE],
     ),
 )
-class CveViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
+class CveViewSet(CveOrderingMixin, ViewSetMixin, viewsets.ReadOnlyModelViewSet):
     lookup_field = "cve_id"
     queryset = Cve.objects.order_by("-updated_at").all()
     scope_map = {
@@ -71,7 +72,7 @@ class CveViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
 
         q = self.request.query_params.get("q")
         if not q:
-            return self.queryset
+            return self.order_cves(self.queryset)
 
         # Validate the search query
         search = Search(q, request=self.request)
@@ -79,7 +80,7 @@ class CveViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
             raise ValidationError({"q": str(search.error)})
 
         try:
-            return search.query
+            return self.order_cves(search.query)
         except (BadQueryException, MaxFieldsExceededException) as exc:
             raise ValidationError({"q": str(exc)}) from exc
 
@@ -170,9 +171,13 @@ class WeaknessViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
 
 @extend_schema(tags=[WEAKNESSES_TAG])
 @extend_schema_view(
-    list=extend_schema(summary="List CVEs associated with a weakness."),
+    list=extend_schema(
+        summary="List CVEs associated with a weakness.", parameters=[CVE_ORDERING_PARAM]
+    ),
 )
-class WeaknessCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
+class WeaknessCveViewSet(
+    CveOrderingMixin, ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin
+):
     serializer_class = CveListSerializer
     scope_map = {
         "list": APIScope.CATALOG_READ,
@@ -180,11 +185,7 @@ class WeaknessCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModel
 
     def get_queryset(self):
         weakness = get_object_or_404(Weakness, cwe_id=self.kwargs["cwe_id"])
-        return (
-            Cve.objects.order_by("-updated_at")
-            .filter(weaknesses__contains=weakness.cwe_id)
-            .all()
-        )
+        return self.order_cves(Cve.objects.filter(weaknesses__contains=weakness.cwe_id))
 
 
 @extend_schema(tags=[VENDORS_TAG])
@@ -205,9 +206,13 @@ class VendorViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
 
 @extend_schema(tags=[VENDORS_TAG])
 @extend_schema_view(
-    list=extend_schema(summary="List CVEs associated with a vendor."),
+    list=extend_schema(
+        summary="List CVEs associated with a vendor.", parameters=[CVE_ORDERING_PARAM]
+    ),
 )
-class VendorCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
+class VendorCveViewSet(
+    CveOrderingMixin, ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin
+):
     serializer_class = CveListSerializer
     scope_map = {
         "list": APIScope.CATALOG_READ,
@@ -215,11 +220,7 @@ class VendorCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMi
 
     def get_queryset(self):
         vendor = get_object_or_404(Vendor, name=self.kwargs["vendor_name"])
-        return (
-            Cve.objects.order_by("-updated_at")
-            .filter(vendors__contains=vendor.name)
-            .all()
-        )
+        return self.order_cves(Cve.objects.filter(vendors__contains=vendor.name))
 
 
 @extend_schema(tags=[VENDORS_TAG])
@@ -249,9 +250,13 @@ class ProductViewSet(ViewSetMixin, viewsets.ReadOnlyModelViewSet):
 
 @extend_schema(tags=[VENDORS_TAG])
 @extend_schema_view(
-    list=extend_schema(summary="List CVEs associated with a product."),
+    list=extend_schema(
+        summary="List CVEs associated with a product.", parameters=[CVE_ORDERING_PARAM]
+    ),
 )
-class ProductCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
+class ProductCveViewSet(
+    CveOrderingMixin, ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin
+):
     serializer_class = CveListSerializer
     scope_map = {
         "list": APIScope.CATALOG_READ,
@@ -262,8 +267,6 @@ class ProductCveViewSet(ViewSetMixin, viewsets.GenericViewSet, mixins.ListModelM
         product = get_object_or_404(
             Product, vendor=vendor, name=self.kwargs["product_name"]
         )
-        return (
-            Cve.objects.order_by("-updated_at")
-            .filter(vendors__contains=product.vendored_name)
-            .all()
+        return self.order_cves(
+            Cve.objects.filter(vendors__contains=product.vendored_name)
         )

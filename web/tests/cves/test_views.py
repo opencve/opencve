@@ -1683,3 +1683,165 @@ def test_cves_export_csv_redirects_when_over_limit(create_cve, auth_client):
         messages_list[0].message
         == "Export limit exceeded: 1 CVEs match your query. Please refine your search to export 10,000 CVEs or fewer."
     )
+
+
+# --- CVE list ordering ---
+
+
+def _create_dated_cves(create_cve):
+    """
+    Create CVEs whose publication and update dates give a different
+    order for each available ordering.
+    """
+    dates = {
+        "CVE-2021-44228": ("2021-01-01T00:00:00Z", "2024-03-01T00:00:00Z"),
+        "CVE-2022-22965": ("2022-01-01T00:00:00Z", "2024-01-01T00:00:00Z"),
+        "CVE-2023-22490": ("2023-01-01T00:00:00Z", "2024-02-01T00:00:00Z"),
+    }
+    for cve_id, (created_at, updated_at) in dates.items():
+        create_cve(cve_id)
+        Cve.objects.filter(cve_id=cve_id).update(
+            created_at=created_at, updated_at=updated_at
+        )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.parametrize(
+    "ordering,expected",
+    [
+        (None, ["CVE-2021-44228", "CVE-2023-22490", "CVE-2022-22965"]),
+        ("-updated_at", ["CVE-2021-44228", "CVE-2023-22490", "CVE-2022-22965"]),
+        ("updated_at", ["CVE-2022-22965", "CVE-2023-22490", "CVE-2021-44228"]),
+        ("-created_at", ["CVE-2023-22490", "CVE-2022-22965", "CVE-2021-44228"]),
+        ("created_at", ["CVE-2021-44228", "CVE-2022-22965", "CVE-2023-22490"]),
+        ("unknown", ["CVE-2021-44228", "CVE-2023-22490", "CVE-2022-22965"]),
+    ],
+)
+def test_list_cves_ordering(db, create_cve, client, ordering, expected):
+    _create_dated_cves(create_cve)
+
+    params = f"?ordering={ordering}" if ordering else ""
+    response = client.get(f"{reverse('cves')}{params}")
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    assert response.status_code == 200
+    assert _cve_list_ids(soup) == expected
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_cves_ordering_with_search_query(db, create_cve, client):
+    _create_dated_cves(create_cve)
+
+    response = client.get(
+        f"{reverse('cves')}?q=vendor:cisco&ordering=-created_at",
+    )
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert _cve_list_ids(soup) == ["CVE-2022-22965", "CVE-2021-44228"]
+
+    response = client.get(f"{reverse('cves')}?vendor=cisco&ordering=created_at")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert _cve_list_ids(soup) == ["CVE-2021-44228", "CVE-2022-22965"]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_cves_ordering_uses_cve_id_as_tie_breaker(db, create_cve, client):
+    for cve_id in ["CVE-2022-22965", "CVE-2021-44228", "CVE-2023-22490"]:
+        create_cve(cve_id)
+    Cve.objects.update(created_at="2022-01-01T00:00:00Z")
+
+    response = client.get(f"{reverse('cves')}?ordering=-created_at")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert _cve_list_ids(soup) == [
+        "CVE-2023-22490",
+        "CVE-2022-22965",
+        "CVE-2021-44228",
+    ]
+
+    response = client.get(f"{reverse('cves')}?ordering=created_at")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    assert _cve_list_ids(soup) == [
+        "CVE-2021-44228",
+        "CVE-2022-22965",
+        "CVE-2023-22490",
+    ]
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_cves_ordering_menu(db, create_cve, client):
+    create_cve("CVE-2021-44228")
+
+    response = client.get(f"{reverse('cves')}?q=log4j&ordering=-created_at&page=1")
+    soup = BeautifulSoup(response.content, features="html.parser")
+    menu = soup.select_one(".opencve-cve-list-ordering")
+
+    toggle = menu.select_one(".dropdown-toggle")
+    assert toggle.get_text(strip=True) == "Published: newest first"
+
+    links = menu.select(".dropdown-menu a")
+    assert [link.get_text(strip=True) for link in links] == [
+        "Updated: newest first",
+        "Updated: oldest first",
+        "Published: newest first",
+        "Published: oldest first",
+    ]
+    assert [link["href"] for link in links] == [
+        "?q=log4j&ordering=-updated_at&page=1",
+        "?q=log4j&ordering=updated_at&page=1",
+        "?q=log4j&ordering=-created_at&page=1",
+        "?q=log4j&ordering=created_at&page=1",
+    ]
+    assert [link.get("aria-current") for link in links] == [
+        None,
+        None,
+        "true",
+        None,
+    ]
+
+    # The search form keeps the selected ordering
+    search_form = soup.select_one("#advanced-search form")
+    assert search_form.find("input", {"name": "ordering"})["value"] == "-created_at"
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.parametrize("params", ["", "?ordering=unknown"])
+def test_list_cves_ordering_menu_default(db, create_cve, client, params):
+    create_cve("CVE-2021-44228")
+
+    response = client.get(f"{reverse('cves')}{params}")
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    toggle = soup.select_one(".opencve-cve-list-ordering .dropdown-toggle")
+    assert toggle.get_text(strip=True) == "Updated: newest first"
+    assert not soup.select_one("#advanced-search form").find(
+        "input", {"name": "ordering"}
+    )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_list_cves_displays_publication_date(db, create_cve, client):
+    create_cve("CVE-2021-44228")
+
+    response = client.get(reverse("cves"))
+    soup = BeautifulSoup(response.content, features="html.parser")
+
+    assert (
+        soup.select_one(".opencve-cve-card-updated").get_text(strip=True)
+        == "Published Dec 10, 2021 · Updated Jul 24, 2024"
+    )
+
+
+@override_settings(ENABLE_ONBOARDING=False)
+def test_cves_export_csv_uses_ordering(create_cve, auth_client):
+    """Export CSV returns the CVEs in the order of the list."""
+    _create_dated_cves(create_cve)
+    client = auth_client()
+
+    response = client.get(f"{reverse('cves_export_csv')}?ordering=created_at")
+    content = b"".join(response.streaming_content).decode("utf-8")
+    rows = content.strip().split("\r\n")[1:]
+
+    assert [row.split(",")[0] for row in rows] == [
+        "CVE-2021-44228",
+        "CVE-2022-22965",
+        "CVE-2023-22490",
+    ]

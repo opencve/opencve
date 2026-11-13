@@ -102,7 +102,7 @@
         </div>
 
         <footer class="opencve-cve-card-footer">
-            <span class="opencve-cve-card-updated">Updated {{ cve.updated_at|date:"M j, Y" }}</span>
+            <span class="opencve-cve-card-updated">Published {{ cve.created_at|date:"M j, Y" }} · Updated {{ cve.updated_at|date:"M j, Y" }}</span>
             <a href="{% url 'cve' cve_id=cve.cve_id %}" class="opencve-cve-card-view">
                 View CVE <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
             </a>

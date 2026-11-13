@@ -10,6 +10,7 @@ from users.models import UserTag, CveTag
 from cves.constants import PRODUCT_SEPARATOR
 from cves.utils import (
     affected_product_tab_context,
+    cve_ordering_fields,
     metrics_tab_context,
     affected_to_dict_vendors,
     list_filtered_cves,
@@ -265,3 +266,19 @@ def test_build_cve_quick_search_sidebar_entries_expands_when_active_hidden():
         current_q=active_q,
     )
     assert not any(entry.get("hidden") for entry in entries)
+
+
+@pytest.mark.parametrize(
+    "ordering,expected",
+    [
+        ("-updated_at", ("-updated_at", "-cve_id")),
+        ("updated_at", ("updated_at", "cve_id")),
+        ("-created_at", ("-created_at", "-cve_id")),
+        ("created_at", ("created_at", "cve_id")),
+        (None, ("-updated_at", "-cve_id")),
+        ("", ("-updated_at", "-cve_id")),
+        ("-cve_id", ("-updated_at", "-cve_id")),
+    ],
+)
+def test_cve_ordering_fields(ordering, expected):
+    assert cve_ordering_fields(ordering) == expected

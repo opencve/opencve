@@ -24,6 +24,7 @@ from django.views.generic import (
 
 from changes.models import Change, Report
 from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
+from cves.mixins import CveOrderingMixin
 from cves.models import Cve
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from opencve.mixins import RequestViewMixin
@@ -390,6 +391,7 @@ class ProjectVulnerabilitiesView(
     ProjectObjectMixin,
     RequiresProjectPermissionMixin,
     ProjectIsActiveMixin,
+    CveOrderingMixin,
     ListView,
 ):
     required_project_permission = PROJECT_VIEW
@@ -501,7 +503,7 @@ class ProjectVulnerabilitiesView(
 
         queryset = self._apply_status_filter(queryset, statuses)
 
-        return queryset.order_by("-updated_at")
+        return self.order_cves(queryset)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

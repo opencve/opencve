@@ -29,6 +29,9 @@
                 </div>
                 <div class="box-body" id="advanced-search">
                     <form method="GET">
+                        {% if request.GET.ordering in cve_orderings %}
+                        <input type="hidden" name="ordering" value="{{ cve_ordering }}">
+                        {% endif %}
                         <div class="opencve-cve-search-form-row">
                             <div class="opencve-cve-search-input">
                                 {{ search_form.q|as_crispy_field }}
@@ -56,10 +59,13 @@
                     <span class="opencve-cve-list-results-label">Results</span>
                     <span class="opencve-cve-list-results-count">{{ page_obj.paginator.count|intcomma }}</span>
                 </p>
-                <a href="{% url 'cves_export_csv' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-                   class="btn btn-default btn-sm opencve-cve-list-export">
-                    <i class="fa fa-download" aria-hidden="true"></i> Export CSV
-                </a>
+                <div class="opencve-cve-list-toolbar-actions">
+                    {% include "cves/includes/cve_list_ordering.html" %}
+                    <a href="{% url 'cves_export_csv' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+                       class="btn btn-default btn-sm opencve-cve-list-export">
+                        <i class="fa fa-download" aria-hidden="true"></i> Export CSV
+                    </a>
+                </div>
             </div>
 
             {% include "cves/includes/cve_card_list.html" %}

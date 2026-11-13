@@ -5,6 +5,8 @@ from drf_spectacular.views import (
     SpectacularSwaggerView as DrfSpectacularSwaggerView,
 )
 
+from cves.constants import CVE_DEFAULT_ORDERING, CVE_ORDERINGS
+
 
 ORGANIZATIONS_TAG = "organizations"
 MEMBERS_TAG = "members"
@@ -45,6 +47,19 @@ ORG_PROJECT_REPORT_PATH_PARAMS = [ORG_NAME, PROJECT_NAME, REPORT_ID]
 
 CVE_ADVANCED_SEARCH_DOCS = "https://docs.opencve.io/guides/advanced_search/"
 
+CVE_ORDERING_PARAM = OpenApiParameter(
+    name="ordering",
+    type=str,
+    location=OpenApiParameter.QUERY,
+    required=False,
+    enum=list(CVE_ORDERINGS),
+    default=CVE_DEFAULT_ORDERING,
+    description=(
+        "Sort CVEs by publication (`created_at`) or last update (`updated_at`) "
+        "date. Prefix the field with `-` for descending order."
+    ),
+)
+
 CVE_LIST_QUERY_PARAMS = [
     OpenApiParameter(
         name="q",
@@ -53,6 +68,7 @@ CVE_LIST_QUERY_PARAMS = [
         required=False,
         description=f"Search CVEs with OpenCVE query syntax ([documentation]({CVE_ADVANCED_SEARCH_DOCS})).",
     ),
+    CVE_ORDERING_PARAM,
 ]
 
 CVE_RETRIEVE_INCLUDE_FIELDS = frozenset({"nvd_cpe_configurations", "references"})

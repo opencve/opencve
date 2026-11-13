@@ -5,6 +5,9 @@
         </div>
         <div class="box-body">
             <form method="get" class="opencve-project-vuln-filter-form">
+                {% if request.GET.ordering in cve_orderings %}
+                <input type="hidden" name="ordering" value="{{ cve_ordering }}">
+                {% endif %}
                 <div class="form-group">
                     <label for="id_assignee">Assignee</label>
                     {{ filter_form.assignee }}

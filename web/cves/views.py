@@ -23,6 +23,7 @@ from cves.constants import (
 )
 from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
 from cves.forms import SearchForm
+from cves.mixins import CveOrderingMixin
 from cves.models import Cve, Product, Variable, Vendor, Weakness
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from cves.templatetags.opencve_extras import needs_quotes
@@ -174,18 +175,21 @@ class VendorListLoadMoreView(View):
         return JsonResponse({"html": html, **keyset_cursor_payload(page)})
 
 
-class CveListView(ListView):
+class CveListView(CveOrderingMixin, ListView):
     context_object_name = "cves"
     template_name = "cves/cve_list.html"
     paginate_by = 20
 
     def get_queryset(self):
+        return self.order_cves(self.search_cves())
+
+    def search_cves(self):
         self.form = SearchForm(self.request.GET)
 
         # Validate the form
         search_query = None
         if not self.form.is_valid():
-            return Cve.objects.order_by("-updated_at").all()
+            return Cve.objects.all()
 
         # Convert simple search to advanced search
         search_query = self.form.cleaned_data["q"]
@@ -206,7 +210,7 @@ class CveListView(ListView):
         except pp.ParseException as e:
             pass
 
-        return Cve.objects.order_by("-updated_at").all()
+        return Cve.objects.all()
 
     def convert_to_advanced_search(self):
         """
