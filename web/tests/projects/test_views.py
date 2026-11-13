@@ -1009,6 +1009,65 @@ def test_project_vulnerabilities_view_pagination(
 
 
 @override_settings(ENABLE_ONBOARDING=False)
+@pytest.mark.parametrize(
+    "ordering,expected",
+    [
+        (None, ["CVE-2021-44228", "CVE-2022-22965"]),
+        ("updated_at", ["CVE-2022-22965", "CVE-2021-44228"]),
+        ("-created_at", ["CVE-2022-22965", "CVE-2021-44228"]),
+        ("created_at", ["CVE-2021-44228", "CVE-2022-22965"]),
+    ],
+)
+def test_project_vulnerabilities_view_ordering(
+    create_organization,
+    create_user,
+    create_project,
+    create_cve,
+    auth_client,
+    ordering,
+    expected,
+):
+    """Test that ProjectVulnerabilitiesView sorts CVEs with the ordering parameter"""
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(
+        name="project1",
+        organization=org,
+        vendors=["cisco"],  # CVE-2021-44228, CVE-2022-22965
+    )
+    create_cve("CVE-2021-44228")
+    create_cve("CVE-2022-22965")
+    Cve.objects.filter(cve_id="CVE-2021-44228").update(
+        created_at="2021-01-01T00:00:00Z", updated_at="2024-02-01T00:00:00Z"
+    )
+    Cve.objects.filter(cve_id="CVE-2022-22965").update(
+        created_at="2022-01-01T00:00:00Z", updated_at="2024-01-01T00:00:00Z"
+    )
+
+    client = auth_client(user)
+    url = reverse(
+        "project_vulnerabilities",
+        kwargs={"org_name": "org1", "project_name": "project1"},
+    )
+    params = f"?ordering={ordering}" if ordering else ""
+    response = client.get(f"{url}{params}")
+
+    assert response.status_code == 200
+    assert [cve.cve_id for cve in response.context["cves"]] == expected
+    assert response.context["cve_ordering"] == (ordering or "-updated_at")
+
+    # The filter form keeps the selected ordering
+    hidden_input = re.search(
+        r'<input type="hidden" name="ordering" value="([^"]+)">',
+        response.content.decode(),
+    )
+    if ordering:
+        assert hidden_input.group(1) == ordering
+    else:
+        assert hidden_input is None
+
+
+@override_settings(ENABLE_ONBOARDING=False)
 def test_project_vulnerabilities_export_csv_returns_csv(
     create_organization, create_user, create_project, create_cve, auth_client
 ):

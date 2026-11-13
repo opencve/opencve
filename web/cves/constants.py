@@ -234,6 +234,15 @@ TOP_VENDORS_PRODUCTS = frozenset(
     ]
 )
 
+# Orderings available in the CVE lists (`ordering` query parameter)
+CVE_ORDERINGS = {
+    "-updated_at": "Updated: newest first",
+    "updated_at": "Updated: oldest first",
+    "-created_at": "Published: newest first",
+    "created_at": "Published: oldest first",
+}
+CVE_DEFAULT_ORDERING = "-updated_at"
+
 CVE_SIDEBAR_VIEWS_PREVIEW = 6
 CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW = 6
 CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW = 3
