@@ -52,6 +52,18 @@ def test_dashboard_view_context(client, auth_client, create_user, create_organiz
     ] == [w["name"] for w in expected_widgets]
 
 
+@override_settings(ENABLE_ANONYMOUS_ACCESS=False)
+@pytest.mark.django_db
+def test_dashboard_view_anonymous_access_disabled(client):
+    """
+    Anonymous users are sent to the login page, and back to the
+    dashboard once logged in, when anonymous access is disabled.
+    """
+    response = client.get(reverse("home"))
+    assert response.status_code == 302
+    assert response.url == f"{reverse('account_login')}?next={reverse('home')}"
+
+
 @override_settings(ENABLE_ONBOARDING=False)
 @pytest.mark.django_db
 def test_dashboard_view_get_context_data(
