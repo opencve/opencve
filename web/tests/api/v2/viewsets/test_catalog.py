@@ -213,6 +213,80 @@ def test_cve_retrieve_with_nvd_cpe_configurations_include(
 
 
 @pytest.mark.django_db
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+def test_cve_retrieve_with_cna_affected_include(
+    mock_mitre_json, client, read_token, create_cve
+):
+    """Include the affected products declared by the CNA when requested."""
+    affected = [
+        {
+            "vendor": "Apache Software Foundation",
+            "product": "Apache Log4j2",
+            "cpes": ["cpe:2.3:a:apache:log4j:*:*:*:*:*:*:*:*"],
+            "versions": [
+                {
+                    "version": "2.0-beta9",
+                    "lessThan": "2.3.1",
+                    "status": "affected",
+                    "versionType": "custom",
+                }
+            ],
+        }
+    ]
+    mock_mitre_json.return_value = {"containers": {"cna": {"affected": affected}}}
+    create_cve("CVE-2021-44228")
+
+    response = client.get(
+        f"{cve_detail_url('CVE-2021-44228')}?include=cna_affected",
+        **bearer(read_token),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["cna_affected"] == affected
+    assert "nvd_cpe_configurations" not in response.json()
+    assert mock_mitre_json.call_count == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "mitre_json",
+    [
+        {},
+        {"containers": {}},
+        {"containers": {"cna": {"rejectedReasons": []}}},
+    ],
+)
+@patch("cves.models.Cve.mitre_json", new_callable=PropertyMock)
+def test_cve_retrieve_with_cna_affected_include_fallback_to_empty_list(
+    mock_mitre_json, client, read_token, create_cve, mitre_json
+):
+    """Return an empty list when the MITRE record has no CNA affected products."""
+    mock_mitre_json.return_value = mitre_json
+    create_cve("CVE-2021-44228")
+
+    response = client.get(
+        f"{cve_detail_url('CVE-2021-44228')}?include=cna_affected",
+        **bearer(read_token),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["cna_affected"] == []
+
+
+@pytest.mark.django_db
+def test_cve_retrieve_without_include_omits_cna_affected(
+    client, read_token, create_cve
+):
+    """Do not return the CNA affected products unless requested."""
+    create_cve("CVE-2021-44228")
+
+    response = client.get(cve_detail_url("CVE-2021-44228"), **bearer(read_token))
+
+    assert response.status_code == 200
+    assert "cna_affected" not in response.json()
+
+
+@pytest.mark.django_db
 def test_cve_retrieve_rejects_unknown_include(client, read_token, create_cve):
     """Reject unknown include values on CVE detail."""
     create_cve("CVE-2021-44228")
@@ -228,7 +302,7 @@ def test_cve_retrieve_rejects_unknown_include(client, read_token, create_cve):
         details={
             "include": (
                 "Unknown include value(s): unknown_field. "
-                "Allowed values: nvd_cpe_configurations, references."
+                "Allowed values: cna_affected, nvd_cpe_configurations, references."
             )
         },
     )
