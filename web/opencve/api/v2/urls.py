@@ -1,6 +1,7 @@
-from django.urls import path
+from django.urls import path, re_path
 from rest_framework_nested import routers
 
+from cves.constants import VENDOR_PRODUCT_NAME_REGEX
 from opencve.api.v2.viewsets.catalog import (
     CveViewSet,
     ProductCveViewSet,
@@ -70,9 +71,28 @@ automations_router.register(
     basename="v2-project-automation-execution",
 )
 
+# Vendor and product names can end with a backslash or contain an escaped
+# slash, so the nested routes must be matched before their parents:
+# `vendors/foo\/cves` lists the CVEs of the `foo\` vendor instead of
+# retrieving a vendor named `foo\/cves`.
+vendor_urlpatterns = [
+    re_path(
+        rf"^vendors/(?P<vendor_name>{VENDOR_PRODUCT_NAME_REGEX})/cves$",
+        VendorCveViewSet.as_view({"get": "list"}),
+        name="v2-vendor-cves",
+    ),
+    re_path(
+        rf"^vendors/(?P<vendor_name>{VENDOR_PRODUCT_NAME_REGEX})"
+        rf"/products/(?P<product_name>{VENDOR_PRODUCT_NAME_REGEX})/cves$",
+        ProductCveViewSet.as_view({"get": "list"}),
+        name="v2-product-cves",
+    ),
+]
+
 urlpatterns = (
-    router.urls
+    vendor_urlpatterns
     + vendors_router.urls
+    + router.urls
     + organizations_router.urls
     + projects_router.urls
     + automations_router.urls
@@ -81,16 +101,6 @@ urlpatterns = (
             "weaknesses/<str:cwe_id>/cves",
             WeaknessCveViewSet.as_view({"get": "list"}),
             name="v2-weakness-cves",
-        ),
-        path(
-            "vendors/<str:vendor_name>/cves",
-            VendorCveViewSet.as_view({"get": "list"}),
-            name="v2-vendor-cves",
-        ),
-        path(
-            "vendors/<str:vendor_name>/products/<str:product_name>/cves",
-            ProductCveViewSet.as_view({"get": "list"}),
-            name="v2-product-cves",
         ),
         path(
             "cves/<str:cve_id>/changes/<uuid:change_id>",
