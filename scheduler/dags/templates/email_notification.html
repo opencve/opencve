@@ -173,7 +173,7 @@
                                     <tr>
                                       <td align="center" style="font-size:0px;padding:10px 25px;word-break:break-word;">
                                         <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:24px;font-weight:500;line-height:30px;text-align:center;color:#ffffff;">
-                                          <h1 style="margin: 0; font-size: 20px; line-height: normal; font-weight: 400;">{% if severity != 'none' %}{{ severity|capitalize }}{% else %}Unknown Severity{% endif %} {% if vulnerabilities|length > 1 %}Vulnerabilities{% else %}Vulnerability{% endif %} ({{ vulnerabilities|length }})</h1>
+                                          <h1 style="margin: 0; font-size: 20px; line-height: normal; font-weight: 400;">{% if severity == 'unscored' %}Unscored{% elif severity == 'none' %}None Severity{% else %}{{ severity|capitalize }}{% endif %} {% if vulnerabilities|length > 1 %}Vulnerabilities{% else %}Vulnerability{% endif %} ({{ vulnerabilities|length }})</h1>
                                         </div>
                                       </td>
                                     </tr>
@@ -202,7 +202,7 @@
                                       <td align="left" style="font-size:0px;padding:0px 25px;padding-left:15px;word-break:break-word;">
                                         <div style="font-family:Roboto, Helvetica, Arial, sans-serif;font-size:24px;font-weight:500;line-height:30px;text-align:left;color:#000000;">
                                           <h3 style="margin: 0; line-height: normal; font-size: 17px; font-weight: 300;">
-                                            <a href="{{ web_url }}/cve/{{ vulnerability.cve_id }}" style="color: #5842DF; text-decoration: none; font-weight:400;">{{ vulnerability.cve_id }}</a> - <span style="font-weight:400;color:{{ severity_colors[severity] }}">{% if vulnerability.score %}{{ vulnerability.score }}{% else %}No CVSS v3.1{% endif %}</span>
+                                            <a href="{{ web_url }}/cve/{{ vulnerability.cve_id }}" style="color: #5842DF; text-decoration: none; font-weight:400;">{{ vulnerability.cve_id }}</a> - <span style="font-weight:400;color:{{ severity_colors[severity] }}">{% if vulnerability.best_score is not none %}{{ vulnerability.best_score }} ({{ vulnerability.best_label }}){% else %}No CVSS score{% endif %}</span>
                                           </h3>
                                         </div>
                                       </td>

@@ -2,9 +2,9 @@ This email has been sent from the {{ notification }} notification of the {{ orga
 {{ project_url }}
 
 {{ total }} vulnerabilities have been updated on {{ period.day }} between {{ period.from }} and {{ period.to }}.
-{% for severity, vulnerabilities in vulnerabilities.items() %}{% if vulnerabilities %}{% if severity != 'none' %}{{ severity|capitalize }}{% else %}Unknown Severity{% endif %} {% if vulnerabilities|length > 1 %}Vulnerabilities{% else %}Vulnerability{% endif %} ({{ vulnerabilities|length }})
+{% for severity, vulnerabilities in vulnerabilities.items() %}{% if vulnerabilities %}{% if severity == 'unscored' %}Unscored{% elif severity == 'none' %}None Severity{% else %}{{ severity|capitalize }}{% endif %} {% if vulnerabilities|length > 1 %}Vulnerabilities{% else %}Vulnerability{% endif %} ({{ vulnerabilities|length }})
 {% for vulnerability in vulnerabilities %}
-- {{ vulnerability.cve_id }} ({% if vulnerability.score %}{{ vulnerability.score }}{% else %}No CVSS v3.1{% endif %}) - {{ web_url }}/cve/{{ vulnerability.cve_id }}
+- {{ vulnerability.cve_id }} ({% if vulnerability.best_score is not none %}{{ vulnerability.best_score }} {{ vulnerability.best_label }}{% else %}No CVSS score{% endif %}) - {{ web_url }}/cve/{{ vulnerability.cve_id }}
 {{ vulnerability.description | truncate(220) }}
 Changes: {{ vulnerability.changes|join(', ') }}
 Subscriptions: {{ vulnerability.subscriptions|join(', ') }}
