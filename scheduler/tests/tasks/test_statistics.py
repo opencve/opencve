@@ -44,6 +44,21 @@ def test_compute_statistics(tests_path, tmp_path_factory, run_dag_task, web_pg_h
             }
         )
 
+    # Move the CVEs creation dates relative to now, as the
+    # `statistics_cves_count_last_days` query is based on NOW()
+    for cve_id, interval in [
+        ("CVE-2024-0100", "12 hours"),  # last 24h
+        ("CVE-2024-49761", "36 hours"),  # previous 24h
+        ("CVE-2023-5253", "5 days"),  # last 7 days
+        ("CVE-2022-20443", "10 days"),  # previous 7 days
+        ("CVE-2021-0310", "45 days"),  # previous 30 days
+        ("CVE-2017-8923", "120 days"),  # previous 90 days
+    ]:
+        web_pg_hook.run(
+            "UPDATE opencve_cves SET created_at = NOW() - %s::interval WHERE cve_id = %s;",
+            parameters=(interval, cve_id),
+        )
+
     # Launch the task
     task = run_dag_task(
         task_fn=compute_statistics,
@@ -52,7 +67,16 @@ def test_compute_statistics(tests_path, tmp_path_factory, run_dag_task, web_pg_h
     )
     assert task.state == TaskInstanceState.SUCCESS
 
-    # TODO: check `statistics_cves_count_last_days`
+    # Check `statistics_cves_count_last_days`
+    value = web_pg_hook.get_records(
+        "SELECT value FROM opencve_variables WHERE name = 'statistics_cves_count_last_days';"
+    )
+    assert value[0][0] == {
+        "24_hours": {"last": 1, "prev": 1, "ratio": 0.0},
+        "7_days": {"last": 3, "prev": 1, "ratio": 200.0},
+        "30_days": {"last": 4, "prev": 1, "ratio": 300.0},
+        "90_days": {"last": 5, "prev": 1, "ratio": 400.0},
+    }
 
     # Check `statistics_cves_cumulative_counts`
     value = web_pg_hook.get_records(
