@@ -18,6 +18,83 @@ from includes.tasks.automations import get_report_period_window
 from utils import TestRepo
 
 
+@pytest.mark.parametrize(
+    "metrics,expected",
+    [
+        (
+            {
+                "cvssV3_1": {"data": {"score": 8.8}, "provider": "mitre"},
+                "cvssV4_0": {"data": {"score": 7.1}, "provider": "mitre"},
+                "epss": {"data": {"score": 0.00223}, "provider": "first"},
+            },
+            {"cvss31": 8.8, "cvss40": 7.1, "epss": 0.00223},
+        ),
+        # A score of 0 is not the same as a missing score
+        (
+            {
+                "cvssV3_1": {"data": {}, "provider": None},
+                "cvssV4_0": {"data": {"score": 0.0}, "provider": "mitre"},
+                "epss": {"data": {"score": 0.0}, "provider": "first"},
+            },
+            {"cvss31": None, "cvss40": 0.0, "epss": 0.0},
+        ),
+        (
+            {
+                "cvssV3_1": {"data": {"score": 8.8}, "provider": "mitre"},
+                "cvssV4_0": {"data": {}, "provider": None},
+                "epss": {"data": None, "provider": None},
+            },
+            {"cvss31": 8.8, "cvss40": None, "epss": None},
+        ),
+        # Metrics missing from the KB file
+        ({}, {"cvss31": None, "cvss40": None, "epss": None}),
+    ],
+)
+def test_prepare_payload_cve_scores(tmp_path, metrics, expected):
+    kb_file = tmp_path / "CVE-2024-0001.json"
+    kb_file.write_text(
+        json.dumps(
+            {
+                "opencve": {
+                    "description": {"data": "foobar"},
+                    "metrics": metrics,
+                    "changes": [],
+                }
+            }
+        )
+    )
+
+    notif = BaseNotifier(
+        semaphore=None,
+        session=None,
+        notification={
+            "organization_name": "orga1",
+            "project_name": "project1",
+            "notification_name": "notification1",
+            "project_subscriptions": ["foo"],
+            "notification_conf": {},
+        },
+        changes=["change1"],
+        changes_details={
+            "change1": {
+                "change_id": "change1",
+                "change_path": kb_file.name,
+                "cve_vendors": ["foo"],
+                "cve_id": "CVE-2024-0001",
+            }
+        },
+        period={
+            "start": pendulum.datetime(2024, 1, 1, 1, 0, tz="UTC"),
+            "end": pendulum.datetime(2024, 1, 1, 2, 0, tz="UTC").subtract(seconds=1),
+        },
+    )
+
+    with patch("includes.notifiers.KB_LOCAL_REPO", tmp_path):
+        cve = notif.prepare_payload()["changes"][0]["cve"]
+
+    assert {key: cve[key] for key in expected} == expected
+
+
 def test_prepare_payload(tests_path, tmp_path_factory):
     notification = {
         "project_id": "0439aa01-62b3-465c-ba7b-bd07c961c778",
@@ -118,6 +195,8 @@ def test_prepare_payload(tests_path, tmp_path_factory):
                         "cve_id": "CVE-2024-6962",
                         "description": "A vulnerability classified as critical was found in Tenda O3 1.0.0.10. This vulnerability affects the function formQosSet. The manipulation of the argument remark/ipRange/upSpeed/downSpeed/enable leads to stack-based buffer overflow. The attack can be initiated remotely. The exploit has been disclosed to the public and may be used. The identifier of this vulnerability is VDB-272116. NOTE: The vendor was contacted early about this disclosure but did not respond in any way.",
                         "cvss31": 8.8,
+                        "cvss40": None,
+                        "epss": None,
                         "subscriptions": {
                             "human": ["Bar", "Foo"],
                             "raw": ["foo", "foo$PRODUCT$bar"],
@@ -216,6 +295,107 @@ def test_prepare_report_content_payload_uses_report_timezone():
     assert payload["period"]["timezone"] == "Europe/Paris"
     assert payload["period"]["start"] == "2026-05-13T00:00:00+02:00"
     assert payload["period"]["end"] == "2026-05-13T23:59:59.999999+02:00"
+
+
+def test_format_report_period_range_on_base_notifier():
+    """Report period boundaries are formatted for all notifier types via BaseNotifier."""
+
+    report = {
+        "report_day": "2026-05-13",
+        "period_type": "daily",
+        "period_timezone": "Europe/Paris",
+    }
+    start, end, tz = BaseNotifier._format_report_period_range(report)
+    assert tz == "Europe/Paris"
+    assert start == "May 13, 2026 00:00:00"
+    assert end == "May 13, 2026 23:59:59"
+
+
+def test_slack_notifier_format_slack_blocks_report():
+    """Report Slack messages must format period range without AttributeError."""
+    report_content = {
+        "report_id": "a786bd70-f3e0-4700-acbc-59bbcf4cbc2e",
+        "report_day": "2026-05-13",
+        "period_type": "daily",
+        "period_timezone": "Europe/Paris",
+        "cve_count": 3,
+        "report_url": "https://app.opencve.io/cve/report/abc",
+    }
+    period_window = get_report_period_window(
+        {
+            "period_day": "2026-05-13",
+            "period_type": "daily",
+            "period_timezone": "Europe/Paris",
+        }
+    )
+    notifier = SlackNotifier(
+        semaphore=None,
+        session=None,
+        notification={
+            "organization_name": "lido",
+            "project_name": "security",
+            "notification_name": "slack-reports",
+            "notification_conf": {
+                "extras": {"webhook_url": "https://hooks.slack.com/services/test"}
+            },
+        },
+        changes=[],
+        changes_details={},
+        period=period_window,
+        report_content=report_content,
+    )
+
+    messages = notifier.format_slack_blocks()
+
+    assert len(messages) == 1
+    section_blocks = [b for b in messages[0]["blocks"] if b["type"] == "section"]
+    report_text = section_blocks[-1]["text"]["text"]
+    assert (
+        "*Covers:* May 13, 2026 00:00:00 → May 13, 2026 23:59:59 (Europe/Paris)"
+        in report_text
+    )
+    assert "*Total CVEs:* 3" in report_text
+    assert "<https://app.opencve.io/cve/report/abc|Open report>" in report_text
+
+
+def test_email_notifier_get_report_template_context_period_range():
+    """Email report templates receive formatted period start, end, and timezone."""
+
+    report_content = {
+        "report_day": "2026-05-13",
+        "period_type": "daily",
+        "period_timezone": "UTC",
+        "cve_count": 1,
+        "report_url": "https://app.opencve.io/cve/report/xyz",
+    }
+    period_window = get_report_period_window(
+        {
+            "period_day": "2026-05-13",
+            "period_type": "daily",
+            "period_timezone": "UTC",
+        }
+    )
+    notifier = EmailNotifier(
+        semaphore=None,
+        session=None,
+        notification={
+            "organization_name": "org",
+            "project_name": "proj",
+            "notification_name": "email-reports",
+            "notification_conf": {"extras": {"email": "user@example.com"}},
+        },
+        changes=[],
+        changes_details={},
+        period=period_window,
+        report_content=report_content,
+    )
+
+    context = notifier.get_report_template_context()
+
+    assert context["period_start"] == "May 13, 2026 00:00:00"
+    assert context["period_end"] == "May 13, 2026 23:59:59"
+    assert context["period_timezone"] == "UTC"
+    assert context["cve_count"] == 1
 
 
 def test_generate_email_previews(tests_path, tmp_path_factory):

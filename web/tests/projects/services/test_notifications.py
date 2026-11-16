@@ -1,5 +1,6 @@
 import pytest
 from django.core.exceptions import ValidationError
+from django.test import override_settings
 
 from projects.services.notifications import (
     NOTIFICATION_NAME_TAKEN_MESSAGE,
@@ -125,6 +126,16 @@ def test_validate_notification_outbound_url_ssrf():
     """Reject outbound URLs pointing to private addresses."""
     with pytest.raises(ValidationError, match="This URL is not allowed."):
         validate_notification_outbound_url("http://127.0.0.1/hook")
+
+
+@override_settings(NOTIFICATION_ALLOWED_INTERNAL_NETWORKS=["10.0.0.0/8"])
+def test_validate_notification_outbound_url_allowed_internal_network():
+    """Accept outbound URLs pointing to a configured internal network."""
+    url = "http://10.0.0.1/hook"
+    assert validate_notification_outbound_url(url) == url
+
+    with pytest.raises(ValidationError, match="This URL is not allowed."):
+        validate_notification_outbound_url("http://192.168.0.1/hook")
 
 
 def test_validate_notification_write_configuration_require_values():

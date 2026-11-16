@@ -233,3 +233,143 @@ TOP_VENDORS_PRODUCTS = frozenset(
         "google$PRODUCT$chrome",
     ]
 )
+
+CVE_SIDEBAR_VIEWS_PREVIEW = 6
+CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW = 6
+CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW = 3
+
+CVE_QUICK_SEARCH_GROUPS = [
+    {
+        "label": "Prioritization",
+        "items": [
+            {"label": "CVEs in KEV", "query": "kev:true", "icon": "fa-shield"},
+            {"label": "EPSS ≥ 80%", "query": "epss>=80", "icon": "fa-line-chart"},
+            {
+                "label": "Critical vulnerabilities",
+                "query": "cvss40>=9",
+                "icon": "fa-exclamation-triangle",
+            },
+            {
+                "label": "High (CVSS 3.1)",
+                "query": "cvss31>=7 AND cvss31<9",
+                "icon": "fa-tachometer",
+            },
+        ],
+    },
+    {
+        "label": "Recent activity",
+        "items": [
+            {
+                "label": "Created in the last day",
+                "query": "created<=1d",
+                "icon": "fa-calendar-plus-o",
+            },
+            {
+                "label": "Recently updated",
+                "query": "updated<=7d",
+                "icon": "fa-clock-o",
+            },
+        ],
+    },
+    {
+        "label": "Vendors & products",
+        "items": [
+            {
+                "label": "Apache Struts",
+                "query": "vendor:apache AND product:struts",
+                "icon": "fa-search",
+            },
+            {
+                "label": "High Apache",
+                "query": "vendor:apache AND cvss31>=7",
+                "icon": "fa-search",
+            },
+            {
+                "label": "Linux Kernel",
+                "query": "vendor:linux AND product:linux_kernel",
+                "icon": "fa-search",
+            },
+            {
+                "label": "Microsoft critical",
+                "query": "vendor:microsoft AND cvss31>=9",
+                "icon": "fa-search",
+            },
+        ],
+    },
+    {
+        "label": "Vulnerability types",
+        "items": [
+            {
+                "label": "RCE (Remote Code Execution)",
+                "query": "description:'remote code execution'",
+                "icon": "fa-code",
+            },
+            {
+                "label": "SQL Injection (CWE-89)",
+                "query": "cwe:CWE-89",
+                "icon": "fa-code",
+            },
+            {"label": "XSS (CWE-79)", "query": "cwe:CWE-79", "icon": "fa-code"},
+        ],
+    },
+    {
+        "label": "User tags",
+        "items": [
+            {
+                "label": "CVEs to check",
+                "query": "userTag:tocheck",
+                "icon": "fa-tag",
+            },
+        ],
+    },
+]
+
+
+def cve_sidebar_should_expand_views(views, current_q, preview):
+    """Return True when the active saved-view query is beyond the collapsed preview limit."""
+    if not current_q:
+        return False
+    for index, view in enumerate(views, start=1):
+        if view.query == current_q and index > preview:
+            return True
+    return False
+
+
+def build_cve_quick_search_sidebar_entries(groups, preview, current_q=None):
+    """Flatten grouped quick searches for the CVE list sidebar (headings + links)."""
+    entries = []
+    item_index = 0
+    for group in groups:
+        section_links = []
+        for item in group["items"]:
+            item_index += 1
+            section_links.append(
+                {
+                    "kind": "link",
+                    "hidden": item_index > preview,
+                    **item,
+                }
+            )
+        section_hidden = all(link["hidden"] for link in section_links)
+        entries.append(
+            {
+                "kind": "heading",
+                "label": group["label"],
+                "hidden": section_hidden,
+            }
+        )
+        entries.extend(section_links)
+
+    if current_q:
+        active_in_collapsed = any(
+            entry.get("kind") == "link"
+            and entry.get("query") == current_q
+            and entry.get("hidden")
+            for entry in entries
+        )
+        if active_in_collapsed:
+            for entry in entries:
+                if "hidden" in entry:
+                    entry["hidden"] = False
+
+    return entries, item_index

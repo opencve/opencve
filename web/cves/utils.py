@@ -23,6 +23,85 @@ def load_repo_json_file(path: pathlib.Path) -> dict:
         return {}
 
 
+def _cve_is_rejected(cve):
+    """Return whether MITRE metadata marks this CVE as REJECTED."""
+    mitre_json = getattr(cve, "mitre_json", None) or {}
+    if not isinstance(mitre_json, dict):
+        return False
+    metadata = mitre_json.get("cveMetadata") or {}
+    return metadata.get("state") == "REJECTED"
+
+
+def _metric_block_has_data(metric_block):
+    """Return whether a KEV/EPSS/SSVC-style block contains a data payload."""
+    if not metric_block:
+        return False
+    if isinstance(metric_block, dict):
+        return bool(metric_block.get("data"))
+    return False
+
+
+def metrics_tab_context(cve):
+    """
+    Per-metric tab availability and default active CVSS tab (same priority as
+    get_active_cvss_tab).
+    """
+    has_data = {
+        "cvss40": bool(cve.cvssV4_0),
+        "cvss31": bool(cve.cvssV3_1),
+        "cvss30": bool(cve.cvssV3_0),
+        "cvss2": bool(cve.cvssV2_0),
+        "kev": _metric_block_has_data(cve.kev),
+        "epss": _metric_block_has_data(cve.epss),
+        "ssvc": _metric_block_has_data(cve.ssvc),
+    }
+    active_cvss = first_cvss_tab_with_data(cve)
+    return {
+        "metrics_tab_has_data": has_data,
+        "metrics_active_cvss_tab": active_cvss,
+    }
+
+
+def affected_product_tab_context(cve):
+    """
+    Per-source flags and which Affected Products tab should be active
+    (first source that has data, else mitre).
+    """
+    mitre_json = cve.mitre_json or {}
+    if not isinstance(mitre_json, dict):
+        mitre_json = {}
+    cna = (mitre_json.get("containers") or {}).get("cna") or {}
+    mitre_has = bool(cna.get("affected"))
+
+    nvd_json = cve.nvd_json or {}
+    nvd_has = bool(nvd_json.get("configurations"))
+
+    redhat_json = cve.redhat_json or {}
+    redhat_has = bool(redhat_json.get("affected_release"))
+
+    enrichment_json = cve.enrichment_json or {}
+    rejected = _cve_is_rejected(cve)
+    enrichment_has = not rejected and bool(
+        enrichment_json.get("affected") or enrichment_json.get("vendors")
+    )
+
+    has_data = {
+        "mitre": mitre_has,
+        "nvd": nvd_has,
+        "redhat": redhat_has,
+        "enrichment": enrichment_has,
+    }
+    active_tab = "mitre"
+    for tab_id in ("mitre", "nvd", "redhat", "enrichment"):
+        if has_data[tab_id]:
+            active_tab = tab_id
+            break
+    return {
+        "affected_tab_has_data": has_data,
+        "affected_active_tab": active_tab,
+    }
+
+
 def float_to_int_if_whole(value):
     """Return int when value is a float equal to its integer part (e.g. 100.0 -> 100)."""
     if isinstance(value, float) and value == int(value):
@@ -136,6 +215,31 @@ def list_weaknesses(cwe_names):
 
 def humanize(s):
     return " ".join(map(lambda x: x.capitalize(), s.split("_")))
+
+
+def first_cvss_tab_with_data(cve):
+    """Return the highest-priority CVSS tab id that has data, else cvss40."""
+    for tab_id, attr in (
+        ("cvss40", "cvssV4_0"),
+        ("cvss31", "cvssV3_1"),
+        ("cvss30", "cvssV3_0"),
+        ("cvss2", "cvssV2_0"),
+    ):
+        if getattr(cve, attr, None):
+            return tab_id
+    return "cvss40"
+
+
+def project_subscription_match_keys(cve_vendors, subscriptions):
+    """
+    Raw vendor/product keys matched by project subscriptions for this CVE.
+    Sorted; vendor and product matches are both kept when applicable.
+    """
+    cve_items = set(cve_vendors)
+    sub_items = set(subscriptions.get("vendors", [])) | set(
+        subscriptions.get("products", [])
+    )
+    return sorted(cve_items & sub_items)
 
 
 # CVSS version key (as used in cves_table_data or metrics) -> display label

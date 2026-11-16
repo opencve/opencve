@@ -1,6 +1,9 @@
 import pytest
 from django.http import HttpRequest, QueryDict
 
+from types import SimpleNamespace
+
+from cves.constants import PRODUCT_SEPARATOR
 from cves.templatetags.opencve_extras import (
     get_item,
     get_active_cvss_tab,
@@ -12,7 +15,63 @@ from cves.templatetags.opencve_extras import (
     query_params_url,
     cve_is_rejected,
     is_cve_rejected,
+    cve_change_summary_title,
+    cve_change_summary_subtitle,
+    membership_display_name,
+    membership_initials,
+    cve_list_vendors,
+    cve_list_products,
 )
+
+
+def test_cve_list_vendor_product_filters():
+    vendors = [
+        "apache",
+        f"apache{PRODUCT_SEPARATOR}log4j",
+        "google",
+    ]
+    assert cve_list_vendors(vendors) == ["apache", "google"]
+    assert cve_list_products(vendors) == [f"apache{PRODUCT_SEPARATOR}log4j"]
+
+
+def test_membership_display_name_and_initials():
+    pm = SimpleNamespace(
+        membership=SimpleNamespace(
+            user=SimpleNamespace(
+                get_full_name=lambda: "Nicolas Crocfer",
+                username="ncrocfer",
+                email="nicolas@example.com",
+            ),
+            email="nicolas@example.com",
+        )
+    )
+    assert membership_display_name(pm) == "Nicolas Crocfer"
+    assert membership_initials(pm) == "NC"
+
+    pm_email_only = SimpleNamespace(
+        membership=SimpleNamespace(user=None, email="invited@example.com")
+    )
+    assert membership_display_name(pm_email_only) == "invited@example.com"
+    assert membership_initials(pm_email_only) == "IC"
+
+
+def test_cve_change_summary_title_and_subtitle():
+    change = {
+        "data": [
+            {
+                "type": "references",
+                "details": {"added": ["https://example.com"], "removed": []},
+            },
+            {
+                "type": "metrics",
+                "details": {"added": {"cvssV3_1": {}}, "removed": {}, "updated": {}},
+            },
+        ]
+    }
+    assert cve_change_summary_title(change) == "References and Metrics updated"
+    subtitle = cve_change_summary_subtitle(change)
+    assert "Added references" in subtitle
+    assert "Scoring metrics updated" in subtitle
 
 
 def test_query_params_url_preserves_multiple_values():

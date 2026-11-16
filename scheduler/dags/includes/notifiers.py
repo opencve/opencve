@@ -77,6 +77,11 @@ class BaseNotifier:
         )
         return title
 
+    @staticmethod
+    def get_metric_score(metrics, name):
+        # KB files don't necessarily contain every metric (e.g. EPSS)
+        return ((metrics.get(name) or {}).get("data") or {}).get("score")
+
     def prepare_payload(self):
         start = arrow.get(self.period.get("start")).to("utc").datetime.isoformat()
         end = arrow.get(self.period.get("end")).to("utc").datetime.isoformat()
@@ -114,17 +119,16 @@ class BaseNotifier:
             kb_changes = cve_data["opencve"]["changes"]
             kb_change = [c for c in kb_changes if c["id"] == change["change_id"]]
 
-            # CVE score
-            score = None
-            if cve_data["opencve"]["metrics"]["cvssV3_1"]["data"]:
-                score = cve_data["opencve"]["metrics"]["cvssV3_1"]["data"]["score"]
+            metrics = cve_data["opencve"]["metrics"]
 
             payload["changes"].append(
                 {
                     "cve": {
                         "cve_id": change["cve_id"],
                         "description": cve_data["opencve"]["description"]["data"],
-                        "cvss31": score,
+                        "cvss31": self.get_metric_score(metrics, "cvssV3_1"),
+                        "cvss40": self.get_metric_score(metrics, "cvssV4_0"),
+                        "epss": self.get_metric_score(metrics, "epss"),
                         "subscriptions": {
                             "raw": sorted(matched_subscriptions),
                             "human": sorted(
@@ -160,6 +164,19 @@ class BaseNotifier:
             "end": end.datetime.isoformat(),
             "timezone": tz,
         }
+
+    @staticmethod
+    def _format_report_period_range(report):
+        window = get_report_period_window(
+            {
+                "period_day": report.get("report_day"),
+                "period_type": report.get("period_type", "daily"),
+                "period_timezone": report.get("period_timezone", "UTC"),
+            }
+        )
+        tz = report.get("period_timezone", "UTC")
+        fmt = "MMM D, Y HH:mm:ss"
+        return window["start"].format(fmt), window["end"].format(fmt), tz
 
     def prepare_report_content_payload(self):
         content = self.report_content or {}
@@ -558,19 +575,6 @@ class EmailNotifier(BaseNotifier):
             context["vulnerabilities"][severity].append(cve)
 
         return context
-
-    @staticmethod
-    def _format_report_period_range(report):
-        window = get_report_period_window(
-            {
-                "period_day": report.get("report_day"),
-                "period_type": report.get("period_type", "daily"),
-                "period_timezone": report.get("period_timezone", "UTC"),
-            }
-        )
-        tz = report.get("period_timezone", "UTC")
-        fmt = "MMM D, Y HH:mm:ss"
-        return window["start"].format(fmt), window["end"].format(fmt), tz
 
     def get_report_template_context(self):
         payload = self.prepare_report_content_payload()

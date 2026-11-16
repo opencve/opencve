@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from urllib.parse import urljoin, urlparse
 
 import requests
+from django.conf import settings
 
 MAX_REDIRECTS = 3
 DEFAULT_TIMEOUT = (5, 30)
@@ -82,9 +83,22 @@ def _is_blocked_ip(ip):
     )
 
 
+def _is_allowed_internal_ip(ip):
+    """Return True when an IP is in a network allowed by the administrator."""
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    # The cloud metadata endpoint can't be allowed, even through a wider network
+    if str(ip) == CLOUD_METADATA_HOST:
+        return False
+    return any(
+        ip in ipaddress.ip_network(network, strict=False)
+        for network in settings.NOTIFICATION_ALLOWED_INTERNAL_NETWORKS
+    )
+
+
 def _validate_ip(ip):
-    """Raise UnsafeURL when the IP is not a safe public target."""
-    if _is_blocked_ip(ip):
+    """Raise UnsafeURL when the IP is neither public nor explicitly allowed."""
+    if _is_blocked_ip(ip) and not _is_allowed_internal_ip(ip):
         raise UnsafeURL("URL targets a private or reserved address")
 
 
@@ -188,7 +202,8 @@ def _parse_and_validate_url(url):
 
 def validate_public_http_url(url):
     """
-    Validate that url is a safe public HTTP/HTTPS target.
+    Validate that url is a safe HTTP/HTTPS target: either public or part of the
+    networks listed in the NOTIFICATION_ALLOWED_INTERNAL_NETWORKS setting.
 
     Raises UnsafeURL when the URL is not allowed.
     """
