@@ -46,22 +46,22 @@ def compute_statistics(**context):
         "24_hours": {
             "last": records[0],
             "prev": records[4],
-            "ratio": float(records[8]) if records[8] else None,
+            "ratio": float(records[8]) if records[8] is not None else None,
         },
         "7_days": {
             "last": records[1],
             "prev": records[5],
-            "ratio": float(records[9]) if records[9] else None,
+            "ratio": float(records[9]) if records[9] is not None else None,
         },
         "30_days": {
             "last": records[2],
             "prev": records[6],
-            "ratio": float(records[10]) if records[10] else None,
+            "ratio": float(records[10]) if records[10] is not None else None,
         },
         "90_days": {
             "last": records[3],
             "prev": records[7],
-            "ratio": float(records[11]) if records[11] else None,
+            "ratio": float(records[11]) if records[11] is not None else None,
         },
     }
 
