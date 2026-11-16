@@ -113,6 +113,14 @@ PROJECT_OVERVIEW_STATUS_KEYS = (
 )
 
 
+def _parse_json_object(request):
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
 def _execution_overview_status(execution):
     """Map the latest automation execution to overview status kind and label."""
     if execution is None:
@@ -1146,9 +1154,8 @@ class AssignCveUserView(
     """AJAX endpoint to assign a user to a CVE"""
 
     def post(self, request, *args, **kwargs):
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+        data = _parse_json_object(request)
+        if data is None:
             return JsonResponse(
                 {"success": False, "error": "Invalid JSON payload"}, status=400
             )
@@ -1214,9 +1221,8 @@ class UpdateCveStatusView(
     """AJAX endpoint to update CVE status"""
 
     def post(self, request, *args, **kwargs):
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+        data = _parse_json_object(request)
+        if data is None:
             return JsonResponse(
                 {"success": False, "error": "Invalid JSON payload"}, status=400
             )
@@ -1267,9 +1273,8 @@ class CreateCveCommentView(
     """AJAX endpoint to create a comment for a CVE within a project"""
 
     def post(self, request, *args, **kwargs):
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+        data = _parse_json_object(request)
+        if data is None:
             return JsonResponse(
                 {"success": False, "error": "Invalid JSON payload"}, status=400
             )
@@ -1339,9 +1344,8 @@ class UpdateCveCommentView(
     """AJAX endpoint to update an existing CVE comment/reply"""
 
     def post(self, request, *args, **kwargs):
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+        data = _parse_json_object(request)
+        if data is None:
             return JsonResponse(
                 {"success": False, "error": "Invalid JSON payload"}, status=400
             )
@@ -1396,9 +1400,8 @@ class DeleteCveCommentView(
     """AJAX endpoint to delete an existing CVE comment/reply"""
 
     def post(self, request, *args, **kwargs):
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+        data = _parse_json_object(request)
+        if data is None:
             return JsonResponse(
                 {"success": False, "error": "Invalid JSON payload"}, status=400
             )
