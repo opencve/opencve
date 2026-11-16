@@ -515,9 +515,6 @@ def build_user_content_for_llm(
     return "\n".join(text_output)
 
 
-WEAKNESS_NAMESPACE = {"cwe": "http://cwe.mitre.org/cwe-7"}
-
-
 def download_weaknesses_zip(url: str) -> bytes:
     """
     This function downloads the weaknesses XML archive from the given URL.
@@ -556,11 +553,18 @@ def parse_weaknesses(xml_content: bytes) -> list[dict]:
     This function parses weaknesses from the XML content.
     """
     root = ET.fromstring(xml_content)
+    namespace = (
+        root.tag[1:].partition("}")[0]
+        if root.tag.startswith("{")
+        else None
+    )
+    weakness_tag = f"{{{namespace}}}Weakness" if namespace else "Weakness"
+    description_tag = f"{{{namespace}}}Description" if namespace else "Description"
 
     weaknesses = []
 
-    for weakness in root.findall(".//cwe:Weakness", WEAKNESS_NAMESPACE):
-        description_element = weakness.find("cwe:Description", WEAKNESS_NAMESPACE)
+    for weakness in root.iter(weakness_tag):
+        description_element = weakness.find(description_tag)
 
         weaknesses.append(
             {
