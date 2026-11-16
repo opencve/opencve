@@ -335,13 +335,20 @@ def cve_sidebar_should_expand_views(views, current_q, preview):
     return False
 
 
-def build_cve_quick_search_sidebar_entries(groups, preview, current_q=None):
+def build_cve_quick_search_sidebar_entries(
+    groups, preview, current_q=None, available_tags=None
+):
     """Flatten grouped quick searches for the CVE list sidebar (headings + links)."""
     entries = []
     item_index = 0
+    available_tags = set(available_tags or [])
     for group in groups:
         section_links = []
         for item in group["items"]:
+            if item["query"].startswith("userTag:"):
+                tag = item["query"].partition(":")[2]
+                if tag not in available_tags:
+                    continue
             item_index += 1
             section_links.append(
                 {
@@ -350,6 +357,8 @@ def build_cve_quick_search_sidebar_entries(groups, preview, current_q=None):
                     **item,
                 }
             )
+        if not section_links:
+            continue
         section_hidden = all(link["hidden"] for link in section_links)
         entries.append(
             {
