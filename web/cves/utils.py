@@ -7,6 +7,8 @@ from django.shortcuts import get_object_or_404
 from nested_lookup import nested_lookup
 
 from cves.constants import (
+    CVE_DEFAULT_ORDERING,
+    CVE_ORDERINGS,
     CVSS_VECTORS_MAPPING,
     PRODUCT_SEPARATOR,
     TOP_VENDORS_PRODUCTS,
@@ -377,6 +379,21 @@ def get_metric_from_vector(vector, metric=None):
         data.update({"weight": weight, "text": text})
 
     return data
+
+
+def cve_ordering_fields(ordering):
+    """
+    Return the `order_by()` fields of a CVE list ordering (see CVE_ORDERINGS),
+    falling back to the default ordering when the value is unknown.
+
+    The CVE ID is used as a tie-breaker, so CVEs sharing the same date
+    keep a stable position across pages.
+    """
+    if ordering not in CVE_ORDERINGS:
+        ordering = CVE_DEFAULT_ORDERING
+
+    direction = "-" if ordering.startswith("-") else ""
+    return ordering, f"{direction}cve_id"
 
 
 def list_filtered_cves(params, user):

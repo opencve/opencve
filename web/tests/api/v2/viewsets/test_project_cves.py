@@ -4,6 +4,7 @@ import pytest
 from django.test import override_settings
 from django.utils.timezone import now
 
+from cves.models import Cve
 from organizations.models import Membership, OrganizationAPIToken
 from projects.models import CveTracker
 from users.models import User
@@ -49,6 +50,48 @@ def test_list_filters_cves_by_subscriptions(
     assert response.status_code == 200
     cve_ids = [item["cve_id"] for item in response.json()["results"]]
     assert set(cve_ids) == {"CVE-2021-44228", "CVE-2022-22965"}
+
+
+@pytest.mark.django_db
+def test_list_ordering(client, api_context, write_token, create_project, create_cve):
+    """List sorts the project CVEs with the ordering parameter."""
+    _user, organization, _create_token = api_context
+    create_project(name="prod", organization=organization, vendors=["cisco"])
+    create_cve("CVE-2021-44228")
+    create_cve("CVE-2022-22965")
+    Cve.objects.filter(cve_id="CVE-2021-44228").update(
+        created_at="2021-01-01T00:00:00Z", updated_at="2024-02-01T00:00:00Z"
+    )
+    Cve.objects.filter(cve_id="CVE-2022-22965").update(
+        created_at="2022-01-01T00:00:00Z", updated_at="2024-01-01T00:00:00Z"
+    )
+
+    response = client.get(project_cves_url(), **bearer(write_token))
+    assert [item["cve_id"] for item in response.json()["results"]] == [
+        "CVE-2021-44228",
+        "CVE-2022-22965",
+    ]
+
+    response = client.get(
+        f"{project_cves_url()}?ordering=-created_at", **bearer(write_token)
+    )
+    assert [item["cve_id"] for item in response.json()["results"]] == [
+        "CVE-2022-22965",
+        "CVE-2021-44228",
+    ]
+
+    response = client.get(
+        f"{project_cves_url()}?q=cve:CVE-202&ordering=-created_at",
+        **bearer(write_token),
+    )
+    assert [item["cve_id"] for item in response.json()["results"]] == [
+        "CVE-2022-22965",
+        "CVE-2021-44228",
+    ]
+
+    response = client.get(f"{project_cves_url()}?ordering=foo", **bearer(write_token))
+    assert_v2_error(response, "validation_error")
+    assert "ordering" in response.json()["error"]["details"]
 
 
 @pytest.mark.django_db

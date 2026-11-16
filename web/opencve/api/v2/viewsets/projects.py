@@ -19,7 +19,7 @@ from cves.search import (
     Search,
 )
 from opencve.api.v2.scopes import APIScope
-from opencve.api.v2.mixins import ProjectScopedMixin, ViewSetMixin
+from opencve.api.v2.mixins import CveOrderingMixin, ProjectScopedMixin, ViewSetMixin
 from opencve.api.v2.openapi import (
     AUTOMATION_CREATE_REQUEST_EXAMPLE,
     AUTOMATION_CREATE_RESPONSE_EXAMPLE,
@@ -28,6 +28,7 @@ from opencve.api.v2.openapi import (
     AUTOMATION_UPDATE_REQUEST_EXAMPLE,
     AUTOMATION_UPDATE_RESPONSE_EXAMPLE,
     AUTOMATIONS_TAG,
+    CVE_LIST_QUERY_PARAMS,
     MEMBERS_TAG,
     PROJECT_MEMBERSHIP_CREATE_REQUEST_EXAMPLE,
     PROJECT_MEMBERSHIP_CREATE_RESPONSE_EXAMPLE,
@@ -347,10 +348,17 @@ class ProjectSubscriptionViewSet(
 @extend_schema(tags=[TRACKER_TAG])
 @extend_schema(parameters=ORG_PROJECT_PATH_PARAMS)
 @extend_schema_view(
-    list=extend_schema(summary="List CVEs tracked by a project."),
+    list=extend_schema(
+        summary="List CVEs tracked by a project.",
+        parameters=CVE_LIST_QUERY_PARAMS,
+    ),
 )
 class ProjectCveViewSet(
-    ViewSetMixin, ProjectScopedMixin, viewsets.GenericViewSet, mixins.ListModelMixin
+    CveOrderingMixin,
+    ViewSetMixin,
+    ProjectScopedMixin,
+    viewsets.GenericViewSet,
+    mixins.ListModelMixin,
 ):
     queryset = Cve.objects.none()
     scope_map = {
@@ -366,11 +374,7 @@ class ProjectCveViewSet(
             return Cve.objects.none()
 
         # Get the CVEs that match the project subscriptions
-        queryset = (
-            Cve.objects.order_by("-updated_at")
-            .filter(vendors__has_any_keys=vendors)
-            .all()
-        )
+        queryset = self.order_cves(Cve.objects.filter(vendors__has_any_keys=vendors))
 
         # Optional filters: tracker status, assignee email
         status_filter = self.request.query_params.get("status")

@@ -17,10 +17,13 @@
                 <span class="opencve-cve-list-results-label">Results</span>
                 <span class="opencve-cve-list-results-count">{{ page_obj.paginator.count|intcomma }}</span>
             </p>
-            <a href="{% url 'project_vulnerabilities_export_csv' org_name=request.current_organization.name project_name=project.name %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
-               class="btn btn-default btn-sm opencve-cve-list-export">
-                <i class="fa fa-download" aria-hidden="true"></i> Export CSV
-            </a>
+            <div class="opencve-cve-list-toolbar-actions">
+                {% include "cves/includes/cve_list_ordering.html" %}
+                <a href="{% url 'project_vulnerabilities_export_csv' org_name=request.current_organization.name project_name=project.name %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
+                   class="btn btn-default btn-sm opencve-cve-list-export">
+                    <i class="fa fa-download" aria-hidden="true"></i> Export CSV
+                </a>
+            </div>
         </div>
 
         <div id="cves-tracking-list">

@@ -5,6 +5,7 @@ from django.test import override_settings
 from django.urls import reverse
 
 from changes.models import Change
+from cves.models import Cve, Weakness
 from organizations.models import OrganizationAPIToken
 from tests.api.v2.conftest import assert_v2_error, bearer, read_token
 
@@ -83,6 +84,19 @@ def product_cves_url(vendor_name, product_name):
     )
 
 
+def create_dated_cves(create_cve):
+    """Create CVEs whose publication and update dates are in a different order."""
+    dates = {
+        "CVE-2021-44228": ("2021-01-01T00:00:00Z", "2024-02-01T00:00:00Z"),
+        "CVE-2022-22965": ("2022-01-01T00:00:00Z", "2024-01-01T00:00:00Z"),
+    }
+    for cve_id, (created_at, updated_at) in dates.items():
+        create_cve(cve_id)
+        Cve.objects.filter(cve_id=cve_id).update(
+            created_at=created_at, updated_at=updated_at
+        )
+
+
 @pytest.mark.django_db
 def test_cve_list_without_filter(client, read_token, create_cve):
     """List CVEs without a search filter."""
@@ -98,6 +112,63 @@ def test_cve_list_without_filter(client, read_token, create_cve):
         "CVE-2022-22965",
         "CVE-2021-44228",
     ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "ordering,expected",
+    [
+        ("-updated_at", ["CVE-2021-44228", "CVE-2022-22965"]),
+        ("updated_at", ["CVE-2022-22965", "CVE-2021-44228"]),
+        ("-created_at", ["CVE-2022-22965", "CVE-2021-44228"]),
+        ("created_at", ["CVE-2021-44228", "CVE-2022-22965"]),
+    ],
+)
+def test_cve_list_ordering(client, read_token, create_cve, ordering, expected):
+    """Sort the CVE list with the ordering parameter."""
+    create_dated_cves(create_cve)
+
+    response = client.get(f"{cve_list_url()}?ordering={ordering}", **bearer(read_token))
+
+    assert response.status_code == 200
+    assert [item["cve_id"] for item in response.json()["results"]] == expected
+
+
+@pytest.mark.django_db
+def test_cve_list_ordering_with_q_filter(client, read_token, create_cve):
+    """Sort the CVE list filtered by an advanced search query."""
+    create_dated_cves(create_cve)
+    create_cve("CVE-2023-22490")
+
+    response = client.get(
+        f"{cve_list_url()}?q=vendor:cisco&ordering=-created_at",
+        **bearer(read_token),
+    )
+
+    assert response.status_code == 200
+    assert [item["cve_id"] for item in response.json()["results"]] == [
+        "CVE-2022-22965",
+        "CVE-2021-44228",
+    ]
+
+
+@pytest.mark.django_db
+def test_cve_list_rejects_unknown_ordering(client, read_token, create_cve):
+    """Reject CVE list requests with an unknown ordering."""
+    create_cve("CVE-2021-44228")
+
+    response = client.get(f"{cve_list_url()}?ordering=cve_id", **bearer(read_token))
+
+    assert_v2_error(
+        response,
+        "validation_error",
+        details={
+            "ordering": (
+                "Unknown ordering 'cve_id'. Allowed values: "
+                "-updated_at, updated_at, -created_at, created_at."
+            )
+        },
+    )
 
 
 @pytest.mark.django_db
@@ -388,6 +459,45 @@ def test_product_cves(client, read_token, create_cve):
 
     assert response.status_code == 200
     assert [item["cve_id"] for item in response.json()["results"]] == ["CVE-2021-44228"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "url_name,kwargs",
+    [
+        ("v2-weakness-cves", {"cwe_id": "CWE-917"}),
+        ("v2-vendor-cves", {"vendor_name": "cisco"}),
+        (
+            "v2-product-cves",
+            {"vendor_name": "cisco", "product_name": "cx_cloud_agent"},
+        ),
+    ],
+)
+def test_catalog_cves_ordering(client, read_token, create_cve, url_name, kwargs):
+    """Sort the weakness, vendor and product CVE lists with the ordering parameter."""
+    create_dated_cves(create_cve)
+    Cve.objects.update(
+        weaknesses=["CWE-917"],
+        vendors=["cisco", "cisco$PRODUCT$cx_cloud_agent"],
+    )
+    Weakness.objects.get_or_create(cwe_id="CWE-917")
+    url = reverse(url_name, kwargs=kwargs)
+
+    response = client.get(f"{url}?ordering=created_at", **bearer(read_token))
+    assert [item["cve_id"] for item in response.json()["results"]] == [
+        "CVE-2021-44228",
+        "CVE-2022-22965",
+    ]
+
+    response = client.get(f"{url}?ordering=-created_at", **bearer(read_token))
+    assert [item["cve_id"] for item in response.json()["results"]] == [
+        "CVE-2022-22965",
+        "CVE-2021-44228",
+    ]
+
+    response = client.get(f"{url}?ordering=foo", **bearer(read_token))
+    assert_v2_error(response, "validation_error")
+    assert "ordering" in response.json()["error"]["details"]
 
 
 @pytest.mark.django_db

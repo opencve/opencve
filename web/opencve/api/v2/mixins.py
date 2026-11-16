@@ -1,7 +1,9 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import JSONParser
 
+from cves.constants import CVE_ORDERINGS
+from cves.utils import cve_ordering_fields
 from opencve.api.v2.authentication import OrganizationTokenAuthentication
 from opencve.api.v2.pagination import PageNumberPagination
 from opencve.api.v2.permissions import IsOrganizationTokenAuthenticated, RequiresScope
@@ -77,3 +79,20 @@ class ProjectScopedMixin(OrganizationScopedMixin):
             raise NotFound()
 
         return self.project
+
+
+class CveOrderingMixin:
+    """Order a list of CVEs using the `ordering` query parameter."""
+
+    def order_cves(self, queryset):
+        ordering = self.request.query_params.get("ordering")
+        if ordering and ordering not in CVE_ORDERINGS:
+            raise ValidationError(
+                {
+                    "ordering": (
+                        f"Unknown ordering '{ordering}'. "
+                        f"Allowed values: {', '.join(CVE_ORDERINGS)}."
+                    )
+                }
+            )
+        return queryset.order_by(*cve_ordering_fields(ordering))

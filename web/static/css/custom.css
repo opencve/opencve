@@ -2400,7 +2400,15 @@ a.opencve-org-card-manage:focus {
   padding: 3px 12px;
 }
 
-.opencve-cve-list-export .fa {
+.opencve-cve-list-toolbar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opencve-cve-list-export .fa,
+.opencve-cve-list-ordering .dropdown-toggle .fa {
   margin-right: 6px;
 }
 

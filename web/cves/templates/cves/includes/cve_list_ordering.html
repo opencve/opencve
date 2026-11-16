@@ -1,0 +1,21 @@
+{% load opencve_extras %}
+
+<div class="dropdown opencve-project-card-menu opencve-cve-list-ordering">
+    <button type="button"
+            class="btn btn-default btn-sm dropdown-toggle"
+            data-toggle="dropdown"
+            aria-haspopup="true"
+            aria-expanded="false">
+        <i class="fa fa-sort-amount-desc" aria-hidden="true"></i> {{ cve_orderings|get:cve_ordering }} <span class="caret"></span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-right opencve-project-card-dropdown">
+        {% for value, label in cve_orderings.items %}
+        <li>
+            <a href="?{% query_params_url 'ordering' value 'page' 1 %}"{% if value == cve_ordering %} aria-current="true"{% endif %}>
+                <i class="fa fa-check{% if value != cve_ordering %} invisible{% endif %}" aria-hidden="true"></i>
+                {{ label }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
