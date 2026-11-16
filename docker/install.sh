@@ -348,24 +348,75 @@ set-airflow-connections() {
         --conn-uri "redis://redis:6379" --conn-extra '{"db": 3}'
 }
 
+# Read OPENCVE_SECRET_KEY from the webserver .env (prints empty string if unset).
+read-opencve-secret-key() {
+    local _ENV_FILE="$1"
+    local _VAL
+
+    if [[ ! -f "$_ENV_FILE" ]]; then
+        printf ''
+        return 0
+    fi
+    if ! _VAL=$(grep -E '^[[:space:]]*OPENCVE_SECRET_KEY=' "$_ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2-); then
+        printf ''
+        return 0
+    fi
+    _VAL="${_VAL#\"}"; _VAL="${_VAL%\"}"
+    _VAL="${_VAL#\'}"; _VAL="${_VAL%\'}"
+    printf '%s' "$_VAL"
+}
+
+# Return 0 when the secret key must be replaced (missing, empty, or placeholder).
+opencve-secret-key-needs-replacement() {
+    local _KEY="$1"
+
+    [[ -z "$_KEY" ]] && return 0
+    [[ "$_KEY" == "change_me" ]] && return 0
+    [[ "$_KEY" == django-insecure-* ]] && return 0
+    return 1
+}
+
+# Ensure the running Django process loaded a non-placeholder SECRET_KEY (exit 1 on failure).
+verify-opencve-secret-key-loaded() {
+    step-header "Verify OpenCVE secret key"
+    display-and-exec "verifying Django secret key" -q docker compose exec -T webserver python manage.py shell -c \
+        "from django.conf import settings; key = settings.SECRET_KEY; raise SystemExit(1 if (not key or key.startswith('django-insecure-') or key == 'change_me') else 0)"
+}
+
 # Generate the Django secret key once and store it in the webserver .env file.
 init-secret-key() {
     step-header "Generate OpenCVE secret key"
     local _ENV_FILE="../web/opencve/conf/.env"
-    if grep -qE "^OPENCVE_SECRET_KEY=.+" "$_ENV_FILE" 2>/dev/null; then
-        log "> OPENCVE_SECRET_KEY already present in .env, skipping."
+    local _CURRENT_KEY _OPENCVE_SECRET_KEY _ESCAPED_KEY
+
+    _CURRENT_KEY=$(read-opencve-secret-key "$_ENV_FILE")
+    if ! opencve-secret-key-needs-replacement "$_CURRENT_KEY"; then
+        log "> OPENCVE_SECRET_KEY already set to a custom value, skipping."
         return 0
     fi
 
-    local _OPENCVE_SECRET_KEY _ESCAPED_KEY
-    _OPENCVE_SECRET_KEY=$(docker compose exec webserver python manage.py generate_secret_key)
-    _ESCAPED_KEY="${_OPENCVE_SECRET_KEY//\'/\'\\\'\'}"
+    log "> placeholder or missing OPENCVE_SECRET_KEY, generating..."
+    _OPENCVE_SECRET_KEY=$(docker compose exec -T webserver python manage.py generate_secret_key 2>/dev/null || true)
+    _OPENCVE_SECRET_KEY=$(printf '%s' "$_OPENCVE_SECRET_KEY" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+    if [[ -z "$_OPENCVE_SECRET_KEY" ]]; then
+        log "$_RED ERROR: failed to generate OPENCVE_SECRET_KEY."
+        exit 1
+    fi
 
+    _ESCAPED_KEY="${_OPENCVE_SECRET_KEY//\'/\'\\\'\'}"
     log "> updating OpenCVE secret key..."
-    grep -v '^OPENCVE_SECRET_KEY=' "$_ENV_FILE" > "${_ENV_FILE}.tmp"
+    if [[ -f "$_ENV_FILE" ]]; then
+        grep -v '^OPENCVE_SECRET_KEY=' "$_ENV_FILE" > "${_ENV_FILE}.tmp"
+    else
+        : > "${_ENV_FILE}.tmp"
+    fi
     printf 'OPENCVE_SECRET_KEY=%s\n' "'${_ESCAPED_KEY}'" >> "${_ENV_FILE}.tmp"
     mv "${_ENV_FILE}.tmp" "$_ENV_FILE"
     log "> done $_DONE"
+
+    step-header "Apply OpenCVE secret key to webserver"
+    display-and-exec "recreating webserver to load new secret key" docker compose up -d --no-deps --force-recreate --wait webserver
+    verify-opencve-secret-key-loaded
 }
 
 # Start the Docker stack and initialize Airflow connections and secret key.
@@ -597,7 +648,7 @@ display-usage() {
     printf "\n%${_S1}s docker-build"
     printf "\n%${_S2}s Build the docker images for OpenCVE stack."
     printf "\n%${_S1}s init-secret-key"
-    printf "\n%${_S2}s Generate OpenCVE Django secret key."
+    printf "\n%${_S2}s Replace placeholder OpenCVE Django secret key and recreate the webserver."
 
     printf "\n\n${_BOLD}EXAMPLES${_NC}"
     printf "\n%${_S1}s ./install.sh"
@@ -708,7 +759,7 @@ case $_COMMAND in
         docker-build
         ;;
     "init-secret-key" )
-        begin-steps 1
+        begin-steps 3
         init-secret-key
         ;;
     "bye" )
