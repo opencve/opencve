@@ -11,6 +11,7 @@ from django.views.generic import DetailView, ListView
 from changes.forms import ActivitiesViewForm
 from changes.models import Change
 from changes.utils import CustomHtmlHTML
+from opencve.mixins import AnonymousAccessMixin
 from organizations.mixins import OrganizationIsMemberMixin
 
 
@@ -73,7 +74,7 @@ class ChangeListView(LoginRequiredMixin, OrganizationIsMemberMixin, ListView):
         return redirect("activity")
 
 
-class ChangeDetailView(DetailView):
+class ChangeDetailView(AnonymousAccessMixin, DetailView):
     model = Change
     template_name = "changes/change_detail.html"
 

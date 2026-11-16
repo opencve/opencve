@@ -1,7 +1,9 @@
 import json
 import logging
 
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import redirect_to_login
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.views import View
@@ -19,6 +21,8 @@ class DashboardView(TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
+            if not getattr(settings, "ENABLE_ANONYMOUS_ACCESS", True):
+                return redirect_to_login(request.get_full_path())
             return redirect("cves")
         return super().dispatch(request, *args, **kwargs)
 
