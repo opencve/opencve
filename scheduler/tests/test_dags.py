@@ -1,7 +1,10 @@
-import pytest
 from unittest.mock import patch
 
+import pendulum
+import pytest
+
 from airflow.models import DagBag
+from airflow.timetables.base import TimeRestriction
 
 
 @pytest.fixture()
@@ -37,6 +40,20 @@ def test_dag_opencve_loaded(dagbag):
     # Short-circuit guards removed
     assert "should_create_reports" not in task_ids
     assert "should_launch_automations" not in task_ids
+
+
+def test_dag_opencve_uses_hourly_data_interval(dagbag):
+    dag = dagbag.get_dag(dag_id="opencve")
+    earliest = pendulum.datetime(2024, 1, 1, tz="UTC")
+
+    run_info = dag.timetable.next_dagrun_info(
+        last_automated_data_interval=None,
+        restriction=TimeRestriction(earliest=earliest, latest=None, catchup=True),
+    )
+
+    assert run_info is not None
+    assert run_info.data_interval.start == earliest
+    assert run_info.data_interval.end == earliest.add(hours=1)
 
 
 def test_dag_check_smtp_loaded(dagbag):

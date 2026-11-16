@@ -943,6 +943,9 @@ tls_cert =
 tls_key =
 
 [scheduler]
+# Use data-interval timetables for cron schedules (Airflow 3 defaults to trigger timetables).
+create_cron_data_intervals = True
+
 # Task instances listen for external kill signal (when you clear tasks
 # from the CLI or the UI), this defines the frequency at which they should
 # listen (in seconds).
