@@ -265,3 +265,25 @@ def test_build_cve_quick_search_sidebar_entries_expands_when_active_hidden():
         current_q=active_q,
     )
     assert not any(entry.get("hidden") for entry in entries)
+
+
+def test_build_cve_quick_search_sidebar_entries_only_includes_existing_user_tags():
+    from cves.constants import (
+        CVE_QUICK_SEARCH_GROUPS,
+        build_cve_quick_search_sidebar_entries,
+    )
+
+    entries, _ = build_cve_quick_search_sidebar_entries(
+        CVE_QUICK_SEARCH_GROUPS,
+        preview=20,
+    )
+    assert not any(
+        entry.get("query") == "userTag:tocheck" for entry in entries
+    )
+
+    entries, _ = build_cve_quick_search_sidebar_entries(
+        CVE_QUICK_SEARCH_GROUPS,
+        preview=20,
+        available_tags=["tocheck"],
+    )
+    assert any(entry.get("query") == "userTag:tocheck" for entry in entries)
