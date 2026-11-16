@@ -2487,6 +2487,38 @@ def test_assign_cve_user_view_invalid_json(
     assert "Invalid JSON payload" in data["error"]
 
 
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "assign_cve_user",
+        "update_cve_status",
+        "create_cve_comment",
+        "update_cve_comment",
+        "delete_cve_comment",
+    ],
+)
+@pytest.mark.parametrize("payload", ["[]", "null"])
+@override_settings(ENABLE_ONBOARDING=False)
+def test_tracker_endpoints_reject_non_object_json(
+    endpoint, payload, create_organization, create_user, create_project, auth_client
+):
+    user = create_user()
+    org = create_organization(name="org1", user=user)
+    create_project(name="project1", organization=org)
+
+    response = auth_client(user).post(
+        reverse(endpoint, kwargs={"org_name": "org1", "project_name": "project1"}),
+        content_type="application/json",
+        data=payload,
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "success": False,
+        "error": "Invalid JSON payload",
+    }
+
+
 @override_settings(ENABLE_ONBOARDING=False)
 def test_assign_cve_user_view_unjoined_assignee(
     create_organization, create_user, create_project, create_cve, auth_client
