@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import patch
 
 import pendulum
@@ -46,3 +47,32 @@ def test_dag_check_smtp_run_task(run_dag_task, override_confs):
                 validate_certs=True,
                 timeout=30,
             )
+
+
+def test_check_smtp_run_without_current_event_loop(override_confs):
+    override_confs(
+        "opencve",
+        {
+            "notification_smtp_host": "smtp.example.com",
+            "notification_smtp_mail_from": "john@example.com",
+            "notification_smtp_port": "587",
+            "notification_smtp_use_tls": "True",
+            "notification_smtp_validate_certs": "True",
+            "notification_smtp_timeout": "30",
+            "notification_smtp_user": "",
+            "notification_smtp_password": "",
+            "notification_smtp_start_tls": "",
+        },
+    )
+
+    # This is the state left by a previous asyncio.run() call
+    asyncio.set_event_loop(None)
+
+    with patch("includes.tasks.smtp.aiosmtplib.send") as mock_send:
+        with patch("includes.tasks.smtp.get_smtp_message") as mock_message:
+            message = MIMEMultipart("alternative")
+            mock_message.return_value = message
+
+            run.function(params={"email": "foo@bar.com"})
+
+            mock_send.assert_called_once()

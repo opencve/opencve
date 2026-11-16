@@ -36,8 +36,6 @@ def run(params: dict, **context):
     logger.info("Sending an email to %s", email_to)
     logger.info("Current configuration: %s", smtp_conf)
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(send_email(smtp_conf, email_to))
-    loop.close()
+    asyncio.run(send_email(smtp_conf, email_to))
 
     logger.info("Email sent")

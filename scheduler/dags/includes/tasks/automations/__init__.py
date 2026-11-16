@@ -1029,9 +1029,8 @@ def _execute_automation_actions(
 
     changes_details = redis_get(redis_hook, REDIS_PREFIX_CHANGES_DETAILS, start, end)
 
-    loop = asyncio.get_event_loop()
     for chunk in chunks_to_run:
-        loop.run_until_complete(
+        asyncio.run(
             execute_actions_async(
                 action_items=chunk,
                 changes_details=changes_details,
