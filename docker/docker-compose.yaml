@@ -12,6 +12,9 @@ x-airflow-common: &airflow-common
       - OPENCVE_VERSION=${OPENCVE_VERSION}
   env_file:
     - .env
+  environment:
+    # Keep cron DAGs on data-interval timetables when upgrading to Airflow 3.
+    AIRFLOW__SCHEDULER__CREATE_CRON_DATA_INTERVALS: "True"
   volumes:
     - ../scheduler/airflow.cfg:/opt/airflow/airflow.cfg:ro
     - repositories:/home/airflow/repositories/
