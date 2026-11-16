@@ -114,6 +114,10 @@ LOGGING = {
         "handlers": ["console"],
         "level": "DEBUG",
     },
+    "loggers": {
+        "xmlschema": {"level": "WARNING"},
+        "elementpath": {"level": "WARNING"},
+    },
 }
 
 # Database
