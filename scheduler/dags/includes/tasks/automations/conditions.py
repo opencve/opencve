@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from includes.constants import (
@@ -116,17 +116,20 @@ class CveUnassignedCondition(ConditionEvaluator):
 @register_condition("cve_newer_than")
 class CveNewerThanCondition(ConditionEvaluator):
     def evaluate(self, value, change_details, cve_trackers):
-        cve_id = change_details.get("cve_id", "")
+        if isinstance(value, dict):
+            value = value.get("value")
+
+        # The creation date of a CVE in OpenCVE is its publication date
         try:
-            threshold_days = int(value)
-            cve_year = int(cve_id.split("-")[1])
-        except (TypeError, ValueError, IndexError):
+            max_age = timedelta(days=int(value))
+            published_at = datetime.fromisoformat(change_details["cve_created_at"])
+        except (KeyError, TypeError, ValueError, OverflowError):
             return False
 
-        current_year = datetime.now(tz=timezone.utc).year
-        if cve_year >= current_year:
-            return True
-        return threshold_days > 365 and cve_year >= current_year - 1
+        if published_at.tzinfo is None:
+            published_at = published_at.replace(tzinfo=timezone.utc)
+
+        return datetime.now(tz=timezone.utc) - published_at < max_age
 
 
 @register_condition("cvss_gte")
