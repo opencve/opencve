@@ -1309,7 +1309,7 @@ def test_advanced_search_not_usertag(create_cve, create_user, auth_client):
 
     response = client.get(f"{reverse('cves')}?q=NOT userTag:test")
     soup = BeautifulSoup(response.content, features="html.parser")
-    cves = [s.find("a").text for s in soup.find_all("tr", {"class": "cve-header"})]
+    cves = _cve_list_ids(soup)
 
     assert response.status_code == 200
     assert sorted(cves) == [untagged.cve_id, tagged_by_other_user.cve_id]
