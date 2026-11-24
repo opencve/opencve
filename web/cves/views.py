@@ -4,13 +4,12 @@ from datetime import datetime
 import pyparsing as pp
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.paginator import Paginator
 from django.db import models
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.views.generic import DetailView, ListView, TemplateView, View
+from django.views.generic import DetailView, TemplateView, View
 
 from cves.constants import (
     CVE_QUICK_SEARCH_GROUPS,
@@ -37,6 +36,19 @@ from cves.utils import (
     project_subscription_match_keys,
 )
 from opencve.utils import is_valid_uuid
+from opencve.cursor_pagination import (
+    build_cursor_list_initial_state,
+    cached_queryset_count,
+    cve_list_count_cache_key,
+    cve_list_page_requires_auth,
+    cve_list_page_requires_organization,
+    cursor_page_api_payload,
+    paginate_cve_queryset,
+    paginate_weakness_queryset,
+    parse_page_number,
+    total_pages,
+    weakness_list_count_cache_key,
+)
 from opencve.pagination import (
     keyset_cursor_payload,
     paginate_keyset,
@@ -57,19 +69,71 @@ from views.forms import ViewForm
 from views.models import View as SavedView
 
 
-class WeaknessListView(ListView):
-    context_object_name = "weaknesses"
-    template_name = "cves/weakness_list.html"
-    paginate_by = 20
+WEAKNESS_LIST_PAGE_SIZE = 20
 
-    def get_queryset(self):
-        query = Weakness.objects
-        search = self.request.GET.get("search")
-        if search:
-            query = query.filter(
-                models.Q(cwe_id__icontains=search) | models.Q(name__icontains=search)
-            )
-        return query.order_by(models.F("name").desc(nulls_last=True))
+
+def get_weaknesses_queryset(*, search):
+    queryset = Weakness.objects.all()
+    if search:
+        queryset = queryset.filter(
+            models.Q(cwe_id__icontains=search) | models.Q(name__icontains=search)
+        )
+    return queryset
+
+
+class WeaknessListView(TemplateView):
+    template_name = "cves/weakness_list.html"
+    page_size = WEAKNESS_LIST_PAGE_SIZE
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        search = self.request.GET.get("search", "")
+        queryset = get_weaknesses_queryset(search=search)
+        cache_key = weakness_list_count_cache_key(self.request)
+        total_count = cached_queryset_count(queryset, cache_key)
+        page = paginate_weakness_queryset(
+            queryset, after=None, before=None, limit=self.page_size
+        )
+        pages_count = total_pages(total_count, page_size=self.page_size)
+        context["weaknesses"] = page.items
+        context["total_count"] = total_count
+        context["total_pages"] = pages_count
+        context["cursor_page"] = page
+        context["weakness_list_initial_state"] = build_cursor_list_initial_state(
+            total_count=total_count,
+            total_pages_count=pages_count,
+            page=page,
+        )
+        return context
+
+
+class WeaknessListPageView(View):
+    page_size = WEAKNESS_LIST_PAGE_SIZE
+
+    def get(self, request, *args, **kwargs):
+        search = request.GET.get("search", "")
+        queryset = get_weaknesses_queryset(search=search)
+        after = request.GET.get("after") or None
+        before = request.GET.get("before") or None
+        page_number = parse_page_number(request.GET.get("page"))
+        page = paginate_weakness_queryset(
+            queryset, after=after, before=before, limit=self.page_size
+        )
+        cache_key = weakness_list_count_cache_key(request)
+        total_count = cached_queryset_count(queryset, cache_key)
+        html = render_to_string(
+            "cves/includes/weakness_list_rows.html",
+            {"weaknesses": page.items},
+            request=request,
+        )
+        payload = cursor_page_api_payload(
+            page,
+            page_number=page_number,
+            total_count=total_count,
+            page_size=self.page_size,
+        )
+        payload["html"] = html
+        return JsonResponse(payload)
 
 
 VENDOR_LIST_PAGE_SIZE = 20
@@ -174,11 +238,10 @@ class VendorListLoadMoreView(View):
         return JsonResponse({"html": html, **keyset_cursor_payload(page)})
 
 
-class CveListView(ListView):
-    context_object_name = "cves"
-    template_name = "cves/cve_list.html"
-    paginate_by = 20
+CVE_LIST_PAGE_SIZE = 20
 
+
+class CveListQuerysetMixin:
     def get_queryset(self):
         self.form = SearchForm(self.request.GET)
 
@@ -246,8 +309,29 @@ class CveListView(ListView):
 
         return " AND ".join(advanced_parts)
 
+
+class CveListView(CveListQuerysetMixin, TemplateView):
+    template_name = "cves/cve_list.html"
+    page_size = CVE_LIST_PAGE_SIZE
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        queryset = self.get_queryset()
+        cache_key = cve_list_count_cache_key(self.request)
+        total_count = cached_queryset_count(queryset, cache_key)
+        page = paginate_cve_queryset(
+            queryset, after=None, before=None, limit=self.page_size
+        )
+        pages_count = total_pages(total_count, page_size=self.page_size)
+        context["cves"] = page.items
+        context["total_count"] = total_count
+        context["total_pages"] = pages_count
+        context["cursor_page"] = page
+        context["cve_list_initial_state"] = build_cursor_list_initial_state(
+            total_count=total_count,
+            total_pages_count=pages_count,
+            page=page,
+        )
 
         # Handle custom titles when vendor, product or weakness is set
         vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
@@ -335,7 +419,51 @@ class CveListView(ListView):
         return context
 
 
-class CveCsvExportView(CveListView):
+class CveListPageView(CveListQuerysetMixin, View):
+    page_size = CVE_LIST_PAGE_SIZE
+
+    def dispatch(self, request, *args, **kwargs):
+        if cve_list_page_requires_auth(request):
+            if not request.user.is_authenticated:
+                return JsonResponse(
+                    {"error": "You must be logged in to use this search."},
+                    status=401,
+                )
+            if cve_list_page_requires_organization(request) and not getattr(
+                request, "current_organization", None
+            ):
+                return JsonResponse(
+                    {"error": "An organization context is required."},
+                    status=403,
+                )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        after = request.GET.get("after") or None
+        before = request.GET.get("before") or None
+        page_number = parse_page_number(request.GET.get("page"))
+        page = paginate_cve_queryset(
+            queryset, after=after, before=before, limit=self.page_size
+        )
+        cache_key = cve_list_count_cache_key(request)
+        total_count = cached_queryset_count(queryset, cache_key)
+        html = render_to_string(
+            "cves/includes/cve_card_list.html",
+            {"cves": page.items},
+            request=request,
+        )
+        payload = cursor_page_api_payload(
+            page,
+            page_number=page_number,
+            total_count=total_count,
+            page_size=self.page_size,
+        )
+        payload["html"] = html
+        return JsonResponse(payload)
+
+
+class CveCsvExportView(CveListQuerysetMixin, View):
     """
     Export the current CVE list (same queryset as CveListView) as CSV.
     Redirects with an error message if the result set exceeds CVE_CSV_EXPORT_MAX_ROWS.
