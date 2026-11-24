@@ -2542,7 +2542,55 @@ a.opencve-cve-card-view:focus {
 }
 
 .opencve-cve-list-pagination {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  justify-content: center;
   margin-top: 18px;
+  white-space: nowrap;
+}
+
+.opencve-cve-list-page-meta {
+  color: #5c6570;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.opencve-cve-list-page-position {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.opencve-cve-list-page-btn {
+  min-width: 128px;
+  text-align: center;
+}
+
+.opencve-cve-list-pagination .fa-angle-left {
+  margin-right: 6px;
+}
+
+.opencve-cve-list-pagination .fa-angle-right {
+  margin-left: 6px;
+}
+
+.opencve-cve-list-pagination .btn.disabled,
+.opencve-cve-list-pagination .btn:disabled {
+  box-shadow: none;
+  cursor: default;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.opencve-weakness-list-pagination {
+  margin-bottom: 4px;
+}
+
+.opencve-cursor-pagination.is-loading {
+  opacity: 0.65;
+  pointer-events: none;
 }
 
 .opencve-cve-list-layout {

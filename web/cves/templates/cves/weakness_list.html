@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% load humanize %}
+{% load static %}
 
 {% block title %}Weaknesses - {{ block.super }}{% endblock %}
 {% block navbar_title%}Weaknesses{% endblock %}
@@ -47,69 +49,46 @@
                                 <th class="text-center actions-column">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% if weaknesses %}
-                            {% for weakness in weaknesses %}
-                            <tr>
-                                <td class="cwe-column">
-                                    <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}">{{ weakness.cwe_id }}</a>
-                                </td>
-                                <td>
-                                    <strong>{{ weakness.name|default:'No name' }}</strong>
-                                    <br>
-                                    {% if weakness.description %}
-                                    <small class="text-muted">{{ weakness.description }}</small>
-                                    {% else %}
-                                    <small class="text-muted"><em>No description available.</em></small>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center actions-column">
-                                    <div class="btn-group">
-                                        {% if weakness.cwe_id not in 'NVD-CWE-noinfo,NVD-CWE-Other' %}
-                                        <a href="http://cwe.mitre.org/data/definitions/{{ weakness.short_id }}.html"
-                                           target="_blank" rel="noopener noreferrer"
-                                           class="btn btn-xs btn-default">
-                                            <i class="fa fa-external-link"></i> Mitre
-                                        </a>
-                                        {% endif %}
-                                        <a href="{% url 'cves' %}?weakness={{ weakness.cwe_id }}"
-                                           class="btn btn-xs btn-default">
-                                            <i class="fa fa-shield"></i> View CVE
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                            {% else %}
-                            <tr>
-                                <td colspan="3">No CWE found.</td>
-                            </tr>
-                            {% endif %}
+                        <tbody id="weaknesses-tbody">
+                            {% include "cves/includes/weakness_list_rows.html" %}
                         </tbody>
                     </table>
-                    <div class="center">
-                        <div class="pagination">
-                            <span class="step-links">
-                                {% if page_obj.has_previous %}
-                                    <a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">&laquo; first</a>
-                                    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">previous</a>
-                                {% endif %}
-
-                                <span class="current">
-                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
-                                </span>
-
-                                {% if page_obj.has_next %}
-                                    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">next</a>
-                                    <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">last &raquo;</a>
-                                {% endif %}
-                            </span>
-                        </div>
-                    </div>
                 </div>
             </div>
+            {% if weaknesses or cursor_page.has_next %}
+            {{ weakness_list_initial_state|json_script:"weakness-list-initial-state" }}
+            <nav class="opencve-cve-list-pagination opencve-weakness-list-pagination opencve-cursor-pagination"
+                 aria-label="Weakness list pagination"
+                 data-list="weaknesses"
+                 data-page-url="{% url 'weaknesses_page' %}"
+                 data-storage-key="opencve:weakness-list"
+                 data-content-target="#weaknesses-tbody"
+                 data-initial-state-id="weakness-list-initial-state">
+                <button type="button"
+                        class="btn btn-primary btn-primary-outline opencve-cve-list-page-btn"
+                        data-action="previous"
+                        disabled>
+                    <i class="fa fa-angle-left" aria-hidden="true"></i> Previous
+                </button>
+                <div class="opencve-cve-list-page-meta">
+                    <span class="opencve-cve-list-page-position opencve-cursor-pagination-status">
+                        Page 1{% if total_pages %} / {{ total_pages|intcomma }}{% endif %}
+                    </span>
+                </div>
+                <button type="button"
+                        class="btn btn-primary btn-primary-outline opencve-cve-list-page-btn"
+                        data-action="next"
+                        {% if not cursor_page.has_next %}disabled{% endif %}>
+                    Next <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </button>
+            </nav>
+            {% endif %}
         </div>
     </div>
 </section>
 
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/cursor-pagination.js' %}" type="text/javascript"></script>
 {% endblock %}
