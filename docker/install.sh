@@ -34,7 +34,7 @@
 #   For more details, see the documentation at https://docs.opencve.io/deployment/
 #
 # Prerequisites:
-#   Ensure that the following commands are available: docker, sed, grep, tr.
+#   Ensure that the following commands are available: docker, openssl, sed, grep, tr.
 
 _GREEN="\360\237\237\242"
 _YELLOW="\360\237\237\241"
@@ -46,7 +46,7 @@ _ROCKET="\360\237\232\200"
 _AIRFLOW_DAGS=(opencve summarize_reports sync_weaknesses clean_reports)
 
 # Check for required commands
-required_commands=("docker" "sed" "grep" "tr")
+required_commands=("docker" "openssl" "sed" "grep" "tr")
 for cmd in "${required_commands[@]}"; do
     if ! command -v "$cmd" &> /dev/null; then
         echo "Error: $cmd is not installed." >&2
@@ -153,6 +153,80 @@ read-env-var() {
     printf '%s' "$_VAL"
 }
 
+# Read OPENCVE_SECRET_KEY from a webserver .env file.
+read-opencve-secret-key() {
+    local _ENV_FILE="$1"
+    local _VAL
+    _VAL=$(grep -E '^[[:space:]]*OPENCVE_SECRET_KEY=' "$_ENV_FILE" 2>/dev/null | tail -n 1 | cut -d= -f2-)
+    [[ -n "$_VAL" ]] || return 1
+    _VAL="${_VAL#\"}"; _VAL="${_VAL%\"}"
+    _VAL="${_VAL#\'}"; _VAL="${_VAL%\'}"
+    printf '%s' "$_VAL"
+}
+
+# Generate a random Django-compatible secret key.
+generate-opencve-secret-key() {
+    openssl rand -base64 50 | tr -d '\n'
+}
+
+# Return 0 if the secret key is missing, django-insecure (dev/default), or matches .env.example.
+opencve-secret-key-needs-generation() {
+    local _ENV_FILE="$1"
+    local _EXAMPLE_FILE="$2"
+    local _CURRENT _EXAMPLE
+
+    _CURRENT=$(read-opencve-secret-key "$_ENV_FILE" || true)
+    _EXAMPLE=$(read-opencve-secret-key "$_EXAMPLE_FILE" || true)
+    [[ -z "$_CURRENT" ]] && return 0
+    [[ "$_CURRENT" =~ ^django-insecure- ]] && return 0
+    [[ -n "$_EXAMPLE" && "$_CURRENT" == "$_EXAMPLE" ]] && return 0
+    return 1
+}
+
+# Restrict .env file permissions to owner read/write only.
+restrict-env-file-permissions() {
+    local _FILE="$1"
+    if [[ -f "$_FILE" ]]; then
+        chmod 600 "$_FILE"
+    fi
+}
+
+# Write OPENCVE_SECRET_KEY into the webserver .env file.
+write-opencve-secret-key() {
+    local _ENV_FILE="$1"
+    local _KEY="$2"
+    local _ENV_DIR _TMP _ESCAPED_KEY _NEW_LINE _INSERTED _LINE
+
+    _ENV_DIR=$(dirname "$_ENV_FILE")
+    _TMP=$(mktemp "${_ENV_DIR}/.opencve-env.XXXXXX") || return 1
+    chmod 600 "$_TMP"
+
+    _ESCAPED_KEY="${_KEY//\'/\'\\\'\'}"
+    _NEW_LINE="OPENCVE_SECRET_KEY='${_ESCAPED_KEY}'"
+    _INSERTED=false
+
+    while IFS= read -r _LINE || [[ -n "$_LINE" ]]; do
+        if [[ "$_LINE" =~ ^[[:space:]]*OPENCVE_SECRET_KEY= ]]; then
+            continue
+        fi
+        printf '%s\n' "$_LINE"
+        if [[ "$_LINE" =~ ^#[[:space:]]*Django[[:space:]]secret[[:space:]]key ]] && ! $_INSERTED; then
+            printf '%s\n' "$_NEW_LINE"
+            _INSERTED=true
+        fi
+    done < "$_ENV_FILE" > "$_TMP" || {
+        rm -f "$_TMP"
+        return 1
+    }
+
+    if ! $_INSERTED; then
+        printf '%s\n' "$_NEW_LINE" >> "$_TMP"
+    fi
+
+    mv -f "$_TMP" "$_ENV_FILE"
+    restrict-env-file-permissions "$_ENV_FILE"
+}
+
 # Verify webserver and scheduler containers match OPENCVE_VERSION from .env.
 verify-container-versions() {
     step-header "Verify container versions"
@@ -181,6 +255,7 @@ update-opencve-version-in-env() {
     _RELEASE=$(normalize-release "$_RELEASE")
     ensure-env-file
     display-and-exec "updating OpenCVE environment release version to $_RELEASE" sed -i.bak "s,OPENCVE_VERSION=.*,OPENCVE_VERSION=$_RELEASE,g" "./.env" && rm -f "./.env.bak"
+    restrict-env-file-permissions "./.env"
 }
 
 # Pause all OpenCVE Airflow DAGs.
@@ -270,14 +345,24 @@ add-config-files() {
     is-present "$_DJANGO_OPENCVE_ENV"
     if [[ $? == 0 ]]; then
         display-and-exec "copying Webserver env file" cp "$_DJANGO_OPENCVE_ENV.example" "$_DJANGO_OPENCVE_ENV"
+        restrict-env-file-permissions "$_DJANGO_OPENCVE_ENV"
     else
         _CONFIG_BLOCKED=true
+    fi
+
+    if [[ -f "$_DJANGO_OPENCVE_ENV" ]] && opencve-secret-key-needs-generation "$_DJANGO_OPENCVE_ENV" "${_DJANGO_OPENCVE_ENV}.example"; then
+        local _OPENCVE_SECRET_KEY
+        _OPENCVE_SECRET_KEY=$(generate-opencve-secret-key)
+        log "> generating unique OpenCVE secret key..."
+        write-opencve-secret-key "$_DJANGO_OPENCVE_ENV" "$_OPENCVE_SECRET_KEY"
+        log "> done $_DONE"
     fi
 
     step-header "Docker compose .env file"
     is-present "$_DOCKER_COMPOSE_ENV"
     if [[ $? == 0 ]]; then
         display-and-exec "copying Docker compose env file" cp "./conf/$_DOCKER_COMPOSE_ENV.example" "$_DOCKER_COMPOSE_ENV"
+        restrict-env-file-permissions "$_DOCKER_COMPOSE_ENV"
     else
         _CONFIG_BLOCKED=true
     fi
@@ -352,19 +437,19 @@ set-airflow-connections() {
 init-secret-key() {
     step-header "Generate OpenCVE secret key"
     local _ENV_FILE="../web/opencve/conf/.env"
-    if grep -qE "^OPENCVE_SECRET_KEY=.+" "$_ENV_FILE" 2>/dev/null; then
-        log "> OPENCVE_SECRET_KEY already present in .env, skipping."
+    local _EXAMPLE_FILE="${_ENV_FILE}.example"
+
+    if ! opencve-secret-key-needs-generation "$_ENV_FILE" "$_EXAMPLE_FILE"; then
+        log "> OPENCVE_SECRET_KEY already set in .env, skipping."
         return 0
     fi
 
-    local _OPENCVE_SECRET_KEY _ESCAPED_KEY
-    _OPENCVE_SECRET_KEY=$(docker compose exec webserver python manage.py generate_secret_key)
-    _ESCAPED_KEY="${_OPENCVE_SECRET_KEY//\'/\'\\\'\'}"
+    local _OPENCVE_SECRET_KEY
+    _OPENCVE_SECRET_KEY=$(generate-opencve-secret-key)
 
     log "> updating OpenCVE secret key..."
-    grep -v '^OPENCVE_SECRET_KEY=' "$_ENV_FILE" > "${_ENV_FILE}.tmp"
-    printf 'OPENCVE_SECRET_KEY=%s\n' "'${_ESCAPED_KEY}'" >> "${_ENV_FILE}.tmp"
-    mv "${_ENV_FILE}.tmp" "$_ENV_FILE"
+    write-opencve-secret-key "$_ENV_FILE" "$_OPENCVE_SECRET_KEY"
+    display-and-exec "restarting webserver to apply secret key" -q docker compose restart webserver
     log "> done $_DONE"
 }
 
