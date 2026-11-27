@@ -648,8 +648,8 @@ def test_list_memberships_admin_cannot_delete_owner(
     soup = BeautifulSoup(response.content, features="html.parser")
     rows = soup.find("table", {"id": "table-members"}).find("tbody").find_all("tr")
 
-    owner_row = rows[1]
-    member_row = rows[3]
+    owner_row = rows[3]
+    member_row = rows[2]
     assert owner_row.find("a", class_="btn-danger") is None
     assert member_row.find("a", class_="btn-danger") is not None
 

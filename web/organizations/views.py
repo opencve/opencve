@@ -203,7 +203,11 @@ class OrganizationEditMembersView(
         actor_membership = get_active_membership(self.request.user, organization)
         context["organization"] = organization
         context["active_tab"] = "members"
-        context["members"] = Membership.objects.filter(organization=organization)
+        context["members"] = (
+            Membership.objects.filter(organization=organization)
+            .select_related("user")
+            .order_by("user__username", "email")
+        )
         context["actor_membership"] = actor_membership
         context["org_role_choices"] = RoleRegistry.get_org_role_choices(
             actor_membership=actor_membership
