@@ -20,6 +20,7 @@ from airflow.utils.types import DagRunType
 os.environ["AIRFLOW__DATABASE__LOAD_DEFAULT_CONNECTIONS"] = "False"
 os.environ["AIRFLOW__CORE__LOAD_EXAMPLES"] = "False"
 os.environ["AIRFLOW__CORE__UNIT_TEST_MODE"] = "True"
+os.environ["AIRFLOW__SCHEDULER__CREATE_CRON_DATA_INTERVALS"] = "True"
 
 os.environ["AIRFLOW__OPENCVE__WEB_BASE_URL"] = "https://app.opencve.io"
 os.environ["AIRFLOW__OPENCVE__MITRE_REPO_PATH"] = AIRFLOW_HOME
