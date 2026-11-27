@@ -52,6 +52,26 @@ def test_list_filters_cves_by_subscriptions(
 
 
 @pytest.mark.django_db
+def test_list_filters_cves_by_negated_q(
+    client, api_context, write_token, create_project, create_cve
+):
+    """List excludes the project's CVEs matching a NOT search query."""
+    _user, organization, _create_token = api_context
+    create_project(name="prod", organization=organization, vendors=["cisco"])
+    create_cve("CVE-2021-44228")
+    create_cve("CVE-2022-22965")
+    create_cve("CVE-2021-34181")
+
+    response = client.get(
+        f"{project_cves_url()}?q=NOT cve:CVE-2021-44228", **bearer(write_token)
+    )
+
+    assert response.status_code == 200
+    cve_ids = [item["cve_id"] for item in response.json()["results"]]
+    assert cve_ids == ["CVE-2022-22965"]
+
+
+@pytest.mark.django_db
 def test_retrieve_cve_not_in_subscriptions_returns_404(
     client, api_context, write_token, create_project, create_cve
 ):
