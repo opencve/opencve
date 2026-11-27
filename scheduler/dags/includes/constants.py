@@ -212,8 +212,14 @@ WITH distinct_cves AS (
     JOIN opencve_changes AS changes ON rc.change_id = changes.id
     JOIN opencve_cves AS cves ON changes.cve_id = cves.id
   WHERE
-    reports.day = %(day)s
-    AND reports.period_type = 'daily'
+    reports.period_type = 'daily'
+    -- Only the reports whose day ended, in their own timezone, during this run
+    AND ((reports.day + INTERVAL '1 day')::timestamp
+         AT TIME ZONE COALESCE(reports.period_timezone, 'UTC'))
+        > %(data_interval_start)s::timestamptz
+    AND ((reports.day + INTERVAL '1 day')::timestamp
+         AT TIME ZONE COALESCE(reports.period_timezone, 'UTC'))
+        <= %(data_interval_end)s::timestamptz
   ORDER BY
     reports.id,
     cves.cve_id,
