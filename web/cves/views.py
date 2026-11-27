@@ -35,6 +35,7 @@ from cves.utils import (
     normalize_enrichment_affected,
     project_subscription_match_keys,
 )
+from opencve.mixins import AnonymousAccessMixin
 from opencve.utils import is_valid_uuid
 from opencve.cursor_pagination import (
     build_cursor_list_initial_state,
@@ -81,7 +82,7 @@ def get_weaknesses_queryset(*, search):
     return queryset
 
 
-class WeaknessListView(TemplateView):
+class WeaknessListView(AnonymousAccessMixin, TemplateView):
     template_name = "cves/weakness_list.html"
     page_size = WEAKNESS_LIST_PAGE_SIZE
 
@@ -107,7 +108,7 @@ class WeaknessListView(TemplateView):
         return context
 
 
-class WeaknessListPageView(View):
+class WeaknessListPageView(AnonymousAccessMixin, View):
     page_size = WEAKNESS_LIST_PAGE_SIZE
 
     def get(self, request, *args, **kwargs):
@@ -183,7 +184,7 @@ def vendor_list_page_context(*, search, vendor_filter):
     return context
 
 
-class VendorListView(TemplateView):
+class VendorListView(AnonymousAccessMixin, TemplateView):
     template_name = "cves/vendor_list.html"
 
     def get_context_data(self, **kwargs):
@@ -196,7 +197,7 @@ class VendorListView(TemplateView):
         return context
 
 
-class VendorListLoadMoreView(View):
+class VendorListLoadMoreView(AnonymousAccessMixin, View):
     def get(self, request, list_type, *args, **kwargs):
         if list_type not in {"vendors", "products"}:
             raise Http404("Unknown list type.")
@@ -310,7 +311,7 @@ class CveListQuerysetMixin:
         return " AND ".join(advanced_parts)
 
 
-class CveListView(CveListQuerysetMixin, TemplateView):
+class CveListView(AnonymousAccessMixin, CveListQuerysetMixin, TemplateView):
     template_name = "cves/cve_list.html"
     page_size = CVE_LIST_PAGE_SIZE
 
@@ -419,7 +420,7 @@ class CveListView(CveListQuerysetMixin, TemplateView):
         return context
 
 
-class CveListPageView(CveListQuerysetMixin, View):
+class CveListPageView(AnonymousAccessMixin, CveListQuerysetMixin, View):
     page_size = CVE_LIST_PAGE_SIZE
 
     def dispatch(self, request, *args, **kwargs):
@@ -463,7 +464,7 @@ class CveListPageView(CveListQuerysetMixin, View):
         return JsonResponse(payload)
 
 
-class CveCsvExportView(CveListQuerysetMixin, View):
+class CveCsvExportView(AnonymousAccessMixin, CveListQuerysetMixin, View):
     """
     Export the current CVE list (same queryset as CveListView) as CSV.
     Redirects with an error message if the result set exceeds CVE_CSV_EXPORT_MAX_ROWS.
@@ -486,7 +487,7 @@ class CveCsvExportView(CveListQuerysetMixin, View):
         return build_cve_csv_response(queryset, filename)
 
 
-class CveDetailView(DetailView):
+class CveDetailView(AnonymousAccessMixin, DetailView):
     model = Cve
     slug_field = "cve_id"
     slug_url_kwarg = "cve_id"
@@ -870,7 +871,7 @@ class SubscriptionView(LoginRequiredMixin, OrganizationRequiredMixin, TemplateVi
         return JsonResponse({"status": "ok"})
 
 
-class StatisticsView(TemplateView):
+class StatisticsView(AnonymousAccessMixin, TemplateView):
     template_name = "cves/statistics.html"
 
     def get_context_data(self, **kwargs):
