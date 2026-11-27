@@ -76,12 +76,13 @@ urlpatterns = [
         NotificationUnsubscribeView.as_view(),
         name="notification_unsubscribe",
     ),
-    # API v1 routes
+    # API v1 routes (the nested vendor routes must be matched first,
+    # see `vendor_urlpatterns` in opencve/api/v2/urls.py)
+    path("api/", include(products_cves_router.urls)),
+    path("api/", include(vendors_router.urls)),
     path("api/", include(router.urls)),
     path("api/", include(organizations_router.urls)),
     path("api/", include(projects_cves_router.urls)),
-    path("api/", include(vendors_router.urls)),
-    path("api/", include(products_cves_router.urls)),
     path("api/", include(weaknesses_router.urls)),
     # API v2 routes
     path("api/v2/", include("opencve.api.v2.urls")),
