@@ -1269,6 +1269,34 @@ def test_advanced_search_with_usertag(create_cve, create_user, auth_client):
 
 
 @override_settings(ENABLE_ONBOARDING=False)
+def test_quick_search_user_tag_only_shown_when_tag_exists(
+    create_user, auth_client, client
+):
+    anonymous_response = client.get(reverse("cves"))
+    anonymous_soup = BeautifulSoup(anonymous_response.content, "html.parser")
+    assert "CVEs to check" not in anonymous_soup.text
+
+    user = create_user()
+    authenticated_client = auth_client(user)
+    response = authenticated_client.get(reverse("cves"))
+    soup = BeautifulSoup(response.content, "html.parser")
+    assert "CVEs to check" not in soup.text
+
+    UserTag.objects.create(user=user, name="tocheck")
+    response = authenticated_client.get(reverse("cves"))
+    soup = BeautifulSoup(response.content, "html.parser")
+    link = next(
+        link
+        for link in soup.select(".opencve-cve-sidebar-quick-nav a")
+        if link.get_text(strip=True) == "CVEs to check"
+    )
+
+    response = authenticated_client.get(link["href"])
+    soup = BeautifulSoup(response.content, "html.parser")
+    assert "The tag 'tocheck' does not exist." not in soup.text
+
+
+@override_settings(ENABLE_ONBOARDING=False)
 def test_cve_with_views(create_organization, create_user, create_view, auth_client):
     user = create_user()
     org = create_organization(name="my-org", user=user)

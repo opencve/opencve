@@ -347,12 +347,14 @@ class CveListView(CveListQuerysetMixin, TemplateView):
         if product:
             context["title"] = humanize(product)
 
+        user_tags = []
         if self.request.user.is_authenticated:
 
             # List the user tags
-            context["user_tags"] = [
+            user_tags = [
                 t.name for t in UserTag.objects.filter(user=self.request.user).all()
             ]
+            context["user_tags"] = user_tags
 
             # List the projects
             context["projects"] = Project.objects.filter(
@@ -368,6 +370,7 @@ class CveListView(CveListQuerysetMixin, TemplateView):
                 CVE_QUICK_SEARCH_GROUPS,
                 CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW,
                 current_q=current_q,
+                available_tags=user_tags,
             )
         )
         context["cve_quick_search_sidebar"] = quick_search_entries
