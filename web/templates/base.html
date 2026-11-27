@@ -113,6 +113,11 @@
             </div>
 
             <footer class="main-footer">
+                {% if OPENCVE_VERSION and user.is_authenticated %}
+                <div class="pull-right hidden-xs">
+                    <b>Version</b> {{ OPENCVE_VERSION }}
+                </div>
+                {% endif %}
                 <strong>Copyright &copy; {% now "Y" %} OpenCVE.</strong>
             </footer>
         </div>
