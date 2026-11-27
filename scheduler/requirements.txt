@@ -1,8 +1,10 @@
 apache-airflow-providers-postgres==6.0.0
 apache-airflow-providers-redis==4.0.0
 apache-airflow-providers-celery==3.8.5
-# Pinned with Airflow 2.10.4 constraints; Celery 5.7+ breaks the celery provider (opencve#810, #836).
+# Celery stack pinned with Airflow 2.10.4 constraints (unpinned transitive deps break workers).
 celery==5.4.0
+kombu==5.4.2
+redis==5.2.1
 # Click 8.3+ passes None for Celery worker --pidfile and crashes the worker on startup.
 click==8.1.7
 apache-airflow[statsd]==2.10.4
