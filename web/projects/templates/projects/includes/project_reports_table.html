@@ -1,0 +1,32 @@
+{% load opencve_extras %}
+<div class="{{ wrapper_class|default:'table-responsive' }}">
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th>Report</th>
+                <th>Automation</th>
+                <th>Changes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in reports %}
+            <tr>
+                <td>
+                    <a href="{% url 'report' org_name=request.current_organization.name project_name=project.name report_id=report.id %}">{{ report.day|date:"D d M Y" }}</a>
+                </td>
+                <td>
+                    {% if report.automation %}<a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=report.automation.name %}">{{ report.automation.name }}</a>{% else %}<span class="text-muted">-</span>{% endif %}
+                </td>
+                <td>
+                    <div class="report-changes-line">
+                        {{ report.changes_summary|report_summary_count }}
+                        {% if report.changes_summary.count %}
+                        <span class="report-changes-cvss">{{ report.changes_summary|report_summary_cvss }}</span>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

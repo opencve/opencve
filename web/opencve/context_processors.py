@@ -19,7 +19,11 @@ def canonical_url_context(request):
         "cvss",
     }
 
-    if not request.path.startswith("/vendors"):
+    if request.path.startswith("/vendors"):
+        pass
+    elif request.path.startswith("/cve/") or request.path.startswith("/weaknesses"):
+        pass
+    else:
         allowed_params.update({"page", "product_page"})
 
     # Remove empty params, not allowed ones and first pages

@@ -1,0 +1,21 @@
+{% load static %}
+<li role="presentation"{% if not has_data %} class="opencve-affected-source-tab--empty"{% elif tab_id == active_tab %} class="active"{% endif %}>
+    {% if has_data %}
+    <a href="#{{ tab_id }}" data-toggle="tab" role="tab">
+        <span class="opencve-segment-tab-inner">
+            <img src="{% static icon %}" class="opencve-segment-tab-icon {{ icon_modifier_class }}" alt="" />
+            <span class="opencve-segment-tab-label">{{ label }}</span>
+        </span>
+    </a>
+    {% else %}
+    <span class="opencve-affected-source-tab-disabled">
+        <span class="opencve-segment-tab-inner opencve-affected-source-tab-inner--stacked">
+            <img src="{% static icon %}" class="opencve-segment-tab-icon opencve-affected-source-tab-icon--muted {{ icon_modifier_class }}" alt="" />
+            <span class="opencve-affected-source-tab-copy">
+                <span class="opencve-segment-tab-label">{{ label }}</span>
+                <span class="opencve-affected-source-tab-empty-hint">No data</span>
+            </span>
+        </span>
+    </span>
+    {% endif %}
+</li>

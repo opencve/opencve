@@ -4,6 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
+from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -81,10 +82,15 @@ class OrganizationsListView(LoginRequiredMixin, ListView):
     template_name = "organizations/list_organizations.html"
 
     def get_queryset(self):
+        org_members_qs = Membership.objects.select_related("user").order_by(
+            "user__username", "email"
+        )
         query = (
             Membership.objects.filter(user=self.request.user)
             .select_related("organization")
-            .prefetch_related("organization__membership_set__user")
+            .prefetch_related(
+                Prefetch("organization__membership_set", queryset=org_members_qs)
+            )
             .all()
         )
         return query.order_by("organization__name")

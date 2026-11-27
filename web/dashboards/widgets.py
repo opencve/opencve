@@ -9,6 +9,10 @@ from views.models import View
 from opencve.utils import is_valid_uuid
 from authorization.querysets import accessible_projects
 from projects.models import Automation, Project, CveTracker
+from projects.services.subscriptions import (
+    project_subscription_vendor_keys,
+    trackers_in_subscription_scope_for_projects,
+)
 from projects.utils import build_report_listing_summary
 from users.models import User
 
@@ -398,13 +402,12 @@ class MyAssignedCvesWidget(Widget):
     description = "Displays the most recent CVEs assigned to you."
 
     def index(self):
-        accessible_ids = accessible_projects(
+        projects_qs = accessible_projects(
             self.request.user, self.request.current_organization
-        ).values_list("pk", flat=True)
+        )
         trackers = (
-            CveTracker.objects.filter(
-                assignee=self.request.user,
-                project_id__in=accessible_ids,
+            trackers_in_subscription_scope_for_projects(
+                projects_qs, assignee=self.request.user
             )
             .select_related("cve", "project", "assignee")
             .order_by("-cve__updated_at")[:20]
@@ -518,14 +521,18 @@ class AssignmentCvesWidget(Widget):
         if project_id:
             if project_id not in {str(pk) for pk in accessible_ids}:
                 return self.render_index(trackers=[])
-            tracker_filters = {"project_id": project_id}
+            projects_qs = accessible_projects(
+                self.request.user, self.request.current_organization
+            ).filter(id=project_id)
         else:
-            tracker_filters = {"project_id__in": accessible_ids}
+            projects_qs = accessible_projects(
+                self.request.user, self.request.current_organization
+            ).filter(id__in=accessible_ids)
 
-        # Apply assignee filter if provided
+        scope_filters = {}
         assignee_id = self.configuration.get("assignee_id", "")
         if assignee_id:
-            tracker_filters["assignee_id"] = assignee_id
+            scope_filters["assignee_id"] = assignee_id
 
         # Apply status filters if provided
         statuses = self._normalize_statuses(self.configuration.get("status", []))
@@ -545,8 +552,9 @@ class AssignmentCvesWidget(Widget):
         else:
             trackers_status_filter = None
 
-        # Query trackers directly with all filters
-        trackers_query = CveTracker.objects.filter(**tracker_filters)
+        trackers_query = trackers_in_subscription_scope_for_projects(
+            projects_qs, **scope_filters
+        )
         if trackers_status_filter is not None:
             trackers_query = trackers_query.filter(trackers_status_filter)
 
@@ -573,9 +581,7 @@ class AssignmentCvesWidget(Widget):
             }
             for project in projects:
                 # Use the same vendor/product scope as the project vulnerabilities page.
-                vendors = project.subscriptions.get(
-                    "vendors", []
-                ) + project.subscriptions.get("products", [])
+                vendors = project_subscription_vendor_keys(project)
                 if not vendors:
                     continue
 

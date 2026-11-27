@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load authorization_tags %}
+{% load opencve_extras %}
 
 {% block title %}Organizations - {{ block.super }}{% endblock %}
 {% block navbar_title%}Organizations{% endblock %}
@@ -13,98 +14,136 @@
 
             <div class="callout callout-info">
                 {% if not memberships %}
-                <p>You need an organization to manage your projects and their subscriptions. Click <a href="{% url 'create_organization' %}">here</a> to create your organization.</p>
+                <p>You need an organization to manage your projects and their subscriptions. <a href="{% url 'create_organization' %}">Create your organization</a> to get started.</p>
                 {% else %}
-                <p>The organizations allows you to manage your projects and subscriptions. <a href="{% url 'create_organization' %}">Create a new organization?</a></p>
+                <p>An organization brings together your members, projects, and subscription plan.<br />Use projects within your organization to organize monitoring by client, team, or technology stack.</p>
                 {% endif %}
             </div>
 
+            {% if memberships %}
+            <div class="opencve-org-list organizations-list" id="organizations-list">
+                {% for membership in memberships %}
+                {% membership_can_access_org_settings membership as can_access_settings %}
+                {% with org=membership.organization %}
+                <div class="box box-primary opencve-org-card">
+                    <div class="opencve-org-card-header collapsed{% if can_access_settings and not membership.is_invited %} pointer{% endif %}"
+                         {% if can_access_settings and not membership.is_invited %}
+                         role="button"
+                         tabindex="0"
+                         aria-expanded="false"
+                         aria-controls="org-card-{{ org.id }}"
+                         {% endif %}>
+                        <div class="opencve-org-card-header-main">
+                            {% if can_access_settings and not membership.is_invited %}
+                            <i class="fa fa-chevron-right opencve-org-card-chevron" aria-hidden="true"></i>
+                            {% else %}
+                            <span class="opencve-org-card-chevron-spacer" aria-hidden="true"></span>
+                            {% endif %}
+                            <div class="opencve-org-card-summary">
+                                <div class="opencve-org-card-title-row">
+                                    <div class="opencve-org-card-name">{{ org.name }}</div>
+                                    {% if request.current_organization and org.id == request.current_organization.id %}
+                                    <span class="label label-default opencve-org-current-badge">Current organization</span>
+                                    {% endif %}
+                                </div>
+                                <div class="opencve-org-card-stats">
+                                    {% org_role_label membership.role %} &bull;
+                                    {{ org.membership_set.all|length }} member{{ org.membership_set.all|length|pluralize }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="opencve-org-card-actions">
+                            {% if membership.is_invited %}
+                            <a href="{% url 'accept_organization_invitation' org_name=org.name key=membership.key %}"
+                               class="btn btn-primary btn-xs opencve-org-accept-invite">
+                                Accept Invitation
+                            </a>
+                            {% elif can_access_settings %}
+                            <a href="{% url 'edit_organization' org_name=org.name %}"
+                               class="opencve-org-card-manage">
+                                Manage organization <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                            {% if can_access_settings and not membership.is_invited %}
+                            <div class="dropdown opencve-org-card-menu">
+                                <button type="button"
+                                        class="btn btn-default btn-sm opencve-org-card-menu-btn dropdown-toggle"
+                                        data-toggle="dropdown"
+                                        aria-haspopup="true"
+                                        aria-expanded="false">
+                                    <span aria-hidden="true">⋯</span>
+                                    <span class="sr-only">Organization actions</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right opencve-org-card-dropdown">
+                                    <li>
+                                        <a href="{% url 'edit_organization' org_name=org.name %}">
+                                            <i class="fa fa-pencil" aria-hidden="true"></i>
+                                            Edit organization
+                                        </a>
+                                    </li>
+                                    {% if membership.is_owner %}
+                                    <li role="separator" class="divider"></li>
+                                    <li>
+                                        <a href="{% url 'delete_organization' org_name=org.name %}">
+                                            <i class="fa fa-trash" aria-hidden="true"></i>
+                                            Delete organization
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if can_access_settings and not membership.is_invited %}
+                    <div id="org-card-{{ org.id }}" class="opencve-org-card-body">
+                        <div class="opencve-org-card-body-inner">
+                            <div class="opencve-org-members">
+                                <div class="opencve-org-members-head" aria-hidden="true">
+                                    <span>Member</span>
+                                    <span>Role</span>
+                                </div>
+                                {% for member in org.membership_set.all %}
+                                <div class="opencve-org-member-row">
+                                    <div class="opencve-org-member-main">
+                                        <span class="opencve-org-member-avatar" aria-hidden="true">{{ member|org_membership_initials }}</span>
+                                        <span class="opencve-org-member-name">{{ member|org_membership_display_name }}</span>
+                                        {% if member.user_id == request.user.id %}
+                                        <span class="label label-default opencve-org-member-you">You</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="opencve-org-member-role">
+                                        {% if member.user %}
+                                            {% if member.date_joined %}
+                                            <span class="opencve-org-role-pill">{% org_role_label member.role %}</span>
+                                            {% else %}
+                                            <span class="label label-default">Invited</span>
+                                            {% endif %}
+                                        {% else %}
+                                        <span class="label label-warning">Pending signup</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endwith %}
+                {% endfor %}
+            </div>
+
+            <p class="opencve-org-create-footer">
+                <a href="{% url 'create_organization' %}">Create another organization</a>
+            </p>
+            {% else %}
             <div class="box box-primary">
                 <div class="box-body">
-                    <ul class="organizations-list products-list product-list-in-box">
-                        {% if memberships %}
-                        {% for membership in memberships %}
-                        <li class="item">
-                            <div class="product-info">
-                                <div class="product-title">
-                                    {% membership_can_access_org_settings membership as can_access_settings %}
-                                    {% if membership.is_invited or not can_access_settings %}
-                                    {{ membership.organization.name }}
-                                    {% else %}
-                                    <a href="{% url 'edit_organization' org_name=membership.organization.name %}">{{ membership.organization.name }}</a>
-                                    {% endif %}
-                                    <div class="pull-right">
-                                        <div class="btn-group" role="group">
-                                            {% if membership.is_invited %}
-                                            <a href="{% url 'accept_organization_invitation' org_name=membership.organization.name key=membership.key %}" class="btn btn-primary btn-xs" type="button">Accept Invitation</a>
-                                            {% endif %}
-                                            {% if can_access_settings and not membership.is_invited %}
-                                            <a href="{% url 'edit_organization' org_name=membership.organization.name %}" class="btn btn-default btn-xs">Edit</a>
-                                            {% endif %}
-                                            {% if membership.is_owner and not membership.is_invited %}
-                                            <a href="{% url 'delete_organization' org_name=membership.organization.name %}" class="btn btn-danger btn-xs" type="button">Delete</a>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                <span class="product-description">
-                                    Role: {{ membership.role }}
-                                </span>
-                                {% if can_access_settings and not membership.is_invited %}
-                                {% with members=membership.organization.membership_set.all %}
-                                <div class="product-vendors">
-                                    <div class="pointer change-collapsed collapsed" data-toggle="collapse" href="#org-{{ membership.organization.id }}" aria-expanded="false">
-                                        <span class="product-vendors-title">Members (<strong>{{ members|length }}</strong>)
-                                            <span class="box-meta">
-                                                <i class="fa fa-plus"></i>
-                                                <i class="fa fa-minus"></i>
-                                            </span>
-                                        </span>
-                                    </div>
-                                    <div id="org-{{ membership.organization.id }}" class="panel-collapse collapse" aria-expanded="false" style="height: 0px;">
-                                        <div class="box-body">
-                                            <table class="table table-hover">
-                                                <tbody>
-                                                    <tr>
-                                                        <th>Name</th>
-                                                        <th>Email</th>
-                                                        <th>Role</th>
-                                                    </tr>
-                                                    {% for member in members %}
-                                                    <tr>
-                                                        <td>{% if member.user %}{{ member.user.username }}{% else %}-{% endif %}</td>
-                                                        <td>{% if member.user %}{{ member.user.email }}{% else %}{{ member.email }}{% endif %}</td>
-                                                        {% if member.user %}
-                                                            {% if member.date_joined %}
-                                                            <td><span class="label label-primary">{{ member.role }}</span></td>
-                                                            {% else %}
-                                                            <td><span class="label label-default">invited</span></td>
-                                                            {% endif %}
-                                                        {% else %}
-                                                            <td><span class="label label-warning">pending signup</span></td>
-                                                        {% endif %}
-                                                    </tr>
-                                                    {% endfor %}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endwith %}
-                                {% endif %}
-                            </div>
-                        </li>
-                        {% endfor %}
-                        {% else %}
-                        <li class="item">
-                            <div class="product-info">
-                                <i>No organization yet.</i>
-                            </div>
-                        </li>
-                        {% endif %}
-                    </ul>
+                    <p class="text-muted"><i>No organization yet.</i></p>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 </section>

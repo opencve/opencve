@@ -3,7 +3,9 @@ from rest_framework.exceptions import ValidationError
 
 from cves.constants import PRODUCT_SEPARATOR
 from cves.models import Product, Vendor
+from projects.models import CveTracker
 from projects.services.subscriptions import (
+    project_in_scope_trackers,
     replace_project_subscriptions,
     subscribe_project,
     subscriptions_to_api_format,
@@ -205,3 +207,42 @@ def test_unsubscribe_project_rejects_missing_vendor(
 
     with pytest.raises(ValidationError):
         unsubscribe_project(project, vendor_name=None)
+
+
+@pytest.mark.django_db
+def test_project_in_scope_trackers_respects_subscription_overlap(
+    create_project,
+    create_organization,
+    create_cve,
+):
+    """Trackers stay in scope while any subscription key still matches the CVE."""
+    organization = create_organization(name="acme")
+    product_key = f"git-scm{PRODUCT_SEPARATOR}git"
+    project = create_project(
+        name="prod",
+        organization=organization,
+        vendors=["git-scm"],
+        products=[product_key],
+    )
+    cve = create_cve("CVE-2023-22490")
+    vendors_list = list(cve.vendors)
+    if product_key not in vendors_list:
+        vendors_list.append(product_key)
+        cve.vendors = vendors_list
+        cve.save(update_fields=["vendors"])
+
+    CveTracker.objects.create(
+        project=project,
+        cve=cve,
+        status="to_evaluate",
+    )
+    assert project_in_scope_trackers(project).filter(cve=cve).exists()
+
+    unsubscribe_project(project, vendor_name="git-scm", product_name="git")
+    project.refresh_from_db()
+    assert project_in_scope_trackers(project).filter(cve=cve).exists()
+
+    unsubscribe_project(project, vendor_name="git-scm")
+    project.refresh_from_db()
+    assert CveTracker.objects.filter(project=project, cve=cve).exists()
+    assert not project_in_scope_trackers(project).filter(cve=cve).exists()

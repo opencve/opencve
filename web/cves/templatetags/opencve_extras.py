@@ -87,6 +87,20 @@ def products_excerpt(s):
     return mark_safe(excerpt(s, "products"))
 
 
+@register.filter
+def cve_list_vendors(vendors):
+    if not vendors:
+        return []
+    return sorted(v for v in vendors if PRODUCT_SEPARATOR not in v)
+
+
+@register.filter
+def cve_list_products(vendors):
+    if not vendors:
+        return []
+    return sorted(v for v in vendors if PRODUCT_SEPARATOR in v)
+
+
 @register.filter(is_safe=True)
 def report_summary_count(summary):
     return mark_safe(format_report_count_html(summary))
@@ -131,6 +145,51 @@ def gravatar_url(email, size=40):
         hashlib.md5(email.lower().encode("utf-8"), usedforsecurity=False).hexdigest(),
         urlencode({"s": str(size)}),
     )
+
+
+def _initials_from_label(label, max_len=2):
+    text = (label or "").strip()
+    if not text:
+        return "?"
+    parts = text.replace("_", " ").replace(".", " ").split()
+    if len(parts) >= 2:
+        return (parts[0][0] + parts[1][0]).upper()
+    return text[:max_len].upper()
+
+
+@register.filter
+def membership_display_name(project_membership):
+    membership = getattr(project_membership, "membership", None)
+    if membership is None:
+        return "—"
+    user = getattr(membership, "user", None)
+    if user:
+        full_name = (user.get_full_name() or "").strip()
+        if full_name:
+            return full_name
+        return user.username or user.email or "—"
+    return membership.email or "—"
+
+
+@register.filter
+def membership_initials(project_membership):
+    return _initials_from_label(membership_display_name(project_membership))
+
+
+@register.filter
+def org_membership_display_name(membership):
+    user = getattr(membership, "user", None)
+    if user:
+        full_name = (user.get_full_name() or "").strip()
+        if full_name:
+            return full_name
+        return user.username or user.email or "—"
+    return getattr(membership, "email", None) or "—"
+
+
+@register.filter
+def org_membership_initials(membership):
+    return _initials_from_label(org_membership_display_name(membership))
 
 
 @register.filter
@@ -211,10 +270,10 @@ def epss_level(score):
     if pct < 1:
         return "default"
     if pct < 10:
-        return "info"
-    if pct < 50:
         return "warning"
-    return "danger"
+    if pct < 50:
+        return "danger"
+    return "critical"
 
 
 @register.filter
@@ -266,10 +325,102 @@ def cvss_chart_data(vector, score):
     )
 
 
+_CVSS_IMPACT_METRICS = frozenset({"C", "I", "A", "VC", "VI", "VA", "SC", "SI", "SA"})
+
+_NEUTRAL_CHIP_LABELS = frozenset(
+    {
+        "network",
+        "adjacent network",
+        "local",
+        "physical",
+        "low",
+        "high",
+        "none",
+        "changed",
+        "passive",
+        "active",
+        "present",
+        "unchanged",
+        "required",
+        "optional",
+        "single",
+        "multiple",
+        "unchanged",
+        "proof-of-concept",
+    }
+)
+
+
+def _chip_class_for_metric_text(text, metric_key=None):
+    if not text:
+        return "muted"
+    normalized = str(text).strip().lower()
+    if normalized in ("n/a", "na", "no", "not listed", "unknown"):
+        return "muted"
+    if normalized in ("affected", "critical"):
+        return "danger"
+    if normalized == "unaffected":
+        return "success"
+    if metric_key in _CVSS_IMPACT_METRICS and normalized == "high":
+        return "danger"
+    if normalized in _NEUTRAL_CHIP_LABELS:
+        return "neutral"
+    return "neutral"
+
+
+@register.filter
+def cvss_chip_class(level):
+    mapping = {
+        "default": "muted",
+        "info": "neutral",
+        "warning": "warning",
+        "danger": "danger",
+        "critical": "critical",
+    }
+    return mapping.get(level, "neutral")
+
+
+@register.filter
+def epss_chip_class(level):
+    mapping = {
+        "default": "neutral",
+        "warning": "warning",
+        "danger": "danger",
+        "critical": "critical",
+    }
+    return mapping.get(level, "neutral")
+
+
+@register.filter
+def affected_status_chip_class(status):
+    normalized = (status or "affected").strip().lower().replace("_", " ")
+    if normalized == "affected":
+        return "danger"
+    if normalized == "unaffected":
+        return "success"
+    return "neutral"
+
+
+@register.filter
+def ssvc_tab_summary(ssvc):
+    if not ssvc or not isinstance(ssvc, dict):
+        return "Not assessed"
+    options = ssvc.get("options") or {}
+    exploitation = (options.get("Exploitation") or "").strip()
+    if not exploitation:
+        return "Not assessed"
+    labels = {
+        "none": "No known exploitation",
+        "poc": "Proof-of-concept",
+        "active": "Active exploitation",
+    }
+    return labels.get(exploitation.lower(), exploitation)
+
+
 @register.simple_tag
 def metric_class_from_vector(vector, metric):
     data = get_metric_from_vector(vector, metric)
-    return ["default", "warning", "danger"][data["weight"]]
+    return _chip_class_for_metric_text(data.get("text"), metric)
 
 
 @register.simple_tag
@@ -281,28 +432,22 @@ def metric_text_from_vector(vector, metric):
 @register.simple_tag
 def metric_class_from_ssvc(metric, value):
     metric = metric.lower()
-    value = value.lower()
+    value = (value or "").lower()
 
-    metrics = {
-        "exploitation": {
-            "none": "default",
-            "poc": "warning",
-            "active": "danger",
-        },
-        "automatable": {
-            "no": "default",
-            "yes": "danger",
-        },
-        "technical impact": {
-            "partial": "default",
-            "total": "danger",
-        },
-    }
+    if metric == "exploitation":
+        if value == "active":
+            return "danger"
+        if value == "poc":
+            return "warning"
+        return "neutral"
+    if metric == "automatable":
+        return "neutral"
+    if metric == "technical impact":
+        if value == "total":
+            return "danger"
+        return "neutral"
 
-    if metric not in metrics.keys() or value not in metrics[metric]:
-        return "default"
-
-    return metrics[metric][value]
+    return "muted"
 
 
 @register.simple_tag(takes_context=True)
@@ -334,19 +479,103 @@ def search_vendor_url(s):
     return f"{base_url}?vendor={vendor_encoded}"
 
 
+def _event_excerpt_plain(details):
+    if isinstance(details, list):
+        n = len(details)
+        return f"{n} added" if n else ""
+    if not isinstance(details, dict):
+        return ""
+    output = []
+    if details.get("changed"):
+        output.append(f"{len(details['changed'])} changed")
+    if details.get("added"):
+        added = details["added"]
+        if isinstance(added, (list, dict)) and len(added):
+            output.append(f"{len(added)} added")
+    if details.get("removed"):
+        removed = details["removed"]
+        if isinstance(removed, (list, dict)) and len(removed):
+            output.append(f"{len(removed)} removed")
+    return ", ".join(output)
+
+
+def _event_subtitle_phrase(event):
+    event_type = event.get("type") or ""
+    details = event.get("details")
+    phrases = {
+        "description": "Description updated",
+        "title": "Title updated",
+        "first_time": "First appearance in the feed",
+        "references": "References updated",
+        "vendors": "Affected vendors updated",
+        "cpes": "Affected versions updated",
+        "weaknesses": "Weaknesses updated",
+        "metrics": "Scoring metrics updated",
+        "events": "Tracking events updated",
+    }
+    if event_type in phrases:
+        phrase = phrases[event_type]
+        if event_type == "references" and isinstance(details, dict):
+            added = details.get("added") or []
+            removed = details.get("removed") or []
+            if added and not removed:
+                phrase = "Added references"
+        return phrase
+    excerpt = _event_excerpt_plain(details)
+    if excerpt:
+        return f"{_humanize(event_type)}: {excerpt}"
+    return f"{_humanize(event_type)} updated"
+
+
 @register.filter
 def event_excerpt(details):
+    plain = _event_excerpt_plain(details)
+    if not plain:
+        return ""
     if isinstance(details, list):
-        return f"<strong>{len(details)}</strong> added"
-    else:
-        output = []
-        if "changed" in details:
+        n = len(details)
+        return f"<strong>{n}</strong> added"
+    output = []
+    if isinstance(details, dict):
+        if details.get("changed"):
             output.append(f"<strong>{len(details['changed'])}</strong> changed")
-        if "added" in details:
-            output.append(f"<strong>{len(details['added'])}</strong> added")
-        if "removed" in details:
-            output.append(f"<strong>{len(details['removed'])}</strong> removed")
-        return ", ".join(output)
+        if details.get("added"):
+            added = details["added"]
+            if isinstance(added, (list, dict)) and len(added):
+                output.append(f"<strong>{len(added)}</strong> added")
+        if details.get("removed"):
+            removed = details["removed"]
+            if isinstance(removed, (list, dict)) and len(removed):
+                output.append(f"<strong>{len(removed)}</strong> removed")
+    return ", ".join(output) if output else plain
+
+
+@register.filter
+def cve_change_summary_title(change):
+    events = change.get("data") or []
+    types = []
+    for event in events:
+        label = _humanize(event.get("type") or "")
+        if label and label not in types:
+            types.append(label)
+    if not types:
+        return "CVE updated"
+    if len(types) == 1:
+        return f"{types[0]} updated"
+    if len(types) == 2:
+        return f"{types[0]} and {types[1]} updated"
+    return f"{', '.join(types[:-1])}, and {types[-1]} updated"
+
+
+@register.filter
+def cve_change_summary_subtitle(change):
+    events = change.get("data") or []
+    phrases = []
+    for event in events:
+        phrase = _event_subtitle_phrase(event)
+        if phrase and phrase not in phrases:
+            phrases.append(phrase)
+    return ". ".join(phrases)
 
 
 @register.filter
@@ -416,7 +645,14 @@ def is_cve_rejected(cve):
 
 @register.filter
 def convert_str_date(value):
-    return datetime.fromisoformat(value)
+    if isinstance(value, datetime):
+        return value
+    s = str(value).strip()
+    if not s:
+        return None
+    if s.endswith("Z"):
+        s = f"{s[:-1]}+00:00"
+    return datetime.fromisoformat(s)
 
 
 @register.filter
@@ -472,22 +708,23 @@ def get_cvss_version_label(cve):
     return label
 
 
+@register.filter
+def cvss_version_short(label):
+    """Format CVSS version for hero badges (e.g. CVSS v3.1 -> CVSS 3.1)."""
+    if label and label.startswith("CVSS v"):
+        return f"CVSS {label[6:]}"
+    return label or ""
+
+
 @register.simple_tag
 def get_active_cvss_tab(cve):
     """
     Determine which CVSS tab should be active by default based on priority.
     Priority order: CVSS v4.0 > v3.1 > v3.0 > v2.0 > fallback to v4.0
     """
-    if cve.cvssV4_0:
-        return "cvss40"
-    elif cve.cvssV3_1:
-        return "cvss31"
-    elif cve.cvssV3_0:
-        return "cvss30"
-    elif cve.cvssV2_0:
-        return "cvss2"
-    else:
-        return "cvss40"
+    from cves.utils import first_cvss_tab_with_data
+
+    return first_cvss_tab_with_data(cve)
 
 
 @register.simple_tag

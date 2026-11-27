@@ -1,0 +1,276 @@
+{% extends 'projects/base_project.html' %}
+{% load opencve_extras %}
+
+{% block title %}Overview - {{ block.super }}{% endblock %}
+
+{% block content_project %}
+
+<div class="opencve-project-overview">
+    <div class="opencve-project-overview-status-grid">
+        {% for counter in overview_status_counters %}
+        <a href="{{ counter.filter_url }}" class="opencve-project-overview-status-card">
+            <span class="opencve-project-overview-status-card-top">
+                <span class="opencve-tracker-status-dot opencve-tracker-status-dot--{{ counter.key }}" aria-hidden="true"></span>
+                <span class="opencve-project-overview-status-label">{{ counter.label }}</span>
+            </span>
+            <span class="opencve-project-overview-status-count">{{ counter.count }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 col-md-7">
+            <div class="box box-primary opencve-project-overview-box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Latest CVEs</h3>
+                    {% if overview_latest_cves %}
+                    <div class="box-tools pull-right">
+                        <a href="{{ overview_vulnerabilities_url }}" class="opencve-project-overview-box-link">
+                            View all <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="box-body opencve-project-overview-box-body">
+                    {% if overview_latest_cves %}
+                    <div class="table-responsive">
+                        <table class="table opencve-project-overview-cve-table">
+                            <thead>
+                                <tr>
+                                    <th>CVE</th>
+                                    <th>Summary</th>
+                                    <th class="opencve-project-overview-cve-col-tags">Metrics</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cve in overview_latest_cves %}
+                                {% get_cvss_score cve as cvss_score %}
+                                {% get_cvss_version_label cve as cvss_version %}
+                                <tr>
+                                    <td class="opencve-project-overview-cve-id">
+                                        <a href="{% url 'cve' cve_id=cve.cve_id %}">{{ cve.cve_id }}</a>
+                                    </td>
+                                    <td class="opencve-project-overview-cve-summary">
+                                        {% if cve.title %}{{ cve.title|truncatechars:90 }}{% else %}{{ cve.description|truncatechars:90 }}{% endif %}
+                                    </td>
+                                    <td class="opencve-project-overview-cve-col-tags">
+                                        <div class="opencve-project-overview-signal-badges">
+                                            {% if cvss_score != None %}
+                                            <span class="opencve-detail-badge opencve-detail-badge-cvss opencve-detail-badge-cvss-{{ cvss_score|cvss_level }}">
+                                                {{ cvss_version|cvss_version_short }} · {{ cvss_score }}
+                                            </span>
+                                            {% endif %}
+                                            {% if cve.kev.data %}
+                                            <span class="opencve-detail-badge opencve-detail-badge-kev opencve-detail-badge-kev-listed">KEV</span>
+                                            {% endif %}
+                                            {% if cve.epss.data %}
+                                            <span class="opencve-detail-badge opencve-detail-badge-epss opencve-detail-badge-epss-{{ cve.epss.data.score|epss_level }}">
+                                                EPSS {{ cve.epss.data.score|epss_badge_display }}
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% elif not overview_has_subscriptions %}
+                    {% if can_manage_subscriptions %}
+                    {% include 'projects/includes/overview_panel_empty.html' with featured=True icon='fa-search' title='Start monitoring your technologies' text='Add vendors or products to see the CVEs relevant to this project.' cta_url=overview_vendors_url cta_label='Search technologies' cta_button=True cta_icon='fa-search' %}
+                    {% else %}
+                    {% include 'projects/includes/overview_panel_empty.html' with featured=True icon='fa-search' title='Start monitoring your technologies' text='Add vendors or products to see the CVEs relevant to this project. Ask a project manager to configure subscriptions.' %}
+                    {% endif %}
+                    {% else %}
+                    {% include 'projects/includes/overview_panel_empty.html' with featured=True icon='fa-check-circle' title='Monitoring is active' text='Your subscriptions are configured. Relevant CVEs will appear here as they are published or updated.' %}
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if can_view_reports %}
+            <div class="box box-primary opencve-project-overview-box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Latest reports</h3>
+                    {% if overview_reports %}
+                    <div class="box-tools pull-right">
+                        <a href="{{ overview_reports_url }}" class="opencve-project-overview-box-link">
+                            View all reports <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="box-body opencve-project-overview-box-body opencve-project-overview-reports-body">
+                    {% if overview_reports %}
+                    {% include 'projects/includes/project_reports_table.html' with reports=overview_reports wrapper_class='last-reports-widget table-responsive' %}
+                    {% else %}
+                    {% include 'projects/includes/overview_panel_empty.html' with icon='fa-file-text-o' title='Your reports will appear here' text='Set up an automation to generate reports from CVE changes.' %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4 col-md-5">
+            <div class="box box-primary opencve-project-overview-box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Assignments</h3>
+                    {% if overview_assignee_stats %}
+                    <div class="box-tools pull-right">
+                        <a href="{{ overview_vulnerabilities_url }}" class="opencve-project-overview-box-link">
+                            View assignments <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="box-body opencve-project-overview-box-body">
+                    {% if overview_assignee_stats %}
+                    <ul class="opencve-project-overview-assignee-list">
+                        {% for stat in overview_assignee_stats %}
+                        <li class="opencve-project-overview-assignee-item">
+                            <a href="{{ stat.filter_url }}" class="opencve-project-overview-assignee-link">
+                                <span class="opencve-project-member-avatar" aria-hidden="true">{{ stat.assignee__username|slice:":2"|upper }}</span>
+                                <span class="opencve-project-overview-assignee-body">
+                                    <span class="opencve-project-overview-assignee-name">{{ stat.assignee__username }}</span>
+                                    <span class="opencve-project-overview-assignee-bar-track">
+                                        <span class="opencve-project-overview-assignee-bar-fill" style="width: {{ stat.bar_percent }}%;"></span>
+                                    </span>
+                                </span>
+                                <span class="opencve-project-overview-assignee-count">{{ stat.count }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    {% include 'projects/includes/overview_panel_empty.html' with title='No CVEs assigned yet' text="Assign CVEs from the vulnerabilities list to organize your team's work." %}
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if can_view_automations %}
+            <div class="box box-primary opencve-project-overview-box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Automations</h3>
+                    {% if overview_automations %}
+                    <div class="box-tools pull-right">
+                        <a href="{{ overview_automations_url }}" class="opencve-project-overview-box-link">
+                            Manage <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="box-body opencve-project-overview-box-body">
+                    {% if overview_automations %}
+                    <ul class="opencve-project-overview-automation-list">
+                        {% for row in overview_automations %}
+                        <li class="opencve-project-overview-automation-item">
+                            <div class="opencve-project-overview-automation-main">
+                                <a href="{% url 'automation_overview' org_name=request.current_organization.name project_name=project.name automation=row.automation.name %}"
+                                   class="opencve-project-overview-automation-name">
+                                    {% if row.automation.trigger_type == 'report' %}
+                                    <i class="fa fa-calendar text-muted" aria-hidden="true"></i>
+                                    {% else %}
+                                    <i class="fa fa-bolt text-muted" aria-hidden="true"></i>
+                                    {% endif %}
+                                    {{ row.automation.name }}
+                                </a>
+                                <span class="opencve-project-overview-automation-meta">
+                                    {% if row.last_executed_at %}
+                                    Last run {{ row.last_executed_at|date:"M j, Y g:i A" }}
+                                    {% else %}
+                                    Never run
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% if row.status_kind %}
+                            <span class="opencve-project-overview-run-status opencve-project-overview-run-status--{{ row.status_kind }}">
+                                {% if row.status_kind == 'success' %}<i class="fa fa-check" aria-hidden="true"></i>{% elif row.status_kind == 'failed' %}<i class="fa fa-times" aria-hidden="true"></i>{% endif %}
+                                {{ row.status_label }}
+                            </span>
+                            {% else %}
+                            <span class="opencve-project-overview-run-status opencve-project-overview-run-status--muted">{{ row.status_label }}</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% elif can_manage_automations %}
+                    {% include 'projects/includes/overview_panel_empty.html' with icon='fa-bolt' title='Stay informed automatically' text='Receive CVE updates by email, Slack, or webhook.' cta_url=overview_automations_url cta_label='Create automation' cta_button=True cta_icon='fa-plus' %}
+                    {% else %}
+                    {% include 'projects/includes/overview_panel_empty.html' with icon='fa-bolt' title='Stay informed automatically' text='Automations can send CVE updates by email, Slack, or webhook. Ask a project manager to configure them.' %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="box box-primary opencve-project-overview-box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Subscriptions</h3>
+                    {% if overview_subscription_vendors or overview_subscription_products %}
+                    <div class="box-tools pull-right">
+                        <a href="{{ overview_subscriptions_url }}" class="opencve-project-overview-box-link">
+                            View all <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="box-body opencve-project-overview-box-body">
+                    {% if overview_subscription_vendors or overview_subscription_products %}
+                    <div class="opencve-project-overview-subscription-tags">
+                        {% for vendor in overview_subscription_vendors %}
+                        <a class="opencve-project-tag" href="{% url 'cves' %}?vendor={{ vendor|urlencode }}">{{ vendor|humanize }}</a>
+                        {% endfor %}
+                        {% for product in overview_subscription_products %}
+                        {% with product|split:"$PRODUCT$" as p %}
+                        <a class="opencve-project-tag" href="{% url 'cves' %}?vendor={{ p.0|urlencode }}&amp;product={{ p.1|urlencode }}">{{ p.1|humanize }}</a>
+                        {% endwith %}
+                        {% endfor %}
+                    </div>
+                    {% elif can_manage_subscriptions %}
+                    {% include 'projects/includes/overview_panel_empty.html' with title='No vendors or products monitored yet' cta_url=overview_vendors_url cta_label='Search technologies' cta_button=True cta_icon='fa-search' %}
+                    {% else %}
+                    {% include 'projects/includes/overview_panel_empty.html' with title='No vendors or products monitored yet' text='Ask a project manager to add subscriptions for this project.' %}
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if can_view_members %}
+            <div class="box box-primary opencve-project-overview-box">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Members</h3>
+                    {% if overview_members %}
+                    <div class="box-tools pull-right">
+                        <a href="{{ overview_members_url }}" class="opencve-project-overview-box-link">
+                            View all <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="box-body opencve-project-overview-box-body">
+                    {% if overview_members %}
+                    <ul class="opencve-project-overview-member-list">
+                        {% for pm in overview_members %}
+                        <li class="opencve-project-overview-member-item">
+                            <span class="opencve-project-member-avatar" aria-hidden="true">{{ pm|membership_initials }}</span>
+                            <span class="opencve-project-overview-member-text">
+                                {% if pm.membership.user %}
+                                <span class="opencve-project-overview-member-name">{{ pm.membership.user.username }}</span>
+                                <span class="opencve-project-overview-member-email">{{ pm.membership.user.email }}</span>
+                                {% else %}
+                                <span class="opencve-project-overview-member-name">{{ pm.membership.email }}</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% elif can_manage_members %}
+                    {% include 'projects/includes/overview_panel_empty.html' with title='Work together on this project' text='Add organization members to assign CVEs and share the follow-up.' cta_url=overview_members_url cta_label='Add members' cta_button=True cta_icon='fa-plus' %}
+                    {% else %}
+                    {% include 'projects/includes/overview_panel_empty.html' with title='Work together on this project' text='Project members can assign CVEs and share follow-up. Ask a project manager to add people to this project.' %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{% load opencve_extras %}
+{% if chip == "cvss40" %}
+{% if cve.cvssV4_0 %}
+<span class="opencve-chip opencve-chip-{{ cve.cvssV4_0.score|cvss_level|cvss_chip_class }} label-cvss">{{ cve.cvssV4_0.score }} {{ cve.cvssV4_0.score|cvss_human_score|title }}</span>
+{% endif %}
+{% elif chip == "cvss31" %}
+{% if cve.cvssV3_1 %}
+<span class="opencve-chip opencve-chip-{{ cve.cvssV3_1.score|cvss_level|cvss_chip_class }} label-cvss">{{ cve.cvssV3_1.score }} {{ cve.cvssV3_1.score|cvss_human_score|title }}</span>
+{% endif %}
+{% elif chip == "cvss30" %}
+{% if cve.cvssV3_0 %}
+<span class="opencve-chip opencve-chip-{{ cve.cvssV3_0.score|cvss_level|cvss_chip_class }} label-cvss">{{ cve.cvssV3_0.score }} {{ cve.cvssV3_0.score|cvss_human_score|title }}</span>
+{% endif %}
+{% elif chip == "cvss2" %}
+{% if cve.cvssV2_0 %}
+<span class="opencve-chip opencve-chip-{{ cve.cvssV2_0.score|cvss_level|cvss_chip_class }} label-cvss">{{ cve.cvssV2_0.score }} {{ cve.cvssV2_0.score|cvss_human_score|title }}</span>
+{% endif %}
+{% elif chip == "kev" %}
+{% if cve.kev.data %}
+<span class="opencve-chip opencve-chip-danger label-cvss">Listed</span>
+{% endif %}
+{% elif chip == "epss" %}
+{% if cve.epss.data %}
+<span class="opencve-chip opencve-chip-{{ cve.epss.data.score|epss_level|epss_chip_class }} label-cvss">{{ cve.epss.data.score|epss_badge_display }}</span>
+{% endif %}
+{% elif chip == "ssvc" %}
+{% if cve.ssvc.data %}
+<span class="opencve-chip opencve-chip-neutral label-cvss opencve-metrics-ssvc-chip">{{ cve.ssvc.data|ssvc_tab_summary }}</span>
+{% endif %}
+{% endif %}

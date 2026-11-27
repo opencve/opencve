@@ -6,7 +6,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Attack Vector</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'AV' %}">{% metric_text_from_vector cvss.vector 'AV' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'AV' %}">{% metric_text_from_vector cvss.vector 'AV' %}</span>
                     </h4>
                 </div>
             </div>
@@ -16,7 +16,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Attack Complexity</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'AC' %}">{% metric_text_from_vector cvss.vector 'AC' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'AC' %}">{% metric_text_from_vector cvss.vector 'AC' %}</span>
                     </h4>
                 </div>
             </div>
@@ -26,7 +26,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Privileges Required</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'PR' %}">{% metric_text_from_vector cvss.vector 'PR' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'PR' %}">{% metric_text_from_vector cvss.vector 'PR' %}</span>
                     </h4>
                 </div>
             </div>
@@ -36,7 +36,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Attack Requirements</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'AT' %}">{% metric_text_from_vector cvss.vector 'AT' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'AT' %}">{% metric_text_from_vector cvss.vector 'AT' %}</span>
                     </h4>
                 </div>
             </div>
@@ -46,7 +46,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">User Interaction</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'UI' %}">{% metric_text_from_vector cvss.vector 'UI' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'UI' %}">{% metric_text_from_vector cvss.vector 'UI' %}</span>
                     </h4>
                 </div>
             </div>
@@ -58,7 +58,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Vulnerable System Confidentiality Impact</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'VC' %}">{% metric_text_from_vector cvss.vector 'VC' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'VC' %}">{% metric_text_from_vector cvss.vector 'VC' %}</span>
                     </h4>
                 </div>
             </div>
@@ -68,7 +68,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Vulnerable System Integrity Impact</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'VI' %}">{% metric_text_from_vector cvss.vector 'VI' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'VI' %}">{% metric_text_from_vector cvss.vector 'VI' %}</span>
                     </h4>
                 </div>
             </div>
@@ -78,7 +78,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Vulnerable System Availability Impact</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'VA' %}">{% metric_text_from_vector cvss.vector 'VA' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'VA' %}">{% metric_text_from_vector cvss.vector 'VA' %}</span>
                     </h4>
                 </div>
             </div>
@@ -88,7 +88,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Subsequent System Confidentiality Impact</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'SC' %}">{% metric_text_from_vector cvss.vector 'SC' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'SC' %}">{% metric_text_from_vector cvss.vector 'SC' %}</span>
                     </h4>
                 </div>
             </div>
@@ -98,7 +98,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Subsequent System Integrity Impact</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'SI' %}">{% metric_text_from_vector cvss.vector 'SI' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'SI' %}">{% metric_text_from_vector cvss.vector 'SI' %}</span>
                     </h4>
                 </div>
             </div>
@@ -108,7 +108,7 @@
                 <div class="panel-heading">
                     <h4 class="panel-title">
                         <span class="panel-title-text">Subsequent System Availability Impact</span>
-                        <span class="pull-right label label-{% metric_class_from_vector cvss.vector 'SA' %}">{% metric_text_from_vector cvss.vector 'SA' %}</span>
+                        <span class="pull-right opencve-chip opencve-chip-{% metric_class_from_vector cvss.vector 'SA' %}">{% metric_text_from_vector cvss.vector 'SA' %}</span>
                     </h4>
                 </div>
             </div>

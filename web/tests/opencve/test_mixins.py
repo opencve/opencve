@@ -7,12 +7,14 @@ CHANGE_ID = "c8b1dcac-1137-4d07-b045-1903de09c7d9"
 
 PUBLIC_URLS = [
     ("cves", {}),
+    ("cves_page", {}),
     ("cves_export_csv", {}),
     ("cve", {"cve_id": CVE_ID}),
     ("change", {"cve_id": CVE_ID, "id": CHANGE_ID}),
     ("vendors", {}),
     ("vendors_load_more", {"list_type": "vendors"}),
     ("weaknesses", {}),
+    ("weaknesses_page", {}),
     ("statistics", {}),
 ]
 

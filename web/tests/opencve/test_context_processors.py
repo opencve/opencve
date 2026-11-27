@@ -1,5 +1,3 @@
-from unittest.mock import patch, PropertyMock
-
 import pytest
 from bs4 import BeautifulSoup
 from django.test import RequestFactory, override_settings
@@ -25,7 +23,7 @@ from opencve.context_processors import feature_flags
         ),
         (f"{reverse('cves')}?vendor=debian", "/cve/?vendor=debian"),
         (f"{reverse('cves')}?vendor=debian&page=1", "/cve/?vendor=debian"),
-        (f"{reverse('cves')}?vendor=debian&page=2", "/cve/?page=2&vendor=debian"),
+        (f"{reverse('cves')}?vendor=debian&page=2", "/cve/?vendor=debian"),
         (f"{reverse('vendors')}?search=firepower", "/vendors/?search=firepower"),
         (
             f"{reverse('vendors')}?search=firepower&page=1&product_page=1",
@@ -37,12 +35,7 @@ from opencve.context_processors import feature_flags
         ),
     ],
 )
-@patch("cves.views.CveListView.paginate_by", new_callable=PropertyMock)
-def test_canonical_url_context(
-    mock_cves, db, create_cve, client, full_url, canonical_url
-):
-    mock_cves.return_value = 1
-
+def test_canonical_url_context(db, create_cve, client, full_url, canonical_url):
     create_cve("CVE-2024-31331")
     create_cve("CVE-2021-44228")
     create_cve("CVE-2022-20698")

@@ -1,4 +1,8 @@
 {% load humanize %}
 {% load opencve_extras %}
 
-<p>The EPSS score is <strong>{{ epss.score }}</strong>.</p>
+<p>
+    Exploit prediction score:
+    <strong>{{ epss.score|epss_badge_display }}</strong>
+    <span class="text-muted">({{ epss.score|epss_exact_display }} probability within 30 days)</span>
+</p>

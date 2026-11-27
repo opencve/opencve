@@ -3,37 +3,39 @@
 {% has_project_permission project 'project.tracker.assign' as can_edit_assignee %}
 
 {% if can_edit_assignee %}
-{% if tracker and tracker.assignee %}
-    <span class="editable-assignee badge badge-info"
-          data-cve-id="{{ cve_id }}"
-          data-project-name="{{ project_name }}"
-          data-org-name="{{ org_name }}"
-          data-current-assignee="{{ tracker.assignee.id }}"
-          title="Click to change assignee">
-        {{ tracker.assignee.username }}
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-            <path d="M12 20h9"/>
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-        </svg>
+<span class="opencve-tracker-select opencve-tracker-select--assignee editable-assignee"
+      data-cve-id="{{ cve_id }}"
+      data-project-name="{{ project_name }}"
+      data-org-name="{{ org_name }}"
+      data-current-assignee="{% if tracker and tracker.assignee %}{{ tracker.assignee.id }}{% endif %}"
+      title="Click to change assignee">
+    <span class="opencve-tracker-select-leading">
+        {% if tracker and tracker.assignee %}
+        <img class="opencve-tracker-select-avatar"
+             src="{{ tracker.assignee.email|gravatar_url:40 }}"
+             alt=""
+             width="20"
+             height="20">
+        {% else %}
+        <i class="fa fa-user-o opencve-tracker-select-icon" aria-hidden="true"></i>
+        {% endif %}
     </span>
+    <span class="opencve-tracker-select-label">{% if tracker and tracker.assignee %}{{ tracker.assignee.username }}{% else %}Unassigned{% endif %}</span>
+    {% include "cves/includes/tracker_select_chevron.html" %}
+</span>
 {% else %}
-    <span class="editable-assignee badge badge-secondary"
-          data-cve-id="{{ cve_id }}"
-          data-project-name="{{ project_name }}"
-          data-org-name="{{ org_name }}"
-          data-current-assignee=""
-          title="Click to assign">
-        Unassigned
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-            <path d="M12 20h9"/>
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-        </svg>
+<span class="opencve-tracker-select opencve-tracker-select--assignee opencve-tracker-select--readonly">
+    <span class="opencve-tracker-select-leading">
+        {% if tracker and tracker.assignee %}
+        <img class="opencve-tracker-select-avatar"
+             src="{{ tracker.assignee.email|gravatar_url:40 }}"
+             alt=""
+             width="20"
+             height="20">
+        {% else %}
+        <i class="fa fa-user-o opencve-tracker-select-icon" aria-hidden="true"></i>
+        {% endif %}
     </span>
-{% endif %}
-{% else %}
-{% if tracker and tracker.assignee %}
-    <span class="badge badge-info">{{ tracker.assignee.username }}</span>
-{% else %}
-    <span class="badge badge-secondary">Unassigned</span>
-{% endif %}
+    <span class="opencve-tracker-select-label">{% if tracker and tracker.assignee %}{{ tracker.assignee.username }}{% else %}Unassigned{% endif %}</span>
+</span>
 {% endif %}

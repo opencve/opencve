@@ -4,29 +4,52 @@ from datetime import datetime
 import pyparsing as pp
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.paginator import Paginator
 from django.db import models
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.views.generic import DetailView, ListView, TemplateView, View
+from django.views.generic import DetailView, TemplateView, View
 
-from cves.constants import PRODUCT_SEPARATOR
+from cves.constants import (
+    CVE_QUICK_SEARCH_GROUPS,
+    CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW,
+    CVE_SIDEBAR_VIEWS_PREVIEW,
+    CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW,
+    PRODUCT_SEPARATOR,
+    build_cve_quick_search_sidebar_entries,
+    cve_sidebar_should_expand_views,
+)
 from cves.export import CVE_CSV_EXPORT_MAX_ROWS, build_cve_csv_response
 from cves.forms import SearchForm
 from cves.models import Cve, Product, Variable, Vendor, Weakness
 from cves.search import Search, BadQueryException, MaxFieldsExceededException
 from cves.templatetags.opencve_extras import needs_quotes
 from cves.utils import (
+    affected_product_tab_context,
+    metrics_tab_context,
     affected_to_dict_vendors,
     humanize,
     list_to_dict_vendors,
     list_weaknesses,
     normalize_enrichment_affected,
+    project_subscription_match_keys,
 )
 from opencve.mixins import AnonymousAccessMixin
 from opencve.utils import is_valid_uuid
+from opencve.cursor_pagination import (
+    build_cursor_list_initial_state,
+    cached_queryset_count,
+    cve_list_count_cache_key,
+    cve_list_page_requires_auth,
+    cve_list_page_requires_organization,
+    cursor_page_api_payload,
+    paginate_cve_queryset,
+    paginate_weakness_queryset,
+    parse_page_number,
+    total_pages,
+    weakness_list_count_cache_key,
+)
 from opencve.pagination import (
     keyset_cursor_payload,
     paginate_keyset,
@@ -47,19 +70,71 @@ from views.forms import ViewForm
 from views.models import View as SavedView
 
 
-class WeaknessListView(AnonymousAccessMixin, ListView):
-    context_object_name = "weaknesses"
-    template_name = "cves/weakness_list.html"
-    paginate_by = 20
+WEAKNESS_LIST_PAGE_SIZE = 20
 
-    def get_queryset(self):
-        query = Weakness.objects
-        search = self.request.GET.get("search")
-        if search:
-            query = query.filter(
-                models.Q(cwe_id__icontains=search) | models.Q(name__icontains=search)
-            )
-        return query.order_by(models.F("name").desc(nulls_last=True))
+
+def get_weaknesses_queryset(*, search):
+    queryset = Weakness.objects.all()
+    if search:
+        queryset = queryset.filter(
+            models.Q(cwe_id__icontains=search) | models.Q(name__icontains=search)
+        )
+    return queryset
+
+
+class WeaknessListView(AnonymousAccessMixin, TemplateView):
+    template_name = "cves/weakness_list.html"
+    page_size = WEAKNESS_LIST_PAGE_SIZE
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        search = self.request.GET.get("search", "")
+        queryset = get_weaknesses_queryset(search=search)
+        cache_key = weakness_list_count_cache_key(self.request)
+        total_count = cached_queryset_count(queryset, cache_key)
+        page = paginate_weakness_queryset(
+            queryset, after=None, before=None, limit=self.page_size
+        )
+        pages_count = total_pages(total_count, page_size=self.page_size)
+        context["weaknesses"] = page.items
+        context["total_count"] = total_count
+        context["total_pages"] = pages_count
+        context["cursor_page"] = page
+        context["weakness_list_initial_state"] = build_cursor_list_initial_state(
+            total_count=total_count,
+            total_pages_count=pages_count,
+            page=page,
+        )
+        return context
+
+
+class WeaknessListPageView(AnonymousAccessMixin, View):
+    page_size = WEAKNESS_LIST_PAGE_SIZE
+
+    def get(self, request, *args, **kwargs):
+        search = request.GET.get("search", "")
+        queryset = get_weaknesses_queryset(search=search)
+        after = request.GET.get("after") or None
+        before = request.GET.get("before") or None
+        page_number = parse_page_number(request.GET.get("page"))
+        page = paginate_weakness_queryset(
+            queryset, after=after, before=before, limit=self.page_size
+        )
+        cache_key = weakness_list_count_cache_key(request)
+        total_count = cached_queryset_count(queryset, cache_key)
+        html = render_to_string(
+            "cves/includes/weakness_list_rows.html",
+            {"weaknesses": page.items},
+            request=request,
+        )
+        payload = cursor_page_api_payload(
+            page,
+            page_number=page_number,
+            total_count=total_count,
+            page_size=self.page_size,
+        )
+        payload["html"] = html
+        return JsonResponse(payload)
 
 
 VENDOR_LIST_PAGE_SIZE = 20
@@ -164,11 +239,10 @@ class VendorListLoadMoreView(AnonymousAccessMixin, View):
         return JsonResponse({"html": html, **keyset_cursor_payload(page)})
 
 
-class CveListView(AnonymousAccessMixin, ListView):
-    context_object_name = "cves"
-    template_name = "cves/cve_list.html"
-    paginate_by = 20
+CVE_LIST_PAGE_SIZE = 20
 
+
+class CveListQuerysetMixin:
     def get_queryset(self):
         self.form = SearchForm(self.request.GET)
 
@@ -236,8 +310,29 @@ class CveListView(AnonymousAccessMixin, ListView):
 
         return " AND ".join(advanced_parts)
 
+
+class CveListView(AnonymousAccessMixin, CveListQuerysetMixin, TemplateView):
+    template_name = "cves/cve_list.html"
+    page_size = CVE_LIST_PAGE_SIZE
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        queryset = self.get_queryset()
+        cache_key = cve_list_count_cache_key(self.request)
+        total_count = cached_queryset_count(queryset, cache_key)
+        page = paginate_cve_queryset(
+            queryset, after=None, before=None, limit=self.page_size
+        )
+        pages_count = total_pages(total_count, page_size=self.page_size)
+        context["cves"] = page.items
+        context["total_count"] = total_count
+        context["total_pages"] = pages_count
+        context["cursor_page"] = page
+        context["cve_list_initial_state"] = build_cursor_list_initial_state(
+            total_count=total_count,
+            total_pages_count=pages_count,
+            page=page,
+        )
 
         # Handle custom titles when vendor, product or weakness is set
         vendor = self.request.GET.get("vendor", "").replace(" ", "").lower()
@@ -267,12 +362,33 @@ class CveListView(AnonymousAccessMixin, ListView):
 
         # Provide the search form
         context["search_form"] = self.form
+        current_q = self.request.GET.get("q", "")
+
+        quick_search_entries, quick_search_count = (
+            build_cve_quick_search_sidebar_entries(
+                CVE_QUICK_SEARCH_GROUPS,
+                CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW,
+                current_q=current_q,
+            )
+        )
+        context["cve_quick_search_sidebar"] = quick_search_entries
+        context["cve_quick_search_count"] = quick_search_count
+        context["cve_sidebar_views_preview"] = CVE_SIDEBAR_VIEWS_PREVIEW
+        context["cve_sidebar_quick_searches_preview"] = (
+            CVE_SIDEBAR_QUICK_SEARCHES_PREVIEW
+        )
+        context["cve_sidebar_quick_search_collapsed"] = any(
+            entry.get("hidden") for entry in quick_search_entries
+        )
+        context["cve_sidebar_shared_tab_active"] = False
+        context["cve_sidebar_expand_private"] = False
+        context["cve_sidebar_expand_public"] = False
 
         # Add organization views
         if self.request.current_organization:
             context["view_form"] = ViewForm(request=self.request)
 
-            context["views"] = SavedView.objects.filter(
+            views_qs = SavedView.objects.filter(
                 models.Q(
                     privacy="public", organization=self.request.current_organization
                 )
@@ -281,12 +397,74 @@ class CveListView(AnonymousAccessMixin, ListView):
                     user=self.request.user,
                     organization=self.request.current_organization,
                 )
-            ).order_by("-created_at")
+            )
+            context["views"] = views_qs.order_by("-created_at")
+            context["public_views"] = views_qs.filter(privacy="public").order_by("name")
+            context["private_views"] = views_qs.filter(privacy="private").order_by(
+                "name"
+            )
+            public_views = context["public_views"]
+            private_views = context["private_views"]
+            if current_q and any(v.query == current_q for v in public_views):
+                context["cve_sidebar_shared_tab_active"] = True
+            elif current_q and any(v.query == current_q for v in private_views):
+                context["cve_sidebar_shared_tab_active"] = False
+
+            context["cve_sidebar_expand_private"] = cve_sidebar_should_expand_views(
+                private_views, current_q, CVE_SIDEBAR_VIEWS_PREVIEW
+            )
+            context["cve_sidebar_expand_public"] = cve_sidebar_should_expand_views(
+                public_views, current_q, CVE_SIDEBAR_VIEWS_PREVIEW
+            )
 
         return context
 
 
-class CveCsvExportView(CveListView):
+class CveListPageView(AnonymousAccessMixin, CveListQuerysetMixin, View):
+    page_size = CVE_LIST_PAGE_SIZE
+
+    def dispatch(self, request, *args, **kwargs):
+        if cve_list_page_requires_auth(request):
+            if not request.user.is_authenticated:
+                return JsonResponse(
+                    {"error": "You must be logged in to use this search."},
+                    status=401,
+                )
+            if cve_list_page_requires_organization(request) and not getattr(
+                request, "current_organization", None
+            ):
+                return JsonResponse(
+                    {"error": "An organization context is required."},
+                    status=403,
+                )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        after = request.GET.get("after") or None
+        before = request.GET.get("before") or None
+        page_number = parse_page_number(request.GET.get("page"))
+        page = paginate_cve_queryset(
+            queryset, after=after, before=before, limit=self.page_size
+        )
+        cache_key = cve_list_count_cache_key(request)
+        total_count = cached_queryset_count(queryset, cache_key)
+        html = render_to_string(
+            "cves/includes/cve_card_list.html",
+            {"cves": page.items},
+            request=request,
+        )
+        payload = cursor_page_api_payload(
+            page,
+            page_number=page_number,
+            total_count=total_count,
+            page_size=self.page_size,
+        )
+        payload["html"] = html
+        return JsonResponse(payload)
+
+
+class CveCsvExportView(AnonymousAccessMixin, CveListQuerysetMixin, View):
     """
     Export the current CVE list (same queryset as CveListView) as CSV.
     Redirects with an error message if the result set exceeds CVE_CSV_EXPORT_MAX_ROWS.
@@ -489,6 +667,10 @@ class CveDetailView(AnonymousAccessMixin, DetailView):
                     }
                 )
 
+            subscription_match_keys = project_subscription_match_keys(
+                cve.vendors, project.subscriptions
+            )
+            match_preview = CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW
             projects_with_trackers.append(
                 {
                     "project": project,
@@ -497,6 +679,13 @@ class CveDetailView(AnonymousAccessMixin, DetailView):
                     "comment_count": total_comments,
                     "assignable_members": assignable_tracker_users(
                         self.request.current_organization, project
+                    ),
+                    "subscription_match_keys": subscription_match_keys,
+                    "subscription_match_keys_preview": subscription_match_keys[
+                        :match_preview
+                    ],
+                    "subscription_match_keys_overflow": max(
+                        0, len(subscription_match_keys) - match_preview
                     ),
                 }
             )
@@ -507,6 +696,9 @@ class CveDetailView(AnonymousAccessMixin, DetailView):
         context = super().get_context_data(**kwargs)
 
         cve = context["cve"]
+
+        context.update(affected_product_tab_context(cve))
+        context.update(metrics_tab_context(cve))
 
         # JSON context (KB, Mitre...)
         context.update(self.build_json_context(cve))
@@ -548,6 +740,9 @@ class CveDetailView(AnonymousAccessMixin, DetailView):
 
             accessible = self.get_accessible_projects()
             context["filtered_projects"] = self.list_cve_projects(cve, accessible)
+            context["cve_tracking_matches_preview"] = (
+                CVE_TRACKING_SUBSCRIPTION_MATCHES_PREVIEW
+            )
             context["status_choices"] = CveTracker.STATUS_CHOICES
 
         return context

@@ -4,7 +4,8 @@
 <div class="subscription-grid{% if user.is_authenticated and not projects %} subscription-grid-readonly{% endif %}">
 {% for vendor, products in vendors_dict.items %}
     <span class="subscription-vendor-name">
-        <span class="subscription-vendor-name-text">{{ vendor | humanize }}</span>{% if vendor|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" data-container="body" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}
+        <a href="{% url 'cves' %}?vendor={{ vendor|urlencode }}"
+           class="subscription-vendor-name-text subscription-cve-filter-link">{{ vendor | humanize }}</a>{% if vendor|is_top_vendor_or_product %} <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" data-container="body" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>{% endif %}
     </span>
     {% if user.is_authenticated %}
         {% if vendors_data_dict and projects %}
@@ -26,7 +27,8 @@
     {% endif %}
     {% for product in products %}
     <span class="subscription-product-name{% if forloop.first %} subscription-product-name-first{% endif %}">
-        <span class="subscription-product-name-text">{{ product | humanize }}</span>
+        <a href="{% url 'cves' %}?vendor={{ vendor|urlencode }}&amp;product={{ product|urlencode }}"
+           class="subscription-product-name-text subscription-cve-filter-link">{{ product | humanize }}</a>
         {% with vendor_product_key=vendor|stringformat:"s"|add:"$PRODUCT$"|add:product %}
             {% if vendor_product_key|is_top_vendor_or_product %}
                 <i class="fa fa-exclamation-circle pointer" data-toggle="tooltip" data-container="body" title="Warning: This vendor/product is frequently associated with CVEs; you may receive numerous notifications."></i>
