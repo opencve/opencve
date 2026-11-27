@@ -861,6 +861,17 @@ def test_parse_weaknesses(tests_path):
     }
 
 
+def test_parse_weaknesses_supports_schema_7(tests_path):
+    """Test parse_weaknesses continues to support the previous MITRE schema."""
+    xml_content = (tests_path / "data" / "weaknesses" / "cwec_sample.xml").read_bytes()
+    xml_content = xml_content.replace(b"cwe-8", b"cwe-7")
+
+    weaknesses = parse_weaknesses(xml_content)
+
+    assert len(weaknesses) == 2
+    assert weaknesses[0]["name"] == "Cross-site Scripting"
+
+
 def test_parse_weaknesses_ignores_non_weakness(tests_path):
     """Test parse_weaknesses ignores Category elements."""
     xml_content = (tests_path / "data" / "weaknesses" / "cwec_sample.xml").read_bytes()

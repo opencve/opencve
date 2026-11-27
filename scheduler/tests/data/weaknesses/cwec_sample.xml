@@ -1,4 +1,4 @@
-<Weakness_Catalog xmlns="http://cwe.mitre.org/cwe-7">
+<Weakness_Catalog xmlns="http://cwe.mitre.org/cwe-8">
   <Weaknesses>
     <Weakness ID="79" Name="Cross-site Scripting">
       <Description>Test XSS description</Description>
