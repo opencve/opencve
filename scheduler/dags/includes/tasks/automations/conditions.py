@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from includes.constants import (
@@ -116,17 +116,28 @@ class CveUnassignedCondition(ConditionEvaluator):
 @register_condition("cve_newer_than")
 class CveNewerThanCondition(ConditionEvaluator):
     def evaluate(self, value, change_details, cve_trackers):
-        cve_id = change_details.get("cve_id", "")
         try:
             threshold_days = int(value)
-            cve_year = int(cve_id.split("-")[1])
-        except (TypeError, ValueError, IndexError):
+        except (TypeError, ValueError):
             return False
 
-        current_year = datetime.now(tz=timezone.utc).year
-        if cve_year >= current_year:
-            return True
-        return threshold_days > 365 and cve_year >= current_year - 1
+        published_at = change_details.get("cve_created_at")
+        if published_at is None:
+            return False
+        if isinstance(published_at, str):
+            try:
+                published_at = datetime.fromisoformat(
+                    published_at.replace("Z", "+00:00")
+                )
+            except ValueError:
+                return False
+        if not isinstance(published_at, datetime):
+            return False
+        if published_at.tzinfo is None:
+            published_at = published_at.replace(tzinfo=timezone.utc)
+
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=threshold_days)
+        return published_at > cutoff
 
 
 @register_condition("cvss_gte")

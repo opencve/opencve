@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from includes.tasks.automations.conditions import (
     evaluate_condition_tree,
     evaluate_condition_node,
@@ -257,18 +259,49 @@ def test_cve_unassigned_condition_no_assignee():
 
 
 def test_cve_newer_than_condition_current_year():
-    """CVE newer_than always passes for CVEs from the current year."""
-    from datetime import datetime, timezone
-
-    current_year = datetime.now(tz=timezone.utc).year
-    change = {"cve_id": f"CVE-{current_year}-0001"}
+    """CVE newer_than passes for a recently published CVE."""
+    now = datetime.now(tz=timezone.utc)
+    change = {
+        "cve_id": f"CVE-{now.year}-0001",
+        "cve_created_at": (now - timedelta(days=3)).isoformat(),
+    }
     node = {"type": "cve_newer_than", "value": "30"}
     assert evaluate_condition_node(node, change, {}) is True
 
 
 def test_cve_newer_than_condition_old_cve():
-    """CVE newer_than fails for old CVEs with short threshold."""
-    change = {"cve_id": "CVE-2020-0001"}
+    """CVE newer_than fails for an old publication date."""
+    now = datetime.now(tz=timezone.utc)
+    change = {
+        "cve_id": "CVE-2020-0001",
+        "cve_created_at": (now - timedelta(days=100)).isoformat(),
+    }
+    node = {"type": "cve_newer_than", "value": "30"}
+    assert evaluate_condition_node(node, change, {}) is False
+
+
+def test_cve_newer_than_condition_uses_publication_date_not_cve_id():
+    """The publication date, not the year in the CVE ID, drives the condition."""
+    now = datetime.now(tz=timezone.utc)
+    node = {"type": "cve_newer_than", "value": "10"}
+
+    recently_published = {
+        "cve_id": "CVE-2020-0001",
+        "cve_created_at": (now - timedelta(days=2)).isoformat(),
+    }
+    assert evaluate_condition_node(node, recently_published, {}) is True
+
+    old_publication = {
+        "cve_id": f"CVE-{now.year}-0001",
+        "cve_created_at": (now - timedelta(days=100)).isoformat(),
+    }
+    assert evaluate_condition_node(node, old_publication, {}) is False
+
+
+def test_cve_newer_than_condition_missing_publication_date():
+    """CVE newer_than fails when the publication date is unavailable."""
+    now = datetime.now(tz=timezone.utc)
+    change = {"cve_id": f"CVE-{now.year}-0001"}
     node = {"type": "cve_newer_than", "value": "30"}
     assert evaluate_condition_node(node, change, {}) is False
 
